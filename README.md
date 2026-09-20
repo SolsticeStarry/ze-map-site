@@ -1,43 +1,28 @@
-# Astro Starter Kit: Minimal
+# ZE 地图资料站
 
-```sh
-npm create astro@latest -- --template minimal
-```
+僵尸逃跑（Zombie Escape）地图中文资料库。
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## 功能
 
-## 🚀 Project Structure
+- 地图库：按难度、游戏、标签筛选
+- 地图详情：背景故事、关卡流程、神器、视频
+- 标签索引
+- 深浅色切换
+- 移动端适配
 
-Inside of your Astro project, you'll see the following folders and files:
+## 技术栈
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+- Astro
+- Tailwind CSS
+- MDX
+- Pagefind（搜索）
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## 开发
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+npm install
+npm run dev
 
-Any static assets, like images, can be placed in the `public/` directory.
+## 构建
 
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+npm run build
+npm run preview
