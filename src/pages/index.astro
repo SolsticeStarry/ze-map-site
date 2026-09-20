@@ -1,0 +1,145 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import MapCard from '../components/MapCard.astro';
+
+const maps = await getCollection('maps');
+
+const featured = maps.filter((m) => m.data.featured);
+
+const latest = [...maps]
+  .sort((a, b) => {
+    const da = a.data.lastUpdated ? new Date(a.data.lastUpdated).getTime() : 0;
+    const db = b.data.lastUpdated ? new Date(b.data.lastUpdated).getTime() : 0;
+    return db - da;
+  })
+  .slice(0, 6);
+
+// 热门标签统计
+const tagCount: Record<string, number> = {};
+for (const m of maps) {
+  for (const t of m.data.tags) {
+    tagCount[t] = (tagCount[t] ?? 0) + 1;
+  }
+}
+const hotTags = Object.entries(tagCount)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 12);
+---
+
+<BaseLayout>
+  <section class="hero hero-bg">
+    <div class="hero-bg-layer"></div>
+    <div class="hero-bg-overlay"></div>
+    <div class="container hero-content">
+      <div class="hero-badge">Community · Zombie Escape</div>
+      <h1 class="hero-title">
+        <span class="gradient-text">ZE 地图</span>资料站
+      </h1>
+      <p class="hero-sub">
+        僵尸逃跑地图中文资料库 · 背景故事 · 通关流程 · 神器攻略
+      </p>
+      <div class="hero-stats">
+        <div class="stat">
+          <strong data-count={maps.length}>0</strong>
+          <span>地图收录</span>
+        </div>
+        <div class="stat">
+          <strong data-count={hotTags.length}>0</strong>
+          <span>热门标签</span>
+        </div>
+        <div class="stat">
+          <strong>∞</strong>
+          <span>社区更新</span>
+        </div>
+      </div>
+    </div>
+    <a href="#featured" class="hero-scroll">向下滚动 ↓</a>
+  </section>
+
+  <div class="container">
+    {featured.length > 0 && (
+      <section id="featured">
+        <div class="section-head">
+          <h2>精选地图</h2>
+          <a href="/maps/">查看全部 →</a>
+        </div>
+        <div class="map-grid">
+          {featured.map((map) => <MapCard map={map} />)}
+        </div>
+      </section>
+    )}
+
+    {hotTags.length > 0 && (
+      <section>
+        <div class="section-head">
+          <h2>热门标签</h2>
+          <a href="/tags/">全部标签 →</a>
+        </div>
+        <div class="hot-tags">
+          {hotTags.map(([tag, count]) => (
+            <a class="hot-tag" href={`/tags/${tag}/`}>
+              <span class="hot-tag-name">{tag}</span>
+              <span class="hot-tag-count">{count}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {latest.length > 0 && (
+      <section>
+        <div class="section-head">
+          <h2>最新更新</h2>
+          <a href="/maps/">查看全部 →</a>
+        </div>
+        <div class="timeline">
+          {latest.map((map) => (
+            <a class="timeline-item" href={`/maps/${map.id}/`}>
+              <span class="timeline-dot"></span>
+              <span class="timeline-date">{map.data.lastUpdated ?? '—'}</span>
+              <span class="timeline-title">{map.data.title}</span>
+              <span class="timeline-en">{map.data.titleEn}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {maps.length === 0 && (
+      <div class="empty-state">
+        <p>还没有地图。去 <code>src/content/maps/</code> 里添加第一张吧。</p>
+      </div>
+    )}
+  </div>
+
+  <script>
+    // 数字滚动动画
+    function animateCount(el: HTMLElement, target: number, duration = 1200) {
+      const start = performance.now();
+      function tick(now: number) {
+        const p = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = String(Math.round(target * eased));
+        if (p < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    const counters = document.querySelectorAll('[data-count]');
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            const target = Number(el.dataset.count ?? 0);
+            animateCount(el, target);
+            io.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+    counters.forEach((el) => io.observe(el));
+  </script>
+</BaseLayout>

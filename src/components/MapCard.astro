@@ -1,0 +1,49 @@
+---
+interface Props {
+  map: any;
+}
+
+const { map } = Astro.props;
+const { title, titleEn, difficulty, players, duration, tags, cover } = map.data;
+const slug = map.id;
+
+const diffMap: Record<string, string> = {
+  '简单': 'diff-easy',
+  '中等': 'diff-medium',
+  '困难': 'diff-hard',
+  '极难': 'diff-extreme',
+  '地狱': 'diff-hell',
+};
+const diffClass = diffMap[difficulty] ?? 'diff-medium';
+---
+
+<a
+  class="map-card"
+  href={`/maps/${slug}/`}
+  data-search={`${title} ${titleEn} ${tags.join(' ')}`}
+  data-difficulty={difficulty}
+  data-game={map.data.game}
+>
+  <div class={`map-card-cover ${diffClass}`}>
+    {cover ? (
+      <img src={cover} alt={title} loading="lazy" />
+    ) : (
+      <div class="cover-fallback">
+        <span class="cover-en">{titleEn}</span>
+      </div>
+    )}
+    <span class={`badge ${diffClass}`}>{difficulty}</span>
+  </div>
+  <div class="map-card-body">
+    <h3>{title}</h3>
+    <p class="map-card-en">{titleEn}</p>
+    <div class="map-card-meta">
+      <span>{players} 人</span>
+      <span>·</span>
+      <span>{duration}</span>
+    </div>
+    <div class="map-card-tags">
+      {tags.slice(0, 3).map((t: string) => <span class="tag">{t}</span>)}
+    </div>
+  </div>
+</a>

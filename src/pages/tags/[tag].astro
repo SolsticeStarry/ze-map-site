@@ -1,0 +1,39 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import MapCard from '../../components/MapCard.astro';
+
+export async function getStaticPaths() {
+  const maps = await getCollection('maps');
+  const allTags = [...new Set(maps.flatMap((m) => m.data.tags))];
+  return allTags.map((tag) => ({
+    params: { tag },
+    props: { tag },
+  }));
+}
+
+const { tag } = Astro.props;
+const all = await getCollection('maps');
+const maps = all.filter((m) => m.data.tags.includes(tag));
+---
+
+<BaseLayout title={`${tag} | ZE 地图资料站`}>
+  <section class="hero" style="padding: 70px 0 30px;">
+    <div class="container">
+      <div class="hero-badge">Tag</div>
+      <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
+        <span class="gradient-text">{tag}</span>
+      </h1>
+      <p class="hero-sub">{maps.length} 张地图</p>
+    </div>
+  </section>
+  <div class="container" style="padding-bottom: 60px;">
+    {maps.length > 0 ? (
+      <div class="map-grid">
+        {maps.map((map) => <MapCard map={map} />)}
+      </div>
+    ) : (
+      <div class="empty-state">该标签下暂无地图。</div>
+    )}
+  </div>
+</BaseLayout>

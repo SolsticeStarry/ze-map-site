@@ -1,0 +1,33 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const maps = await getCollection('maps');
+const tagCount: Record<string, number> = {};
+for (const m of maps) {
+  for (const t of m.data.tags) {
+    tagCount[t] = (tagCount[t] ?? 0) + 1;
+  }
+}
+const tags = Object.entries(tagCount).sort((a, b) => b[1] - a[1]);
+---
+
+<BaseLayout title="标签 | ZE 地图资料站">
+  <section class="hero" style="padding: 70px 0 30px;">
+    <div class="container">
+      <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
+        <span class="gradient-text">标签</span>索引
+      </h1>
+      <p class="hero-sub">共 {tags.length} 个标签</p>
+    </div>
+  </section>
+  <div class="container" style="padding-bottom: 60px;">
+    <div class="tag-list" style="gap: 10px;">
+      {tags.map(([tag, count]) => (
+        <a href={`/tags/${tag}/`} style="padding: 8px 16px; font-size: 14px;">
+          {tag} <span style="color: var(--muted);">({count})</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

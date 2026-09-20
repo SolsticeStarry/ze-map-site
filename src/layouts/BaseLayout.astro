@@ -1,0 +1,103 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'ZE 地图资料站',
+  description = '僵尸逃跑地图中文资料库 · 背景故事 · 通关流程 · 神器攻略',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <script is:inline>
+      (function () {
+        const saved = localStorage.getItem('theme');
+        if (saved) document.documentElement.dataset.theme = saved;
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="/" class="logo">
+          <span class="logo-mark">ZE</span>
+          <span class="logo-text">地图资料站</span>
+        </a>
+
+        <button id="menu-toggle" class="menu-toggle" aria-label="菜单">
+          <span></span><span></span><span></span>
+        </button>
+
+        <nav class="main-nav" id="main-nav">
+          <a href="/maps/">地图库</a>
+          <a href="/tags/">标签</a>
+          <a href="/contribute/">投稿</a>
+          <a href="/about/">关于</a>
+        </nav>
+
+        <button id="theme-toggle" class="theme-toggle" aria-label="切换主题">
+          <span class="theme-icon-dark">🌙</span>
+          <span class="theme-icon-light">☀️</span>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>ZE 地图资料站 · 由社区维护 · 地图版权归原作者所有</p>
+      </div>
+    </footer>
+
+    <script is:inline>
+      // 主题切换
+      document.getElementById('theme-toggle')?.addEventListener('click', () => {
+        const root = document.documentElement;
+        const next = root.dataset.theme === 'light' ? 'dark' : 'light';
+        root.dataset.theme = next;
+        localStorage.setItem('theme', next);
+      });
+
+      // 移动端菜单
+      const menuToggle = document.getElementById('menu-toggle');
+      const mainNav = document.getElementById('main-nav');
+
+      menuToggle?.addEventListener('click', () => {
+        mainNav?.classList.toggle('open');
+      });
+
+      // 点击导航链接后自动关闭菜单
+      mainNav?.querySelectorAll('a').forEach((a) => {
+        a.addEventListener('click', () => mainNav.classList.remove('open'));
+      });
+
+      // 点击页面其他区域关闭菜单
+      document.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        if (
+          mainNav?.classList.contains('open') &&
+          !mainNav.contains(target) &&
+          !menuToggle?.contains(target)
+        ) {
+          mainNav.classList.remove('open');
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,97 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const maps = await getCollection('maps');
+  return maps.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+
+const {
+  title,
+  titleEn,
+  difficulty,
+  players,
+  duration,
+  stages,
+  author,
+  version,
+  game,
+  tags,
+  workshopUrl,
+  downloadUrl,
+} = entry.data;
+
+const diffMap: Record<string, string> = {
+  '简单': 'diff-easy',
+  '中等': 'diff-medium',
+  '困难': 'diff-hard',
+  '极难': 'diff-extreme',
+  '地狱': 'diff-hell',
+};
+const diffClass = diffMap[difficulty] ?? 'diff-medium';
+---
+
+<BaseLayout title={`${title} | ZE 地图资料站`}>
+  <section class="map-hero">
+    <div class="container">
+      <h1>{title}</h1>
+      <p class="subtitle">{titleEn}</p>
+      <div class="hero-tags">
+        <span class={`badge ${diffClass}`}>{difficulty}</span>
+        {tags.map((t: string) => <span class="badge">{t}</span>)}
+      </div>
+    </div>
+  </section>
+
+  <div class="map-layout">
+    <main class="map-main">
+      <Content />
+    </main>
+
+    <aside class="map-sidebar">
+      <div class="sidebar-card">
+        <h3>基本信息</h3>
+        <dl>
+          <dt>英文名</dt><dd>{titleEn}</dd>
+          <dt>作者</dt><dd>{author}</dd>
+          {version && <><dt>版本</dt><dd>{version}</dd></>}
+          <dt>游戏</dt><dd>{game}</dd>
+          <dt>难度</dt><dd><span class={`badge ${diffClass}`}>{difficulty}</span></dd>
+          <dt>人数</dt><dd>{players}</dd>
+          <dt>时长</dt><dd>{duration}</dd>
+          <dt>关卡</dt><dd>{stages}</dd>
+        </dl>
+      </div>
+
+      {(workshopUrl || downloadUrl) && (
+        <div class="sidebar-card">
+          <h3>下载 / 入口</h3>
+          {workshopUrl && (
+            <a class="btn btn-primary" href={workshopUrl} target="_blank" rel="noopener">
+              Steam 创意工坊
+            </a>
+          )}
+          {downloadUrl && (
+            <a class="btn" href={downloadUrl} target="_blank" rel="noopener">
+              GameBanana
+            </a>
+          )}
+        </div>
+      )}
+
+      <div class="sidebar-card">
+        <h3>标签</h3>
+        <div class="tag-list">
+          {tags.map((t: string) => <a href={`/tags/${t}/`}>{t}</a>)}
+        </div>
+      </div>
+    </aside>
+  </div>
+</BaseLayout>

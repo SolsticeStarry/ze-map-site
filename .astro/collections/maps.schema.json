@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "titleEn": {
+      "type": "string"
+    },
+    "game": {
+      "type": "string",
+      "enum": [
+        "CS:S",
+        "CS:GO",
+        "CS2"
+      ]
+    },
+    "author": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "简单",
+        "中等",
+        "困难",
+        "极难",
+        "地狱"
+      ]
+    },
+    "players": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "string"
+    },
+    "stages": {
+      "type": "number"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cover": {
+      "type": "string"
+    },
+    "workshopUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "downloadUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "videoUrls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "releaseDate": {
+      "type": "string"
+    },
+    "lastUpdated": {
+      "type": "string"
+    },
+    "featured": {
+      "default": false,
+      "type": "boolean"
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "titleEn",
+    "game",
+    "author",
+    "difficulty",
+    "players",
+    "duration",
+    "stages",
+    "tags"
+  ]
+}

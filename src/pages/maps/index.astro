@@ -1,0 +1,79 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import MapCard from '../../components/MapCard.astro';
+
+const maps = (await getCollection('maps')).sort((a, b) =>
+  a.data.title.localeCompare(b.data.title, 'zh-Hans-CN')
+);
+
+const difficulties = ['简单', '中等', '困难', '极难', '地狱'];
+const games = ['CS2', 'CS:GO', 'CS:S'];
+---
+
+<BaseLayout title="地图库 | ZE 地图资料站">
+  <section class="hero" style="padding: 70px 0 30px;">
+    <div class="container">
+      <div class="hero-badge">Map Library</div>
+      <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
+        地图<span class="gradient-text">库</span>
+      </h1>
+      <p class="hero-sub">共收录 {maps.length} 张地图</p>
+    </div>
+  </section>
+
+  <div class="container">
+    <div class="filter-bar">
+      <input id="search" type="search" placeholder="搜索地图名、英文名、标签..." />
+      <select id="filter-difficulty">
+        <option value="">全部难度</option>
+        {difficulties.map((d) => <option value={d}>{d}</option>)}
+      </select>
+      <select id="filter-game">
+        <option value="">全部游戏</option>
+        {games.map((g) => <option value={g}>{g}</option>)}
+      </select>
+    </div>
+
+    <div class="map-grid" id="map-grid">
+      {maps.map((map) => <MapCard map={map} />)}
+    </div>
+
+    <div id="no-result" class="empty-state" style="display:none; margin-top: 24px;">
+      没有匹配的地图。
+    </div>
+  </div>
+
+  <script>
+    const searchEl = document.getElementById('search') as HTMLInputElement;
+    const diffEl = document.getElementById('filter-difficulty') as HTMLSelectElement;
+    const gameEl = document.getElementById('filter-game') as HTMLSelectElement;
+    const grid = document.getElementById('map-grid') as HTMLElement;
+    const noResult = document.getElementById('no-result') as HTMLElement;
+
+    function apply() {
+      const q = searchEl.value.trim().toLowerCase();
+      const diff = diffEl.value;
+      const game = gameEl.value;
+      let visible = 0;
+
+      grid.querySelectorAll<HTMLElement>('.map-card').forEach((card) => {
+        const text = (card.dataset.search || '').toLowerCase();
+        const cd = card.dataset.difficulty || '';
+        const cg = card.dataset.game || '';
+        const ok =
+          (!q || text.includes(q)) &&
+          (!diff || cd === diff) &&
+          (!game || cg === game);
+        card.style.display = ok ? '' : 'none';
+        if (ok) visible++;
+      });
+
+      noResult.style.display = visible === 0 ? '' : 'none';
+    }
+
+    searchEl?.addEventListener('input', apply);
+    diffEl?.addEventListener('change', apply);
+    gameEl?.addEventListener('change', apply);
+  </script>
+</BaseLayout>
