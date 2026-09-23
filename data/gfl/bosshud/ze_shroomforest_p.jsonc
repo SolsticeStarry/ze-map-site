@@ -1,0 +1,7 @@
+[
+    {
+        "reversecounter": true,
+        "multitrigger": true,
+        "counter": "dynamichp"
+    }
+]

@@ -1,0 +1,74 @@
+[
+    {
+        "name": "Shotgun",
+        "shortname": "Shotgun",
+        "hammerid": "738",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "834"
+            },
+            {
+                "hammerid": "1270",
+                "event": "OnPass",
+                "mode": 3,
+                "cooldown": 2,
+                "maxuses": 8,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Muldoon's Shotgun",
+        "shortname": "Shotgun",
+        "hammerid": "745",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "832"
+            },
+            {
+                "hammerid": "1268",
+                "event": "OnPass",
+                "mode": 3,
+                "cooldown": 2,
+                "maxuses": 7,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Health Kit",
+        "shortname": "Heal",
+        "hammerid": "1273",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "white",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "25"
+            },
+            {
+                "hammerid": "1269",
+                "event": "OnPass",
+                "mode": 3,
+                "cooldown": 0,
+                "maxuses": 1,
+                "message": true,
+                "ui": true
+            }
+        ]
+    }
+]

@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const maps = await getCollection('maps');
+const hot = [...maps]
+  .filter((m) => m.data.entitySlug)
+  .sort((a, b) => (b.data.entityCount ?? 0) - (a.data.entityCount ?? 0))
+  .slice(0, 8);
+---
+
+<BaseLayout title="页面不存在 | ZE 地图资料站" description="这个页面不存在，去地图库或实体预览看看吧。">
+  <section class="hero" style="padding: 90px 0 40px;">
+    <div class="container">
+      <div class="hero-badge">404</div>
+      <h1 class="hero-title" style="font-size: clamp(40px, 8vw, 84px);">
+        页面<span class="gradient-text">不存在</span>
+      </h1>
+      <p class="hero-sub">链接可能已经失效，或者这张地图还没收录。</p>
+      <div class="stat-row" style="justify-content: center">
+        <a class="chip" href="/maps/">📚 去地图库（{maps.length} 张）</a>
+        <a class="chip" href="/preview/">🧊 实体预览</a>
+        <a class="chip" href="/tags/">🏷️ 标签索引</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="container" style="padding-bottom: 70px;">
+    <div class="section-head">
+      <h2>实体最丰富的地图</h2>
+      <a href="/maps/">查看全部 →</a>
+    </div>
+    <div class="map-grid">
+      {hot.map((m) => (
+        <a class="map-card" href={`/maps/${m.id}/`}>
+          <div class="map-card-body">
+            <h3>{m.data.title}</h3>
+            <p class="map-card-en">{m.data.titleEn}</p>
+            <div class="map-card-meta">
+              <span>{(m.data.entityCount ?? 0).toLocaleString('en-US')} 实体</span>
+              <span>·</span>
+              <span>{m.data.stages} 关</span>
+            </div>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

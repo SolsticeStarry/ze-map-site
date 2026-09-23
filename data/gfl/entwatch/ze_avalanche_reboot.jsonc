@@ -1,0 +1,194 @@
+[
+    {
+        "name": "Wind Blaster",
+        "shortname": "Wind",
+        "hammerid": "4854",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4852"
+            },
+            {
+                "hammerid": "4852",
+                "event": "OnUser1",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Icy Vortex",
+        "shortname": "Ice",
+        "hammerid": "4821",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4816"
+            },
+            {
+                "hammerid": "4816",
+                "event": "OnUser1",
+                "mode": 2,
+                "cooldown": 65,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Electric Beam Cannon",
+        "shortname": "Beam",
+        "hammerid": "4664",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4667"
+            },
+            {
+                "hammerid": "4667",
+                "event": "OnUser1",
+                "mode": 2,
+                "cooldown": 10,
+                "maxuses": 0,
+                "message": false,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Flame Beam Cannon",
+        "shortname": "Fire",
+        "hammerid": "4290",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "orange",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4288"
+            },
+            {
+                "hammerid": "4288",
+                "event": "OnUser1",
+                "mode": 2,
+                "cooldown": 12,
+                "maxuses": 0,
+                "message": false,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Venom Beam Cannon",
+        "shortname": "Venom",
+        "hammerid": "4295",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4293"
+            },
+            {
+                "hammerid": "4293",
+                "event": "OnUser1",
+                "mode": 2,
+                "cooldown": 12,
+                "maxuses": 0,
+                "message": false,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Blue Spark",
+        "shortname": "Electro",
+        "hammerid": "4299",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4297"
+            },
+            {
+                "hammerid": "4297",
+                "event": "OnUser1",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Heal",
+        "shortname": "Heal",
+        "hammerid": "4304",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "white",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4302"
+            },
+            {
+                "hammerid": "4302",
+                "event": "OnUser1",
+                "mode": 2,
+                "cooldown": 65,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Ammo",
+        "shortname": "Ammo",
+        "hammerid": "14967",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "olive",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "14970"
+            },
+            {
+                "hammerid": "14970",
+                "event": "OnUser1",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    }
+]

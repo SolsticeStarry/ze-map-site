@@ -1,0 +1,98 @@
+[
+    {
+        "name": "Slow Ball",
+        "shortname": "Slow",
+        "hammerid": "4187",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "yellow",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "16914"
+            },
+            {
+                "hammerid": "4193",
+                "event": "OnPass",
+                "mode": 1,
+                "cooldown": 0,
+                "maxuses": 0,
+                "message": false,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Cone",
+        "shortname": "Cone",
+        "hammerid": "4185",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "pink",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "16906"
+            },
+            {
+                "hammerid": "4143",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 70,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Heal",
+        "shortname": "Heal",
+        "hammerid": "4169",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "pink",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "16910"
+            },
+            {
+                "hammerid": "4170",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 80,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Beam",
+        "shortname": "Beam",
+        "hammerid": "4162",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "16902"
+            },
+            {
+                "hammerid": "4155",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 70,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    }
+]

@@ -41,6 +41,8 @@ html, body {
   transition: background-color 0.3s, color 0.3s;
 }
 
+html { overflow-x: clip; }
+
 body {
   min-height: 100vh;
   position: relative;
@@ -199,6 +201,14 @@ img { max-width: 100%; display: block; }
 
 @media (max-width: 800px) {
   .menu-toggle { display: flex; }
+
+  /* 1400px 宽的固定光晕在窄屏会把布局视口撑宽，导致整页内容被裁切 */
+  .bg-glow {
+    width: 100vw;
+    max-width: 100%;
+    height: 70vh;
+    filter: blur(40px);
+  }
 
   .main-nav {
     position: fixed;
@@ -1179,3 +1189,166 @@ img { max-width: 100%; display: block; }
 
 [data-theme="light"] .main-nav a { color: var(--muted); }
 [data-theme="light"] .main-nav a:hover { color: var(--text); }
+
+/* ================= 数据条目 / 实体预览（新增） ================= */
+/* 难度未知：中性灰 */
+.diff-unknown .cover-fallback { background: linear-gradient(135deg, #14161d, #232733); }
+.diff-unknown.badge {
+  background: rgba(148, 163, 184, 0.15);
+  color: #a8b2c4;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+/* 「资料待补充」提示条 */
+.stub-notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0 0 26px;
+  padding: 14px 16px;
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  background: rgba(245, 158, 11, 0.07);
+  border-radius: 12px;
+  font-size: 14px;
+  color: #e8d9b8;
+}
+.stub-notice strong { color: #fbbf24; }
+.stub-notice a { color: var(--accent-2); }
+
+/* 详情页侧栏里的实体预览入口 */
+.entity-cta {
+  display: block;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 77, 77, 0.35);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 77, 77, 0.12), rgba(34, 211, 238, 0.07));
+  transition: border-color 0.25s, transform 0.2s, box-shadow 0.25s;
+}
+.entity-cta:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.entity-cta .ec-t { font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; }
+.entity-cta .ec-d { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+.entity-cta .ec-go { display: inline-block; margin-top: 10px; font-size: 13px; color: var(--accent-2); font-weight: 700; }
+
+/* 卡片上的小标记 */
+.map-card-flags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.map-flag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--border-2);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.02);
+}
+.map-flag.data { border-color: rgba(34, 211, 238, 0.3); color: #7dd3fc; }
+.map-flag.preview { border-color: rgba(255, 77, 77, 0.35); color: #ff9d9d; }
+
+/* 列表分页 / 加载更多 */
+.load-more {
+  display: block;
+  margin: 28px auto 0;
+  padding: 12px 30px;
+  border-radius: 999px;
+  border: 1px solid var(--border-2);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.load-more:hover { border-color: var(--accent); color: #fff; }
+.list-count { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+
+/* 统计小卡（首页 / 详情页） */
+.stat-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; }
+.stat-row .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.stat-row .chip b { color: #fff; font-weight: 700; }
+.stat-row .chip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* 实体构成表（自动生成条目里用） */
+.entity-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+.entity-table th, .entity-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+.entity-table th { color: var(--muted); font-weight: 600; }
+.entity-table td:last-child, .entity-table th:last-child { text-align: right; }
+
+/* 详情页正文里的表格（MDX 生成内容） */
+.map-main table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }.map-main table th, .map-main table td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+.map-main table th { color: var(--muted); font-weight: 600; }
+.map-main blockquote {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--accent);
+  background: rgba(255, 77, 77, 0.06);
+  border-radius: 0 10px 10px 0;
+  color: #cfd6e4;
+  font-size: 14px;
+}
+.map-main blockquote p { margin: 4px 0; }
+.map-main code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12.5px;
+  color: #9fe8f7;
+}
+.map-main hr { border: 0; border-top: 1px solid var(--border); margin: 26px 0; }
+
+/* 窄屏：正文表格改为可横向滚动，避免撑破页面 */
+@media (max-width: 760px) {
+  .map-main table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .map-main table th,
+  .map-main table td { white-space: nowrap; }
+  .sidebar-card { padding: 18px; }
+  .hero-title { font-size: clamp(28px, 8vw, 44px); }
+}
+
+/* 资料来源列表 */.source-list { margin: 12px 0 0; padding-left: 20px; font-size: 13.5px; line-height: 2; }
+.source-list a { color: var(--accent-2); word-break: break-all; }
+.source-list a:hover { text-decoration: underline; }
+
+/* 侧栏里的提示文字 */
+.sidebar-hint { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+
+/* 详情页 hero 的封面背景（实体分布图缩略，压暗做氛围） */
+.map-hero { position: relative; overflow: hidden; }
+.map-hero-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.22;
+  filter: saturate(0.9);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.35) 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.35) 55%, transparent 100%);
+  pointer-events: none;
+}
+.map-hero > .container { position: relative; z-index: 1; }
+[data-theme="light"] .map-hero-bg { opacity: 0.14; }
+
+/* 详情页 hero 里的副标题 */
+.map-hero .stat-row { justify-content: center; }
+[data-theme="light"] .stub-notice { background: rgba(245, 158, 11, 0.1); color: #6b4e12; }
+[data-theme="light"] .map-main blockquote { color: var(--text); }
+[data-theme="light"] .map-main code { background: rgba(0, 0, 0, 0.06); color: #0e7490; }
+[data-theme="light"] .stat-row .chip b { color: var(--text); }
+[data-theme="light"] .entity-cta .ec-t { color: var(--text); }

@@ -1,0 +1,155 @@
+[
+    {
+        "name": "Ice Materia",
+        "shortname": "Ice",
+        "hammerid": "1649",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4355"
+            },
+            {
+                "hammerid": "1605",
+                "event": "OnTrigger",
+                "mode": 2,
+                "cooldown": 65,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Earth Materia",
+        "shortname": "Earth",
+        "hammerid": "1638",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "orange",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4353"
+            },
+            {
+                "hammerid": "1641",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 75,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Fire Materia",
+        "shortname": "Fire",
+        "hammerid": "1633",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "red",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4357"
+            },
+            {
+                "hammerid": "1635",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 50,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Wind Materia",
+        "shortname": "Wind",
+        "hammerid": "1628",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4359"
+            },
+            {
+                "hammerid": "1630",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 65,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Heal Materia",
+        "shortname": "Heal",
+        "hammerid": "1623",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4351"
+            },
+            {
+                "hammerid": "1626",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 50,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Poison Materia",
+        "shortname": "Poison",
+        "hammerid": "1617",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "4349"
+            },
+            {
+                "hammerid": "1620",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 50,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Crystal",
+        "shortname": "Crystal",
+        "hammerid": "632",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "grey"
+    }
+]

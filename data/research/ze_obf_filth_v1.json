@@ -1,0 +1,27 @@
+{
+  "slug": "2001-ze_obf_filth_v1-3160547491",
+  "title": "龙门行动: 怒火中烧",
+  "summary": "《半条命》世界观题材的 Objective 图，工坊页面给出的副标题是 Objective Fire:Filth／行动代号:怒火中烧，宣传语为\"一个没有戈登·佛里曼的世界\"。CS2 版本由 @Seth 移植，并对光源、贴图和特效做了全面重置。这个工坊条目本身是因为原条目极长时间卡在审核状态、疑似 Steam 出了 bug 才重新上传的。该图的 CS:GO 前身是 ze_obj_Filth_v1，中文名\"半条命：污点计划\"，又名\"行动代号-怒火中烧\"，2023 年 3 月由 UB游戏社区 完成首通；CS2 版在 UB社区 的实况里同样被叫作\"半条命：污点计划\"，EXG 社区则还有\"代号：污点计划V1\"的写法。网易云上还有一张名为\"ze_Obj_Filth_v1（怒火中烧/污点计划）\"的电台音乐合集，共 11 首。\n\n由于 CS2 阉割了很多 CS:GO 常用的关键实体，字幕、互动物品和 NPC 无法完全还原，CS2 版因此做了大量适配改动：藤壶怪（Barnacle）的捕捉过程被改写，队友被吊起后可以通过击杀藤壶救人，但只有 2 秒时间；弹药箱不再补充主弹夹，改为每次使用发一把内格夫，最多 5 把；弹药包同样不再补充主弹夹，每个只附带 3 颗手雷和 1 个燃烧瓶；医疗包改为以自身为中心的小范围治疗，恢复附近人类 50 HP；爆炸桶除特效更新外没有改动，激光绊线、医疗站、机枪炮台保持不变。\n\n剧情上，简单路才是 Filth 小队真正的结局——和 Vertigo 小队一样全员牺牲；困难路算是一条 if 线，最后搭火车逃离的是中途汇合的 Rescape 小队。火车结尾与总部联系的对象只剩下 Rescape 小队，那是 Filth 小队用生命换来的时间。UB游戏社区的玩家还整理过整个 obj/obf 系列的剧情串联：正转顺序是 vertigo → insane → rescape → filth → npst，insane 小队坐上火车后代号更改为 filth，但 Filth 小队的火车脱轨、最后全员死亡；同一帖的回复补充说 Filth 存在分支——\"尘归尘\"结局是损失了太多人、无法完成后续任务，只能和尸潮同归于尽，而长结局则是与 Rescape 汇合一同前往 npst。该帖属于玩家考据，楼主自己也标注了其中部分内容\"没有考据\"。\n\n中文服在 EXG、风云社与 ZED 社区都有开图记录，困难路的\"空气火车\"结局还留有 12 人首通的录像。作者提到，隐藏曲因为\"高潮卡不上点\"等问题暂时没有加入。",
+  "author": "Seth（CS2 移植）",
+  "tags": ["半条命", "剧情", "双结局", "神器", "NPC互动"],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1XY2yBhE8g/",
+    "https://www.bilibili.com/video/BV1ZaSfYfEz9/",
+    "https://www.bilibili.com/video/BV1fP411o7vB/",
+    "https://www.bilibili.com/video/BV1Wz2fB9EWX/",
+    "https://www.bilibili.com/video/BV1jRHxemEhy/",
+    "https://www.bilibili.com/video/BV1zrhiezEvf/",
+    "https://www.bilibili.com/video/BV1EFX7YHEmj/"
+  ],
+  "sources": [
+    "https://steamcommunity.com/sharedfiles/filedetails/?id=3160547491",
+    "https://www.bilibili.com/video/BV1XY2yBhE8g/",
+    "https://www.bilibili.com/video/BV1ZaSfYfEz9/",
+    "https://www.bilibili.com/video/BV1fP411o7vB/",
+    "https://www.bilibili.com/video/BV1Wz2fB9EWX/",
+    "https://bbs.moeub.cn/thread-12685-1-4.html",
+    "https://music.163.com/djradio?id=986406304&userid=419980388"
+  ],
+  "confidence": "high",
+  "verified": true
+}

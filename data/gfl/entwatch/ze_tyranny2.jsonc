@@ -1,0 +1,366 @@
+[
+    {
+        "name": "Meteor Staff",
+        "shortname": "Meteor",
+        "hammerid": "8734",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "red",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "8731"
+            },
+            {
+                "hammerid": "8733",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 50,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Crystal Staff",
+        "shortname": "Crystal",
+        "hammerid": "8729",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "8727"
+            },
+            {
+                "hammerid": "8730",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 75,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Venom Staff",
+        "shortname": "Venom",
+        "hammerid": "8719",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "8721"
+            },
+            {
+                "hammerid": "8720",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Tornado Staff",
+        "shortname": "Tornado",
+        "hammerid": "8725",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "8723"
+            },
+            {
+                "hammerid": "8726",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Heal Staff",
+        "shortname": "Heal",
+        "hammerid": "8630",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "white",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "8682"
+            },
+            {
+                "hammerid": "9183",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Sacred Staff",
+        "shortname": "Sacred",
+        "hammerid": "8635",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "pink",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "8632"
+            },
+            {
+                "hammerid": "8637",
+                "event": "OnPass",
+                "mode": 3,
+                "cooldown": 10,
+                "maxuses": 1,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Shade Staff",
+        "shortname": "Shade",
+        "hammerid": "8641",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "purple",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "8695"
+            },
+            {
+                "type": "counterup",
+                "hammerid": "11337",
+                "mode": 3,
+                "cooldown": 60,
+                "ui": true,
+                "message": true
+            }
+        ]
+    },
+    {
+        "name": "Ammo",
+        "shortname": "Ammo",
+        "hammerid": "8645",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "olive",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "8717"
+            },
+            {
+                "hammerid": "8643",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Ballista",
+        "shortname": "Ballista",
+        "hammerid": "8626",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "grey",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "8623"
+            },
+            {
+                "hammerid": "8621",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Bible",
+        "shortname": "Bible",
+        "hammerid": "8589",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "white",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "8586"
+            },
+            {
+                "type": "counterup",
+                "hammerid": "20953",
+                "mode": 3,
+                "cooldown": 70,
+                "ui": true,
+                "message": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Blood Orb",
+        "shortname": "ZM Heal",
+        "hammerid": "9126",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "red",
+        "triggers": ["9117"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "9121"
+            },
+            {
+                "hammerid": "9124",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Explosive Barrel",
+        "shortname": "ZM Barrel",
+        "hammerid": "9111",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "red",
+        "triggers": ["9107"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "9114"
+            },
+            {
+                "hammerid": "9103",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 45,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Necromancy",
+        "shortname": "ZM Necromancy",
+        "hammerid": "9094",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "red",
+        "triggers": ["9097"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "9091"
+            },
+            {
+                "hammerid": "9089",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Guillotine",
+        "shortname": "ZM Guillotine",
+        "hammerid": "9036",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "red",
+        "triggers": ["9038"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "9041"
+            },
+            {
+                "hammerid": "9044",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 75,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Abyss",
+        "shortname": "ZM Abyss",
+        "hammerid": "9023",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "purple",
+        "triggers": ["9021"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "9024",
+                "event": "OnPressed"
+            },
+            {
+                "hammerid": "9020",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 75,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    }
+]

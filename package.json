@@ -9,7 +9,16 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "data:entity": "node scripts/entity-data/build-entity-data.mjs",
+    "data:verify": "node scripts/entity-data/verify-entity-data.mjs --all",
+    "data:image": "node scripts/entity-data/render-map-image.mjs",
+    "data:covers": "node scripts/entity-data/render-covers.mjs",
+    "maps:generate": "node scripts/content/generate-map-entries.mjs",
+    "content:verify": "node scripts/content/verify-research.mjs",
+    "gfl:parse": "node scripts/content/parse-gfl-configs.mjs",
+    "gfl:link": "node scripts/content/link-gfl-configs.mjs",
+    "content:links": "node scripts/content/check-links.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-satteri": "^0.4.1",

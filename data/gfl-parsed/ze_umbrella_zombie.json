@@ -1,0 +1,1 @@
+{"items":[{"name":"Heal","color":"green","cd":60,"maxuses":0},{"name":"Wall","color":"blue","cd":70,"maxuses":0},{"name":"Mines","color":"darkred","cd":10,"maxuses":0},{"name":"Slow","color":"blue","cd":15,"maxuses":0},{"name":"T-Virus","color":"green","cd":0,"maxuses":0}],"bosses":["Mutant","Corpse"],"music":[]}

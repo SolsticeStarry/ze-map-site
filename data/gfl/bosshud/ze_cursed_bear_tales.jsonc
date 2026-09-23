@@ -1,0 +1,25 @@
+[
+  {
+    "name": "Guy",
+    "breakable": "lvl1_boss_health"
+  },
+  {
+    "name": "Halloween Monster",
+    "breakable": "lvl2_boss_health"
+  },
+  {
+    "name": "Bear",
+    "breakable": "lvl3_boss_health"
+  },
+  {
+    "name": "Bear",
+    "breakable": "lvl3_boss_health02"
+  },
+  {
+    "hitmarkeronly": true,
+    "multitrigger": true,
+    "showbeaten": false,
+    "templated": true,
+    "breakable": "npc_health_biscuit"
+  }
+]

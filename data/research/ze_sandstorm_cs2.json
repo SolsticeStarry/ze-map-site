@@ -1,0 +1,38 @@
+{
+ "slug": "ze_sandstorm_cs2",
+ "summary": "《半条命》异形题材的沙漠逃亡闯关图。CS:GO 原版 ze_sandstorm_go 系列的地图文本里留着作者署名「MAP BY STK」，同一份文本把六件神器、五个关卡与 ZM 关逐一列了出来；CS2 版工坊条目名为 ze_sandstorm，自述「Port from csgo. This map requires the CS2Fixes plugin from Source2ZE.」，由 NiceShot 于 2024 年 1 月 27 日上传，在 CS2 僵尸逃跑移植图里属于上传较早的一批。中文通行叫法是「沙尘暴」，X 社区地图池登记为「新沙尘暴【神】」，该图在 X 社区只能由管理员提名（onlynominate）。\n\n关卡结构是五关制（本站标 5 关），另有 ZM 关与管理员选关入口，音乐同样按 level1~level5 加三首 BOSS 曲排布。每关的收尾方式都不一样：第一关开门、C4 倒计时、守住安全房后清掉剩下的僵尸；第二关坐传送器打 BOSS，输出主要靠手雷（文本写着「手雷能有效输出」「爆它菊或者被它爆」），BOSS 死后按下四座方尖碑启动电梯；第三关是连续守点；第四关要在 8 秒手雷增伤窗口内冲进中心打碎水晶；第五关有 20 秒守点与激光 BOSS，文本会提醒「不要靠近平台的边缘」，通关文本写着「您是征服了这张地图的大师，第五关突破！」。\n\nBOSS 沿用半条命系列的异形阵容。CS:GO 版的 BOSS 血条登记了 Gargantua、Antlion、Nihilanth 与 UFO（mutant）四条主血条，外加第五关的激光 BOSS（sss5_l_laser）和一个可破坏的水晶；CS2 版的血条配置沿用同一批判定盒（garg_hitbox、grg_hitbox、mutant_hitbox、mutant_hitbox1、sss5_l_laser_hitbox），说明移植保留了原版的 BOSS 结构。\n\n神器是这张图的招牌。CS2 版神器配置登记了 6 件人类法杖——大地、流沙、烈焰、飓风、治愈、沙尘暴，前五件冷却 60 秒，沙尘暴法杖冷却 15 秒且整局只能用一次；僵尸方有 ZM Fire、ZM Dark 与 ZM Antlion（蚁狮，带两条触发用法）。中文社区的讨论也几乎都围着神器转：UB 有人投诉「一手土在塔顶人堆乱丢神器」（土即大地法杖），有人为带着流沙假摔道歉，还留下「火没减速——已添加减速」这类修正记录。难度上，UB 2022 年的难度表把 CS:GO 版列为「困难」并打上跳刀、闯关标签，X 社区的地图参数文档甚至把沙尘暴与最终幻想系列并列为「神器过于强势」的典型；CS2 版第五关被实况作者形容为「太牢了」，CS2 版 2024 年 1 月 27 日上线，次日 UB 社区就有玩家发帖庆祝首通，而有玩家一直打到当年 9 月 17 日才第一次拿下第五关。",
+ "difficulty": "困难",
+ "author": "STK（原版，地图文本署名「MAP BY STK」）；CS2 移植上传：NiceShot",
+ "duration": "五关全程约 40 分钟",
+ "tags": [
+  "沙漠",
+  "半条命",
+  "五关",
+  "神器",
+  "跳刀",
+  "CSGO移植"
+ ],
+ "videoUrls": [
+  "https://www.bilibili.com/video/BV1RH4y1F7DP/",
+  "https://www.bilibili.com/video/BV1CHsyzVEfb/",
+  "https://www.bilibili.com/video/BV1X2qjYKE9Y/",
+  "https://www.bilibili.com/video/BV1ybXNBpExE/"
+ ],
+ "sources": [
+  "https://steamcommunity.com/sharedfiles/filedetails/?id=3148296430",
+  "https://github.com/gflze/CS2-ZE-Configs/blob/HEAD/entwatch/ze_sandstorm_cs2.jsonc",
+  "https://github.com/gflze/CS2-ZE-Configs/blob/HEAD/bosshud/ze_sandstorm_cs2.jsonc",
+  "https://github.com/gflze/CS2-ZE-Configs/blob/HEAD/musicname/ze_sandstorm_cs2.jsonc",
+  "https://github.com/koi5hi/MapTextLang/blob/master/maptext/ze_sandstorm_go_v1_5.txt",
+  "https://github.com/koi5hi/MapTextLang/blob/master/bosshit/ze_sandstorm_go_v1_5.txt",
+  "https://github.com/koi5hi/MapTextLang/blob/master/mappool/ze_sandstorm_go_v1_5.cfg",
+  "https://github.com/PMArkive/Zombie-Escape-Configs/blob/main/csgo-configs/entwatch/ze_sandstorm_go_v1_5x3.cfg",
+  "https://github.com/PMArkive/Zombie-Escape-Configs/blob/main/csgo-configs/bosshud/ze_sandstorm_go_v1_5x3.txt",
+  "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=355",
+  "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=11566",
+  "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=10966",
+  "https://www.bilibili.com/video/BV1RH4y1F7DP/"
+ ],
+ "confidence": "high",
+ "verified": true
+}

@@ -1,0 +1,16 @@
+# Cloudflare Pages / Workers 静态资源响应头
+# 实体数据分片是 gzip 字节流，交给前端用 DecompressionStream 解压，
+# 这里显式声明类型，避免被平台按二进制流二次压缩。
+
+/entity/data/*
+  Content-Type: application/gzip
+  Cache-Control: public, max-age=86400
+
+/entity/catalog.json
+  Cache-Control: public, max-age=3600
+
+/preview/app.js
+  Cache-Control: public, max-age=600
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600

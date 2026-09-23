@@ -1,0 +1,170 @@
+[
+    {
+        "name": "Earth Materia",
+        "shortname": "Earth",
+        "hammerid": "887",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "orange",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "12127",
+                "event": "OnPressed",
+                "mode": 2,
+                "cooldown": 55,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Electro Materia",
+        "shortname": "Electro",
+        "hammerid": "917",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "11982",
+                "event": "OnPressed",
+                "mode": 1,
+                "cooldown": 0,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Fire Materia",
+        "shortname": "Fire",
+        "hammerid": "859",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "red",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "12168",
+                "event": "OnPressed",
+                "mode": 2,
+                "cooldown": 55,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Gravity Materia",
+        "shortname": "Gravity",
+        "hammerid": "945",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "purple",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "12103",
+                "event": "OnPressed",
+                "mode": 2,
+                "cooldown": 55,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Heal Materia",
+        "shortname": "Heal",
+        "hammerid": "12147",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "white",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "12148",
+                "event": "OnPressed",
+                "mode": 2,
+                "cooldown": 50,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Ice Materia",
+        "shortname": "Ice",
+        "hammerid": "838",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "12181",
+                "event": "OnPressed",
+                "mode": 2,
+                "cooldown": 55,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Wind Materia",
+        "shortname": "Wind",
+        "hammerid": "874",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "12133",
+                "event": "OnPressed",
+                "mode": 2,
+                "cooldown": 55,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Ultima Materia",
+        "shortname": "Ultima",
+        "hammerid": "824",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "14585",
+                "event": "OnPressed",
+                "mode": 3,
+                "cooldown": 20,
+                "maxuses": 1,
+                "message": true,
+                "ui": true
+            }
+        ]
+    }
+]

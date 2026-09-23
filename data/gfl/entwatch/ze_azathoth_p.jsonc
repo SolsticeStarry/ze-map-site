@@ -1,0 +1,26 @@
+[
+    {
+        "name": "Sword",
+        "shortname": "Sword",
+        "hammerid": "287",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "285"
+            },
+            {
+                "hammerid": "950",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 4,
+                "maxuses": 0,
+                "message": false,
+                "ui": true
+            }
+        ]
+    }
+]

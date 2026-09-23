@@ -128,6 +128,19 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+# data/ 下：只入库「可审计、体积小」的中间数据；原始单文件与临时产物不入库
+data/*
+!data/research/
+!data/workshop/
+!data/creators.json
+!data/gfl/
+!data/gfl-parsed/
+# 检索代理留下的临时抓取目录（_ws / _imgs 等）
+data/research/_*/
+
+# Astro 生成的类型与缓存（不要入库）
+.astro/
+
 # yarn v2
 .yarn/cache
 .yarn/unplugged

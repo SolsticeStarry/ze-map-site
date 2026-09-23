@@ -1,0 +1,16 @@
+{
+  "_说明": "手写条目 ↔ 实体 dump 地图的对应关系。左边是 src/content/maps 里的手写条目 slug，右边是 dump 里的地图名（primary 为详情页默认打开的那张，variants 里的都会被生成脚本跳过，避免同一张图出现重复条目）。",
+  "ze_ffvii_mako_reactor": {
+    "primary": "ze_ffvii_mako_reactor_v6_p",
+    "versions": ["ze_ffvii_mako_reactor_v6_p", "ze_ffvii_mako_reactor_v5_3"],
+    "note": "CS2 移植版 v6_p 与经典版 v5_3 都在数据里"
+  },
+  "ze_lotr_minas_tirith": {
+    "primary": "ze_lotr_minas_tirith_cs2",
+    "versions": ["ze_lotr_minas_tirith_cs2"]
+  },
+  "ze_pirates_port_royal": {
+    "primary": "ze_pirates_port_royal",
+    "versions": ["ze_pirates_port_royal"]
+  }
+}

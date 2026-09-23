@@ -1,0 +1,32 @@
+{
+  "slug": "ze_zk_mall_of_zombies_p",
+  "title": "购物中心",
+  "summary": "`ze_zk_mall_of_zombies_p` 是 Source2ZE 移植的 CS2 版，2023 年 12 月 11 日上传、2025 年 7 月 7 日最后一次更新，订阅 2787、文件约 171 MB。这一支在 CS:S 时期就存在：B 站 2016 年 1 月的 CS 起源实录用的名字是 `ze_zk_mall_of_zombies_v1_2`；CS:GO 时期叫 `ze_zk_mall_of_zombies_p2`，UB 社区 2022 年 1 月的难度表把 `_p2` 标为「简单」，译名就是「购物中心」。同前缀还有 `ze_zk_fapescape`（UB 译名「小乐高」），说明 `zk` 是一组同源地图共用的前缀。工坊上还有一份其他账号上传的同名副本（3182875111）。原作者没有查到公开署名，工坊条目只署名移植方。\n\n题材就是商场里的僵尸逃脱，一关。CS:GO 时期流传的通关要点写得很具体：「开局不要走旋转门，走旁边的玻璃；不要上电梯，等电梯关门后 5 秒上楼梯顶端守；后面的电梯倒计时结束 5 秒后才升起来；最后在管道守住传送立即往后退去火车头」——流程由旋转门、玻璃隔断、按倒计时运行的电梯、楼梯守点、管道和最后的火车头撤离串起来。CS2 版的实体结构也对应这套流程：478 个实体里机关一类 51 个、可破坏物 25 个、传送点 6 个，属于短平快的咸鱼图，B 站有社区直接把它标成「僵尸大逃杀咸鱼图」。\n\nGFL 的 musicname 配置里这张图只有一首 BGM，音效脚本名是 `zk.music.zombie`，指向 The Cranberries 的《Zombie》。中文社区把它当轻松图跑，B 站能翻到僵尸乐园、风云社、EXG 等社区的 CS2 实录，难度按 UB 的评级是「简单」。",
+  "difficulty": "简单",
+  "author": "Source 2 Zombie Escape（CS2 移植）",
+  "tags": [
+    "购物中心",
+    "商场",
+    "单关卡",
+    "简单图",
+    "咸鱼图"
+  ],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1s6wieuEUh",
+    "https://www.bilibili.com/video/BV1ht421G7AJ",
+    "https://www.bilibili.com/video/BV13N4y1s7KL",
+    "https://www.bilibili.com/video/BV1eUfaYiEBE"
+  ],
+  "sources": [
+    "https://steamcommunity.com/sharedfiles/filedetails/?id=3111585991",
+    "https://steamcommunity.com/sharedfiles/filedetails/?id=3182875111",
+    "https://raw.githubusercontent.com/Source2ZE/Port-Vmaps/main/maps/ze_zk_mall_of_zombies_p/ze_zk_mall_of_zombies_p.vmap",
+    "https://bbs.moeub.cn/forum.php?mod=viewthread&action=printable&tid=355",
+    "https://www.bilibili.com/video/BV1GY41127pv",
+    "https://www.bilibili.com/video/BV1Ys411R7FH",
+    "https://www.bilibili.com/video/BV1s6wieuEUh",
+    "https://cdn.jsdelivr.net/gh/gflze/CS2-ZE-Configs@main/musicname/ze_zk_mall_of_zombies_p.jsonc"
+  ],
+  "confidence": "high",
+  "verified": true
+}

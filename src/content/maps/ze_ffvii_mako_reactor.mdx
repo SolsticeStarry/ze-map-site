@@ -9,7 +9,12 @@ players: 40-64
 duration: 60-120 分钟
 stages: 6
 tags: [长征, 神器, Boss, 最终幻想, 高难度, 多版本]
+cover: /images/covers/2001-ze_ffvii_mako_reactor_v6_p-3273375829.webp
 workshopUrl: https://steamcommunity.com/sharedfiles/filedetails/?id=3278111368
+workshopId: "3273375829"
+entitySlug: "2001-ze_ffvii_mako_reactor_v6_p-3273375829"
+entityKey: "2001/ze_ffvii_mako_reactor_v6_p/3273375829"
+entityCount: 2274
 lastUpdated: "2026-01-03"
 featured: true
 ---
@@ -171,21 +176,24 @@ import RouteMap from '../../components/RouteMap.astro';
   </tbody>
 </table>
 
-## 路线图
+## 实体分布图
+
+下图由 CS2 服务端的实体数据生成：底色是地图结构轮廓（由实体密度推得），彩色点是各类玩法点位。
 
 <RouteMap
-  src="/images/maps/ze_ffvii_mako_reactor/route.png"
-  alt="魔晄炉路线总览"
+  src="/images/maps/ze_ffvii_mako_reactor/overview.png"
+  alt="魔晄炉实体分布图"
   hotspots={[
-    { x: 15, y: 80, label: '出生点', desc: '火车抵达，进入设施' },
-    { x: 35, y: 55, label: '管道段', desc: '小心掉落，注意断后' },
-    { x: 55, y: 40, label: '反应堆核心', desc: '安放炸弹' },
-    { x: 75, y: 25, label: '电梯', desc: '启动撤离' },
-    { x: 88, y: 12, label: 'Boss 区', desc: '巴哈姆特 / 萨菲罗斯' }
+    { x: 90.4, y: 33.5, label: '出生点', desc: '65 个出生点，开局火车抵达区' },
+    { x: 50.9, y: 15.4, label: '传送门密集区', desc: '26 个传送 / 落点' },
+    { x: 59.2, y: 24.3, label: '机关 / 门密集区', desc: '140 个门与机关' },
+    { x: 55.7, y: 13.9, label: '危险区', desc: '35 个火焰 / 伤害区' },
+    { x: 65.8, y: 37.9, label: '可破坏物密集区', desc: '211 个可破坏物' }
   ]}
 />
 
-> 图片放到 `public/images/maps/ze_ffvii_mako_reactor/route.png`。热点坐标是百分比，按实际图片调整。
+> 热点坐标取自实体真实位置。可交互版本（3D 视图、关卡分层、单点属性与触发连线）见
+> [实体预览](/preview/?map=2001-ze_ffvii_mako_reactor_v6_p-3273375829)。
 
 ## 视频攻略
 

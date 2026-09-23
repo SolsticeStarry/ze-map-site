@@ -1,0 +1,146 @@
+---
+/* 地图实体预览（viewer）—— 移植自单文件版，数据按图按需加载。
+   数据构建： scripts/entity-data/build-entity-data.mjs
+   脚本：     public/preview/app.js
+   支持参数： ?map=<slug|内部名|中文名>&view=2d&stage=N */
+import '../styles/preview.css';
+
+const site = Astro.site ?? new URL('https://ze-map.cn');
+const canonical = new URL(Astro.url.pathname, site);
+const ogImage = new URL('/images/hero-bg.jpg', site).href;
+const desc =
+  'CS2 僵尸逃跑地图实体预览：可破坏物、传送门、机关、危险区、关卡分层的 2D/3D 可视化，收录 645 张地图、62.9 万个实体。';
+---
+
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>地图实体预览 · ZE 地图资料站</title>
+    <meta name="description" content={desc} />
+    <link rel="canonical" href={canonical.href} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ZE 地图资料站" />
+    <meta property="og:title" content="地图实体预览 · ZE 地图资料站" />
+    <meta property="og:description" content={desc} />
+    <meta property="og:url" content={canonical.href} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+<body>
+
+<header>
+  <h1>🗺️ 地图实体预览</h1>
+  <div class="sub">可破坏物 · 传送门 · 机关 · 危险区（俯视投影）</div>
+  <div class="badges" id="hbadges"></div>
+  <a class="back" href="/maps/">← 返回地图库</a>
+</header>
+
+<main>
+  <aside>
+    <div class="side-hd">
+      <input id="q" placeholder="搜索地图（中文名 / 内部名）…" autocomplete="off">
+      <div class="side-tools">
+        <span>排序</span>
+        <button data-sort="k" class="on">实体数</button>
+        <button data-sort="st">关卡数</button>
+        <button data-sort="m">名称</button>
+      </div>
+      <div class="side-tools">
+        <select id="lmode" title="筛选模式">
+          <option value="2001" selected>ZE 僵尸逃跑</option>
+          <option value="2002">TTT 侦探</option>
+          <option value="2004">MG 小游戏</option>
+          <option value="2010">DE 爆破</option>
+          <option value="">全部模式</option>
+        </select>
+        <span id="lcount" style="color:var(--ink3);font-size:11.5px"></span>
+      </div>
+    </div>
+    <div class="maps" id="maps"></div>
+  </aside>
+
+  <section class="viewer">
+    <div class="bar">
+      <div class="mtitle"><span id="mtitle">—</span><code id="mcode"></code></div>
+      <div class="seg" id="mode">
+        <button data-m="3d" class="on">🧊 3D 视图</button>
+        <button data-m="2d">🗺️ 平面</button>
+      </div>
+      <div class="seg" id="proj">
+        <button data-p="xy" class="on">俯视 XY</button>
+        <button data-p="xz">侧视 XZ</button>
+        <button data-p="zy">前后 ZY</button>
+      </div>
+      <label class="ctl"><input type="checkbox" id="hcol"> 按高度着色</label>
+      <label class="ctl">点径 <input type="range" id="psize" min="1" max="9" step="0.5" value="3"></label>
+      <label class="ctl"><input type="checkbox" id="glow"> 区域光晕</label>
+      <label class="ctl"><input type="checkbox" id="full"> 全范围</label>
+      <button class="btn" id="fit">适应窗口</button>
+      <button class="btn" id="png">导出 PNG</button>
+    </div>
+
+    <div class="stage" id="stage">
+      <canvas id="cv"></canvas>
+      <div class="stage3d" id="stage3d">
+        <canvas id="cv3"></canvas>
+        <canvas class="axiscue" id="axis" width="152" height="152"></canvas>
+        <div class="glerr" id="glerr"></div>
+        <div class="v3hud">
+          <div class="card keys">
+            <span>左键拖拽</span> 旋转 · <span>右键/Shift</span> 平移 · <span>滚轮</span> 缩放 ·
+            <span>R</span> 复位 · <span>T</span> 俯视
+          </div>
+          <div class="card" id="v3info">—</div>
+        </div>
+      </div>
+      <div class="esearch">
+        <input id="esq" placeholder="🔎 搜索当前地图的实体（名称 / 类别，如 stage1、trigger_hurt）" autocomplete="off">
+        <div class="esres" id="esres"></div>
+      </div>
+      <div class="edetail" id="edetail" style="display:none"></div>
+      <div class="tip" id="tip"></div>
+      <div class="tip ltip" id="ltip"></div>
+      <button class="btn ltbtn" id="ltoggle">图层</button>
+      <div class="layers" id="layers">
+        <h4>🧩 图层 <span id="lvis" style="color:var(--ink3);font-weight:400"></span><span class="x" id="lclose">✕</span></h4>
+        <div class="brow" id="broww" data-lt="🗺️ 地图底图" data-desc="官方雷达俯视图或环境点密度轮廓，用来对照实体与地图结构。仅平面视图显示，透明度可调。">
+          <span class="btoggle" id="btoggle">🗺️ 地图底图</span>
+          <input type="range" id="bop" min="0" max="100" value="60" title="底图不透明度">
+        </div>
+        <div class="cutrow" id="row3da" data-lt="🧊 块体（3D）" data-desc="3D 视图中带体积的实体（触发区、门、可破坏物等刷子类）以方块表示，颜色按类别区分，高度为类别典型尺寸。数据只有原点坐标，无真实包围盒，块体是比例近似的示意。">
+          <span>🧊 块体</span>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="checkbox" id="vbox" checked> 显示</label>
+          <input type="range" id="bopa" min="10" max="100" value="88" title="块体不透明度">
+        </div>
+        <div class="cutrow" id="row3db" data-lt="✂️ 剖切（3D）" data-desc="按高度从上往下切掉块体，用来查看地图内部与下层结构。拉到 100% 即不剖切。">
+          <span>✂️ 剖切</span>
+          <input type="range" id="cutz" min="0" max="100" value="100" title="按高度剖切">
+          <span class="v" id="cutzv">100%</span>
+        </div>
+        <div class="cutrow" id="rowsg" data-lt="🏁 关卡分层" data-desc="只显示所选关卡的实体，切换后相机自动飞到该关范围。关卡来自实体命名（lvl2/stage3 等），未命中的按最近标注实体就近推断。">
+          <span>🏁 关卡</span>
+          <select id="stagesel" style="flex:1;min-width:0;font-size:11.5px;border:1px solid var(--line2);
+            border-radius:7px;padding:3px 5px;background:#fff;color:var(--ink);font-family:inherit"></select>
+        </div>
+        <div class="body" id="lbody"></div>
+        <div class="foot">单击切换显隐 · 双击独显<br>刷子实体只有原点、无体积，故以典型尺寸块表示<br>关卡划分来自实体命名（lvl2/stage3 等），未命名的按最近标注实体就近推断</div>
+      </div>
+      <div class="hud">
+        <div class="north" id="north">▲<br>N</div>
+        <div class="scalebar"><div class="barline" id="sbline"></div><span id="sblab">—</span></div>
+        <div class="zoom" id="zoomlab">100%</div>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+  </section>
+</main>
+
+<div class="loading" id="loading"><div class="spin"></div><div id="lmsg">正在解压实体数据…</div></div>
+
+  <script is:inline src="/preview/app.js" defer></script>
+</body>
+</html>

@@ -9,13 +9,19 @@ players: 40-64
 duration: 60-90 分钟
 stages: 6
 tags: [长征, 神器, Boss, 加勒比海盗, 剧情, 多路线]
+cover: /images/covers/2001-ze_pirates_port_royal-3381572627.webp
 workshopUrl: https://steamcommunity.com/workshop/
+workshopId: "3381572627"
+entitySlug: "2001-ze_pirates_port_royal-3381572627"
+entityKey: "2001/ze_pirates_port_royal/3381572627"
+entityCount: 1791
 lastUpdated: "2022-05-11"
 featured: true
 ---
 
 import StageAccordion from '../../components/StageAccordion.astro';
 import VideoEmbed from '../../components/VideoEmbed.astro';
+import RouteMap from '../../components/RouteMap.astro';
 
 ## 背景故事
 
@@ -241,3 +247,22 @@ A：适合。难度为困难，比魔晄炉和米纳斯友好，适合 ZE 进阶
 - [B站 - cs2僵尸逃跑 ze_Pirates_Port_Royal BV1mDkVYeEoJ](https://www.bilibili.com/video/BV1mDkVYeEoJ/)
 
 > 本页资料以 CS:GO v5_6 为主，部分内容可能随版本变化。
+
+## 实体分布图
+
+下图由 CS2 版（`ze_pirates_port_royal`）的服务端实体数据生成：底色是地图结构轮廓，彩色点是各类玩法点位。
+
+<RouteMap
+  src="/images/maps/ze_pirates_port_royal/overview.png"
+  alt="皇家港实体分布图"
+  hotspots={[
+    { x: 3.6, y: 4, label: '出生点', desc: '66 个出生点，开局港口区' },
+    { x: 49.8, y: 40.9, label: '传送门密集区', desc: '78 个传送 / 落点' },
+    { x: 44.9, y: 42.9, label: '机关 / 门密集区', desc: '154 个门与机关' },
+    { x: 46.6, y: 50, label: '危险区', desc: '20 个伤害 / 火焰区' },
+    { x: 30.3, y: 58.9, label: '路径点', desc: '211 个路径点，全图最长的一段' }
+  ]}
+/>
+
+> 热点坐标取自实体真实位置。可交互版本见
+> [实体预览](/preview/?map=2001-ze_pirates_port_royal-3381572627)。

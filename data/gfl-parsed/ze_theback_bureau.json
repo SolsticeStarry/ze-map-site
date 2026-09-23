@@ -1,0 +1,1 @@
+{"items":[{"name":"Push","color":"green","cd":60,"maxuses":0},{"name":"Wall","color":"yellow","cd":60,"maxuses":0},{"name":"Heal","color":"white","cd":30,"maxuses":0},{"name":"Zombie Gravity","color":"purple","cd":90,"maxuses":0},{"name":"Zombie Speed","color":"red","cd":90,"maxuses":0},{"name":"Zombie Ball","color":"red","cd":15,"maxuses":0}],"bosses":[],"music":[]}

@@ -7,6 +7,9 @@ const maps = await getCollection('maps');
 
 const featured = maps.filter((m) => m.data.featured);
 
+const totalEntities = maps.reduce((a, m) => a + (m.data.entityCount ?? 0), 0);
+const previewable = maps.filter((m) => m.data.entitySlug).length;
+
 const latest = [...maps]
   .sort((a, b) => {
     const da = a.data.lastUpdated ? new Date(a.data.lastUpdated).getTime() : 0;
@@ -25,6 +28,12 @@ for (const m of maps) {
 const hotTags = Object.entries(tagCount)
   .sort((a, b) => b[1] - a[1])
   .slice(0, 12);
+
+// 按工坊订阅数排的热门图
+const popular = [...maps]
+  .filter((m) => (m.data.workshopSubs ?? 0) > 0)
+  .sort((a, b) => (b.data.workshopSubs ?? 0) - (a.data.workshopSubs ?? 0))
+  .slice(0, 6);
 ---
 
 <BaseLayout>
@@ -41,16 +50,16 @@ const hotTags = Object.entries(tagCount)
       </p>
       <div class="hero-stats">
         <div class="stat">
-          <strong data-count={maps.length}>0</strong>
+          <strong data-count={maps.length}>{maps.length}</strong>
           <span>地图收录</span>
         </div>
         <div class="stat">
-          <strong data-count={hotTags.length}>0</strong>
-          <span>热门标签</span>
+          <strong data-count={totalEntities}>{totalEntities.toLocaleString('en-US')}</strong>
+          <span>实体点位</span>
         </div>
         <div class="stat">
-          <strong>∞</strong>
-          <span>社区更新</span>
+          <strong data-count={hotTags.length}>{hotTags.length}</strong>
+          <span>热门标签</span>
         </div>
       </div>
     </div>
@@ -58,6 +67,21 @@ const hotTags = Object.entries(tagCount)
   </section>
 
   <div class="container">
+    <section id="entity-preview">
+      <div class="section-head">
+        <h2>实体预览</h2>
+        <a href="/preview/">打开预览工具 →</a>
+      </div>
+      <a class="entity-cta" href="/preview/">
+        <span class="ec-t">🧊 3D / 平面双视图查看地图实体</span>
+        <span class="ec-d">
+          收录 {previewable} 张 CS2 地图的服务端实体数据：传送门、可破坏物、机关、危险区、路径点与关卡分层，
+          支持按高度着色、剖切、关卡过滤与单点详情（属性 / 触发连线）。
+        </span>
+        <span class="ec-go">进入实体预览 →</span>
+      </a>
+    </section>
+
     {featured.length > 0 && (
       <section id="featured">
         <div class="section-head">
@@ -106,6 +130,25 @@ const hotTags = Object.entries(tagCount)
       </section>
     )}
 
+    {popular.length > 0 && (
+      <section>
+        <div class="section-head">
+          <h2>工坊热门</h2>
+          <a href="/maps/">查看全部 →</a>
+        </div>
+        <div class="timeline">
+          {popular.map((map) => (
+            <a class="timeline-item" href={`/maps/${map.id}/`}>
+              <span class="timeline-dot"></span>
+              <span class="timeline-date">订阅 {(map.data.workshopSubs ?? 0).toLocaleString('en-US')}</span>
+              <span class="timeline-title">{map.data.title}</span>
+              <span class="timeline-en">{map.data.titleEn}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
     {maps.length === 0 && (
       <div class="empty-state">
         <p>还没有地图。去 <code>src/content/maps/</code> 里添加第一张吧。</p>
@@ -120,7 +163,7 @@ const hotTags = Object.entries(tagCount)
       function tick(now: number) {
         const p = Math.min((now - start) / duration, 1);
         const eased = 1 - Math.pow(1 - p, 3);
-        el.textContent = String(Math.round(target * eased));
+        el.textContent = Math.round(target * eased).toLocaleString('en-US');
         if (p < 1) requestAnimationFrame(tick);
       }
       requestAnimationFrame(tick);

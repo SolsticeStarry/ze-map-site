@@ -1,0 +1,962 @@
+[
+ {
+  "rank": 1,
+  "slug": "2001-ze_obj_abyss_v2-3779264454",
+  "slugOut": "ze_obj_abyss_v2",
+  "map": "ze_obj_abyss_v2",
+  "cn": "行动代号:破渊之剑",
+  "workshopId": "3779264454",
+  "entities": "7,186",
+  "stages": 1,
+  "published": "2026-09-15",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "light_barn"
+  ]
+ },
+ {
+  "rank": 2,
+  "slug": "2001-ze_backrooms_insomnia-3559330245",
+  "slugOut": "ze_backrooms_insomnia",
+  "map": "ze_backrooms_insomnia",
+  "cn": "后室2:失眠症",
+  "workshopId": "3559330245",
+  "entities": "6,298",
+  "stages": 6,
+  "published": "2026-07-18",
+  "top": [
+   "light_omni2",
+   "light_barn",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 3,
+  "slug": "2001-ze_obj_ouroboros_aurora-3353097518",
+  "slugOut": "ze_obj_ouroboros_aurora",
+  "map": "ze_obj_ouroboros_aurora",
+  "cn": "龙门行动: 落日余晖",
+  "workshopId": "3353097518",
+  "entities": "5,545",
+  "stages": 1,
+  "published": "2024-11-21",
+  "top": [
+   "info_particle_system",
+   "light_omni2",
+   "light_barn"
+  ]
+ },
+ {
+  "rank": 4,
+  "slug": "2001-ze_obj_ouroboros_aurora_v2-3694558819",
+  "slugOut": "ze_obj_ouroboros_aurora_v2",
+  "map": "ze_obj_ouroboros_aurora_v2",
+  "cn": "行动代号:落日余晖-重生",
+  "workshopId": "3694558819",
+  "entities": "5,143",
+  "stages": 1,
+  "published": "2026-08-22",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "light_barn"
+  ]
+ },
+ {
+  "rank": 5,
+  "slug": "2001-ze_dark_souls-3387284574",
+  "slugOut": "ze_dark_souls",
+  "map": "ze_dark_souls",
+  "cn": "黑暗之魂1",
+  "workshopId": "3387284574",
+  "entities": "4,534",
+  "stages": 1,
+  "published": "2026-09-20",
+  "top": [
+   "light_omni2",
+   "prop_dynamic",
+   "filter_activator_attribute_int"
+  ]
+ },
+ {
+  "rank": 6,
+  "slug": "2001-ze_obj_abyss-3582313204",
+  "slugOut": "ze_obj_abyss",
+  "map": "ze_obj_abyss",
+  "cn": "行动代号:暗流涌动",
+  "workshopId": "3582313204",
+  "entities": "4,276",
+  "stages": 1,
+  "published": "2026-02-19",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 7,
+  "slug": "2001-ze_obf_rampage_v2-3512703303",
+  "slugOut": "ze_obf_rampage_v2",
+  "map": "ze_obf_rampage_v2",
+  "cn": "行动代号:野火燎原",
+  "workshopId": "3512703303",
+  "entities": "4,050",
+  "stages": 1,
+  "published": "2026-07-10",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "light_barn"
+  ]
+ },
+ {
+  "rank": 8,
+  "slug": "2001-ze_surf_easy-3775081142",
+  "slugOut": "ze_surf_easy",
+  "map": "ze_surf_easy",
+  "cn": "简易滑翔",
+  "workshopId": "3775081142",
+  "entities": "3,962",
+  "stages": 1,
+  "published": "2026-09-16",
+  "top": [
+   "func_brush",
+   "trigger_teleport",
+   "env_particle_glow"
+  ]
+ },
+ {
+  "rank": 9,
+  "slug": "2001-ze_obj_redemption_v2-3659830085",
+  "slugOut": "ze_obj_redemption_v2",
+  "map": "ze_obj_redemption_v2",
+  "cn": "行动代号:劫烬生曦",
+  "workshopId": "3659830085",
+  "entities": "3,701",
+  "stages": 1,
+  "published": "2026-09-10",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "light_barn"
+  ]
+ },
+ {
+  "rank": 10,
+  "slug": "2001-ze_obff_npst_v24-3716633440",
+  "slugOut": "ze_obff_npst_v24",
+  "map": "ze_obff_npst_v24",
+  "cn": "最中幻想2:尼赫伦斯",
+  "workshopId": "3716633440",
+  "entities": "3,653",
+  "stages": 1,
+  "published": "2026-07-10",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "env_particle_glow"
+  ]
+ },
+ {
+  "rank": 11,
+  "slug": "2001-ze_mars_escape_xmas-3104693607",
+  "slugOut": "ze_mars_escape_xmas",
+  "map": "ze_mars_escape_xmas",
+  "cn": "逃离火星:圣诞节",
+  "workshopId": "3104693607",
+  "entities": "3,597",
+  "stages": 2,
+  "published": "2026-05-05",
+  "top": [
+   "path_track",
+   "light_omni2",
+   "logic_relay"
+  ]
+ },
+ {
+  "rank": 12,
+  "slug": "2001-ze_arknights_caerula_arbor-3555615746",
+  "slugOut": "ze_arknights_caerula_arbor",
+  "map": "ze_arknights_caerula_arbor",
+  "cn": "明日方舟:深蓝之树",
+  "workshopId": "3555615746",
+  "entities": "3,567",
+  "stages": 5,
+  "published": "2026-08-29",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 13,
+  "slug": "2001-ze_resident_evil_3-3722688576",
+  "slugOut": "ze_resident_evil_3",
+  "map": "ze_resident_evil_3",
+  "cn": "生化危机3:复仇女神",
+  "workshopId": "3722688576",
+  "entities": "3,429",
+  "stages": 3,
+  "published": "2026-09-21",
+  "top": [
+   "prop_dynamic",
+   "light_omni2",
+   "info_particle_system"
+  ]
+ },
+ {
+  "rank": 14,
+  "slug": "2001-ze_depths-3362719311",
+  "slugOut": "ze_depths",
+  "map": "ze_depths",
+  "cn": "深 渊",
+  "workshopId": "3362719311",
+  "entities": "3,383",
+  "stages": 4,
+  "published": "2026-09-18",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "path_track"
+  ]
+ },
+ {
+  "rank": 15,
+  "slug": "2001-ze_obj_blue_depth-3467218688",
+  "slugOut": "ze_obj_blue_depth",
+  "map": "ze_obj_blue_depth",
+  "cn": "行动代号:深蓝劫余",
+  "workshopId": "3467218688",
+  "entities": "3,362",
+  "stages": 1,
+  "published": "2025-09-12",
+  "top": [
+   "light_omni2",
+   "env_particle_glow",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 16,
+  "slug": "2001-ze_obf_npst_v2-3348665019",
+  "slugOut": "ze_obf_npst_v2",
+  "map": "ze_obf_npst_v2",
+  "cn": "龙门行动: 尼赫伦斯",
+  "workshopId": "3348665019",
+  "entities": "3,199",
+  "stages": 1,
+  "published": "2026-07-10",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "env_particle_glow"
+  ]
+ },
+ {
+  "rank": 17,
+  "slug": "2001-ze_obj_annihilate_dd_v1-3434442059",
+  "slugOut": "ze_obj_annihilate_dd_v1",
+  "map": "ze_obj_annihilate_dd_v1",
+  "cn": "行动代号:孤注一掷",
+  "workshopId": "3434442059",
+  "entities": "3,177",
+  "stages": 1,
+  "published": "2026-08-23",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "env_combined_light_probe_volume"
+  ]
+ },
+ {
+  "rank": 18,
+  "slug": "2001-ze_mission_escape_cs2-3760916358",
+  "slugOut": "ze_mission_escape_cs2",
+  "map": "ze_mission_escape_cs2",
+  "cn": "雪地逃亡",
+  "workshopId": "3760916358",
+  "entities": "3,024",
+  "stages": 1,
+  "published": "2026-09-20",
+  "top": [
+   "prop_dynamic",
+   "info_player_terrorist",
+   "info_player_counterterrorist"
+  ]
+ },
+ {
+  "rank": 19,
+  "slug": "2001-ze_urbanstone-3264302314",
+  "slugOut": "ze_urbanstone",
+  "map": "ze_urbanstone",
+  "cn": "石头城市",
+  "workshopId": "3264302314",
+  "entities": "2,979",
+  "stages": 0,
+  "published": "2026-01-24",
+  "top": [
+   "env_particle_glow",
+   "light_omni2",
+   "light_rect"
+  ]
+ },
+ {
+  "rank": 20,
+  "slug": "2001-ze_mission_escape-3701316368",
+  "slugOut": "ze_mission_escape",
+  "map": "ze_mission_escape",
+  "cn": "萌新爱雪天",
+  "workshopId": "3701316368",
+  "entities": "2,898",
+  "stages": 1,
+  "published": "2026-06-06",
+  "top": [
+   "prop_dynamic",
+   "info_player_terrorist",
+   "info_player_counterterrorist"
+  ]
+ },
+ {
+  "rank": 21,
+  "slug": "2001-ze_obj_ouroboros_ragnarok-3407901941",
+  "slugOut": "ze_obj_ouroboros_ragnarok",
+  "map": "ze_obj_ouroboros_ragnarok",
+  "cn": "龙门行动: 破晓终幕",
+  "workshopId": "3407901941",
+  "entities": "2,805",
+  "stages": 1,
+  "published": "2025-04-19",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 22,
+  "slug": "2001-ze_surf_operation_deterioration-3651583290",
+  "slugOut": "ze_surf_operation_deterioration",
+  "map": "ze_surf_operation_deterioration",
+  "cn": "腐化滑翔",
+  "workshopId": "3651583290",
+  "entities": "2,737",
+  "stages": 1,
+  "published": "2026-06-11",
+  "top": [
+   "light_omni2",
+   "trigger_teleport",
+   "prop_physics"
+  ]
+ },
+ {
+  "rank": 23,
+  "slug": "2001-ze_ancient_wrath_p-3535803756",
+  "slugOut": "ze_ancient_wrath_p",
+  "map": "ze_ancient_wrath_p",
+  "cn": "古代种:金字塔",
+  "workshopId": "3535803756",
+  "entities": "2,509",
+  "stages": 8,
+  "published": "2026-01-31",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 24,
+  "slug": "2001-ze_ultrakill-3455771581",
+  "slugOut": "ze_ultrakill",
+  "map": "ze_ultrakill",
+  "cn": "终极杀戮",
+  "workshopId": "3455771581",
+  "entities": "2,494",
+  "stages": 7,
+  "published": "2025-06-02",
+  "top": [
+   "light_omni2",
+   "logic_relay",
+   "info_particle_system"
+  ]
+ },
+ {
+  "rank": 25,
+  "slug": "2001-ze_obf_npst_v1-3229383490",
+  "slugOut": "ze_obf_npst_v1",
+  "map": "ze_obf_npst_v1",
+  "cn": "龙门行动: 黑山基地",
+  "workshopId": "3229383490",
+  "entities": "2,463",
+  "stages": 1,
+  "published": "2024-05-27",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "light_barn"
+  ]
+ },
+ {
+  "rank": 26,
+  "slug": "2001-ze_castlevania_nes-3706700573",
+  "slugOut": "ze_castlevania_nes",
+  "map": "ze_castlevania_nes",
+  "cn": "恶魔城传说(NES版)",
+  "workshopId": "3706700573",
+  "entities": "2,440",
+  "stages": 2,
+  "published": "2026-09-19",
+  "top": [
+   "light_omni2",
+   "logic_relay",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 27,
+  "slug": "2001-ze_toggle_theory-3551455108",
+  "slugOut": "ze_toggle_theory",
+  "map": "ze_toggle_theory",
+  "cn": "绯蓝节奏",
+  "workshopId": "3551455108",
+  "entities": "2,428",
+  "stages": 4,
+  "published": "2026-08-26",
+  "top": [
+   "light_omni2",
+   "prop_dynamic",
+   "trigger_multiple"
+  ]
+ },
+ {
+  "rank": 28,
+  "slug": "2001-ze_theback_bureau-3530061480",
+  "slugOut": "ze_theback_bureau",
+  "map": "ze_theback_bureau",
+  "cn": "秘局:回溯",
+  "workshopId": "3530061480",
+  "entities": "2,427",
+  "stages": 2,
+  "published": "2026-02-03",
+  "top": [
+   "env_entity_maker",
+   "light_omni2",
+   "logic_case"
+  ]
+ },
+ {
+  "rank": 29,
+  "slug": "2001-ze_umbra-3742098329",
+  "slugOut": "ze_umbra",
+  "map": "ze_umbra",
+  "cn": "法环: 幽冕",
+  "workshopId": "3742098329",
+  "entities": "2,417",
+  "stages": 4,
+  "published": "2026-07-14",
+  "top": [
+   "light_omni2",
+   "logic_relay",
+   "light_barn"
+  ]
+ },
+ {
+  "rank": 30,
+  "slug": "2001-ze_sekiro-3521710695",
+  "slugOut": "ze_sekiro",
+  "map": "ze_sekiro",
+  "cn": "只 狼",
+  "workshopId": "3521710695",
+  "entities": "2,401",
+  "stages": 1,
+  "published": "2026-09-06",
+  "top": [
+   "prop_dynamic",
+   "info_particle_system",
+   "light_omni2"
+  ]
+ },
+ {
+  "rank": 31,
+  "slug": "2001-ze_tyranny2-3381888563",
+  "slugOut": "ze_tyranny2",
+  "map": "ze_tyranny2",
+  "cn": "暴君2",
+  "workshopId": "3381888563",
+  "entities": "2,365",
+  "stages": 5,
+  "published": "2026-04-29",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "logic_relay"
+  ]
+ },
+ {
+  "rank": 32,
+  "slug": "2001-ze_dystopia_p-3159658783",
+  "slugOut": "ze_dystopia_p",
+  "map": "ze_dystopia_p",
+  "cn": "反乌托邦",
+  "workshopId": "3159658783",
+  "entities": "2,343",
+  "stages": 1,
+  "published": "2024-06-14",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "light_barn"
+  ]
+ },
+ {
+  "rank": 33,
+  "slug": "2001-ze_deadly_archive-3667395128",
+  "slugOut": "ze_deadly_archive",
+  "map": "ze_deadly_archive",
+  "cn": "绝命档案",
+  "workshopId": "3667395128",
+  "entities": "2,322",
+  "stages": 3,
+  "published": "2026-07-20",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "weapon_hegrenade"
+  ]
+ },
+ {
+  "rank": 34,
+  "slug": "2001-ze_obf_filth_v1-3160547491",
+  "slugOut": "ze_obf_filth_v1",
+  "map": "ze_obf_filth_v1",
+  "cn": "龙门行动: 怒火中烧",
+  "workshopId": "3160547491",
+  "entities": "2,314",
+  "stages": 1,
+  "published": "2026-07-10",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "light_barn"
+  ]
+ },
+ {
+  "rank": 35,
+  "slug": "2001-ze_diablo-3485132292",
+  "slugOut": "ze_diablo",
+  "map": "ze_diablo",
+  "cn": "暗黑破坏神:迪亚波罗",
+  "workshopId": "3485132292",
+  "entities": "2,282",
+  "stages": 8,
+  "published": "2026-09-22",
+  "top": [
+   "light_omni2",
+   "light_barn",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 36,
+  "slug": "2001-ze_obf_rampage_v24-3456114547",
+  "slugOut": "ze_obf_rampage_v24",
+  "map": "ze_obf_rampage_v24",
+  "cn": "龙门幻想: 火之心",
+  "workshopId": "3456114547",
+  "entities": "2,253",
+  "stages": 1,
+  "published": "2026-07-21",
+  "top": [
+   "light_omni2",
+   "env_particle_glow",
+   "light_barn"
+  ]
+ },
+ {
+  "rank": 37,
+  "slug": "2001-ze_obj_rove_v1-3469573172",
+  "slugOut": "ze_obj_rove_v1",
+  "map": "ze_obj_rove_v1",
+  "cn": "行动代号:永夜行疆",
+  "workshopId": "3469573172",
+  "entities": "2,241",
+  "stages": 1,
+  "published": "2025-06-22",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 38,
+  "slug": "2001-ze_ffxii_mt_bur_omisace_v6-3398706540",
+  "slugOut": "ze_ffxii_mt_bur_omisace_v6",
+  "map": "ze_ffxii_mt_bur_omisace_v6",
+  "cn": "神都奥尔米赛斯v6",
+  "workshopId": "3398706540",
+  "entities": "2,204",
+  "stages": 4,
+  "published": "2026-04-25",
+  "top": [
+   "light_omni2",
+   "prop_dynamic",
+   "point_template"
+  ]
+ },
+ {
+  "rank": 39,
+  "slug": "2001-ze_obf_insane-3310660027",
+  "slugOut": "ze_obf_insane",
+  "map": "ze_obf_insane",
+  "cn": "龙门行动: 烈火雄心",
+  "workshopId": "3310660027",
+  "entities": "2,187",
+  "stages": 1,
+  "published": "2026-07-10",
+  "top": [
+   "light_omni2",
+   "light_barn",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 40,
+  "slug": "2001-ze_surf_facility_v2_3-3557375758",
+  "slugOut": "ze_surf_facility_v2_3",
+  "map": "ze_surf_facility_v2_3",
+  "cn": "萌新爱滑翔",
+  "workshopId": "3557375758",
+  "entities": "2,179",
+  "stages": 1,
+  "published": "2025-09-08",
+  "top": [
+   "light_omni2",
+   "trigger_teleport",
+   "func_water"
+  ]
+ },
+ {
+  "rank": 41,
+  "slug": "2001-ze_surf_sparks_cs2-3224375193",
+  "slugOut": "ze_surf_sparks_cs2",
+  "map": "ze_surf_sparks_cs2",
+  "cn": "火花滑翔",
+  "workshopId": "3224375193",
+  "entities": "2,141",
+  "stages": 1,
+  "published": "2024-07-16",
+  "top": [
+   "prop_dynamic",
+   "trigger_teleport",
+   "info_player_counterterrorist"
+  ]
+ },
+ {
+  "rank": 42,
+  "slug": "2001-ze_steyliff_grove-3304076935",
+  "slugOut": "ze_steyliff_grove",
+  "map": "ze_steyliff_grove",
+  "cn": "最终幻想15:斯基利弗宫",
+  "workshopId": "3304076935",
+  "entities": "2,116",
+  "stages": 1,
+  "published": "2025-01-08",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "light_rect"
+  ]
+ },
+ {
+  "rank": 43,
+  "slug": "2001-ze_death_forest-3546897103",
+  "slugOut": "ze_death_forest",
+  "map": "ze_death_forest",
+  "cn": "恐怖之森",
+  "workshopId": "3546897103",
+  "entities": "2,112",
+  "stages": 4,
+  "published": "2026-09-14",
+  "top": [
+   "prop_physics_multiplayer",
+   "light_omni2",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 44,
+  "slug": "2001-ze_uchiha_legacy-3278140812",
+  "slugOut": "ze_uchiha_legacy",
+  "map": "ze_uchiha_legacy",
+  "cn": "宇智波:遗响",
+  "workshopId": "3278140812",
+  "entities": "2,077",
+  "stages": 4,
+  "published": "2026-06-10",
+  "top": [
+   "light_omni2",
+   "prop_dynamic",
+   "logic_relay"
+  ]
+ },
+ {
+  "rank": 45,
+  "slug": "2001-ze_obf_rescape-3283167200",
+  "slugOut": "ze_obf_rescape",
+  "map": "ze_obf_rescape",
+  "cn": "龙门行动: 浴火重生",
+  "workshopId": "3283167200",
+  "entities": "2,070",
+  "stages": 1,
+  "published": "2026-08-28",
+  "top": [
+   "light_omni2",
+   "light_barn",
+   "info_particle_system"
+  ]
+ },
+ {
+  "rank": 46,
+  "slug": "2001-ze_pokemon_kanto_v1-3100100976",
+  "slugOut": "ze_pokemon_kanto_v1",
+  "map": "ze_pokemon_kanto_v1",
+  "cn": "关东宝可梦",
+  "workshopId": "3100100976",
+  "entities": "2,038",
+  "stages": 4,
+  "published": "2026-08-08",
+  "top": [
+   "prop_dynamic",
+   "light_omni2",
+   "point_template"
+  ]
+ },
+ {
+  "rank": 47,
+  "slug": "2001-ze_avalanche_reboot-3610993599",
+  "slugOut": "ze_avalanche_reboot",
+  "map": "ze_avalanche_reboot",
+  "cn": "雪崩行动:重载",
+  "workshopId": "3610993599",
+  "entities": "2,036",
+  "stages": 6,
+  "published": "2026-04-21",
+  "top": [
+   "light_omni2",
+   "prop_dynamic",
+   "func_movelinear"
+  ]
+ },
+ {
+  "rank": 48,
+  "slug": "2001-ze_the_curse_of_blackwater-3385381348",
+  "slugOut": "ze_the_curse_of_blackwater",
+  "map": "ze_the_curse_of_blackwater",
+  "cn": "黑水镇的诅咒",
+  "workshopId": "3385381348",
+  "entities": "2,021",
+  "stages": 3,
+  "published": "2026-05-16",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "env_combined_light_probe_volume"
+  ]
+ },
+ {
+  "rank": 49,
+  "slug": "2001-ze_obf_rampage_v2_legacy-3358056867",
+  "slugOut": "ze_obf_rampage_v2_legacy",
+  "map": "ze_obf_rampage_v2_legacy",
+  "cn": "龙门行动: 火之心",
+  "workshopId": "3358056867",
+  "entities": "2,016",
+  "stages": 1,
+  "published": "2026-07-10",
+  "top": [
+   "light_omni2",
+   "env_particle_glow",
+   "info_particle_system"
+  ]
+ },
+ {
+  "rank": 50,
+  "slug": "2001-ze_ffxiv_wanderers_palace_v6_2-3459109250",
+  "slugOut": "ze_ffxiv_wanderers_palace_v6_2",
+  "map": "ze_ffxiv_wanderers_palace_v6_2",
+  "cn": "放浪古神殿v62",
+  "workshopId": "3459109250",
+  "entities": "1,999",
+  "stages": 5,
+  "published": "2026-08-11",
+  "top": [
+   "prop_dynamic",
+   "info_particle_system",
+   "light_omni2"
+  ]
+ },
+ {
+  "rank": 51,
+  "slug": "2001-ze_aooka-3310240982",
+  "slugOut": "ze_aooka",
+  "map": "ze_aooka",
+  "cn": "龙门神殿",
+  "workshopId": "3310240982",
+  "entities": "1,979",
+  "stages": 4,
+  "published": "2026-06-19",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "env_fire"
+  ]
+ },
+ {
+  "rank": 52,
+  "slug": "2001-ze_biohazard_manor_004_p-3214250988",
+  "slugOut": "ze_biohazard_manor_004_p",
+  "map": "ze_biohazard_manor_004_p",
+  "cn": "生化危机1:洋馆",
+  "workshopId": "3214250988",
+  "entities": "1,960",
+  "stages": 1,
+  "published": "2026-06-16",
+  "top": [
+   "light_omni2",
+   "func_breakable",
+   "env_combined_light_probe_volume"
+  ]
+ },
+ {
+  "rank": 53,
+  "slug": "2001-ze_stilshrine_of_miriam-3362061557",
+  "slugOut": "ze_stilshrine_of_miriam",
+  "map": "ze_stilshrine_of_miriam",
+  "cn": "米利暗遗迹",
+  "workshopId": "3362061557",
+  "entities": "1,941",
+  "stages": 4,
+  "published": "2026-06-19",
+  "top": [
+   "light_omni2",
+   "prop_dynamic",
+   "info_particle_system"
+  ]
+ },
+ {
+  "rank": 54,
+  "slug": "2001-ze_forhidden_void-3347081341",
+  "slugOut": "ze_forhidden_void",
+  "map": "ze_forhidden_void",
+  "cn": "禁地:虚空",
+  "workshopId": "3347081341",
+  "entities": "1,931",
+  "stages": 3,
+  "published": "2025-10-03",
+  "top": [
+   "light_omni2",
+   "prop_dynamic",
+   "env_particle_glow"
+  ]
+ },
+ {
+  "rank": 55,
+  "slug": "2001-ze_icecap_escape_ia_super-3383484740",
+  "slugOut": "ze_icecap_escape_ia_super",
+  "map": "ze_icecap_escape_ia_super",
+  "cn": "西瓜橘子大乱斗",
+  "workshopId": "3383484740",
+  "entities": "1,895",
+  "stages": 1,
+  "published": "2026-04-17",
+  "top": [
+   "func_breakable",
+   "logic_relay",
+   "point_template"
+  ]
+ },
+ {
+  "rank": 56,
+  "slug": "2001-ze_endless_dream-3524889413",
+  "slugOut": "ze_endless_dream",
+  "map": "ze_endless_dream",
+  "cn": "无尽之梦",
+  "workshopId": "3524889413",
+  "entities": "1,884",
+  "stages": 9,
+  "published": "2025-09-16",
+  "top": [
+   "light_omni2",
+   "env_combined_light_probe_volume",
+   "env_entity_maker"
+  ]
+ },
+ {
+  "rank": 57,
+  "slug": "2001-ze_prisonbreak_rescue-3448333943",
+  "slugOut": "ze_prisonbreak_rescue",
+  "map": "ze_prisonbreak_rescue",
+  "cn": "越狱:拯救",
+  "workshopId": "3448333943",
+  "entities": "1,878",
+  "stages": 1,
+  "published": "2026-03-14",
+  "top": [
+   "info_particle_system",
+   "light_omni2",
+   "path_track"
+  ]
+ },
+ {
+  "rank": 58,
+  "slug": "2001-ze_silent_hill_3_dawn_full-3368481687",
+  "slugOut": "ze_silent_hill_3_dawn_full",
+  "map": "ze_silent_hill_3_dawn_full",
+  "cn": "寂静岭3:黎明(整合版)",
+  "workshopId": "3368481687",
+  "entities": "1,876",
+  "stages": 5,
+  "published": "2025-12-18",
+  "top": [
+   "prop_dynamic",
+   "light_omni2",
+   "trigger_teleport"
+  ]
+ },
+ {
+  "rank": 59,
+  "slug": "2001-ze_obj_escalation_v1-3297038916",
+  "slugOut": "ze_obj_escalation_v1",
+  "map": "ze_obj_escalation_v1",
+  "cn": "龙门行动: 逆境飞升",
+  "workshopId": "3297038916",
+  "entities": "1,873",
+  "stages": 1,
+  "published": "2025-09-29",
+  "top": [
+   "light_omni2",
+   "info_particle_system",
+   "prop_dynamic"
+  ]
+ },
+ {
+  "rank": 60,
+  "slug": "2001-ze_shroomforest3_p-3352275561",
+  "slugOut": "ze_shroomforest3_p",
+  "map": "ze_shroomforest3_p",
+  "cn": "龙门庄园③",
+  "workshopId": "3352275561",
+  "entities": "1,850",
+  "stages": 7,
+  "published": "2025-09-12",
+  "top": [
+   "light_omni2",
+   "env_combined_light_probe_volume",
+   "info_particle_system"
+  ]
+ }
+]

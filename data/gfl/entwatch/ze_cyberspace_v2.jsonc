@@ -1,0 +1,124 @@
+[
+    {
+        "name": "Add",
+        "shortname": "Add",
+        "hammerid": "2211",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "white",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "2207"
+            },
+            {
+                "hammerid": "193",
+                "event": "OnTrigger",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Subtract",
+        "shortname": "Subtract",
+        "hammerid": "2301",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "2421"
+            },
+            {
+                "hammerid": "2419",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 65,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Divide",
+        "shortname": "Divide",
+        "hammerid": "2224",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "2222"
+            },
+            {
+                "hammerid": "2225",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 45,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Multiply",
+        "shortname": "ZM Multiply",
+        "hammerid": "2274",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "pink",
+        "triggers": ["3061"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "2267"
+            },
+            {
+                "hammerid": "2273",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 75,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Fraction",
+        "shortname": "ZM Fraction",
+        "hammerid": "2291",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "red",
+        "triggers": ["3062"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "2285"
+            },
+            {
+                "hammerid": "2237",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 60,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    }
+]

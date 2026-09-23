@@ -1,0 +1,99 @@
+[
+    {
+        "name": "Tree Ent",
+        "shortname": "Ent",
+        "hammerid": "21604",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "green",
+        "triggers": ["3483"],
+        "handlers": [
+            {
+                "name": "Rock",
+                "type": "button",
+                "hammerid": "21614",
+                "event": "OnPressed",
+                "mode": 3,
+                "cooldown": 20,
+                "maxuses": 4,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Gandalf",
+        "shortname": "Gandalf",
+        "hammerid": "21872",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "white",
+        "triggers": ["3600"]
+    },
+    {
+        "name": "Heal Staff",
+        "shortname": "Heal",
+        "hammerid": "20877",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "20875"
+            },
+            {
+                "hammerid": "20871",
+                "event": "OnPass",
+                "mode": 3,
+                "cooldown": 0,
+                "maxuses": 1,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Barricade",
+        "shortname": "Barricade",
+        "hammerid": "20532",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "grey",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "20529",
+                "event": "OnPressed",
+                "mode": 3,
+                "cooldown": 0,
+                "maxuses": 1,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Torch",
+        "shortname": "Torch",
+        "hammerid": "2643",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "orange"
+    },
+    {
+        "name": "Zombie Spider",
+        "shortname": "ZM Spider",
+        "hammerid": "21371",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "grey",
+        "triggers": ["20295"]
+    }
+]

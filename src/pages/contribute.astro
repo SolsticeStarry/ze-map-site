@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<BaseLayout title="投稿 | ZE 地图资料站">
+<BaseLayout title="投稿 | ZE 地图资料站" description="ZE 地图资料站投稿指南：补充地图资料、攻略、视频与截图。">
   <section class="hero" style="padding: 70px 0 30px;">
     <div class="container">
       <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
@@ -11,17 +11,45 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       <p class="hero-sub">欢迎补充地图、截图、攻略。</p>
     </div>
   </section>
+
   <div class="container" style="padding-bottom: 60px;">
-    <div class="sidebar-card" style="max-width: 720px;">
-      <h3>怎么投稿</h3>
-      <p>在 GitHub 提 issue 或 PR，或联系站长。</p>
-      <h3>投稿内容</h3>
+    <div class="sidebar-card" style="max-width: 780px;">
+      <h3>现在最需要什么</h3>
       <ul>
-        <li>地图背景故事</li>
-        <li>关卡流程</li>
-        <li>神器说明</li>
-        <li>截图 / 路线图</li>
-        <li>视频链接</li>
+        <li><b>数据条目的资料</b>：站上大部分条目是自动汇编的，缺作者、难度、建议人数、通关时长、剧情与关卡流程</li>
+        <li><b>神器与机关说明</b>：本图有哪些神器、刷新点、效果与升级路线</li>
+        <li><b>攻略视频</b>：B站 / YouTube 的通关流程，最好标明难度与版本</li>
+        <li><b>截图与路线图</b>：地图卡片封面、关卡实景</li>
+      </ul>
+
+      <h3>怎么投稿</h3>
+      <p>两种方式，任选其一：</p>
+      <ul>
+        <li>
+          <b>GitHub PR / issue</b>（推荐）：仓库
+          <a href="https://github.com/hhjjdsj/ze-map-site" target="_blank" rel="noopener">hhjjdsj/ze-map-site</a>。
+          地图条目在 <code>src/content/maps/&lt;地图英文名&gt;.mdx</code>，
+          线上检索到的资料放在 <code>data/research/&lt;地图英文名&gt;.json</code>，
+          运行 <code>npm run maps:generate</code> 会合并进条目。
+        </li>
+        <li><b>联系站长</b>：在 GitHub 提 issue 说明要补充的内容，或直接发资料给我们。</li>
+      </ul>
+
+      <h3>条目格式</h3>
+      <p>手写条目（不会被生成脚本覆盖）建议包含：</p>
+      <ul>
+        <li>背景故事 / 题材出处</li>
+        <li>关卡流程与难度分级、团灭点</li>
+        <li>神器列表（名称、效果、刷新点）</li>
+        <li>人类策略 / 僵尸策略</li>
+        <li>视频攻略与来源链接</li>
+      </ul>
+
+      <h3>注意事项</h3>
+      <ul>
+        <li>请尽量附上可核对的来源链接，避免无法验证的说法</li>
+        <li>不要直接整段搬运他人文章；引用请注明出处</li>
+        <li>地图版权归原作者，本站只做整理</li>
       </ul>
     </div>
   </div>

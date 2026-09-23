@@ -14,26 +14,52 @@ export async function getStaticPaths() {
 
 const { tag } = Astro.props;
 const all = await getCollection('maps');
-const maps = all.filter((m) => m.data.tags.includes(tag));
+const maps = all
+  .filter((m) => m.data.tags.includes(tag))
+  .sort((a, b) => (b.data.entityCount ?? 0) - (a.data.entityCount ?? 0));
 ---
 
-<BaseLayout title={`${tag} | ZE 地图资料站`}>
+<BaseLayout title={`${tag} | ZE 地图资料站`} description={`${tag} 标签下的僵尸逃跑地图，共 ${maps.length} 张。`}>
   <section class="hero" style="padding: 70px 0 30px;">
     <div class="container">
       <div class="hero-badge">Tag</div>
       <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
         <span class="gradient-text">{tag}</span>
       </h1>
-      <p class="hero-sub">{maps.length} 张地图</p>
+      <p class="hero-sub">{maps.length} 张地图 · <a href="/tags/">查看全部标签 →</a></p>
     </div>
   </section>
   <div class="container" style="padding-bottom: 60px;">
     {maps.length > 0 ? (
-      <div class="map-grid">
-        {maps.map((map) => <MapCard map={map} />)}
-      </div>
+      <>
+        <div class="map-grid" id="map-grid">
+          {maps.map((map) => <MapCard map={map} />)}
+        </div>
+        <button class="load-more" id="load-more" type="button" style="display:none">显示更多</button>
+      </>
     ) : (
       <div class="empty-state">该标签下暂无地图。</div>
     )}
   </div>
+
+  {maps.length > 60 && (
+    <script>
+      const PAGE = 60;
+      const grid = document.getElementById('map-grid') as HTMLElement;
+      const moreBtn = document.getElementById('load-more') as HTMLButtonElement;
+      const cards = Array.from(grid.querySelectorAll<HTMLElement>('.map-card'));
+      let shown = PAGE;
+      function render() {
+        cards.forEach((c, i) => (c.style.display = i < shown ? '' : 'none'));
+        const rest = cards.length - shown;
+        moreBtn.style.display = rest > 0 ? '' : 'none';
+        moreBtn.textContent = `显示更多（还有 ${rest} 张）`;
+      }
+      moreBtn.addEventListener('click', () => {
+        shown += PAGE;
+        render();
+      });
+      render();
+    </script>
+  )}
 </BaseLayout>

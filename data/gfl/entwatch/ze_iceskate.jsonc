@@ -1,0 +1,212 @@
+[
+  {
+    "name": "Pizza",
+    "shortname": "Pizza",
+    "hammerid": "18267",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "yellow",
+    "handlers": [
+      {
+        "type": "button",
+        "hammerid": "17479",
+        "event": "OnPressed",
+        "mode": 3,
+        "cooldown": 5,
+        "maxuses": 5,
+        "message": true,
+        "ui": true
+      }
+    ]
+  },
+  {
+    "name": "Sleepy",
+    "shortname": "Sleepy",
+    "hammerid": "18108",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "pink",
+    "handlers": [
+      {
+        "type": "button",
+        "hammerid": "18112",
+        "event": "OnPressed",
+        "mode": 2,
+        "cooldown": 60,
+        "maxuses": 0,
+        "message": true,
+        "ui": true
+      }
+    ]
+  },
+  {
+    "name": "Jelly Fish Jam",
+    "shortname": "Jam",
+    "hammerid": "18092",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "pink",
+    "handlers": [
+      {
+        "type": "button",
+        "hammerid": "18093",
+        "event": "OnPressed",
+        "mode": 2,
+        "cooldown": 60,
+        "maxuses": 0,
+        "message": true,
+        "ui": true
+      }
+    ]
+  },
+  {
+    "name": "Fart",
+    "shortname": "Fart",
+    "hammerid": "18134",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "green",
+    "handlers": [
+      {
+        "type": "button",
+        "hammerid": "18136"
+      }
+    ]
+  },
+  {
+    "name": "Destroyer",
+    "shortname": "Destroyer",
+    "hammerid": "18164",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "red"
+  },
+  {
+    "name": "Shield",
+    "shortname": "Shield",
+    "hammerid": "18239",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "blue"
+  },
+  {
+    "name": "Boomstick",
+    "shortname": "Boomstick",
+    "hammerid": "18084",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "grey"
+  },
+  {
+    "name": "Zombie Shield",
+    "shortname": "ZM Shield",
+    "hammerid": "18255",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "darkred",
+    "handlers": [
+      {
+        "type": "button",
+        "hammerid": "18256",
+        "event": "OnPressed",
+        "mode": 2,
+        "cooldown": 35,
+        "maxuses": 0,
+        "message": true,
+        "ui": true
+      }
+    ]
+  },
+  {
+    "name": "Zombie Uno Reverse Card",
+    "shortname": "ZM Reverse",
+    "hammerid": "18230",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "darkred",
+    "handlers": [
+      {
+        "type": "button",
+        "hammerid": "18226",
+        "event": "OnPressed",
+        "mode": 2,
+        "cooldown": 120,
+        "maxuses": 0,
+        "message": true,
+        "ui": true
+      }
+    ]
+  },
+  {
+    "name": "Zombie Banana Bomb",
+    "shortname": "ZM Bomb",
+    "hammerid": "18202",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "yellow",
+    "handlers": [
+      {
+        "type": "button",
+        "hammerid": "18209",
+        "event": "OnPressed",
+        "mode": 2,
+        "cooldown": 60,
+        "maxuses": 0,
+        "message": true,
+        "ui": true
+      }
+    ]
+  },
+  {
+    "name": "Zombie Hoop",
+    "shortname": "ZM Hoop",
+    "hammerid": "18172",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "orange",
+    "handlers": [
+      {
+        "type": "button",
+        "hammerid": "18175",
+        "event": "OnPressed",
+        "mode": 2,
+        "cooldown": 60,
+        "maxuses": 0,
+        "message": true,
+        "ui": true
+      }
+    ]
+  },
+  {
+    "name": "Zombie Baguette",
+    "shortname": "ZM Baguette",
+    "hammerid": "18145",
+    "message": true,
+    "ui": true,
+    "transfer": true,
+    "color": "yellow",
+    "handlers": [
+      {
+        "type": "button",
+        "hammerid": "18143",
+        "event": "OnPressed",
+        "mode": 2,
+        "cooldown": 10,
+        "maxuses": 0,
+        "message": true,
+        "ui": true
+      }
+    ]
+  }
+]

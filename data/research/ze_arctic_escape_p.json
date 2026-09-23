@@ -1,0 +1,33 @@
+{
+ "slug": "ze_arctic_escape_p",
+ "summary": "极地雪地题材的老式逃亡图：人类从雪原据点一路撤退，靠船、缆车与海上石油钻机接力逃生，最后撑过核爆结算。地图内部文本留有作者署名「Map Made By Mononoke」；CS:GO 时期的版本号是 ze_arctic_escape_p2，X 社区地图池把它译作「极地逃亡【咸】」（credit 900），地图翻译库登记名为「北极大逃亡」，B 站与本站通行的叫法是「北极逃亡」。CS2 版由 Source2ZE 移植组于 2023 年 11 月 5 日上传，条目说明只交代移植本身与服务器所需插件。\n\n单关图，地图文本直接把内部关卡名写成 Overworld（「CURRENT STAGE IS 1: Overworld」）。推进节奏由载具倒计时串起来：一号到四号逃跑船、一号与二号缆车各自有「剩余 10 秒」的开船/启动提示，中途还有需要老手按开关的电梯，到「已到达海上石油钻机」这一步就进入最后的守点，随后核弹 90 秒倒计时（文本写的是「我大天朝核弹剩余 90 秒引爆，请抵御僵尸攻击」），守到核爆即通关。CS:GO 时期实况作者的路线复盘与这套结构完全对得上：开局分左右两侧走，落水前按住空格浮在水面，上岸后上电梯让老手按开关，升起时注意头顶落下的雪球，山洞里抬头看冰刺，缆车分左右、按提示看哪边先开，上最近的一条船，到了钻井平台跟着老手到楼梯上面守，最后剿灭余匪别被抓。\n\n机关以可破坏物为主。X 社区为这张图登记的 BOSS 血条清单里只有出生点岩石（SpawnRock 系列）和 snowball 物理箱与可破坏雪球，地图文本里也没有任何神器拾取提示，属于典型的无神器、纯跑图加守点的老派逃亡图，可破坏雪球与出生点岩石就是它全部的「机关」，实况里提醒的头顶雪球正是这一批物理箱。\n\n难度定级偏低：UB 社区 2022 年的难度表把 CS:GO 版列为「简单」，X 社区地图池也标成【咸】。CS2 版至今在 GFL、EXG 等社区服常见，2025 至 2026 年仍有实况上传，有实况作者对它的评价是「短流程咸鱼图，终点剿匪」。",
+ "difficulty": "简单",
+ "author": "Mononoke（原版，地图内文本署名）；CS2 移植：Source2ZE",
+ "duration": "单关约 6-15 分钟",
+ "tags": [
+  "雪地",
+  "单关",
+  "载具",
+  "守点",
+  "短流程",
+  "CSGO移植"
+ ],
+ "videoUrls": [
+  "https://www.bilibili.com/video/BV1xRDDBLEvt/",
+  "https://www.bilibili.com/video/BV1FYHNzQEVM/",
+  "https://www.bilibili.com/video/BV1mR4y1f77X/",
+  "https://www.bilibili.com/video/BV1VCLXzZEEz/"
+ ],
+ "sources": [
+  "https://steamcommunity.com/sharedfiles/filedetails/?id=3072610663",
+  "https://github.com/koi5hi/MapTextLang/blob/master/maptext/ze_arctic_escape_p2.txt",
+  "https://github.com/koi5hi/MapTextLang/blob/master/bosshit/ze_arctic_escape_p2.txt",
+  "https://github.com/koi5hi/MapTextLang/blob/master/mappool/ze_arctic_escape_p2.cfg",
+  "https://github.com/koi5hi/MapTextLang/blob/master/mappool2/mappool.json",
+  "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=355",
+  "https://www.bilibili.com/video/BV1mR4y1f77X/",
+  "https://www.bilibili.com/video/BV1xRDDBLEvt/"
+ ],
+ "confidence": "medium",
+ "verified": true
+}

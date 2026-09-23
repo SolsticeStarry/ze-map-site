@@ -1,0 +1,98 @@
+[
+    {
+        "name": "Health Pack",
+        "shortname": "Heal",
+        "hammerid": "9108",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "white",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "9135"
+            },
+            {
+                "hammerid": "9138",
+                "event": "OnPass",
+                "mode": 3,
+                "cooldown": 0,
+                "maxuses": 1,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Repellent",
+        "shortname": "Repellent",
+        "hammerid": "9095",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "gray",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "9098"
+            },
+            {
+                "hammerid": "9106",
+                "event": "OnPass",
+                "mode": 3,
+                "cooldown": 10,
+                "maxuses": 1,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Death Ray",
+        "shortname": "Ray",
+        "hammerid": "9170",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "9185"
+            },
+            {
+                "hammerid": "9198",
+                "event": "OnPass",
+                "mode": 3,
+                "cooldown": 2,
+                "maxuses": 1,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Freeze Ray",
+        "shortname": "Freeze",
+        "hammerid": "9146",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "9157"
+            },
+            {
+                "hammerid": "9162",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 90,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    }
+]

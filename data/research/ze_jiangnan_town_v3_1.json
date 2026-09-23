@@ -1,0 +1,35 @@
+{
+ "slug": "ze_jiangnan_town_v3_1",
+ "title": "江南水乡",
+ "summary": "**题材与作者**：江南小镇（社区更常叫「江南水乡」）是一张国风水乡题材的风景图，地图内置的署名写的是 map by zombielandsaga, hope you like。CS2 工坊条目（id 3250118774，条目名 ze_jiangnan_town_cs2，内部地图名 ze_jiangnan_town_v3_1）由 佐小贺 上传，作者自述只有一句「移植：皮皮猫_233 部分彩蛋移除」，也就是 CS2 版是皮皮猫_233 移植的，并且砍掉了一部分彩蛋。2021 年的指挥视角视频把它形容成「弥补国风图空缺」的风景图。\n\n**玩法与关卡结构**：整张图只有一关，站内实体 dump 记录 85 个实体，通关录像通常 6 到 8 分钟。路线按地图自带的提示推进：先守 25 到 45 秒（提示文本是 keep 25S、we should keep 45S 这类），再开门、进花园、上桥，然后坐船离开（boat wil leave in 10S），最后是 60 秒核爆倒计时（nuke in 60s）。对萌新来说最危险的是最后的守点，有玩家在录像简介里专门提醒别在最终倒计时结束前被抓。\n\n**彩蛋与机关**：UB 社区的图文攻略（南巷的猫，2023 年 7 月）整理了四个彩蛋：小船 1 号，开局六座灯塔顶端各有一面隐形墙，打掉之后上船即可立刻触发；龙喷水，注意会「卖人」；小船 2 号，触发后固定十秒开船，下一道门要贴门十秒才会传送，贴得太早会让僵尸超车；以及来自《穿越火线》的 Boss「凤凰」，需要打掉小亭子顶部的隐形墙。实体 dump 里的 wall1 到 wall6、boat1_move、boat2_move、boat1_counter、boat1_trigger、vase1 到 vase4、fpx_tem、fpx_rotate 等命名，正好对得上六面隐形墙、两条彩蛋船和花瓶这些设计；这些彩蛋属于 CS:GO 版 v3，CS2 移植版据作者自述移除了其中一部分。\n\n**社区评价**：中文服普遍把它当成咸鱼图，地图讲解视频直接标注「难度：躺金」，CS2 通关录像的简介也写着「咸鱼图」，可见定位是轻松的风景图而不是硬图。国风题材与小镇场景是主要卖点，CS2 时期 EXG、风云社等社区都留有通关录像。",
+ "difficulty": "简单",
+ "author": "zombielandsaga（地图内置署名）",
+ "duration": "约 6 至 8 分钟（据 B 站通关录像时长）",
+ "tags": [
+  "国风",
+  "江南水乡",
+  "风景图",
+  "彩蛋",
+  "机关",
+  "单关"
+ ],
+ "videoUrls": [
+  "https://www.bilibili.com/video/BV1cf4y1w7rQ/",
+  "https://www.bilibili.com/video/BV1d94y1X79B/",
+  "https://www.bilibili.com/video/BV1VV4y1q7MU/",
+  "https://www.bilibili.com/video/BV19v4y1X7UY/",
+  "https://www.bilibili.com/video/BV1Cre4ebEz1/",
+  "https://www.bilibili.com/video/BV1bPfvYPEUf/"
+ ],
+ "sources": [
+  "https://steamcommunity.com/sharedfiles/filedetails/?id=3250118774",
+  "https://bbs.moeub.cn/forum.php?mod=viewthread&action=printable&tid=8591",
+  "https://www.bilibili.com/video/BV1cf4y1w7rQ/",
+  "https://www.bilibili.com/video/BV1d94y1X79B/",
+  "https://www.bilibili.com/video/BV1VV4y1q7MU/",
+  "https://www.bilibili.com/video/BV19v4y1X7UY/",
+  "https://www.bilibili.com/video/BV1Cre4ebEz1/"
+ ],
+ "confidence": "high",
+ "verified": true
+}

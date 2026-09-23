@@ -7,18 +7,23 @@ const maps = (await getCollection('maps')).sort((a, b) =>
   a.data.title.localeCompare(b.data.title, 'zh-Hans-CN')
 );
 
-const difficulties = ['简单', '中等', '困难', '极难', '地狱'];
+const difficulties = ['简单', '中等', '困难', '极难', '地狱', '未知'];
 const games = ['CS2', 'CS:GO', 'CS:S'];
+
+const withData = maps.filter((m) => m.data.entitySlug).length;
+const stubCount = maps.filter((m) => m.data.stub).length;
 ---
 
-<BaseLayout title="地图库 | ZE 地图资料站">
+<BaseLayout title="地图库 | ZE 地图资料站" description={`ZE 僵尸逃跑地图库，共收录 ${maps.length} 张地图，含实体分布与 3D 预览。`}>
   <section class="hero" style="padding: 70px 0 30px;">
     <div class="container">
       <div class="hero-badge">Map Library</div>
       <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
         地图<span class="gradient-text">库</span>
       </h1>
-      <p class="hero-sub">共收录 {maps.length} 张地图</p>
+      <p class="hero-sub">
+        共收录 {maps.length} 张地图 · 其中 {withData} 张带实体预览{stubCount > 0 ? ` · ${stubCount} 张资料待补充` : ''}
+      </p>
     </div>
   </section>
 
@@ -33,11 +38,26 @@ const games = ['CS2', 'CS:GO', 'CS:S'];
         <option value="">全部游戏</option>
         {games.map((g) => <option value={g}>{g}</option>)}
       </select>
+      <select id="sort" title="排序方式">
+        <option value="title">按名称</option>
+        <option value="subs">按工坊订阅</option>
+        <option value="entities">按实体数</option>
+        <option value="stages">按关卡数</option>
+      </select>
+      <select id="filter-data" title="资料完整度">
+        <option value="">全部条目</option>
+        <option value="done">已有攻略资料</option>
+        <option value="stub">资料待补充</option>
+      </select>
     </div>
+
+    <p class="list-count" id="list-count">共 {maps.length} 张</p>
 
     <div class="map-grid" id="map-grid">
       {maps.map((map) => <MapCard map={map} />)}
     </div>
+
+    <button class="load-more" id="load-more" type="button" style="display:none">显示更多</button>
 
     <div id="no-result" class="empty-state" style="display:none; margin-top: 24px;">
       没有匹配的地图。
@@ -45,35 +65,95 @@ const games = ['CS2', 'CS:GO', 'CS:S'];
   </div>
 
   <script>
+    const PAGE = 60;
     const searchEl = document.getElementById('search') as HTMLInputElement;
     const diffEl = document.getElementById('filter-difficulty') as HTMLSelectElement;
     const gameEl = document.getElementById('filter-game') as HTMLSelectElement;
     const grid = document.getElementById('map-grid') as HTMLElement;
     const noResult = document.getElementById('no-result') as HTMLElement;
+    const countEl = document.getElementById('list-count') as HTMLElement;
+    const moreBtn = document.getElementById('load-more') as HTMLButtonElement;
+    const sortEl = document.getElementById('sort') as HTMLSelectElement;
+    const dataEl = document.getElementById('filter-data') as HTMLSelectElement;
 
-    function apply() {
+    let cards = Array.from(grid.querySelectorAll<HTMLElement>('.map-card'));
+    let shown = PAGE;
+
+    const num = (el: HTMLElement, key: string) => Number(el.dataset[key] ?? 0);
+
+    function sortCards() {
+      const mode = sortEl?.value ?? 'title';
+      const cmp: Record<string, (a: HTMLElement, b: HTMLElement) => number> = {
+        title: (a, b) => (a.dataset.title || '').localeCompare(b.dataset.title || '', 'zh-Hans-CN'),
+        subs: (a, b) => num(b, 'subs') - num(a, 'subs'),
+        entities: (a, b) => num(b, 'entities') - num(a, 'entities'),
+        stages: (a, b) => num(b, 'stages') - num(a, 'stages') || num(b, 'entities') - num(a, 'entities'),
+      };
+      cards = [...cards].sort(cmp[mode] ?? cmp.title);
+      for (const c of cards) grid.appendChild(c);
+    }
+
+    function matches(card: HTMLElement) {
       const q = searchEl.value.trim().toLowerCase();
       const diff = diffEl.value;
       const game = gameEl.value;
-      let visible = 0;
-
-      grid.querySelectorAll<HTMLElement>('.map-card').forEach((card) => {
-        const text = (card.dataset.search || '').toLowerCase();
-        const cd = card.dataset.difficulty || '';
-        const cg = card.dataset.game || '';
-        const ok =
-          (!q || text.includes(q)) &&
-          (!diff || cd === diff) &&
-          (!game || cg === game);
-        card.style.display = ok ? '' : 'none';
-        if (ok) visible++;
-      });
-
-      noResult.style.display = visible === 0 ? '' : 'none';
+      const data = dataEl?.value ?? '';
+      const text = (card.dataset.search || '').toLowerCase();
+      const cd = card.dataset.difficulty || '';
+      const cg = card.dataset.game || '';
+      const isStub = card.dataset.stub === '1';
+      return (
+        (!q || text.includes(q)) &&
+        (!diff || cd === diff) &&
+        (!game || cg === game) &&
+        (!data || (data === 'stub' ? isStub : !isStub))
+      );
     }
 
-    searchEl?.addEventListener('input', apply);
-    diffEl?.addEventListener('change', apply);
-    gameEl?.addEventListener('change', apply);
+    function render() {
+      let hit = 0;
+      let visible = 0;
+      for (const card of cards) {
+        if (!matches(card)) {
+          card.style.display = 'none';
+          continue;
+        }
+        hit++;
+        if (hit <= shown) {
+          card.style.display = '';
+          visible++;
+        } else {
+          card.style.display = 'none';
+        }
+      }
+      const rest = hit - visible;
+      countEl.textContent =
+        hit === cards.length
+          ? `共 ${cards.length} 张`
+          : `匹配 ${hit} 张 / 共 ${cards.length} 张`;
+      noResult.style.display = hit === 0 ? '' : 'none';
+      moreBtn.style.display = rest > 0 ? '' : 'none';
+      moreBtn.textContent = `显示更多（还有 ${rest} 张）`;
+    }
+
+    function reset() {
+      shown = PAGE;
+      render();
+    }
+
+    searchEl?.addEventListener('input', reset);
+    diffEl?.addEventListener('change', reset);
+    gameEl?.addEventListener('change', reset);
+    dataEl?.addEventListener('change', reset);
+    sortEl?.addEventListener('change', () => {
+      sortCards();
+      reset();
+    });
+    moreBtn?.addEventListener('click', () => {
+      shown += PAGE;
+      render();
+    });
+
+    render();
   </script>
 </BaseLayout>

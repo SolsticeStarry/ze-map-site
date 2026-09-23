@@ -1,8 +1,15 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const maps = await getCollection('maps');
+const withEntities = maps.filter((m) => m.data.entitySlug).length;
+const withSubs = maps.filter((m) => (m.data.workshopSubs ?? 0) > 0).length;
+const stub = maps.filter((m) => m.data.stub).length;
+const entities = maps.reduce((a, m) => a + (m.data.entityCount ?? 0), 0);
 ---
 
-<BaseLayout title="关于 | ZE 地图资料站">
+<BaseLayout title="关于 | ZE 地图资料站" description="ZE 地图资料站：僵尸逃跑地图中文资料库，数据来源与说明。">
   <section class="hero" style="padding: 70px 0 30px;">
     <div class="container">
       <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
@@ -11,12 +18,45 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       <p class="hero-sub">ZE 地图资料站，由社区维护。</p>
     </div>
   </section>
+
   <div class="container" style="padding-bottom: 60px;">
-    <div class="sidebar-card" style="max-width: 720px;">
+    <div class="sidebar-card" style="max-width: 780px;">
       <h3>这是什么</h3>
-      <p>一个收录 Zombie Escape（僵尸逃跑）地图的中文资料库，包含背景故事、通关流程、神器攻略。</p>
+      <p>
+        一个收录 Zombie Escape（僵尸逃跑）地图的中文资料库，包含背景故事、通关流程、神器攻略，
+        以及一个可交互的<b>实体预览</b>工具（3D / 平面双视图查看传送门、可破坏物、机关、危险区等点位）。
+      </p>
+
+      <h3>现在收录了什么</h3>
+      <ul>
+        <li>地图条目 <b>{maps.length}</b> 张，其中 <b>{withEntities}</b> 张带实体预览</li>
+        <li>实体数据合计 <b>{entities.toLocaleString('en-US')}</b> 个</li>
+        <li><b>{withSubs}</b> 张关联到 Steam 创意工坊条目（含发布时间与订阅数）</li>
+        <li>其中 <b>{stub}</b> 张仍标注「资料待补充」——剧情、作者、难度、攻略等欢迎社区补全</li>
+      </ul>
+
+      <h3>数据来源</h3>
+      <ul>
+        <li>
+          <b>实体数据</b>：CS2 服务端实体 dump（fyscs/MapTracking-CS2，StarDance 构建），
+          快照时间 2026-09-23。坐标是 Source 单位（1 单位 ≈ 1.9cm），记录的是实体<b>原点</b>；
+          刷子类实体在导出里没有体积信息，3D 视图中的方块是按 classname 标定的近似尺寸。
+        </li>
+        <li><b>工坊信息</b>：Steam Web API（发布时间、更新时间的、订阅数、作者自述正文摘录）。</li>
+        <li><b>攻略资料</b>：社区检索整理，每篇尽量附来源链接；查不到的字段宁缺勿假。</li>
+      </ul>
+
       <h3>版权</h3>
-      <p>地图版权归原作者所有，本站仅做整理与攻略。</p>
+      <p>
+        地图版权归原作者所有，本站仅做整理与攻略。工坊自述内容以摘录形式引用并标注出处，
+        完整内容请前往对应的 Steam 创意工坊页面查看。
+      </p>
+
+      <h3>联系与反馈</h3>
+      <p>
+        发现错误或想补充资料，请到 <a href="/contribute/">投稿页</a> 查看方式，
+        或在 GitHub 仓库 <a href="https://github.com/hhjjdsj/ze-map-site" target="_blank" rel="noopener">hhjjdsj/ze-map-site</a> 提 issue / PR。
+      </p>
     </div>
   </div>
 </BaseLayout>

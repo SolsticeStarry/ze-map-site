@@ -1,0 +1,329 @@
+[
+    {
+        "name": "Electro",
+        "shortname": "Electro",
+        "hammerid": "24669",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "24670"
+            },
+            {
+                "hammerid": "24668",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 70,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Fire",
+        "shortname": "Fire",
+        "hammerid": "24577",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "red",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "24580"
+            },
+            {
+                "hammerid": "24579",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 70,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Gravity",
+        "shortname": "Gravity",
+        "hammerid": "15866",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "purple",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "15863"
+            },
+            {
+                "hammerid": "15865",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 70,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Heal",
+        "shortname": "Heal",
+        "hammerid": "24713",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "grey",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "24709"
+            },
+            {
+                "hammerid": "24714",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 150,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Ice",
+        "shortname": "Ice",
+        "hammerid": "15839",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "blue",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "15840"
+            },
+            {
+                "hammerid": "15838",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 70,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Wind",
+        "shortname": "Wind",
+        "hammerid": "24683",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "green",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "24679"
+            },
+            {
+                "hammerid": "24684",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 70,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Summoner",
+        "shortname": "Summoner",
+        "hammerid": "15788",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "red",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "15790"
+            },
+            {
+                "hammerid": "24963",
+                "event": "OnTrigger",
+                "mode": 2,
+                "cooldown": 45,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Black Mage",
+        "shortname": "Black Mage",
+        "hammerid": "15754",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "red",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "15759"
+            },
+            {
+                "name": "Ley Lines",
+                "hammerid": "15761",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 180,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            },
+            {
+                "type": "button",
+                "hammerid": "15755"
+            },
+            {
+                "type": "counterdown",
+                "hammerid": "15763",
+                "mode": 5,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Sage",
+        "shortname": "Sage",
+        "hammerid": "15874",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "red",
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "15869"
+            },
+            {
+                "hammerid": "24960",
+                "event": "OnTrigger",
+                "mode": 2,
+                "cooldown": 20,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Silence",
+        "shortname": "ZM Silence",
+        "hammerid": "24970",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "red",
+        "triggers": ["24968"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "24965"
+            },
+            {
+                "hammerid": "24972",
+                "event": "OnTrigger",
+                "mode": 2,
+                "cooldown": 65,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Shield",
+        "shortname": "ZM Shield",
+        "hammerid": "24952",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "red",
+        "triggers": ["24950"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "24947"
+            },
+            {
+                "hammerid": "24953",
+                "event": "OnTrigger",
+                "mode": 2,
+                "cooldown": 65,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Heal",
+        "shortname": "ZM Heal",
+        "hammerid": "24910",
+        "message": true,
+        "ui": true,
+        "transfer": true,
+        "color": "red",
+        "triggers": ["24908"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "24914"
+            },
+            {
+                "hammerid": "24918",
+                "event": "OnTrigger",
+                "mode": 2,
+                "cooldown": 45,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    },
+    {
+        "name": "Zombie Gravity",
+        "shortname": "ZM Gravity",
+        "hammerid": "24853",
+        "message": true,
+        "ui": true,
+        "transfer": false,
+        "color": "purple",
+        "triggers": ["24851"],
+        "handlers": [
+            {
+                "type": "button",
+                "hammerid": "24882"
+            },
+            {
+                "hammerid": "24894",
+                "event": "OnPass",
+                "mode": 2,
+                "cooldown": 65,
+                "maxuses": 0,
+                "message": true,
+                "ui": true
+            }
+        ]
+    }
+]

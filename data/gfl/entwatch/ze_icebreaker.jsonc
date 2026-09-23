@@ -1,0 +1,29 @@
+[
+    {
+        "name": "Rocket Launcher",
+        "shortname": "Rocket",
+        "hammerid": "1562",
+        "message": false,
+        "ui": true,
+        "transfer": true,
+        "color": "red"
+    },
+    {
+        "name": "Rocket Launcher",
+        "shortname": "Rocket",
+        "hammerid": "1581",
+        "message": false,
+        "ui": true,
+        "transfer": true,
+        "color": "red"
+    },
+    {
+        "name": "Rocket Launcher",
+        "shortname": "Rocket",
+        "hammerid": "1600",
+        "message": false,
+        "ui": true,
+        "transfer": true,
+        "color": "red"
+    }
+]

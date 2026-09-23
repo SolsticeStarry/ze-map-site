@@ -9,13 +9,19 @@ players: 40-64
 duration: 60-120 分钟
 stages: 4
 tags: [长征, 神器, Boss, 指环王, 剧情, 多路线]
+cover: /images/covers/2001-ze_lotr_minas_tirith_cs2-3353505696.webp
 workshopUrl: https://gamebanana.com/maps/157492
+workshopId: "3353505696"
+entitySlug: "2001-ze_lotr_minas_tirith_cs2-3353505696"
+entityKey: "2001/ze_lotr_minas_tirith_cs2/3353505696"
+entityCount: 1956
 lastUpdated: "2024-06-07"
 featured: true
 ---
 
 import StageAccordion from '../../components/StageAccordion.astro';
 import VideoEmbed from '../../components/VideoEmbed.astro';
+import RouteMap from '../../components/RouteMap.astro';
 
 ## 背景故事
 
@@ -243,3 +249,22 @@ A：不适合。建议先熟悉 ZE 基本节奏，再来挑战米纳斯。
 - [B站 - 一个视频让你玩懂 CS2 米纳斯 BV1vmxAeZE1T](https://www.bilibili.com/video/BV1vmxAeZE1T/)
 
 > 本页资料以 CS:S v3_5 为主，部分内容可能随版本变化。
+
+## 实体分布图
+
+下图由 CS2 版（`ze_lotr_minas_tirith_cs2`）的服务端实体数据生成：底色是地图结构轮廓，彩色点是各类玩法点位。
+
+<RouteMap
+  src="/images/maps/ze_lotr_minas_tirith/overview.png"
+  alt="米那斯提力斯实体分布图"
+  hotspots={[
+    { x: 84, y: 54.7, label: '出生点', desc: '58 个出生点' },
+    { x: 67.5, y: 58.5, label: '传送门密集区', desc: '97 个传送 / 落点，多路线分叉集中在这里' },
+    { x: 59.4, y: 59.3, label: '机关 / 门密集区', desc: '116 个门与机关' },
+    { x: 63.5, y: 62.7, label: '危险区', desc: '14 个伤害 / 火焰区' },
+    { x: 31.6, y: 48.7, label: '路径点', desc: '41 个路径点，通往城外的推进线' }
+  ]}
+/>
+
+> 热点坐标取自实体真实位置。可交互版本见
+> [实体预览](/preview/?map=2001-ze_lotr_minas_tirith_cs2-3353505696)。

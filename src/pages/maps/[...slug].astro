@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import MapCard from '../../components/MapCard.astro';
 
 export async function getStaticPaths() {
   const maps = await getCollection('maps');
@@ -26,48 +27,124 @@ const {
   tags,
   workshopUrl,
   downloadUrl,
+  entitySlug,
+  entityCount,
+  workshopSubs,
+  workshopViews,
+  workshopMissing,
+  uploader,
+  stub,
+  sources,
+  videoUrls,
 } = entry.data;
 
 const diffMap: Record<string, string> = {
-  '简单': 'diff-easy',
-  '中等': 'diff-medium',
-  '困难': 'diff-hard',
-  '极难': 'diff-extreme',
-  '地狱': 'diff-hell',
+  简单: 'diff-easy',
+  中等: 'diff-medium',
+  困难: 'diff-hard',
+  极难: 'diff-extreme',
+  地狱: 'diff-hell',
+  未知: 'diff-unknown',
 };
-const diffClass = diffMap[difficulty] ?? 'diff-medium';
+const diffClass = diffMap[difficulty] ?? 'diff-unknown';
+
+const previewUrl = entitySlug ? `/preview/?map=${entitySlug}` : null;
+const hasBasics = Boolean(author || version || players || duration || stages);
+const heroCover = entry.data.cover;
+
+// 同类地图推荐：共同标签多的优先，其次看工坊订阅
+const all = await getCollection('maps');
+const related = all
+  .filter((m) => m.id !== entry.id && m.data.tags.length > 0)
+  .map((m) => ({ m, shared: m.data.tags.filter((t) => tags.includes(t)).length }))
+  .filter((x) => x.shared > 0)
+  .sort(
+    (a, b) =>
+      b.shared - a.shared ||
+      (b.m.data.workshopSubs ?? 0) - (a.m.data.workshopSubs ?? 0)
+  )
+  .slice(0, 3)
+  .map((x) => x.m);
 ---
 
-<BaseLayout title={`${title} | ZE 地图资料站`}>
+<BaseLayout
+  title={`${title} | ZE 地图资料站`}
+  description={`${title}（${titleEn}）— 僵尸逃跑地图资料：关卡流程、实体分布与预览。`}
+  image={heroCover}
+>
   <section class="map-hero">
+    {heroCover && <div class="map-hero-bg" style={`background-image:url('${heroCover}')`}></div>}
     <div class="container">
       <h1>{title}</h1>
       <p class="subtitle">{titleEn}</p>
       <div class="hero-tags">
         <span class={`badge ${diffClass}`}>{difficulty}</span>
+        <span class="badge">{game}</span>
         {tags.map((t: string) => <span class="badge">{t}</span>)}
+      </div>
+      <div class="stat-row">
+        {entityCount ? <span class="chip">实体 <b>{entityCount.toLocaleString('en-US')}</b></span> : null}
+        {stages ? <span class="chip">关卡 <b>{stages}</b></span> : null}
+        {players ? <span class="chip">人数 <b>{players}</b></span> : null}
+        {duration ? <span class="chip">时长 <b>{duration}</b></span> : null}
+        {workshopSubs ? <span class="chip">工坊订阅 <b>{workshopSubs.toLocaleString('en-US')}</b></span> : null}
       </div>
     </div>
   </section>
 
   <div class="map-layout">
     <main class="map-main">
+      {stub && (
+        <div class="stub-notice">
+          <span>📝</span>
+          <div>
+            <strong>本条目为数据条目</strong>：内容由 CS2 服务端实体数据自动生成，剧情、作者、难度、攻略等资料待补充。<br />
+            欢迎到 <a href="/contribute/">投稿页</a> 或 GitHub 补充这张图的资料。
+          </div>
+        </div>
+      )}
+
       <Content />
+
+      {related.length > 0 && (
+        <section>
+          <h2>同类地图</h2>
+          <div class="map-grid">
+            {related.map((m) => <MapCard map={m} />)}
+          </div>
+        </section>
+      )}
     </main>
 
     <aside class="map-sidebar">
+      {previewUrl && (
+        <a class="entity-cta" href={previewUrl}>
+          <span class="ec-t">🧊 实体预览</span>
+          <span class="ec-d">
+            3D / 平面两种视图查看本图的传送门、可破坏物、机关、危险区与关卡分层。
+          </span>
+          <span class="ec-go">打开预览 →</span>
+        </a>
+      )}
+
       <div class="sidebar-card">
         <h3>基本信息</h3>
         <dl>
           <dt>英文名</dt><dd>{titleEn}</dd>
-          <dt>作者</dt><dd>{author}</dd>
+          {author && <><dt>作者</dt><dd>{author}</dd></>}
+          {!author && uploader && <><dt>工坊上传者</dt><dd>{uploader}</dd></>}
           {version && <><dt>版本</dt><dd>{version}</dd></>}
           <dt>游戏</dt><dd>{game}</dd>
           <dt>难度</dt><dd><span class={`badge ${diffClass}`}>{difficulty}</span></dd>
-          <dt>人数</dt><dd>{players}</dd>
-          <dt>时长</dt><dd>{duration}</dd>
-          <dt>关卡</dt><dd>{stages}</dd>
+          {players && <><dt>人数</dt><dd>{players}</dd></>}
+          {duration && <><dt>时长</dt><dd>{duration}</dd></>}
+          {stages ? <><dt>关卡</dt><dd>{stages}</dd></> : null}
+          {entityCount ? <><dt>实体数</dt><dd>{entityCount.toLocaleString('en-US')}</dd></> : null}
+          {workshopSubs ? <><dt>工坊订阅</dt><dd>{workshopSubs.toLocaleString('en-US')}</dd></> : null}
+          {workshopViews ? <><dt>工坊浏览</dt><dd>{workshopViews.toLocaleString('en-US')}</dd></> : null}
         </dl>
+        {workshopMissing && <p class="sidebar-hint">该工坊条目在 Steam 上已查无此项（可能已被作者删除或隐藏）。</p>}
+        {!hasBasics && <p class="sidebar-hint">作者、人数、时长等资料待补充。</p>}
       </div>
 
       {(workshopUrl || downloadUrl) && (
@@ -89,8 +166,15 @@ const diffClass = diffMap[difficulty] ?? 'diff-medium';
       <div class="sidebar-card">
         <h3>标签</h3>
         <div class="tag-list">
-          {tags.map((t: string) => <a href={`/tags/${t}/`}>{t}</a>)}
+          {tags.length > 0 ? tags.map((t: string) => <a href={`/tags/${t}/`}>{t}</a>) : <span class="sidebar-hint">暂无标签</span>}
         </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>数据来源</h3>
+        <p class="sidebar-hint">
+          实体数据来自 CS2 服务端实体 dump（StarDance），坐标为实体原点，快照 2026-09-23。
+        </p>
       </div>
     </aside>
   </div>

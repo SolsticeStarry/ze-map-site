@@ -1,0 +1,33 @@
+{
+ "slug": "ze_mario_tower_p",
+ "summary": "以《超级马里奥》为题材的闯关高塔，也是 CS 僵尸逃跑里资历很老的一张马里奥图：血统能从 CS2 版 ze_mario_tower_p 一路往回追到 CS:GO 的 ze_mario_tower_v4_p2，再往前还有 CS 起源版的 ze_Mario_Tower_v4（B 站留有 2020 年的起源版地图演示）。CS2 版由 Source2ZE 移植组于 2023 年 11 月 9 日上传，工坊预览图就是绿草地、砖块城堡与像素云的马里奥画风。中文叫法不少——本站与 UB 难度表都写「马里奥高塔」，X 社区地图池写「超级马里奥：闯关高塔【咸】」（credit 1000），地图翻译库登记为「逃离：马里奥城堡」。\n\n单关图，站内记为 1 关，CS:GO 时期的实况同样标注「关卡：1」。整张图是垂直往上爬：地图文本按时间轴推进——左右两侧的梯子墙各在 5 秒后打开，砖墙 30 秒后破碎，Thwomp 砸地砖与星之门各有 20 秒倒计时，中段还有会抬升的云；再往上会遇到 Bowser 和他的手下进攻，以及 90 秒后开始灼烧一切的 Angry Sun，最终目标是赶在时限内爬到塔顶（「Get to the top of the tower before it is too late!!」）。可破坏物清单也全是马里奥关卡的语言：链锯狗的栏杆 chainchompbars、四组 Bowser 方块、掉落方块、天空人的护盾、僵尸梯、桥面与塔顶方块——配置里没有神器拾取提示，靠地形与机关计时推进。\n\n难度偏低：UB 社区 2022 年的难度表把 CS:GO 版列为「简单」，译名「马里奥高塔」，标签「娱乐」；X 社区地图池同样标【咸】。CS:GO 时期的实况标题就把它当咸鱼图（「咸鱼通关视频」「带图」），CS2 版给新人的建议也很直白：「开局不同出生点，萌新不要慌，能找指挥找指挥，找不到跟着大部队走也可以」。CS2 版上线后在风云社、EXG 等社区服持续有人实况，2024 年 3 月、8 月、11 月各有一份新的实况录像。",
+ "difficulty": "简单",
+ "author": "Source2ZE 移植组（CS2 移植版）；原版作者未查到",
+ "tags": [
+  "马里奥",
+  "单关",
+  "闯关",
+  "机关",
+  "娱乐",
+  "CSGO移植"
+ ],
+ "videoUrls": [
+  "https://www.bilibili.com/video/BV1CqDDY7E9X/",
+  "https://www.bilibili.com/video/BV1zGs5etE9K/",
+  "https://www.bilibili.com/video/BV1Sb411z7ZX/",
+  "https://www.bilibili.com/video/BV1tT4y1w7SR/"
+ ],
+ "sources": [
+  "https://steamcommunity.com/sharedfiles/filedetails/?id=3077381254",
+  "https://github.com/koi5hi/MapTextLang/blob/master/maptext/ze_mario_tower_v4_p2.txt",
+  "https://github.com/koi5hi/MapTextLang/blob/master/bosshit/ze_mario_tower_v4_p2.txt",
+  "https://github.com/koi5hi/MapTextLang/blob/master/mappool/ze_mario_tower_v4_p2.cfg",
+  "https://github.com/koi5hi/MapTextLang/blob/master/mappool2/mappool.json",
+  "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=355",
+  "https://www.bilibili.com/video/BV1Sb411z7ZX/",
+  "https://www.bilibili.com/video/BV1zGs5etE9K/",
+  "https://www.bilibili.com/video/BV1tT4y1w7SR/"
+ ],
+ "confidence": "medium",
+ "verified": true
+}

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# 地图实体数据（分片）无需反复抓取
+Disallow: /entity/data/
+
+Sitemap: https://ze-map.cn/sitemap.xml
