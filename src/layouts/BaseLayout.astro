@@ -82,9 +82,18 @@ const ogImage = image ? new URL(image, site).href : new URL('/images/hero-bg.jpg
       </div>
     </footer>
 
-    <script is:inline>
+    {/*
+      这段脚本**不要**改回 is:inline。
+      is:inline 会让 Astro 把脚本原样输出、不做 TypeScript 转译：只要里面混进 TS 语法
+      （例如 `e.target as HTMLElement`），浏览器会因语法错误让**整段脚本都不执行**——
+      曾经因此导致「太阳/月亮」主题按钮与移动端「三条横杠」菜单同时点击无反应。
+      交给 Astro 处理（默认行为）则会剥掉类型，且语法错误会在构建期就报出来。
+      上面 head 里的主题预置脚本必须保留 is:inline（要在首屏绘制前跑，避免闪白），所以它只写纯 JS。
+    */}
+    <script>
       // 主题切换
-      document.getElementById('theme-toggle')?.addEventListener('click', () => {
+      const themeToggle = document.getElementById('theme-toggle');
+      themeToggle?.addEventListener('click', () => {
         const root = document.documentElement;
         const next = root.dataset.theme === 'light' ? 'dark' : 'light';
         root.dataset.theme = next;
@@ -106,14 +115,11 @@ const ogImage = image ? new URL(image, site).href : new URL('/images/hero-bg.jpg
 
       // 点击页面其他区域关闭菜单
       document.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        if (
-          mainNav?.classList.contains('open') &&
-          !mainNav.contains(target) &&
-          !menuToggle?.contains(target)
-        ) {
-          mainNav.classList.remove('open');
-        }
+        if (!mainNav || !mainNav.classList.contains('open')) return;
+        const target = e.target instanceof Node ? e.target : null;
+        if (!target || mainNav.contains(target)) return;
+        if (menuToggle?.contains(target)) return;
+        mainNav.classList.remove('open');
       });
     </script>
   </body>

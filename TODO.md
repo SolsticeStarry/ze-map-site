@@ -220,3 +220,22 @@ npm run search:index                         # 只重建搜索索引
 - **教训**：**构建期不要用相对路径读文件**。要读就 `import`（打包器解析）或显式用 `process.cwd()`／绝对路径。这类代码在本地和 CI 的默认路径下都正常，只在打包环境变了（适配器、预渲染、cwd 不同）时才炸，而且报错信息（`/bundle/...`）和你的代码看起来毫无关系。
 - **上线确认（2026-09-23 晚，`d764704`）**：修复推送后构建成功并部署，实测三项通过 —— ① 未知路径返回 404 且**带站内 404 页**（这条只有 `wrangler.jsonc` 生效才可能，是 autoconfig 已被关掉的硬证据）；② `/search/` 由 404 变 200（`c91dd8f` 的内容一并上线）；③ 线上 `_headers` 规则、`sitemap.xml`（806 条）、改好的工坊 ID 均已生效。
   ⚠️ **别被红叉误导**：期间控制台又出现过一次失败的 Build（如 #fcef6da7，条目仍标 `c91dd8f`）—— 那是点了「**Retry build**」的结果，它**固定重跑那次失败构建的旧提交**，必然以同样的 `readAll '/bundle/public/entity/catalog.json'` 失败，与本次修复无关。**看构建结果请认提交号，不要只看红叉**；要重跑就用 `New deployment` 选最新提交，或再推一次 `main`。
+
+### 21. 一次前端交互全部失效：`is:inline` 脚本里写了 TypeScript（2026-09-23 修复）
+
+- **现象**（你报的）：右上角「🌙 / ☀️」主题按钮点了没反应；手机端顶部「三条横杠」菜单同样点了没反应。两个控件**同时**失效——这个「同时」就是关键线索。
+- **根因**：`src/layouts/BaseLayout.astro` 的交互脚本原本写成 `<script is:inline>`，而 `is:inline` 的语义是「原样输出，**什么都不要动**」——其中就包括**不做 TypeScript 转译**。可脚本里有一个 TS 类型断言：
+  `const target = e.target as HTMLElement;`
+  浏览器拿到的是纯 JS，`as HTMLElement` 是语法错误；而**一个 `<script>` 只要解析失败，整段都不会执行**，于是写在它前面的主题监听、菜单监听跟着一起失效。
+- **为什么一直没被发现**：Astro 默认的 `<script>`（不加 `is:inline`）会经 Vite 打包并剥掉类型，写 TS 完全正常；只有 `is:inline` 才原样输出。而且这类错误**只在浏览器里才报**，构建期不报错，也不影响其它页面。
+- **线上证据**：线上首页那段脚本共 1,126 字符，`as HTMLElement` 出现在第 889 字符处；同一段脚本里 `theme-toggle` / `menu-toggle` 的监听代码都还在，只是整段没跑。
+- **排查经验**：凡是「同一块里的多个交互一起失效」，先怀疑**脚本没被解析/执行**，而不是逐个控件去查 z-index、事件绑定或 CSS。
+- **修法**（两层）：
+  1. 去掉 TS 断言，改成纯 JS 且能正确收窄：`const target = e.target instanceof Node ? e.target : null;`
+  2. 把这块 `<script is:inline>` 改回**普通 `<script>`**（交给 Astro 处理）——类型会被剥掉，将来再写错语法**构建期就会报错**，从根上堵住同类问题。
+  3. head 里那段「预置主题」脚本**继续保留 `is:inline`**（它必须在首屏绘制前同步执行，否则会闪白），所以它只写纯 JS。
+- **验证**：
+  - `npm run build` 退出码 0；构建产物中含 `as HTMLElement` 的 HTML 由 **807 个降到 0 个**；
+  - 用最小 DOM 桩（含事件冒泡模拟）直接跑构建产物：主题按钮点击后 `dataset.theme` 在 dark/light 间正确翻转并写入 `localStorage`；菜单点击可展开/收起、点导航链接自动收起、点页面其他区域收起、点主题按钮也收起 —— **12 项断言全过**。
+- **教训**：`is:inline` 的意思是「这段代码我说了算，你别碰」，所以它**不转译 TS、不压缩、不做语法检查**。要在里面写脚本，就只写最朴素的 JS；否则请去掉 `is:inline`，让 Astro 管。
+- **复查结论**：全仓库其余 `is:inline` 脚本（`BaseLayout` 的主题预置、`search.astro` 的 Pagefind 启动）都是纯 JS，无同类隐患。另外 5 个文件里的 `as HTMLElement`（`index.astro`、`maps/index.astro`、`tags/index.astro`、`tags/[tag].astro`）都在**普通** `<script>` 里，会被正常转译，不受影响。
