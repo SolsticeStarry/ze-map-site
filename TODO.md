@@ -1,6 +1,6 @@
 # 待办与已知问题
 
-> 整理时间：2026-09-23 · 线上版本：`9103f1d`（`c91dd8f`「update 1」因构建失败**没有上线**，见第 1、20 条）
+> 整理时间：2026-09-23 · 线上版本：`d764704`（含 `c91dd8f`「update 1」的全部内容 + 构建修复；20:27 推送后构建成功，已线上验证，见第 1、20 条）
 > 口径：已完成的事项保留记录（方便回溯），未闭环的排在前面。
 > 标注「待你操作」的，我这边无法代劳（需要控制台权限或你的决策）。
 
@@ -31,8 +31,9 @@
 - **验证**：
   - 本地 `npm run build` 退出码 0、808 页、`dist/404.html` 6,036 字节；
   - `npx wrangler deploy --dry-run` 退出码 0，日志 **没有**出现 autoconfig 的交互提示，直接 `Read 3695 files from the assets directory ...\dist`；
-  - 上线后待验：`https://ze-map.cn/no-such-page/` 应返回 404 且 body 含站内 404 页文案（当前 body 为空）。
-- **状态**：已改好，等你推送。
+  - **上线后实测（2026-09-23，`d764704`）**：`/no-such-page-xyz/` 与 `/totally-bogus-98765` 均返回 **404 且 body 约 5,809 字符**的站内 404 页（含 `<html>`、导航链接、样式与文案）；修复前同样路径 body 为空。
+  - 顺带确认 `public/_headers` 的 4 条规则全部生效：`/entity/data/*.bin` → `Content-Type: application/gzip` + `max-age=86400`；`/entity/catalog.json`、`/sitemap.xml` → `max-age=3600`。
+- **状态**：✅ 已上线并验证通过（过程与一个易踩的坑见第 20 条「上线确认」）。
 
 ### 2. 分支预览没开启（影响上线流程）〔待你操作〕
 
@@ -120,6 +121,7 @@
   - 站点页头/页脚标记 `data-pagefind-ignore`，避免结果摘要混入导航。
 - **验证**：构建日志 `[search] 索引已生成：dist/pagefind（3.12 MB）`；无头浏览器实测 `/search/?q=黑暗之魂` 返回 11 条结果，首条为「黑暗之魂:亚诺尔隆德」。
 - **已知限制**：Pagefind 对 `zh-cn` 不支持词干还原（官方提示，搜索仍可用，但不会跨词根匹配）；开发模式（`npm run dev`）没有索引，`/search/` 会显示"索引尚未生成"的兜底提示，属预期。
+- **SEO 小尾巴（未处理，等你决定）**：`/search/` 既**不在 `sitemap.xml` 里**、页面也**没有 `noindex`**。搜索页本身是薄内容页，常规做法是二选一：要么加进 sitemap（把它当正常功能页收录），要么在 `search.astro` 的 `BaseLayout` 传一个 `noindex`（推荐，避免薄页被收录）。现状两者都没做，所以它仍可能被导航链接带进索引。另：`route.png` 的 404 是**站外旧链接**（仓库里早已改名 `overview.png`，三个路线图实测 200），无需处理。
 
 ### 12. ~~`/tags/` 索引页偏长~~ ✅ 已修复
 
@@ -216,3 +218,5 @@ npm run search:index                         # 只重建搜索索引
   - `npx wrangler deploy --dry-run` 退出码 **0**，日志直接 `Read 3695 files from the assets directory ...\dist`，**不再出现** autoconfig 交互提示；
   - 全仓库复查：`src/` 里已无任何构建期文件读取（只剩这一处，且已改成 import）。
 - **教训**：**构建期不要用相对路径读文件**。要读就 `import`（打包器解析）或显式用 `process.cwd()`／绝对路径。这类代码在本地和 CI 的默认路径下都正常，只在打包环境变了（适配器、预渲染、cwd 不同）时才炸，而且报错信息（`/bundle/...`）和你的代码看起来毫无关系。
+- **上线确认（2026-09-23 晚，`d764704`）**：修复推送后构建成功并部署，实测三项通过 —— ① 未知路径返回 404 且**带站内 404 页**（这条只有 `wrangler.jsonc` 生效才可能，是 autoconfig 已被关掉的硬证据）；② `/search/` 由 404 变 200（`c91dd8f` 的内容一并上线）；③ 线上 `_headers` 规则、`sitemap.xml`（806 条）、改好的工坊 ID 均已生效。
+  ⚠️ **别被红叉误导**：期间控制台又出现过一次失败的 Build（如 #fcef6da7，条目仍标 `c91dd8f`）—— 那是点了「**Retry build**」的结果，它**固定重跑那次失败构建的旧提交**，必然以同样的 `readAll '/bundle/public/entity/catalog.json'` 失败，与本次修复无关。**看构建结果请认提交号，不要只看红叉**；要重跑就用 `New deployment` 选最新提交，或再推一次 `main`。
