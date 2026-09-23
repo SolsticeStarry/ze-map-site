@@ -22,6 +22,7 @@ const {
   duration,
   stages,
   author,
+  authorNote,
   version,
   game,
   tags,
@@ -118,12 +119,12 @@ const related = all
 
     <aside class="map-sidebar">
       {previewUrl && (
-        <a class="entity-cta" href={previewUrl}>
+        <a class="entity-cta" href={previewUrl} target="_blank" rel="noopener" title="在新标签页打开实体预览">
           <span class="ec-t">🧊 实体预览</span>
           <span class="ec-d">
             3D / 平面两种视图查看本图的传送门、可破坏物、机关、危险区与关卡分层。
           </span>
-          <span class="ec-go">打开预览 →</span>
+          <span class="ec-go">打开实体预览 ↗</span>
         </a>
       )}
 
@@ -144,6 +145,7 @@ const related = all
           {workshopViews ? <><dt>工坊浏览</dt><dd>{workshopViews.toLocaleString('en-US')}</dd></> : null}
         </dl>
         {workshopMissing && <p class="sidebar-hint">该工坊条目在 Steam 上已查无此项（可能已被作者删除或隐藏）。</p>}
+        {authorNote && <p class="sidebar-hint">署名详情：{authorNote}</p>}
         {!hasBasics && <p class="sidebar-hint">作者、人数、时长等资料待补充。</p>}
       </div>
 

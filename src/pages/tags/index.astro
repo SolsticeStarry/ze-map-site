@@ -4,30 +4,133 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const maps = await getCollection('maps');
 const tagCount: Record<string, number> = {};
+const tagMaps: Record<string, typeof maps> = {};
 for (const m of maps) {
   for (const t of m.data.tags) {
     tagCount[t] = (tagCount[t] ?? 0) + 1;
+    (tagMaps[t] ??= []).push(m);
   }
 }
-const tags = Object.entries(tagCount).sort((a, b) => b[1] - a[1]);
+const tags = Object.entries(tagCount).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hans-CN'));
+
+/** 分档：常见（≥5 张）/ 一般（2–4 张）/ 长尾（仅 1 张） */
+const common = tags.filter(([, c]) => c >= 5);
+const mid = tags.filter(([, c]) => c >= 2 && c < 5);
+const tail = tags.filter(([, c]) => c === 1);
+
+const sampleOf = (t: string) =>
+  (tagMaps[t] ?? [])
+    .slice()
+    .sort((a, b) => (b.data.entityCount ?? 0) - (a.data.entityCount ?? 0))
+    .slice(0, 3)
+    .map((m) => m.data.title)
+    .join(' · ');
 ---
 
-<BaseLayout title="标签 | ZE 地图资料站">
+<BaseLayout title="标签 | ZE 地图资料站" description={`ZE 地图资料站标签索引：${tags.length} 个标签，按题材与玩法浏览 ${maps.length} 张地图。`}>
   <section class="hero" style="padding: 70px 0 30px;">
     <div class="container">
       <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
         <span class="gradient-text">标签</span>索引
       </h1>
-      <p class="hero-sub">共 {tags.length} 个标签</p>
+      <p class="hero-sub">
+        共 {tags.length} 个标签 · {common.length} 个常见标签 · {mid.length} 个一般标签 · {tail.length} 个仅 1 张地图
+      </p>
     </div>
   </section>
+
   <div class="container" style="padding-bottom: 60px;">
-    <div class="tag-list" style="gap: 10px;">
-      {tags.map(([tag, count]) => (
-        <a href={`/tags/${tag}/`} style="padding: 8px 16px; font-size: 14px;">
-          {tag} <span style="color: var(--muted);">({count})</span>
-        </a>
-      ))}
+    <div class="filter-bar">
+      <input id="tag-search" type="search" placeholder="搜索标签（题材 / 玩法 / 来源）..." />
     </div>
+    <p class="list-count" id="tag-count">共 {tags.length} 个标签</p>
+
+    <section id="sec-common">
+      <div class="section-head"><h2>常见标签</h2><span class="tag-sec-note">被 5 张以上地图使用</span></div>
+      <div class="tag-cloud">
+        {common.map(([t, c]) => (
+          <a class="tag-chip big" href={`/tags/${t}/`} data-tag={t}>
+            <span class="tc-name">{t}</span>
+            <span class="tc-count">{c}</span>
+            <span class="tc-sample">{sampleOf(t)}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section id="sec-mid">
+      <div class="section-head"><h2>一般标签</h2><span class="tag-sec-note">2–4 张地图</span></div>
+      <div class="tag-cloud">
+        {mid.map(([t, c]) => (
+          <a class="tag-chip" href={`/tags/${t}/`} data-tag={t}>
+            <span class="tc-name">{t}</span>
+            <span class="tc-count">{c}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section id="sec-tail">
+      <div class="section-head">
+        <h2>长尾标签</h2>
+        <button class="load-more" id="tail-toggle" type="button">展开 {tail.length} 个仅 1 张地图的标签</button>
+      </div>
+      <div class="tag-cloud" id="tail-cloud" style="display:none">
+        {tail.map(([t, c]) => (
+          <a class="tag-chip" href={`/tags/${t}/`} data-tag={t}>
+            <span class="tc-name">{t}</span>
+            <span class="tc-count">{c}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <div id="tag-empty" class="empty-state" style="display:none">没有匹配的标签。</div>
   </div>
+
+  <script>
+    const searchEl = document.getElementById('tag-search') as HTMLInputElement;
+    const countEl = document.getElementById('tag-count') as HTMLElement;
+    const tailCloud = document.getElementById('tail-cloud') as HTMLElement;
+    const tailToggle = document.getElementById('tail-toggle') as HTMLButtonElement;
+    const emptyEl = document.getElementById('tag-empty') as HTMLElement;
+    const chips = Array.from(document.querySelectorAll<HTMLElement>('.tag-chip'));
+    const sections = ['sec-common', 'sec-mid', 'sec-tail'].map((id) => document.getElementById(id) as HTMLElement);
+
+    tailToggle?.addEventListener('click', () => {
+      const open = tailCloud.style.display !== 'none';
+      tailCloud.style.display = open ? 'none' : '';
+      tailToggle.textContent = open
+        ? `展开 ${tailCloud.children.length} 个仅 1 张地图的标签`
+        : '收起';
+    });
+
+    function apply() {
+      const q = searchEl.value.trim().toLowerCase();
+      let hit = 0;
+      for (const chip of chips) {
+        const t = (chip.dataset.tag || '').toLowerCase();
+        const ok = !q || t.includes(q);
+        chip.style.display = ok ? '' : 'none';
+        if (ok) hit++;
+      }
+      // 搜索时长尾分组自动展开，方便看到结果
+      if (q) {
+        tailCloud.style.display = '';
+        tailToggle.style.display = 'none';
+      } else {
+        tailToggle.style.display = '';
+      }
+      for (const sec of sections) {
+        const visible = Array.from(sec.querySelectorAll<HTMLElement>('.tag-chip')).some(
+          (c) => c.style.display !== 'none'
+        );
+        sec.style.display = visible ? '' : 'none';
+      }
+      countEl.textContent = q ? `匹配 ${hit} 个标签 / 共 ${chips.length} 个` : `共 ${chips.length} 个标签`;
+      emptyEl.style.display = hit === 0 ? '' : 'none';
+    }
+
+    searchEl?.addEventListener('input', apply);
+  </script>
 </BaseLayout>

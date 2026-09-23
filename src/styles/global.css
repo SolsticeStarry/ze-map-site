@@ -444,6 +444,41 @@ img { max-width: 100%; display: block; }
   position: relative;
 }
 
+/* 整卡点击层：透明链接盖住卡片，让「点卡片进详情」仍然成立 */
+.map-card-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 16px;
+}
+.map-card-hit:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+
+/* 实体预览按钮：卡片里唯一可独立点击的元素，做成实心按钮并浮在点击层之上 */
+.preview-btn {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff !important;
+  background: linear-gradient(135deg, #ff4d4d, #ff7a45);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 3px 14px rgba(255, 77, 77, 0.35);
+  transition: transform 0.18s, box-shadow 0.2s, filter 0.2s;
+  white-space: nowrap;
+}
+.preview-btn:hover {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 6px 20px rgba(255, 77, 77, 0.5);
+  filter: brightness(1.08);
+}
+.preview-btn:active { transform: translateY(0) scale(0.99); }
+.preview-btn .pb-arrow { font-size: 11px; opacity: 0.9; }
+
 .map-card::before {
   content: '';
   position: absolute;
@@ -1215,24 +1250,50 @@ img { max-width: 100%; display: block; }
 .stub-notice strong { color: #fbbf24; }
 .stub-notice a { color: var(--accent-2); }
 
-/* 详情页侧栏里的实体预览入口 */
+/* 详情页侧栏里的实体预览入口：做成醒目的实心按钮 */
 .entity-cta {
   display: block;
   margin: 0 0 14px;
-  padding: 14px 16px;
-  border: 1px solid rgba(255, 77, 77, 0.35);
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(255, 77, 77, 0.12), rgba(34, 211, 238, 0.07));
-  transition: border-color 0.25s, transform 0.2s, box-shadow 0.25s;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(135deg, #ff4d4d 0%, #ff7a45 100%);
+  box-shadow: 0 10px 30px rgba(255, 77, 77, 0.28);
+  transition: transform 0.2s, box-shadow 0.25s, filter 0.2s;
 }
 .entity-cta:hover {
-  border-color: var(--accent);
   transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 14px 38px rgba(255, 77, 77, 0.42);
+  filter: brightness(1.05);
 }
-.entity-cta .ec-t { font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; }
-.entity-cta .ec-d { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
-.entity-cta .ec-go { display: inline-block; margin-top: 10px; font-size: 13px; color: var(--accent-2); font-weight: 700; }
+.entity-cta .ec-t {
+  font-weight: 800;
+  color: #fff;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.entity-cta .ec-d { font-size: 12.5px; color: rgba(255, 255, 255, 0.92); margin-top: 7px; line-height: 1.6; }
+.entity-cta .ec-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.24);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.entity-cta:hover .ec-go { background: rgba(0, 0, 0, 0.34); }
+/* 亮色主题下保持同样的实心观感 */
+[data-theme="light"] .entity-cta { border-color: rgba(255, 255, 255, 0.4); }
+[data-theme="light"] .entity-cta .ec-t,
+[data-theme="light"] .entity-cta .ec-d,
+[data-theme="light"] .entity-cta .ec-go { color: #fff; }
 
 /* 卡片上的小标记 */
 .map-card-flags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
@@ -1246,6 +1307,14 @@ img { max-width: 100%; display: block; }
 }
 .map-flag.data { border-color: rgba(34, 211, 238, 0.3); color: #7dd3fc; }
 .map-flag.preview { border-color: rgba(255, 77, 77, 0.35); color: #ff9d9d; }
+/* 工坊条目已下架：灰色 + 删除线感的提示 */
+.map-flag.gone {
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #8b93a5;
+  text-decoration: line-through;
+  text-decoration-color: rgba(148, 163, 184, 0.5);
+}
+[data-theme="light"] .map-flag.gone { color: #6b7280; }
 
 /* 列表分页 / 加载更多 */
 .load-more {
@@ -1320,7 +1389,145 @@ img { max-width: 100%; display: block; }
   .map-main table td { white-space: nowrap; }
   .sidebar-card { padding: 18px; }
   .hero-title { font-size: clamp(28px, 8vw, 44px); }
+
+  /* ===== 移动端观感优化 ===== */
+  /* 首屏：压缩 hero，把内容提上来 */
+  .hero { padding: 46px 0 22px !important; }
+  .hero-badge {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    padding: 4px 12px;
+    margin-bottom: 14px;
+  }
+  .hero-title { font-size: clamp(26px, 8.5vw, 38px) !important; }
+  .hero-sub { font-size: 13.5px; line-height: 1.65; }
+  .hero-stats { gap: 14px; margin-top: 18px; }
+  .hero-stats .stat strong { font-size: 24px; }
+  .hero-stats .stat span { font-size: 11.5px; }
+  .hero-scroll { display: none; }
+
+  /* 区块间距收紧 */
+  .section-head { margin-bottom: 14px; }
+  .section-head h2 { font-size: 20px; }
+  .section-head > a, .section-head > span { font-size: 12.5px; }
+  section { margin-bottom: 30px; }
+
+  /* 筛选栏：两列排布，别占三行 */
+  .filter-bar {
+    padding: 12px;
+    gap: 8px;
+    margin: 16px 0 12px;
+  }
+  .filter-bar input { flex: 1 1 100%; min-width: 0; font-size: 14px; padding: 10px 12px; }
+  .filter-bar select { flex: 1 1 calc(50% - 4px); min-width: 0; font-size: 13px; padding: 9px 10px; }
+  .list-count { font-size: 12.5px; }
+
+  /* 地图卡片：封面变矮、信息更紧凑，一屏能多看几张 */
+  .map-card-cover { aspect-ratio: 2 / 1; }
+  .map-card-body { padding: 12px 14px 14px; }
+  .map-card-body h3 { font-size: 16px; }
+  .map-card-en { font-size: 11.5px; }
+  .map-card-meta {
+    font-size: 12.5px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .map-card-tags { margin-top: 8px; gap: 5px; }
+  .map-card-tags .tag { font-size: 11px; padding: 2px 7px; }
+  .map-card-flags { margin-top: 7px; gap: 5px; }
+  .map-flag { font-size: 10.5px; padding: 2px 7px; }
+
+  /* 标签索引：长样例文字在窄屏会挤，直接不显示 */
+  .tag-cloud { gap: 8px; margin-bottom: 26px; }
+  .tag-chip { padding: 8px 12px; }
+  .tag-chip .tc-name { font-size: 13.5px; }
+  .tag-chip .tc-sample { display: none; }
+
+  /* 详情页 hero 与统计 */
+  .map-hero { padding: 34px 0 22px; }
+  .map-hero h1 { font-size: clamp(24px, 7vw, 34px); }
+  .stat-row { gap: 8px; margin-top: 12px; }
+  .stat-row .chip { font-size: 12px; padding: 5px 10px; }
+
+  /* 正文可读性 */
+  .map-main { font-size: 15px; }
+  .map-main p, .map-main li { line-height: 1.85; }
+  .map-main h2 { font-size: 20px; }
+  .map-main h3 { font-size: 17px; }
 }
+
+/* 标签索引页：分组 + 卡片式标签 */
+.tag-sec-note { color: var(--muted); font-size: 13px; }
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 34px; }
+.tag-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  max-width: 100%;
+}
+.tag-chip:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+.tag-chip .tc-name { font-size: 14px; font-weight: 600; color: #fff; }
+.tag-chip .tc-count { font-size: 11.5px; color: var(--accent-2); }
+.tag-chip.big { padding: 12px 16px; }
+.tag-chip.big .tc-name { font-size: 15px; }
+.tag-chip .tc-sample { font-size: 11.5px; color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-theme="light"] .tag-chip .tc-name { color: var(--text); }
+
+/* 站内搜索（Pagefind UI 主题化，跟随站点暗色/亮色） */
+.search-host {
+  --pagefind-ui-scale: 0.85;
+  --pagefind-ui-primary: var(--accent);
+  --pagefind-ui-text: var(--text);
+  --pagefind-ui-background: var(--panel);
+  --pagefind-ui-border: var(--border);
+  --pagefind-ui-tag: var(--panel-2);
+  --pagefind-ui-border-width: 1px;
+  --pagefind-ui-border-radius: 10px;
+  --pagefind-ui-font: inherit;
+  max-width: 900px;
+}
+.search-host .pagefind-ui__search-input {
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+}
+.search-host .pagefind-ui__search-input::placeholder { color: var(--muted); }
+.search-host .pagefind-ui__search-clear { color: var(--muted); }
+.search-host .pagefind-ui__result { border-top: 1px solid var(--border); padding: 16px 0; }
+.search-host .pagefind-ui__result-link { color: var(--accent-2); }
+.search-host .pagefind-ui__result-excerpt { color: #c8cede; font-size: 14px; line-height: 1.75; }
+.search-host .pagefind-ui__result-excerpt mark,
+.search-host .pagefind-ui__result-title mark {
+  background: rgba(255, 77, 77, 0.22);
+  color: #fff;
+  padding: 0 3px;
+  border-radius: 4px;
+}
+.search-host .pagefind-ui__message { color: var(--muted); }
+.search-host .pagefind-ui__button {
+  background: var(--panel-2);
+  border-color: var(--border-2);
+  color: var(--text);
+}
+.search-host .pagefind-ui__button:hover { border-color: var(--accent); color: #fff; }
+[data-theme="light"] .search-host {
+  --pagefind-ui-text: var(--text);
+  --pagefind-ui-background: var(--panel);
+  --pagefind-ui-border: var(--border);
+}
+[data-theme="light"] .search-host .pagefind-ui__result-excerpt { color: var(--text); }
 
 /* 资料来源列表 */.source-list { margin: 12px 0 0; padding-left: 20px; font-size: 13.5px; line-height: 2; }
 .source-list a { color: var(--accent-2); word-break: break-all; }
@@ -1328,6 +1535,9 @@ img { max-width: 100%; display: block; }
 
 /* 侧栏里的提示文字 */
 .sidebar-hint { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+
+/* 长链接（来源 URL、工坊链接）在窄屏会溢出被裁，强制换行 */
+.map-main a, .sidebar-card a, .source-list a, .stub-notice a { overflow-wrap: anywhere; word-break: break-word; }
 
 /* 详情页 hero 的封面背景（实体分布图缩略，压暗做氛围） */
 .map-hero { position: relative; overflow: hidden; }

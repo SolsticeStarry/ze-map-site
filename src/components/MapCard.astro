@@ -24,11 +24,13 @@ const metaBits = [
   duration || null,
   stages ? `${stages} 关` : null,
 ].filter(Boolean);
+
+/* 预览地址：?map= 支持分片名 / 内部名 / 中文名 */
+const previewUrl = entitySlug ? `/preview/?map=${entitySlug}` : null;
 ---
 
-<a
+<div
   class="map-card"
-  href={`/maps/${slug}/`}
   data-search={`${title} ${titleEn} ${tags.join(' ')}`}
   data-difficulty={difficulty}
   data-game={map.data.game}
@@ -38,6 +40,9 @@ const metaBits = [
   data-subs={map.data.workshopSubs ?? 0}
   data-stages={stages ?? 0}
 >
+  <!-- 整卡点击区域：盖在卡片上的透明链接 -->
+  <a class="map-card-hit" href={`/maps/${slug}/`} aria-label={`${title} 详情`}></a>
+
   <div class={`map-card-cover ${diffClass}`}>
     {cover ? (
       <img src={cover} alt={title} loading="lazy" />
@@ -57,12 +62,17 @@ const metaBits = [
     <div class="map-card-tags">
       {tags.slice(0, 3).map((t: string) => <span class="tag">{t}</span>)}
     </div>
-    {(entitySlug || map.data.workshopSubs) && (
+    {(previewUrl || entityCount || map.data.workshopSubs || map.data.workshopMissing) && (
       <div class="map-card-flags">
-        {entitySlug && <span class="map-flag preview">实体预览</span>}
+        {previewUrl && (
+          <a class="preview-btn" href={previewUrl} target="_blank" rel="noopener" title="在新标签页打开实体预览">
+            🧊 实体预览 <span class="pb-arrow">↗</span>
+          </a>
+        )}
         {entityCount ? <span class="map-flag data">{entityCount.toLocaleString('en-US')} 实体</span> : null}
         {map.data.workshopSubs ? <span class="map-flag">订阅 {map.data.workshopSubs.toLocaleString('en-US')}</span> : null}
+        {map.data.workshopMissing && <span class="map-flag gone">工坊已下架</span>}
       </div>
     )}
   </div>
-</a>
+</div>

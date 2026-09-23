@@ -1,0 +1,92 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const maps = await getCollection('maps');
+const researched = maps.filter((m) => !m.data.stub).length;
+---
+
+<BaseLayout
+  title="站内搜索 | ZE 地图资料站"
+  description={`搜索 ${maps.length} 张僵尸逃跑地图的条目、攻略、神器与关卡内容。`}
+>
+  <section class="hero" style="padding: 70px 0 24px;">
+    <div class="container">
+      <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
+        <span class="gradient-text">站内</span>搜索
+      </h1>
+      <p class="hero-sub">
+        全文检索 {maps.length} 张地图条目（其中 {researched} 张含攻略资料）——地图名、剧情、神器、BOSS、关卡流程都能搜
+      </p>
+    </div>
+  </section>
+
+  <div class="container" style="padding-bottom: 70px;">
+    <div id="search" class="search-host" data-pagefind-ignore></div>
+    <div id="search-fallback" class="empty-state" style="display:none">
+      <p><b>搜索索引尚未生成。</b></p>
+      <p style="font-size: 13px">
+        开发模式（<code>npm run dev</code>）下没有索引，这是正常的；跑一次 <code>npm run build</code> 就会在
+        <code>dist/pagefind/</code> 生成索引，再用 <code>npm run preview</code> 打开本页即可搜索。
+      </p>
+    </div>
+
+    <div class="sidebar-card" style="max-width: 780px; margin-top: 26px;">
+      <h3>搜索小提示</h3>
+      <ul class="sidebar-hint" style="list-style: none; padding: 0">
+        <li>· 搜地图名：<code>魔晄炉</code>、<code>米纳斯</code>、<code>ze_mako</code></li>
+        <li>· 搜题材：<code>最终幻想</code>、<code>黑暗之魂</code>、<code>我的世界</code></li>
+        <li>· 搜玩法：<code>神器</code>、<code>BOSS</code>、<code>长征</code>、<code>滑翔</code></li>
+        <li>· 搜作者：<code>Hannibal</code>、<code>Ayano</code>、<code>气流</code></li>
+        <li>· 找不到具体地图时，也可以直接去 <a href="/maps/">地图库</a> 按难度 / 订阅数筛选</li>
+      </ul>
+    </div>
+  </div>
+</BaseLayout>
+
+<link rel="stylesheet" href="/pagefind/pagefind-ui.css" />
+<script is:inline src="/pagefind/pagefind-ui.js"></script>
+<script is:inline>
+  (function () {
+    function boot() {
+      var host = document.getElementById('search');
+      if (!host) return;
+      if (typeof PagefindUI === 'undefined') {
+        host.style.display = 'none';
+        var fb = document.getElementById('search-fallback');
+        if (fb) fb.style.display = '';
+        return;
+      }
+      new PagefindUI({
+        element: '#search',
+        showSubResults: true,
+        showImages: false,
+        excerptLength: 30,
+        translations: {
+          placeholder: '搜索地图、攻略、神器…',
+          clear_search: '清空',
+          load_more: '加载更多结果',
+          search_label: '搜索本站',
+          filters_label: '筛选',
+          zero_results: '没有找到「[SEARCH_TERM]」相关的内容',
+          many_results: '找到 [COUNT] 条与「[SEARCH_TERM]」相关的结果',
+          one_result: '找到 1 条与「[SEARCH_TERM]」相关的结果',
+          alt_search: '没有「[SEARCH_TERM]」的结果，改为显示「[DIFFERENT_TERM]」的结果',
+          search_suggestion: '没有结果，试试这些关键词：',
+          searching: '搜索中…',
+        },
+      });
+      // 支持 /search/?q=关键词 直接出结果
+      var q = new URLSearchParams(location.search).get('q');
+      if (q) {
+        var input = host.querySelector('input');
+        if (input) {
+          input.value = q;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+  })();
+</script>

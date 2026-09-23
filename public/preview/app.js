@@ -1348,9 +1348,26 @@ document.querySelectorAll('.side-tools button').forEach(b=>{
     buildSide();
   });
 });
+/* 窄屏抽屉：侧栏默认收起，选图后自动关闭 */
+function setSide(open){
+  const aside = document.querySelector('aside');
+  const scrim = $('side-scrim');
+  if(!aside) return;
+  aside.classList.toggle('open', open);
+  if(scrim) scrim.classList.toggle('open', open);
+  clearTimeout(setSide._t);
+  setSide._t = setTimeout(()=>window.dispatchEvent(new Event('resize')), 260);
+}
+$('side-toggle')?.addEventListener('click', ()=>{
+  const aside = document.querySelector('aside');
+  setSide(!(aside && aside.classList.contains('open')));
+});
+$('side-scrim')?.addEventListener('click', ()=>setSide(false));
+
 $('maps').addEventListener('click', e=>{
   const mi = e.target.closest('.mi'); if(!mi) return;
   const entry = entryOf(mi.dataset.k); if(!entry) return;
+  setSide(false);
   $('lmsg').textContent = '正在加载 '+(entry.cn||entry.m)+' …';
   $('loading').style.display = 'flex';
   openMap(entry).then(()=>{ syncUrl(entry.s); $('loading').style.display='none'; })
@@ -1374,7 +1391,7 @@ $('ltoggle').addEventListener('click', ()=>{ $('layers').style.display='flex'; $
   }
   const meta = CATALOG.meta || {};
   $('hbadges').innerHTML =
-    `<span class="badge">${CATALOG.count} 张地图</span>` +
+    `<span class="badge">${CATALOG.count} 张地图（全部模式）</span>` +
     (meta.entities_all ? `<span class="badge">${fmt(meta.entities_all)} 实体</span>` : '') +
     (meta.entities_kept ? `<span class="badge">${fmt(meta.entities_kept)} 可绘点</span>` : '') +
     `<span class="badge">${(CATALOG.groups||[]).length} 个图层</span>` +
@@ -1382,6 +1399,13 @@ $('ltoggle').addEventListener('click', ()=>{ $('layers').style.display='flex'; $
   buildSide();
   resize();
   init3D();
+
+  // 窄屏：图层面板默认收起（否则会盖住大半张地图），并收起侧栏抽屉
+  const narrow = window.innerWidth <= 820;
+  if (narrow) {
+    $('layers').style.display = 'none';
+    $('ltoggle').style.display = 'block';
+  }
 
   // 打开哪张图：?map=<slug|内部名|中文名>，否则挑一张「玩法实体最丰富」的
   const Q = new URLSearchParams(location.search);

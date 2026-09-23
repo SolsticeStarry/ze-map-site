@@ -9,6 +9,8 @@ const maps = defineCollection({
     game: z.enum(['CS:S', 'CS:GO', 'CS2']),
     /* 下面四项对「数据条目」可能暂时没有资料，允许留空 */
     author: z.string().optional(),
+    /** 作者署名的补充说明（多作者 / 原作与移植的区分），侧栏只显示简短 author */
+    authorNote: z.string().optional(),
     version: z.string().optional(),
     difficulty: z.enum(['简单', '中等', '困难', '极难', '地狱', '未知']).default('未知'),
     players: z.string().optional(),
