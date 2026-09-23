@@ -125,3 +125,27 @@ src/pages/sitemap.xml.ts          静态 sitemap
 代码以 **MIT** 许可开源，详见 [`LICENSE`](LICENSE)；地图条目（`src/content/maps/*.mdx`）、`data/`、`public/entity/`、`public/images/` 等**站点内容不适用 MIT** —— 地图版权归各原作者所有，工坊自述与社区引用内容归原出处，本站仅作整理与索引，详见 [`NOTICE`](NOTICE)。
 
 3D 地图查看功能由 **emmmm** 完成。
+
+## 特别感谢
+
+本站最有价值的那部分内容几乎全靠别人铺路，这里必须单独致谢。
+
+- **FYS 社区（风云社）** —— 中文 CS2 僵尸逃跑里技术力与开放精神兼具的标杆。
+  本站收录的 645 张地图、62.9 万个实体点位能做成可交互的 3D / 平面预览，
+  靠的正是 FYS 公开的服务端实体数据。**没有 FYS 愿意把数据拿出来共享，这个功能根本不会存在。**
+- **FYS 的 GitHub 公开仓库** —— <https://github.com/fyscs>。
+  本站实体数据来自 [`MapTracking-CS2`](https://github.com/fyscs/MapTracking-CS2)（StarDance 构建）；
+  同一组织下的 [`servers-config`](https://github.com/fyscs/servers-config)、
+  [`cs2`](https://github.com/fyscs/cs2) 等仓库把多年积累的服务器配置也整套公开。
+  愿意这样无偿开源，受益的是整个中文 ZE 社区 —— 这份格局值得所有人记着。
+- **Kxnrl** —— <https://github.com/Kxnrl>。衷心感谢他为 FYS 所作出的贡献。
+  他在 Source / CS2 服务端技术上长期深耕，账号下公开了 100 个仓库，其中
+  [ModSharp](https://github.com/Kxnrl/modsharp-public)（Source 2 现代模组方案）、
+  [Store](https://github.com/Kxnrl/Store)、
+  [Mapchooser-Redux](https://github.com/Kxnrl/Mapchooser-Redux)、
+  [entWatch](https://github.com/Kxnrl/entWatch) 等项目早已是社区常用件。
+  本站「神器 / 道具」栏目整理的那些配置，正是在这一层服务端技术之上 ——
+  技术过硬，又肯长期无偿投入，这样的人是社区真正的基石。
+
+再次向 **FYS 社区（风云社）**、**FYS 的 GitHub 公开仓库** 与 **Kxnrl 本人** 致以诚挚谢意。
+本站只是站在他们铺好的路上，做了一点整理工作。

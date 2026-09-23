@@ -277,7 +277,12 @@ img { max-width: 100%; display: block; }
 .hero-bg-layer {
   position: absolute;
   inset: 0;
+  /* 先给老浏览器一张压过的 JPEG，再用 image-set 让支持的浏览器取 WebP（体积只有一半） */
   background-image: url('/images/hero-bg.jpg');
+  background-image: image-set(
+    url('/images/hero-bg.webp') type('image/webp'),
+    url('/images/hero-bg.jpg') type('image/jpeg')
+  );
   background-size: cover;
   background-position: center;
   z-index: -2;

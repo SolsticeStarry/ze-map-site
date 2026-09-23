@@ -1,6 +1,10 @@
 # Cloudflare Pages / Workers 静态资源响应头
 # 实体数据分片是 gzip 字节流，交给前端用 DecompressionStream 解压，
 # 这里显式声明类型，避免被平台按二进制流二次压缩。
+#
+# ⚠️ 踩坑提醒：一个请求若同时命中多条规则，同名 header 的值会被【逗号拼接】而不是覆盖。
+# 所以不要写 /* 这种宽泛的 Cache-Control 规则——它会和 /entity/data/* 的值拼在一起，
+# 变成 "max-age=86400, max-age=0, ..." 这种自相矛盾的头。要加规则就用互不重叠的具体路径。
 
 /entity/data/*
   Content-Type: application/gzip
@@ -14,3 +18,12 @@
 
 /sitemap.xml
   Cache-Control: public, max-age=3600
+
+# 带内容哈希的构建产物（内容变了文件名才会变）→ 可永久缓存，回访不再发验证请求
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 封面 / 路线图 / hero 背景：文件名不带哈希，给 7 天
+# 注意：换了图但文件名不变时，回访用户最多 7 天看到旧图；要立即生效请改文件名（如 hero-bg-2.webp）
+/images/*
+  Cache-Control: public, max-age=604800
