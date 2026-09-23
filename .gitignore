@@ -147,3 +147,9 @@ data/research/_*/
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# wrangler：只忽略本地状态与密钥；wrangler.jsonc 必须入库
+# （它负责关掉 deploy 时的 autoconfig，并配置 dist/404.html 兜底）
+.wrangler/
+.dev.vars*
+!.dev.vars.example

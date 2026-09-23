@@ -1,6 +1,6 @@
 # 待办与已知问题
 
-> 整理时间：2026-09-23 · 对应线上版本：`9103f1d`（已部署并验证）
+> 整理时间：2026-09-23 · 线上版本：`9103f1d`（`c91dd8f`「update 1」因构建失败**没有上线**，见第 1、20 条）
 > 口径：已完成的事项保留记录（方便回溯），未闭环的排在前面。
 > 标注「待你操作」的，我这边无法代劳（需要控制台权限或你的决策）。
 
@@ -8,26 +8,31 @@
 
 ## 一、需要你决定或操作的
 
-### 1. 自定义 404 页没有生效 ⚠️
+### 1. ~~自定义 404 页没有生效~~ ✅ 已修复（2026-09-23，顺带修掉线上构建失败）
 
 - **现象**：访问不存在的路径返回 404 状态码，但**响应体是空的**，看不到站内做的 404 页面。
-- **原因**：`dist/404.html` 已经构建并部署（直接访问 `/404.html` 是 200），但这是 **Workers 静态资源**项目，默认 `not_found_handling: none`，平台不会自动把 `404.html` 当兜底页。控制台 Settings 里**没有**这个开关（assets 配置由构建时的 wrangler 注入）。
-- **修法**：在仓库根目录加 `wrangler.jsonc`：
+- **原因**：`dist/404.html` 已经构建并部署（直接访问 `/404.html` 是 200），但这是 **Workers 静态资源**项目，默认 `not_found_handling: none`，平台不会自动把 `404.html` 当兜底页。控制台 Settings 里**没有**这个开关（assets 配置由构建时的 wrangler 注入，仓库里没有配置文件时无法指定）。
+- **已做的修法**：仓库根目录新增 `wrangler.jsonc`：
 
   ```jsonc
   {
     "name": "ze-map-site",
-    "compatibility_date": "2026-09-21",
+    "compatibility_date": "2026-09-23",
     "assets": {
       "directory": "./dist",
-      "not_found_handling": "404-page"
+      "not_found_handling": "404-page",
+      "html_handling": "auto-trailing-slash"
     }
   }
   ```
 
-- **风险**：仓库一旦出现 wrangler 配置，`npx wrangler deploy` 就以它为准；`assets.directory` 写错会导致**整站没有静态资源**。加完必须立刻验证首页、`/preview/`、以及未知路径。
-- **验证**：`curl -i https://ze-map.cn/no-such-page/` 应返回 404 且 body 含「页面不存在」。
-- **状态**：你已选择「先不管」。**要加的话说一声**，我加完会盯着部署结果验证。成本：5 分钟。
+  这个文件**同时**关掉了 wrangler 的自动配置（autoconfig）——那正是 `c91dd8f` 构建失败的根因，详见第 20 条。两份收益一个文件。
+- **风险（仍然成立）**：仓库里一旦有 wrangler 配置，`npx wrangler deploy` 就完全以它为准；`name` 写错会新建一个 Worker（自定义域名不会跟过去），`assets.directory` 写错会**整站没有静态资源**。所以文件里两处都加了警告注释。
+- **验证**：
+  - 本地 `npm run build` 退出码 0、808 页、`dist/404.html` 6,036 字节；
+  - `npx wrangler deploy --dry-run` 退出码 0，日志 **没有**出现 autoconfig 的交互提示，直接 `Read 3695 files from the assets directory ...\dist`；
+  - 上线后待验：`https://ze-map.cn/no-such-page/` 应返回 404 且 body 含站内 404 页文案（当前 body 为空）。
+- **状态**：已改好，等你推送。
 
 ### 2. 分支预览没开启（影响上线流程）〔待你操作〕
 
@@ -193,3 +198,21 @@ npm run search:index                         # 只重建搜索索引
 - **标签大小写**：`Boss` / `boss` / `BOSS` 在 Windows 上是同一个目录，本地看不出问题，Cloudflare 是大小写敏感文件系统 → 线上 404。已在生成器里做归一（手写写法优先），并加了 `content:links` 死链检查兜底。
 - **MDX 里的 `<` 和 `{`**：工坊正文含这些字符会被当 JSX 解析导致构建失败，生成器已统一转义。
 - **PowerShell 5.1 读 UTF-8**：`.ps1` 无 BOM 会把中文读成乱码；`data/workshop/*.json` 曾被写出 BOM 导致 Node `JSON.parse` 抛错。相关脚本已处理（脚本保持 ASCII、JSON 不带 BOM 写）。
+
+### 20. 一次线上构建失败：wrangler 自动配置 + 构建期读文件依赖 cwd（2026-09-23 修复）
+
+- **现象**：`c91dd8f`（update 1）的 Build #e80f3333 红叉，日志报
+  `Error: no such file or directory, readAll '/bundle/public/entity/catalog.json'`。
+  线上仍是 `9103f1d` —— 所以那次推送的**搜索页、重新生成的地图条目、按钮改动都没上线**（实测 `https://ze-map.cn/search/` 返回 404 可印证）。
+- **根因链**（两件事叠在一起才炸）：
+  1. 仓库里没有 wrangler 配置文件 → `npx wrangler deploy` 触发 **autoconfig**：非交互环境下「Proceed with setup?」的回退值是 **yes**，于是它自动装了 `@astrojs/cloudflare`、改了 `astro.config.mjs`、**又重跑了一遍 `npm run build`**（日志里的 `🛠️ Configuring project for Astro with "astro add cloudflare"` 就是它）；
+  2. 这次重跑是在 Cloudflare 适配器下预渲染的，**工作目录变成 `/bundle`**；而 `about.astro` 当时是 `fs.promises.readFile('public/entity/catalog.json')` —— 相对路径按 cwd 解析，于是读不到文件，构建中断。
+  - 为什么 `9103f1d` 能上线：它的 `about.astro` **没有**这行读文件的代码，是 `c91dd8f` 才加进去的（`git show c91dd8f -- src/pages/about.astro` 可见）。所以这是一个「新代码 + 部署环境的隐藏行为」共同触发的问题。
+- **修法**（两层，缺一不可）：
+  1. `about.astro` 改为构建期 `import catalog from '../../public/entity/catalog.json'`：由打包器按**模块图**解析，与运行时 cwd 无关，任何打包/适配器环境都成立。数字仍是预览工具的同一份 `catalog.json`，没有第二份真相。
+  2. 新增 `wrangler.jsonc`：按官方文档，**只要存在 wrangler 配置文件，autoconfig 就不会运行**（[automatic-configuration](https://developers.cloudflare.com/workers/framework-guides/automatic-configuration/)：「If a Wrangler configuration file already exists, automatic configuration will not run」）。
+- **验证**：
+  - `npm run build` 退出码 **0**、808 页、搜索索引 3.14 MB、`dist/about/` 仍显示 547 / 645 / 98；
+  - `npx wrangler deploy --dry-run` 退出码 **0**，日志直接 `Read 3695 files from the assets directory ...\dist`，**不再出现** autoconfig 交互提示；
+  - 全仓库复查：`src/` 里已无任何构建期文件读取（只剩这一处，且已改成 import）。
+- **教训**：**构建期不要用相对路径读文件**。要读就 `import`（打包器解析）或显式用 `process.cwd()`／绝对路径。这类代码在本地和 CI 的默认路径下都正常，只在打包环境变了（适配器、预渲染、cwd 不同）时才炸，而且报错信息（`/bundle/...`）和你的代码看起来毫无关系。

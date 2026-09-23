@@ -1,0 +1,27 @@
+// Cloudflare Workers 部署配置（纯静态资源，站点由 Astro 构建到 ./dist）
+//
+// 这个文件有两个作用，都别删：
+//
+// 1) 关掉 wrangler 的「自动配置」（autoconfig）。
+//    仓库里没有 wrangler 配置文件时，`npx wrangler deploy` 会自作主张地执行
+//    `astro add cloudflare`：装 @astrojs/cloudflare 适配器、改 astro.config.mjs、
+//    再重跑一次 npm run build。适配器的预渲染工作目录是 /bundle，
+//    任何依赖 cwd 的构建期读文件都会失败。
+//    2026-09-23 的线上部署失败（Build #e80f3333）就是这么来的。
+//    官方说明：https://developers.cloudflare.com/workers/framework-guides/automatic-configuration/
+//
+// 2) 让静态资源用 dist/404.html 兜底。
+//    not_found_handling 默认是 none（未命中的路径返回空 body 的 404）。
+//
+// ⚠️ name 必须与线上 Worker 同名（ze-map-site），否则会新建一个 Worker，
+//    自定义域名 ze-map.cn 不会跟过去。
+// ⚠️ assets.directory 必须指向 ./dist，写错会导致整站没有静态资源。
+{
+  "name": "ze-map-site",
+  "compatibility_date": "2026-09-23",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  }
+}
