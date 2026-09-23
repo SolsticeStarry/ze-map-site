@@ -119,3 +119,9 @@ public/preview/app.js             实体预览 viewer（移植自单文件版）
 src/pages/preview.astro           /preview 页面
 src/pages/sitemap.xml.ts          静态 sitemap
 ```
+
+## 版权与许可
+
+代码以 **MIT** 许可开源，详见 [`LICENSE`](LICENSE)；地图条目（`src/content/maps/*.mdx`）、`data/`、`public/entity/`、`public/images/` 等**站点内容不适用 MIT** —— 地图版权归各原作者所有，工坊自述与社区引用内容归原出处，本站仅作整理与索引，详见 [`NOTICE`](NOTICE)。
+
+3D 地图查看功能由 **emmmm** 完成。

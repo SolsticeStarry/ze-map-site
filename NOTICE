@@ -1,0 +1,66 @@
+NOTICE —— 站点内容与第三方资料的版权说明
+================================================
+
+本仓库的**源代码**以 MIT 许可开源（见 LICENSE）。
+
+本文件说明**不适用 MIT 许可**的那部分内容。
+
+## 代码贡献者
+
+- 站点源代码：**宇宙机器人（hhjjdsj）**
+- **3D 地图查看功能：emmmm**
+
+以上代码都属于本仓库源码，包含在 MIT 许可范围内；此处署名用于致谢。
+
+## 哪些内容不适用 MIT
+
+- `src/content/maps/*.mdx` —— 地图条目正文（背景故事、关卡流程、神器、攻略）
+- `data/` —— 工坊抓取结果、线上检索资料、GFL 公开配置的解析结果
+- `public/entity/` —— 实体数据分片与索引（数据来自第三方实体 dump：fyscs/MapTracking-CS2）
+- `public/images/` —— 卡片封面、路线图等渲染图
+
+## 版权归属
+
+1. **地图本身的版权归各原作者所有**（发布于 Steam 创意工坊、GameBanana 等平台）。
+   本站不对任何地图及其素材（模型、贴图、音频）主张权利。
+
+2. **工坊自述、社区帖文、B 站 / 论坛视频等引用内容归原出处所有。**
+   本站仅作整理、摘录、翻译与索引，并尽量标注来源链接；查不到出处的宁缺勿假。
+
+3. 站点自己的整理成果（条目排版、统计、翻译文字）由本站作者贡献，
+   可以引用，但请注明来自 https://ze-map.cn 。
+
+## 想转载或再使用这些内容
+
+请**回到原始出处并获得相应授权**。本站不是这些内容的权利方，
+无法代为授权，也不希望这些引用被当作可以自由再分发的素材。
+
+## 如果你是某张地图的作者
+
+若你认为本站的收录或引用方式不妥（包括希望补充署名、更正来源、或要求删除），
+请通过仓库 issue 或 https://ze-map.cn/about/ 上的联系方式告知，我们会及时处理。
+
+--------------------------------------------------------------------------------
+
+NOTICE — Copyright of site content and third-party material
+================================================
+
+The **source code** of this repository is released under the MIT License (see LICENSE).
+This file covers the parts that are **NOT** covered by it.
+
+## Code contributors
+
+- Site source code: **宇宙机器人 (hhjjdsj)**
+- **3D map viewing feature: emmmm**
+
+All of the above is part of this repository's source code and is covered by the MIT License;
+the credit here is acknowledgement only.
+
+- The copyright of each map and its assets belongs to its original author
+  (published on Steam Workshop, GameBanana, etc.). This site claims no rights over them.
+- Quoted workshop descriptions, community posts, and videos belong to their original sources.
+  This site only collects, translates, and indexes such content, with source links where possible.
+- Please return to the original source and obtain permission before reusing such content.
+  This site is not the rights holder and cannot grant permission on their behalf.
+- Map authors who want an attribution corrected, a source added, or their entry removed
+  are welcome to open an issue on this repository.
