@@ -1,15 +1,27 @@
 ---
 /* 地图实体预览（viewer）—— 移植自单文件版，数据按图按需加载。
    数据构建： scripts/entity-data/build-entity-data.mjs
+   地形分包： public/terr/<工坊ID>.bin（来自社区工具「云朵小铺」的实体预览，
+             几何由 Source 2 Viewer 从创意工坊地图包解析，见 docs/terrain-3d-plan.md）
    脚本：     public/preview/app.js
    支持参数： ?map=<slug|内部名|中文名>&view=2d&stage=N */
+import fs from 'node:fs';
 import '../styles/preview.css';
 
 const site = Astro.site ?? new URL('https://ze-map.cn');
 const canonical = new URL(Astro.url.pathname, site);
 const ogImage = new URL('/images/hero-bg.jpg', site).href;
-const desc =
-  'CS2 僵尸逃跑地图实体预览：可破坏物、传送门、机关、危险区、关卡分层的 2D/3D 可视化，收录 645 张地图、62.9 万个实体。';
+
+/* 带真实碰撞地形的地图数：直接数分包（一张图一个 .bin），文案就不会和实际脱节 */
+const terrCount = (() => {
+  try {
+    return fs.readdirSync('public/terr').filter((f) => f.endsWith('.bin')).length;
+  } catch {
+    return 0;
+  }
+})();
+
+const desc = `CS2 僵尸逃跑地图实体预览：传送门、可破坏物、机关、危险区、关卡分层的 2D/3D 可视化，收录 645 张地图、62.9 万个实体${terrCount ? `，其中 ${terrCount} 张带真实碰撞地形` : ''}。`;
 ---
 
 <!doctype html>
@@ -32,7 +44,7 @@ const desc =
 
 <header>
   <h1>🗺️ 地图实体预览</h1>
-  <div class="sub">可破坏物 · 传送门 · 机关 · 危险区（俯视投影）</div>
+  <div class="sub">可破坏物 · 传送门 · 机关 · 危险区{terrCount ? ` · ${terrCount} 张真实碰撞地形` : ''}</div>
   <div class="badges" id="hbadges"></div>
   <a class="back" href="/maps/">← 返回地图库</a>
 </header>
@@ -122,13 +134,19 @@ const desc =
           <input type="range" id="cutz" min="0" max="100" value="100" title="按高度剖切">
           <span class="v" id="cutzv">100%</span>
         </div>
+        <div class="cutrow" id="row3dt" data-lt="🏔️ 真实碰撞地形" data-desc="从创意工坊地图包里解析出的真实碰撞网格（world_physics），545 张图带这份数据。它是地图的实体地板/墙体，不是贴图渲染的观感画面。数据来自社区工具「云朵小铺」的实体预览，几何由 Source 2 Viewer 解析；分包按图加载，缺失时自动退回只看实体。">
+          <span>🏔️ 地形</span>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="checkbox" id="terbox" checked> 显示</label>
+          <span class="v" id="tstat">—</span>
+        </div>
         <div class="cutrow" id="rowsg" data-lt="🏁 关卡分层" data-desc="只显示所选关卡的实体，切换后相机自动飞到该关范围。关卡来自实体命名（lvl2/stage3 等），未命中的按最近标注实体就近推断。">
           <span>🏁 关卡</span>
           <select id="stagesel" style="flex:1;min-width:0;font-size:11.5px;border:1px solid var(--line2);
             border-radius:7px;padding:3px 5px;background:#fff;color:var(--ink);font-family:inherit"></select>
         </div>
         <div class="body" id="lbody"></div>
-        <div class="foot">单击切换显隐 · 双击独显<br>刷子实体只有原点、无体积，故以典型尺寸块表示<br>关卡划分来自实体命名（lvl2/stage3 等），未命名的按最近标注实体就近推断</div>
+        <div class="foot">单击切换显隐 · 双击独显<br>刷子实体只有原点、无体积，故以典型尺寸块表示<br>关卡划分来自实体命名（lvl2/stage3 等），未命名的按最近标注实体就近推断<br><span style="color:var(--ink3)">地形数据：社区工具「云朵小铺」· 几何解析：Source 2 Viewer · 地图版权归各图原作者</span></div>
       </div>
       <div class="hud">
         <div class="north" id="north">▲<br>N</div>

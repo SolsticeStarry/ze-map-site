@@ -60,6 +60,41 @@ window.GL3D = (function(){
     '  gl_FragColor = vec4(vC, a);',
     '}'].join('\n');
 
+  /* --- 真实碰撞地形（地图的 world_physics 碰撞网格）---
+     数据：public/terr/<工坊ID>.bin（gzip 包 MSH1：量化 u16 位置 + 索引）
+     着色器自社区工具「云朵小铺 · 地图实体预览」的 preview3d.html 移植；
+     地形几何由 Source 2 Viewer 从创意工坊地图包解析。详见 docs/terrain-3d-plan.md。 */
+  const MVS = [
+    'attribute vec3 aPos;','attribute vec3 aNrm;',
+    'uniform mat4 uVP;','uniform vec3 uO;','uniform vec3 uS;',
+    'varying vec3 vN;','varying vec3 vW;',
+    'void main(){',
+    '  vec3 s = uO + aPos * uS;',         /* 量化还原：world = o + q * s */
+    '  vec3 w = vec3(s.x, s.z, -s.y);',   /* Source（Z 朝上）→ GL（Y 朝上） */
+    '  vW = w;',
+    '  vN = vec3(aNrm.x, aNrm.z, -aNrm.y);',
+    '  gl_Position = uVP * vec4(w, 1.0);',
+    '}'].join('\n');
+  const MFS = [
+    'precision highp float;',
+    'uniform vec3 uEye;','uniform float uFogK;','uniform vec3 uFogC;','uniform float uCutY;','uniform float uCutLo;',
+    'uniform float uA;',
+    'varying vec3 vN;','varying vec3 vW;',
+    'void main(){',
+    '  if(vW.y > uCutY || vW.y < uCutLo) discard;',   /* 剖切面 */
+    '  vec3 N = normalize(vN);',
+    '  vec3 L = normalize(vec3(-0.44, 0.78, 0.45));',
+    '  float d1 = max(dot(N, L), 0.0);',
+    '  float dd = max(d1, max(dot(-N, L), 0.0) * 0.55);',  /* 双面光照：地形是单层薄壳 */
+    '  float hemi = 0.5 + 0.5 * abs(N.y);',
+    '  vec3 amb = mix(vec3(0.42,0.44,0.50), vec3(0.78,0.79,0.83), hemi);',
+    '  vec3 col = vec3(0.66,0.64,0.62) * (amb + dd * 0.50);',
+    '  float dist = length(uEye - vW);',
+    '  float fog = clamp(exp(-dist * uFogK), 0.0, 1.0);',
+    '  col = mix(uFogC, col, fog);',
+    '  gl_FragColor = vec4(col, uA);',
+    '}'].join('\n');
+
   /* 单位立方体：6 面 × 6 顶点（三角形环绕直接展开，免索引缓冲）= 36 顶点 */
   const CUBE = (function(){
     const faces = [
@@ -83,9 +118,10 @@ window.GL3D = (function(){
     return { pos:new Float32Array(pos), nrm:new Float32Array(nrm) };
   })();
 
-  let gl=null, prog=null, pprog=null, ready=false, GL2=false;
-  let bufB=null, bufP=null, nBox=0, nPt=0, strideB=0, strideP=0;
-  const U = {}, UP = {};
+  let gl=null, prog=null, pprog=null, mprog=null, ready=false, GL2=false;
+  let bufB=null, bufP=null, bufM=null, nBox=0, nPt=0, nMesh=0, strideB=0, strideP=0;
+  let mO=[0,0,0], mS=[1,1,1];
+  const U = {}, UP = {}, UM = {};
 
   function sh(t, s){
     const o = gl.createShader(t);
@@ -115,13 +151,14 @@ window.GL3D = (function(){
       if(!gl) return false;
       const a = mk(VS, FS); prog = a.p; Object.assign(U, a.u);
       const b = mk(PVS, PFS); pprog = b.p; Object.assign(UP, b.u);
+      const c = mk(MVS, MFS); mprog = c.p; Object.assign(UM, c.u);
       gl.enable(gl.DEPTH_TEST);
       gl.depthFunc(gl.LEQUAL);
       gl.enable(gl.CULL_FACE);
       gl.cullFace(gl.BACK);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      bufB = gl.createBuffer(); bufP = gl.createBuffer();
+      bufB = gl.createBuffer(); bufP = gl.createBuffer(); bufM = gl.createBuffer();
       ready = true;
       return true;
     }catch(e){
@@ -165,11 +202,47 @@ window.GL3D = (function(){
     gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW);
   }
 
+  /* 地形网格：verts = Uint16Array(nv*3 量化位置)，idxs = Uint16/Uint32Array(nt*3)，
+     o = 源坐标原点，s = 源坐标缩放（world = o + q * s，在顶点着色器里算）。
+     这里按三角形展开成静态交错缓冲（每顶点 12B：3×u16 位置 + 3×i8 法线 + 2 字节填充），
+     法线按三角形平面现算 —— 原始数据里没有法线，这样够用且免去逐顶点平均。
+     走 drawArrays 而不是 drawElements：展开后就能和块体共用同一套绘制路径，
+     也避开了 WebGL1 下 u32 索引要扩展的限制。 */
+  function setMesh(verts, idxs, o, s, nt){
+    nMesh = nt | 0;
+    if(!nMesh || !gl) return;
+    mO = [o[0], o[1], o[2]]; mS = [s[0], s[1], s[2]];
+    const d = new Uint8Array(nMesh * 3 * 12);
+    const dv = new DataView(d.buffer);
+    let p = 0;
+    for(let i=0;i<nMesh;i++){
+      const i0 = idxs[i*3]*3, i1 = idxs[i*3+1]*3, i2 = idxs[i*3+2]*3;
+      const ax = o[0]+verts[i0]*s[0], ay = o[1]+verts[i0+1]*s[1], az = o[2]+verts[i0+2]*s[2];
+      const bx = o[0]+verts[i1]*s[0], by = o[1]+verts[i1+1]*s[1], bz = o[2]+verts[i1+2]*s[2];
+      const cx = o[0]+verts[i2]*s[0], cy = o[1]+verts[i2+1]*s[1], cz = o[2]+verts[i2+2]*s[2];
+      let nx = (by-ay)*(cz-az) - (bz-az)*(cy-ay);
+      let ny = (bz-az)*(cx-ax) - (bx-ax)*(cz-az);
+      let nz = (bx-ax)*(cy-ay) - (by-ay)*(cx-ax);
+      const l = Math.hypot(nx, ny, nz) || 1;
+      nx = Math.round(nx/l*127); ny = Math.round(ny/l*127); nz = Math.round(nz/l*127);
+      for(let k=0;k<3;k++){
+        const vi = (k===0?i0:k===1?i1:i2);
+        dv.setUint16(p,     verts[vi],   true);
+        dv.setUint16(p + 2, verts[vi+1], true);
+        dv.setUint16(p + 4, verts[vi+2], true);
+        dv.setInt8(p + 6, nx); dv.setInt8(p + 7, ny); dv.setInt8(p + 8, nz);
+        p += 12;
+      }
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufM);
+    gl.bufferData(gl.ARRAY_BUFFER, d, gl.STATIC_DRAW);
+  }
+  function clearMesh(){ nMesh = 0; }
+
   function clear(){
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   }
-
   /* 4x4 列主序矩阵工具 */
   const M4 = {
     ident: () => new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]),
@@ -209,6 +282,32 @@ window.GL3D = (function(){
     clear();
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     const fogK = cam.fogK === undefined ? 0 : cam.fogK;
+
+    /* --- 地形网格（真实碰撞几何）：最先画，作为其它实体的底 ---
+       关掉背面剔除：地形是从地图包解析出的单层薄壳，正反面都要可见。
+       半透明时（cam.topa < 1）不写深度，避免挡住后面的块体。 */
+    if(nMesh && cam.terrain !== false){
+      const ta = cam.topa === undefined ? 1.0 : cam.topa;
+      gl.useProgram(mprog);
+      gl.disable(gl.CULL_FACE);
+      for(let i=0;i<8;i++) gl.disableVertexAttribArray(i);
+      gl.uniformMatrix4fv(UM.uVP, false, cam.vp);
+      gl.uniform3f(UM.uEye, cam.eye[0], cam.eye[1], cam.eye[2]);
+      gl.uniform1f(UM.uFogK, fogK);
+      gl.uniform3f(UM.uFogC, cam.fog[0], cam.fog[1], cam.fog[2]);
+      gl.uniform1f(UM.uCutY, cam.cutY === undefined ? 1e9 : cam.cutY);
+      gl.uniform1f(UM.uCutLo, cam.cutLo === undefined ? -1e9 : cam.cutLo);
+      gl.uniform1f(UM.uA, ta);
+      gl.uniform3f(UM.uO, mO[0], mO[1], mO[2]);
+      gl.uniform3f(UM.uS, mS[0], mS[1], mS[2]);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufM);
+      gl.vertexAttribPointer(UM.aPos, 3, gl.UNSIGNED_SHORT, false, 12, 0);
+      gl.vertexAttribPointer(UM.aNrm, 3, gl.BYTE, true, 12, 6);
+      gl.enableVertexAttribArray(UM.aPos);
+      gl.enableVertexAttribArray(UM.aNrm);
+      gl.drawArrays(gl.TRIANGLES, 0, nMesh * 3);
+      gl.enable(gl.CULL_FACE);
+    }
 
     /* --- 块体（drawArrays：顶点数据已展开三角形环绕，无索引上限） --- */
     if(nBox && cam.solid){
@@ -288,8 +387,10 @@ window.GL3D = (function(){
 
   return {
     init, setBoxes, setPoints, draw, drawLines, M4, clear, CUBE,
+    setMesh, clearMesh,
     get ok(){ return ready; }, get isGL2(){ return GL2; },
     get boxCount(){ return nBox; }, get ptCount(){ return nPt; },
+    get meshCount(){ return nMesh; },
     setVP(v){ curVP = v; },
   };
 })();
@@ -301,6 +402,8 @@ window.GL3D = (function(){
  * 分片格式与原单文件完全一致：[4B 小端 JSON 长度][JSON][BIN]，整体 gzip。
  */
 const DATA_BASE = window.__ENTITY_BASE__ || '/entity';
+/* 真实碰撞地形分包（public/terr/<工坊ID>.bin），与实体数据同样按需加载 */
+const TERR_BASE = window.__TERR_BASE__ || '/terr';
 let BIN = null;                   // 当前图的二进制块区（密度底图 + 雷达 webp）
 let CATALOG = null;               // 全部地图索引
 const payloadCache = new Map();   // slug -> payload，重复切换不再请求
@@ -326,6 +429,78 @@ async function fetchMapPayload(slug){
   payload.bin = new Uint8Array(ab, 4 + jlen);
   payloadCache.set(slug, payload);
   return payload;
+}
+
+/* ===== 真实碰撞地形（可关的图层）=====
+ * 数据：public/terr/<工坊ID>.bin —— gzip 包着 MSH1 头 + 量化顶点 + 索引。
+ *   'MSH1' | u32 nv | u32 nt | u32 u16i | f32×3 原点 o | f32×3 缩放 s | u16 顶点 | 索引
+ * 与实体数据一样按需加载：打开某张图才拉那张的分包（约 400 KB gzip）。
+ * 分包缺失（快照之后上架的新图）或解压失败时静默降级 —— 清空网格，其余照常。
+ */
+const meshCache = new Map();   // 工坊ID -> Promise<{verts, idxs, o, s, nt}>
+let meshErrKey = null;         // 加载失败的那张图（状态行显示「本地无地形」）
+
+/* 缓存的是 Promise 而不是结果：进 3D 与切图会几乎同时触发两次刷新，
+   缓存结果的话两次都会穿透、把同一个分包下载两遍（实测 408 KB × 2）。
+   失败的不留在缓存里，下次切换还能重试。 */
+function fetchTerrMesh(wf){
+  if(meshCache.has(wf)) return meshCache.get(wf);
+  const p = (async () => {
+    if(!hasDS()) throw new Error('浏览器不支持解压（DecompressionStream）');
+    const res = await fetch(`${TERR_BASE}/${wf}.bin`);
+    if(!res.ok) throw new Error(`没有这张图的地形分包（HTTP ${res.status}）`);
+    const ab = await new Response(res.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+    const dv = new DataView(ab);
+    const magic = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
+    if(magic !== 'MSH1') throw new Error('地形分包格式不对（缺少 MSH1 标识）');
+    let p2 = 4;
+    const nv = dv.getUint32(p2, true); p2 += 4;
+    const nt = dv.getUint32(p2, true); p2 += 4;
+    const u16i = dv.getUint32(p2, true); p2 += 4;
+    const o = [dv.getFloat32(p2, true), dv.getFloat32(p2+4, true), dv.getFloat32(p2+8, true)]; p2 += 12;
+    const s = [dv.getFloat32(p2, true), dv.getFloat32(p2+4, true), dv.getFloat32(p2+8, true)]; p2 += 12;
+    const verts = new Uint16Array(ab, p2, nv * 3); p2 += nv * 6;
+    if(!u16i) p2 = (p2 + 3) & ~3;                  // u32 索引要 4 字节对齐
+    const idxs = u16i ? new Uint16Array(ab, p2, nt * 3) : new Uint32Array(ab, p2, nt * 3);
+    return { verts, idxs, o, s, nt };
+  })();
+  p.catch(() => meshCache.delete(wf));
+  if(meshCache.size > 4) meshCache.delete(meshCache.keys().next().value);
+  meshCache.set(wf, p);
+  return p;
+}
+
+/* 按当前选中图与开关刷新地形网格（切图 / 切开关 / 切 2D↔3D 都要走这里） */
+async function refreshTerrain(){
+  const wf = S.entry && S.entry.f;
+  if(!GLok || S.mode !== '3d' || !S.terrain || !wf){
+    GL3D.clearMesh(); meshErrKey = null; updateTerrRow(); return;
+  }
+  const forKey = S.key;
+  try{
+    const e = await fetchTerrMesh(wf);
+    if(forKey !== S.key) return;              // 期间切走了，结果丢弃
+    GL3D.setMesh(e.verts, e.idxs, e.o, e.s, e.nt);
+    meshErrKey = null;
+  }catch(err){
+    GL3D.clearMesh();
+    meshErrKey = forKey;
+    console.warn('地形加载失败：' + (err && err.message ? err.message : err));
+  }
+  updateTerrRow();
+  if(S.mode === '3d') render3D();
+}
+
+/* 工具面板里那行状态文字 */
+function updateTerrRow(){
+  const st = $('tstat');
+  if(!st) return;
+  const wf = S.entry && S.entry.f;
+  if(!S.terrain) st.textContent = '已关';
+  else if(!wf) st.textContent = '此图无数据';
+  else if(meshErrKey === S.key) st.textContent = '本地无地形';
+  else if(GL3D.meshCount) st.textContent = fmt(GL3D.meshCount) + ' 面';
+  else st.textContent = '加载中…';
 }
 
 /* 打开一张图：拉分片 → 组装成原版 DATA 结构（maps 里只有这一张）→ 复用原有渲染流程 */
@@ -354,7 +529,7 @@ function syncUrl(slug){
 let DATA=null, GMAP={}, CLS=[], MAPKEYS=[];
 const S = { key:null, entry:null, listMode:'2001', mode:'3d', proj:'xy', hcol:false, psize:3, glow:false, full:false,
             off:new Set(), solo:null, sort:'k', bmap:true, bop:0.6, sel:null,
-            vbox:true, bopa:0.88, cutz:1, stage:0 };
+            vbox:true, bopa:0.88, cutz:1, stage:0, terrain:true };
 let view = {s:1, ox:0, oy:0};
 /* 关卡过滤：0=全部 · -1=未标注 · n=第 n 关 */
 function stageOk(o){
@@ -502,6 +677,7 @@ function loadMap(k){
   loadRadar(m);
   build3D(); resetCam();
   if(S.mode==='3d') render3D();
+  refreshTerrain();          // 地形是异步的：先按现状渲染，拉到了再补画
 }
 const minOf = a => a.length?Math.min.apply(null,a):0;
 const maxOf = a => a.length?Math.max.apply(null,a):0;
@@ -908,6 +1084,9 @@ function render3D(){
   size3D();
   const { eye, vp } = camVP();
   GL3D.setVP(vp);
+  /* 剖切面：和 build3D() 用同一个口径（Source Z 坐标，只保留下半部分） */
+  const bb = cur.m.fb;
+  const cutZ = bb[2] + Math.max(1, bb[5] - bb[2]) * S.cutz;
   GL3D.draw({
     vp, eye,
     alpha: 1.0,
@@ -915,6 +1094,9 @@ function render3D(){
     pAlpha: 0.85,
     solid: S.vbox,
     fogK: CAM.fogK, fog: CAM.fog,
+    terrain: S.terrain,
+    cutY: cutZ,
+    cutLo: -1e9,
   });
   drawGrid(vp);
   drawAxis();
@@ -1073,8 +1255,10 @@ function setMode(m){
   // 3D 专属行
   $('row3da').style.display = is3 ? '' : 'none';
   $('row3db').style.display = is3 ? '' : 'none';
+  $('row3dt').style.display = is3 ? '' : 'none';
   if(is3){ render3D(); }
   else { resize(); }
+  refreshTerrain();   // 进 3D 时按需拉地形；回 2D 时把网格释放掉
 }
 
 /* ============================ 实体选中 / 详情 / 搜索 ============================ */
@@ -1318,6 +1502,7 @@ $('glow').addEventListener('change', e=>{ S.glow=e.target.checked; draw(); });
 $('full').addEventListener('change', e=>{ S.full=e.target.checked; if(S.key) loadMap(S.key); });
 $('psize').addEventListener('input', e=>{ S.psize=parseFloat(e.target.value); draw(); });
 $('vbox').addEventListener('change', e=>{ S.vbox=e.target.checked; build3D(); render3D(); });
+$('terbox').addEventListener('change', e=>{ S.terrain=e.target.checked; refreshTerrain(); });
 $('bopa').addEventListener('input', e=>{ S.bopa=e.target.value/100; build3D(); render3D(); });
 $('stagesel').addEventListener('change', e=>{
   S.stage = parseInt(e.target.value, 10) || 0;
