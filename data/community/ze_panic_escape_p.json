@@ -1,0 +1,24 @@
+{
+  "v": 1,
+  "slug": "ze_panic_escape_p",
+  "updatedAt": "2026-09-24T09:00:37.200Z",
+  "fields": {
+    "difficulty": {
+      "v": "简单",
+      "by": "白叶",
+      "at": "2026-09-24T09:00:37.200Z",
+      "submission": 10
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "简单",
+      "by": "白叶",
+      "at": "2026-09-24T09:00:37.200Z",
+      "submission": 10
+    }
+  ]
+}
