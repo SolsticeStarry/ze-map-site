@@ -1527,8 +1527,7 @@ img { max-width: 100%; display: block; }
 .tag-chip .tc-sample { font-size: 11.5px; color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-theme="light"] .tag-chip .tc-name { color: var(--text); }
 
-/* 站内搜索：结果列表由 src/pages/search.astro 自己渲染（不用 Pagefind 默认 UI，原因见该文件注释） */
-.pf-results { max-width: 900px; }
+/* 站内搜索：结果列表由 src/pages/search.astro 自己渲染（不用 Pagefind 默认 UI，原因见该文件注释） */.pf-results { max-width: 900px; }
 .pf-result { border-top: 1px solid var(--border); padding: 16px 0; }
 .pf-result:first-child { border-top: 0; }
 .pf-result-title { color: var(--accent-2); font-size: 17.5px; font-weight: 600; }
@@ -1769,3 +1768,77 @@ img { max-width: 100%; display: block; }
 .queue-note { font-size: 13px; color: var(--muted); margin: 0 0 10px; white-space: pre-wrap; }
 .queue-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .queue-counts { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+
+/* ===== 文档型页面（投稿指南这类长文）=====
+   侧栏卡片的 h3 是「小标签」风格（13px + letter-spacing），拿来做章节标题会很怪，
+   所以长文档用这套：真正的 h2 章节、表格、提示块。 */
+.doc { max-width: 880px; }
+
+.doc h2 {
+  margin: 40px 0 14px;
+  padding-bottom: 9px;
+  font-size: 19px;
+  color: #fff;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc h2:first-child { margin-top: 0; }
+
+.doc h3 { margin: 24px 0 8px; font-size: 15.5px; color: var(--accent-2); }
+
+.doc p,
+.doc li { font-size: 14.5px; line-height: 1.85; color: #d7dce8; }
+
+.doc ol,
+.doc ul { padding-left: 22px; margin: 10px 0; }
+.doc li { margin: 5px 0; }
+
+.doc code {
+  background: var(--panel-2);
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.doc a { color: var(--accent-2); }
+.doc a:hover { text-decoration: underline; }
+
+.doc-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13.5px; }
+
+.doc-table th,
+.doc-table td {
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc-table th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+.doc-table td:first-child { white-space: nowrap; }
+
+.doc-note {
+  margin: 16px 0;
+  padding: 12px 15px;
+  background: var(--panel-2);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.doc-note.warn { border-left-color: #e0a03a; }
+.doc-note p:first-child { margin-top: 0; }
+.doc-note p:last-child { margin-bottom: 0; }
+
+[data-theme="light"] .doc h2 { color: var(--text); }
+[data-theme="light"] .doc p,
+[data-theme="light"] .doc li { color: var(--text); }
+[data-theme="light"] .doc code { background: rgba(0, 0, 0, 0.06); }
+
+@media (max-width: 700px) {
+  .doc h2 { margin-top: 30px; font-size: 17.5px; }
+  .doc-table { font-size: 13px; }
+  .doc-table th,
+  .doc-table td { padding: 7px 8px; }
+}

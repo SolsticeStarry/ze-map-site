@@ -100,6 +100,9 @@ jobs:
       - name: 检查资料文件（JSON 格式、难度写法、来源链接等）
         run: npm run content:verify
 
+      - name: 检查人工封面（文件名对不对得上地图、格式、体积）
+        run: npm run cover:verify
+
       - name: 构建站点
         run: npm run build
 

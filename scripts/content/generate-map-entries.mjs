@@ -232,8 +232,24 @@ function renderEntry(rec, research, wsRec, gfl) {
   const updated = wsRec?.timeUpdated || rec.d || catalog.meta.built.slice(0, 10);
   const desc = wsRec?.result === 1 ? (wsRec.description || '').trim() : '';
   const hasEditorial = Boolean(research?.summary);
-  // 卡片封面：由实体数据渲染的 16:9 缩略图（render-covers.mjs）
-  const coverRel = `/images/covers/${rec.s}.webp`;
+  /*
+   * 封面优先级：
+   *   1. 人工上传的 public/images/covers/custom/<地图内部名>.<ext>
+   *      （自己用 `npm run cover:set` 生成，或者贡献者直接往这个目录传图）
+   *   2. 实体数据渲染的 /images/covers/<分片名>.webp（render-covers.mjs 的产物）
+   * 人工封面特意放在 custom/ 子目录：那个目录是批量渲染的产物，重跑一次就全被覆盖，
+   * 放在别处才不会被冲掉。删掉 custom/ 里的文件即可换回渲染图。
+   *
+   * 为什么认多种扩展名而不是只认 webp：贡献者大多不会转 webp（要装工具），
+   * 但人人都会从截图工具里存出 png / jpg。只认 webp 等于把「提 PR 换封面」这条路堵死。
+   * 顺序 = 优先级：同一张图同时存在多种格式时，取列表里靠前的那个。
+   */
+  const CUSTOM_COVER_EXTS = ['webp', 'png', 'jpg', 'jpeg'];
+  const customCoverRel = CUSTOM_COVER_EXTS.map((ext) => `/images/covers/custom/${rec.m}.${ext}`).find(
+    (rel) => fs.existsSync(path.join(ROOT, 'public', rel))
+  );
+  const renderCoverRel = `/images/covers/${rec.s}.webp`;
+  const coverRel = customCoverRel ?? renderCoverRel;
   const hasCover = fs.existsSync(path.join(ROOT, 'public', coverRel));
   // 上传者昵称：仅在正文说明里用，不冒充「作者」（很多是 CS2 移植上传者）
   const uploader = wsRec?.result === 1 ? uploaderOf(wsRec.creator) : '';

@@ -32,10 +32,43 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
         通过后会更新到对应地图的条目里，并署上你的昵称。
       </p>
 
+      <p class="form-hint">
+        第一次来？先看一眼 <a href="/contribute/">投稿指南</a> ——
+        里面写了这几条路各自适合什么、每个字段怎么填、提交之后会发生什么。要换地图封面也是从那里进。
+      </p>
+
       <p class="form-hint" id="ctx">正在读取地图信息…</p>
     </div>
 
+    {/*
+      没带 ?map= 直接打开本页时的选图入口。
+      以前这种情况只显示「找不到地图「」，请从地图详情页重新进入」—— 对不用 GitHub 的投稿者
+      来说这其实是最好走的一条路，却在第一步就撞进死胡同，而且不知道该怎么办。
+    */}
+    <div class="form-card" id="pick" hidden>
+      <h2>先选一张地图</h2>
+      <p class="form-hint">这个表单是给<strong>某一张图</strong>补充资料的，所以得先知道是哪张图。</p>
+      <ol>
+        <li>
+          打开 <a href="/maps/">地图库</a> → 点进那张图 → 右侧栏点 <b>✏️ 补充这张图的资料</b>
+        </li>
+        <li>或者直接在下面输名字（中文名、英文名都行）：</li>
+      </ol>
+      <div class="form-grid">
+        <div class="form-row">
+          <label for="pick-slug">地图名</label>
+          <input id="pick-slug" placeholder="ze_ffvii_mako_reactor 或 魔晄炉" autocomplete="off" />
+        </div>
+        <div class="form-row">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" type="button" id="pick-go">打开投稿表单</button>
+        </div>
+      </div>
+      <p class="form-hint" id="pick-out"></p>
+    </div>
+
     <form class="form-card" id="sub-form" hidden>
+
       <div class="form-row">
         <label for="f-map">地图</label>
         <input id="f-map" readonly />
@@ -138,6 +171,51 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
   const submitBtn = document.getElementById('f-submit') as HTMLButtonElement;
 
   let mapInfo: Record<string, unknown> | null = null;
+  let allMaps: Array<Record<string, unknown>> = [];
+
+  /*
+   * 没带 ?map= 时的选图入口。
+   * 以前这种情况只丢下一句「请从地图详情页重新进入」就结束了 —— 对不用 GitHub 的投稿者
+   * 来说这恰恰是最好走的一条路，却在第一步撞进死胡同，还不知道该去哪儿。
+   */
+  const pickEl = document.getElementById('pick') as HTMLElement;
+  const pickInput = document.getElementById('pick-slug') as HTMLInputElement;
+  const pickOut = document.getElementById('pick-out') as HTMLElement;
+
+  function openPicker(why: string) {
+    ctxEl.textContent = why;
+    pickEl.hidden = false;
+    pickInput.focus();
+  }
+
+  /** 中文名 / 英文名 / 内部名都能对上；先精确匹配再退化到包含匹配 */
+  function goPick() {
+    const q = pickInput.value.trim().toLowerCase();
+    if (!q) {
+      pickOut.textContent = '先输个名字，中文名或英文名都可以。';
+      return;
+    }
+    const low = (v: unknown) => String(v ?? '').toLowerCase();
+    const hit =
+      allMaps.find((m) => low(m.slug) === q) ??
+      allMaps.find((m) => low(m.titleEn) === q) ??
+      allMaps.find((m) => low(m.title) === q) ??
+      allMaps.find((m) => low(m.titleEn).includes(q)) ??
+      allMaps.find((m) => low(m.title).includes(q));
+    if (!hit) {
+      pickOut.textContent = `没找到「${pickInput.value.trim()}」。可以去地图库搜一下，或者换成英文名试试。`;
+      return;
+    }
+    location.href = '/submit/?map=' + encodeURIComponent(String(hit.slug));
+  }
+
+  document.getElementById('pick-go')?.addEventListener('click', goPick);
+  pickInput?.addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') {
+      e.preventDefault();
+      goPick();
+    }
+  });
 
   const rules = FIELD_RULES as Record<string, { kind: string; hint?: string }>;
 
@@ -198,15 +276,14 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
   fetch('/submit/maps.json')
     .then((r) => r.json())
     .then((list: Array<Record<string, unknown>>) => {
+      allMaps = list;
       if (!slug) {
-        ctxEl.innerHTML =
-          '没有指定地图。请先到 <a href="/maps/">地图库</a> 打开某张图的详情页，' +
-          '点右侧栏的「✏️ 补充这张图的资料」。';
+        openPicker('还没选中地图 —— 先选一张，再填要补的资料。');
         return;
       }
       mapInfo = list.find((m) => m.slug === slug) ?? null;
       if (!mapInfo) {
-        ctxEl.textContent = `找不到地图「${slug}」，请从地图详情页重新进入。`;
+        openPicker(`找不到地图「${slug}」—— 换个名字再试，或者从地图库点进来。`);
         return;
       }
       ctxEl.innerHTML = `正在为 <strong>《${mapInfo.title}》</strong>（${mapInfo.titleEn}）补充资料。`;
