@@ -45,9 +45,14 @@ const sampleOf = (t: string) =>
     </div>
     <p class="list-count" id="tag-count">共 {tags.length} 个标签</p>
 
+    {/*
+      data-pagefind-ignore：这一页把所有标签和样例地图名都列了一遍（常见标签那档还会
+      带出 3 张地图的名字）。不忽略的话，搜任何标签或图名，「标签索引」页都会挤进结果里
+      —— 实测搜「魔晄炉」「指环王」它都出现在前排。忽略后本页仍可按标题「标签索引」搜到。
+    */}
     <section id="sec-common">
       <div class="section-head"><h2>常见标签</h2><span class="tag-sec-note">被 5 张以上地图使用</span></div>
-      <div class="tag-cloud">
+      <div class="tag-cloud" data-pagefind-ignore>
         {common.map(([t, c]) => (
           <a class="tag-chip big" href={`/tags/${t}/`} data-tag={t}>
             <span class="tc-name">{t}</span>
@@ -60,7 +65,7 @@ const sampleOf = (t: string) =>
 
     <section id="sec-mid">
       <div class="section-head"><h2>一般标签</h2><span class="tag-sec-note">2–4 张地图</span></div>
-      <div class="tag-cloud">
+      <div class="tag-cloud" data-pagefind-ignore>
         {mid.map(([t, c]) => (
           <a class="tag-chip" href={`/tags/${t}/`} data-tag={t}>
             <span class="tc-name">{t}</span>
@@ -75,7 +80,7 @@ const sampleOf = (t: string) =>
         <h2>长尾标签</h2>
         <button class="load-more" id="tail-toggle" type="button">展开 {tail.length} 个仅 1 张地图的标签</button>
       </div>
-      <div class="tag-cloud" id="tail-cloud" style="display:none">
+      <div class="tag-cloud" id="tail-cloud" style="display:none" data-pagefind-ignore>
         {tail.map(([t, c]) => (
           <a class="tag-chip" href={`/tags/${t}/`} data-tag={t}>
             <span class="tc-name">{t}</span>

@@ -10,7 +10,12 @@ const hot = [...maps]
 ---
 
 <BaseLayout title="页面不存在 | ZE 地图资料站" description="这个页面不存在，去地图库或实体预览看看吧。">
-  <section class="hero" style="padding: 90px 0 40px;">
+  {/*
+    整页不参与站内搜索（Pagefind 遇到 data-pagefind-ignore 会跳过该元素及其子元素）。
+    为什么：这一页会列出 8 张实体最丰富的地图名字，于是搜这些图名时会先搜到「页面不存在」，
+    实测搜 ze abyss 时它排在第一 —— 一个错误页当搜索结果毫无意义。
+  */}
+  <section class="hero" style="padding: 90px 0 40px;" data-pagefind-ignore>
     <div class="container">
       <div class="hero-badge">404</div>
       <h1 class="hero-title" style="font-size: clamp(40px, 8vw, 84px);">
@@ -26,7 +31,7 @@ const hot = [...maps]
     </div>
   </section>
 
-  <div class="container" style="padding-bottom: 70px;">
+  <div class="container" style="padding-bottom: 70px;" data-pagefind-ignore>
     <div class="section-head">
       <h2>实体最丰富的地图</h2>
       <a href="/maps/">查看全部 →</a>

@@ -22,8 +22,21 @@ const metaBits = [
 const previewUrl = entitySlug ? `/preview/?map=${entitySlug}` : null;
 ---
 
+{/*
+  ⚠️ 这里必须用 Astro 的 {/* *\/} 注释，不能用 HTML 的 <!-- --> ：
+  **HTML 注释会留在页面里，Pagefind 照样索引它的文字**。
+  第一版就是在 <!-- --> 里写了「搜『指环王』…」当例子，结果上百个页面都因为这段注释
+  匹配上了「指环王」，把本来要修的毛病变得更严重。Astro 的 {/* *\/} 在构建时会被删掉，不进 HTML。
+
+  data-pagefind-ignore：卡片只是「某个列表里的一项」，不是所在页面的正文。
+  不忽略的话后果很严重：每张地图详情页底部都有同类推荐三张卡，于是**每张图的名字
+  都出现在上百个别的页面里** —— 忽略前实测搜某张图返回 25 条，只有 1 条是它自己。
+  加在组件上而不是逐个页面加：这张卡用在同类推荐、地图库、标签页、首页精选、404 页，
+  一个属性全覆盖。页面自己的标题和正文照常参与搜索。
+*/}
 <div
   class="map-card"
+  data-pagefind-ignore
   data-search={`${title} ${titleEn} ${tags.join(' ')}`}
   data-difficulty={difficulty}
   data-game={map.data.game}
@@ -33,7 +46,7 @@ const previewUrl = entitySlug ? `/preview/?map=${entitySlug}` : null;
   data-subs={map.data.workshopSubs ?? 0}
   data-stages={stages ?? 0}
 >
-  <!-- 整卡点击区域：盖在卡片上的透明链接 -->
+  {/* 整卡点击区域：盖在卡片上的透明链接 */}
   <a class="map-card-hit" href={`/maps/${slug}/`} aria-label={`${title} 详情`}></a>
 
   <div class={`map-card-cover ${diffClass}`}>

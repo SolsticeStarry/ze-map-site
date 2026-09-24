@@ -26,7 +26,10 @@ const { title, titleEn, difficulty, workshopSubs, stub } = map.data;
 const diffClass = DIFFICULTY_CLASS[difficulty as keyof typeof DIFFICULTY_CLASS] ?? 'diff-unknown';
 ---
 
-<a class="list-row" href={`/maps/${map.id}/`} data-date={date ?? undefined}>
+{/* data-pagefind-ignore：同上（见 MapCard.astro 里的说明，注意别用 HTML 注释）。
+     这一行出现在「新增地图 / 最新更新 / 工坊热门」三个页面和主页版块里，
+     而工坊热门一口气列 100 张图的名字 —— 不忽略的话，搜任何一张热门图都会先搜到排行榜页。 */}
+<a class="list-row" href={`/maps/${map.id}/`} data-date={date ?? undefined} data-pagefind-ignore>
   {rank ? <span class={`list-rank${rank <= 3 ? ' top' : ''}`}>{rank}</span> : null}
   <span class="list-main">
     <span class="list-title">{title}</span>

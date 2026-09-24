@@ -209,9 +209,83 @@ const DATA_KINDS = ['已有攻略资料', '资料待补充'];
       return row;
     }
 
-    function render(items) {
-      listEl.innerHTML = '';
-      for (var i = 0; i < items.length; i++) listEl.appendChild(makeRow(items[i]));
+    /* ===== 图名精确匹配兜底 =====
+     *
+     * 为什么需要这一层：Pagefind 的中文分词对短词组不可靠。实测（2026-09-24）：
+     *   · 搜「指环王」→ 7 条，**标题就叫《指环王：米那斯提力斯》的那张图一条都不在**，
+     *     返回的是正文里出现过「指」的页面（摘要里高亮的是「指挥」「指引」）
+     *   · 但那一页正文里「指环王」出现 9 次、h1 就是它；单搜「指」它排第 1，「王」排第 5
+     *   · 搜「米那斯提力斯」（更长）它反而排第 1
+     * 换排序参数救不了：标题权重 12、termSimilarity 2、termSaturation 0.8、pageLength 1
+     * 五组配置都试过，结果一模一样 —— 因为问题出在「匹不匹配」，不是「排第几」。
+     *
+     * 所以这里用构建期生成的图名索引（/search/maps.json）自己兜一层：
+     * 中文名或英文名精确 / 前缀 / 包含命中的，直接置顶并标出来。
+     * 索引只有 4 个字段，拉失败也不影响搜索本身（退化成纯 Pagefind 结果）。
+     */
+    var titleIndexPromise = null;
+
+    function loadTitleIndex() {
+      if (!titleIndexPromise) {
+        titleIndexPromise = fetch('/search/maps.json')
+          .then(function (r) {
+            return r.json();
+          })
+          .catch(function () {
+            return [];
+          });
+      }
+      return titleIndexPromise;
+    }
+
+    function titleMatches(list, q) {
+      var s = String(q || '').trim().toLowerCase();
+      if (!list || s.length < 2) return [];
+      var exact = [];
+      var partial = [];
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        var t = String(it.t || '').toLowerCase();
+        var e = String(it.e || '').toLowerCase();
+        if (t === s || e === s) exact.push(it);
+        else if (t.indexOf(s) === 0 || e.indexOf(s) === 0) partial.push(it);
+        else if (t.indexOf(s) !== -1) partial.push(it);
+      }
+      return exact.concat(partial).slice(0, 3);
+    }
+
+    /** 置顶那一行：数据来自图名索引，带「图名匹配」标记 */
+    function makeTitleRow(it) {
+      var url = '/maps/' + it.s + '/';
+      var row = document.createElement('div');
+      row.className = 'pf-result pf-result-exact';
+
+      var a = document.createElement('a');
+      a.className = 'pf-result-title';
+      a.href = url;
+      a.textContent = it.t;
+      row.appendChild(a);
+
+      var path = document.createElement('div');
+      path.className = 'pf-result-path';
+      path.textContent = url;
+      row.appendChild(path);
+
+      var badges = document.createElement('div');
+      badges.className = 'pf-result-badges';
+      var mark = document.createElement('span');
+      mark.className = 'badge exact';
+      mark.textContent = '图名匹配';
+      badges.appendChild(mark);
+      if (it.d) {
+        var b = document.createElement('span');
+        b.className = 'badge ' + (diffClass[it.d] || '');
+        b.textContent = it.d;
+        badges.appendChild(b);
+      }
+      row.appendChild(badges);
+
+      return row;
     }
 
     async function run() {
@@ -244,13 +318,28 @@ const DATA_KINDS = ['已有攻略资料', '资料待补充'];
         var res = await pf.search(term || null, { filters: currentFilters() });
         if (mine !== seq) return;
 
+        // 图名兜底（见上面 titleMatches 的说明）：先用用户原样输入匹配，不行再用规整过的
+        var index = await loadTitleIndex();
+        if (mine !== seq) return;
+        var titleHits = typed ? titleMatches(index, typed) : [];
+        if (!titleHits.length && term !== typed) titleHits = titleMatches(index, term);
+        var exactUrls = {};
+        for (var ti = 0; ti < titleHits.length; ti++) exactUrls['/maps/' + titleHits[ti].s + '/'] = 1;
+
         var total = res.results.length;
         var ft = filterText();
-        var msg = typed ? '找到 ' + total + ' 条与「' + typed + '」相关的结果' : '符合条件的有 ' + total + ' 条';
+        var msg;
+        if (typed) {
+          msg = titleHits.length
+            ? '图名匹配 ' + titleHits.length + ' 条 · 全文检索 ' + total + ' 条'
+            : '找到 ' + total + ' 条与「' + typed + '」相关的结果';
+        } else {
+          msg = '符合条件的有 ' + total + ' 条';
+        }
         if (ft) msg += '（' + ft + '）';
         countEl.textContent = msg;
 
-        if (total === 0) {
+        if (total === 0 && titleHits.length === 0) {
           listEl.innerHTML = '';
           moreBtn.style.display = 'none';
           emptyTextEl.textContent = typed ? '没有找到「' + typed + '」相关的内容' : '没有符合这些条件的内容';
@@ -280,7 +369,7 @@ const DATA_KINDS = ['已有攻略资料', '资料待补充'];
         var tokens = term.split(/\s+/).filter(function (t) {
           return t.length >= 2; // 单字母查询本来就模糊，不参与判定
         });
-        var exact = tokens.length === 0;
+        var exact = titleHits.length > 0 || tokens.length === 0;
         for (var i = 0; i < datas.length && !exact; i++) {
           var d = datas[i];
           var hay = (((d.meta && d.meta.title) || '') + ' ' + d.url + ' ' + (d.excerpt || '')).toLowerCase();
@@ -293,7 +382,12 @@ const DATA_KINDS = ['已有攻略资料', '资料待补充'];
         }
         if (!exact) countEl.textContent = msg + ' · 没有精确匹配，下面是相近的结果';
 
-        render(datas);
+        // 图名匹配的置顶，剩下的照旧；同一条不重复出现
+        listEl.innerHTML = '';
+        for (var k = 0; k < titleHits.length; k++) listEl.appendChild(makeTitleRow(titleHits[k]));
+        for (var m = 0; m < datas.length; m++) {
+          if (!exactUrls[datas[m].url]) listEl.appendChild(makeRow(datas[m]));
+        }
         moreBtn.style.display = total > shown ? '' : 'none';
       } catch (e) {
         if (mine === seq) {
@@ -336,6 +430,9 @@ const DATA_KINDS = ['已有攻略资料', '资料待补充'];
         selData.disabled = true;
         return;
       }
+      // 提前把图名索引拉起来（第一次搜索时就不用等它了）
+      loadTitleIndex();
+
       var sp = new URLSearchParams(location.search);
       if (sp.get('q')) input.value = sp.get('q');
       if (sp.get('d')) selDiff.value = sp.get('d');

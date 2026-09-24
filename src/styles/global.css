@@ -1541,6 +1541,17 @@ img { max-width: 100%; display: block; }
   border-radius: 4px;
 }
 .pf-result-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+
+/* 图名精确匹配那一行：轻微底色，跟下面的全文检索结果区分开 */
+.pf-result-exact {
+  background: rgba(255, 77, 77, 0.06);
+  border-radius: 10px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.pf-result-exact .badge.exact { background: var(--accent); color: #fff; }
+[data-theme="light"] .pf-result-exact { background: rgba(255, 77, 77, 0.08); }
 [data-theme="light"] .pf-result-excerpt { color: var(--text); }
 
 /* 资料来源列表 */.source-list { margin: 12px 0 0; padding-left: 20px; font-size: 13.5px; line-height: 2; }

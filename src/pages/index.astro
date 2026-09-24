@@ -101,7 +101,9 @@ const hotTags = Object.entries(tagCount)
           <h2>热门标签</h2>
           <a href="/tags/">全部标签 →</a>
         </div>
-        <div class="hot-tags">
+        {/* data-pagefind-ignore：这一排是标签名清单，忽略后搜某张图不会被首页截胡
+            （精选地图那排卡片由 MapCard 自己忽略）。 */}
+        <div class="hot-tags" data-pagefind-ignore>
           {hotTags.map(([tag, count]) => (
             <a class="hot-tag" href={`/tags/${tag}/`}>
               <span class="hot-tag-name">{tag}</span>
