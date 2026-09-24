@@ -18,6 +18,15 @@
 # 判定条件刻意收紧成「MDX 变了、但对应的 data/research/<地图名>.json 没变」，
 # 这样正常的重新生成（research 与 MDX 一起变）不会被误伤。
 #
+# 2026-09-24 再补一条「资料文件体检」（npm run content:verify）：
+# 有位贡献者的 data/research/*.json 里漏了逗号、引号没闭合、字段名后面漏冒号，
+# 一共 4 处语法错误 —— 但 CI 显示的是绿勾。原因是生成脚本对读不动的资料文件
+# 只打一行 console.warn 就当它不存在，于是整份内容被忽略、页面退回「暂无资料」，
+# 而构建照常成功。这是最坏的一种失败：**改动静默消失，且没有任何红灯**。
+# 现在两边都堵上了：
+#   - 生成脚本遇到坏资料文件直接 exit 1（见 generate-map-entries.mjs）；
+#   - 这里先跑一次 content:verify，把文件名和具体出错位置打在 PR 页面上。
+#
 # 说明：
 # - 公开仓库的 Actions 额度免费，这个任务约 1~2 分钟。
 # - 跑在 ubuntu 上还有个额外好处：Linux 文件系统大小写敏感，能提前抓出
@@ -87,6 +96,9 @@ jobs:
 
       - name: 安装依赖
         run: npm ci
+
+      - name: 检查资料文件（JSON 格式、难度写法、来源链接等）
+        run: npm run content:verify
 
       - name: 构建站点
         run: npm run build

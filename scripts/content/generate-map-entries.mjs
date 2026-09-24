@@ -416,6 +416,7 @@ const mapNameFromSlug = (s) => {
   const m = String(s || '').match(/^\d+-([a-zA-Z0-9_]+?)-\d+$/);
   return m ? m[1] : null;
 };
+const brokenResearch = [];
 for (const f of fs.readdirSync(RESEARCH_DIR)) {
   if (!f.endsWith('.json') || f === 'priority.json') continue;
   try {
@@ -428,8 +429,17 @@ for (const f of fs.readdirSync(RESEARCH_DIR)) {
       if (fromSlug && !researchFiles.has(fromSlug)) researchFiles.set(fromSlug, j);
     }
   } catch (e) {
-    console.warn(`  ! 忽略无法解析的 research 文件 ${f}: ${e.message}`);
+    brokenResearch.push(`data/research/${f}  →  ${e.message}`);
   }
+}
+// 坏掉的资料文件必须让构建失败：以前这里只打一行警告，结果是贡献者写错一个逗号，
+// 他的整份内容被悄悄忽略、页面退回「暂无资料」，而 CI 依旧是绿的，谁都不知道。
+if (brokenResearch.length) {
+  console.error('\n✗ 下面这些资料文件 JSON 格式有误，整份内容无法读取：\n');
+  for (const b of brokenResearch) console.error(`    ${b}`);
+  console.error('\n  常见原因：漏写逗号、引号没有闭合、字段名后面漏了冒号。');
+  console.error('  改好后重新构建即可。如果暂时不想处理，可以先把文件删掉或改成 data/research/ 之外的名字。\n');
+  process.exit(1);
 }
 
 const existing = new Map(fs.readdirSync(MAPS_DIR).filter((f) => f.endsWith('.mdx')).map((f) => [f.replace(/\.mdx$/, ''), fs.readFileSync(path.join(MAPS_DIR, f), 'utf8')]));

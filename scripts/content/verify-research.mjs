@@ -19,6 +19,33 @@ const BAD_PHRASES = ['根据搜索结果', '我查到', '作为AI', '作为 AI',
 const SAFE_TAG = (t) => String(t || '').replace(/[\\/:*?"<>|#%]/g, '·').replace(/\s+/g, ' ').trim().slice(0, 24);
 const isUrl = (u) => /^https?:\/\/\S+$/i.test(String(u || ''));
 
+// 资料文件允许出现的字段（生成脚本只会读这些，多写的字段等于没写）。
+// 之所以专门查一遍：把 author 打成 awthor 这种错误 **JSON 依然合法**，
+// 构建、CI 全绿，只是署名被悄悄丢掉 —— 2026-09-24 的 PR 就是这样。
+const KNOWN_FIELDS = new Set([
+  'slug', 'title', 'author', 'players', 'duration',
+  'difficulty', 'summary', 'tags', 'videoUrls', 'sources', 'confidence', 'verified',
+]);
+
+/** 给写错的字段名猜一个最接近的正确写法（编辑距离 ≤3 才给提示） */
+const nearestField = (k) => {
+  const dist = (a, b) => {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+    for (let j = 0; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++)
+      for (let j = 1; j <= b.length; j++)
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length];
+  };
+  let best = null;
+  let bestD = Infinity;
+  for (const f of KNOWN_FIELDS) {
+    const dd = dist(String(k).toLowerCase(), f);
+    if (dd < bestD) { bestD = dd; best = f; }
+  }
+  return bestD <= 3 ? best : null;
+};
+
 const files = fs.readdirSync(DIR).filter((f) => f.endsWith('.json') && f !== 'priority.json');
 const errors = [];
 const warns = [];
@@ -34,6 +61,14 @@ for (const file of files) {
     continue;
   }
   const slug = file.replace(/\.json$/, '');
+
+  // 字段名拼错 = 内容照样能构建、但页面上什么都不显示，所以按错误处理
+  for (const k of Object.keys(j)) {
+    if (k.startsWith('_') || KNOWN_FIELDS.has(k)) continue; // 下划线开头当注释用（骨架里的「_说明」）
+    const guess = nearestField(k);
+    errors.push(`${file}: 不认识的字段「${k}」${guess ? `，是不是想写「${guess}」？` : ''}（拼错的字段不会显示在页面上）`);
+  }
+
   if (j.slug) {
     // 两种写法都接受：地图内部名，或数据分片名（含该地图名即可）
     const okSlug = j.slug === slug || (j.slug.includes(slug) && /^\d+-[a-zA-Z0-9_]+-\d+$/.test(j.slug));
