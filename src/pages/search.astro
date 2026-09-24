@@ -1,9 +1,19 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getMaps } from '../lib/maps';
+import { DIFFICULTIES, DIFFICULTY_CLASS } from '../../shared/difficulty.mjs';
 
 const maps = await getMaps();
 const researched = maps.filter((m) => !m.data.stub).length;
+
+/*
+ * 下拉框的取值必须和 src/pages/maps/[...slug].astro 里 data-pagefind-filter 的
+ * **值逐字一致** —— Pagefind 的筛选是精确字符串匹配，差一个字就是 0 条结果。
+ * 所以两边都从同一份定义取：难度用 shared/difficulty.mjs，游戏沿用地图库那份列表。
+ */
+const difficulties = DIFFICULTIES;
+const games = ['CS2', 'CS:GO', 'CS:S'];
+const DATA_KINDS = ['已有攻略资料', '资料待补充'];
 ---
 
 <BaseLayout
@@ -22,8 +32,35 @@ const researched = maps.filter((m) => !m.data.stub).length;
   </section>
 
   <div class="container" style="padding-bottom: 70px;">
-    <div id="search" class="search-host" data-pagefind-ignore></div>
-    <div id="search-fallback" class="empty-state" style="display:none">
+    <div class="filter-bar">
+      <input id="pf-q" type="search" placeholder="搜索地图名、剧情、神器、BOSS、作者…" autocomplete="off" />
+      <select id="pf-difficulty" title="按难度筛选">
+        <option value="">全部难度</option>
+        {difficulties.map((d) => <option value={d}>{d}</option>)}
+      </select>
+      <select id="pf-game" title="按游戏筛选">
+        <option value="">全部游戏</option>
+        {games.map((g) => <option value={g}>{g}</option>)}
+      </select>
+      <select id="pf-data" title="按资料完整度筛选">
+        <option value="">全部条目</option>
+        {DATA_KINDS.map((k) => <option value={k}>{k}</option>)}
+      </select>
+    </div>
+
+    <p class="list-count" id="pf-count">输入关键词开始搜索，或直接选上面的难度 / 分类筛选</p>
+
+    <div id="pf-results" class="pf-results"></div>
+
+    <button class="load-more" id="pf-more" type="button" style="display:none">显示更多</button>
+
+    <div id="pf-empty" class="empty-state" style="display:none; margin-top: 24px;">
+      <p><b id="pf-empty-text">没有找到相关内容。</b></p>
+      <p style="font-size: 13px">换个关键词试试，或者放宽上面的筛选条件。</p>
+      <p><button class="load-more" id="pf-reset" type="button">清空全部条件</button></p>
+    </div>
+
+    <div id="pf-fallback" class="empty-state" style="display:none; margin-top: 24px;">
       <p><b>搜索索引尚未生成。</b></p>
       <p style="font-size: 13px">
         开发模式（<code>npm run dev</code>）下没有索引，这是正常的；跑一次 <code>npm run build</code> 就会在
@@ -31,62 +68,282 @@ const researched = maps.filter((m) => !m.data.stub).length;
       </p>
     </div>
 
-    <div class="sidebar-card" style="max-width: 780px; margin-top: 26px;">
+    <div id="pf-config" hidden data-diff-class={JSON.stringify(DIFFICULTY_CLASS)}></div>
+
+    {/* data-pagefind-ignore：这张提示卡里写着「魔晄炉」「米纳斯」等示例词，
+        不忽略的话本页自己会跑进这些词的搜索结果里，跟真正的地图抢位置。 */}
+    <div class="sidebar-card" style="max-width: 780px; margin-top: 26px;" data-pagefind-ignore>
       <h3>搜索小提示</h3>
       <ul class="sidebar-hint" style="list-style: none; padding: 0">
         <li>· 搜地图名：<code>魔晄炉</code>、<code>米纳斯</code>、<code>ze_mako</code></li>
         <li>· 搜题材：<code>最终幻想</code>、<code>黑暗之魂</code>、<code>我的世界</code></li>
         <li>· 搜玩法：<code>神器</code>、<code>BOSS</code>、<code>长征</code>、<code>滑翔</code></li>
         <li>· 搜作者：<code>Hannibal</code>、<code>Ayano</code>、<code>气流</code></li>
-        <li>· 找不到具体地图时，也可以直接去 <a href="/maps/">地图库</a> 按难度 / 订阅数筛选</li>
+        <li>· 只想按难度 / 分类翻：关键词留空，直接选上面的筛选就行</li>
       </ul>
     </div>
   </div>
 </BaseLayout>
 
-<link rel="stylesheet" href="/pagefind/pagefind-ui.css" />
-<script is:inline src="/pagefind/pagefind-ui.js"></script>
+{/*
+  为什么不用 Pagefind 自带的默认 UI（pagefind-ui.js）：
+  它在「关键词为空」时不出任何结果，所以「只想按难度翻地图」做不到 —— 而这正是
+  大家在地图库里习惯的用法。改成直接调 Pagefind 的 JS API（pagefind.search(null, {filters})），
+  空关键词也能按筛选列出结果。
+
+  另：这里是 is:inline，Astro 不会编译也不做变量替换，写的是原样的浏览器 JS（不要写 TS 语法）。
+*/}
 <script is:inline>
   (function () {
-    function boot() {
-      var host = document.getElementById('search');
-      if (!host) return;
-      if (typeof PagefindUI === 'undefined') {
-        host.style.display = 'none';
-        var fb = document.getElementById('search-fallback');
-        if (fb) fb.style.display = '';
-        return;
+    var PER_PAGE = 20;
+
+    var byId = function (id) {
+      return document.getElementById(id);
+    };
+    var input = byId('pf-q');
+    var selDiff = byId('pf-difficulty');
+    var selGame = byId('pf-game');
+    var selData = byId('pf-data');
+    var listEl = byId('pf-results');
+    var countEl = byId('pf-count');
+    var emptyEl = byId('pf-empty');
+    var emptyTextEl = byId('pf-empty-text');
+    var fbEl = byId('pf-fallback');
+    var moreBtn = byId('pf-more');
+    var resetBtn = byId('pf-reset');
+    var cfgEl = byId('pf-config');
+
+    var diffClass = {};
+    try {
+      diffClass = JSON.parse(cfgEl.getAttribute('data-diff-class') || '{}');
+    } catch (e) {
+      diffClass = {};
+    }
+
+    var pf = null;
+    var timer = null;
+    var seq = 0; // 防止慢的旧搜索覆盖快的新结果
+    var shown = PER_PAGE;
+
+    function currentFilters() {
+      var f = {};
+      if (selDiff.value) f['难度'] = selDiff.value;
+      if (selGame.value) f['游戏'] = selGame.value;
+      if (selData.value) f['资料'] = selData.value;
+      return f;
+    }
+
+    function filterText() {
+      var parts = [];
+      if (selDiff.value) parts.push('难度 ' + selDiff.value);
+      if (selGame.value) parts.push('游戏 ' + selGame.value);
+      if (selData.value) parts.push(selData.value);
+      return parts.join(' · ');
+    }
+
+    function anyCondition() {
+      return input.value.trim() !== '' || Object.keys(currentFilters()).length > 0;
+    }
+
+    /* 把当前条件写进地址栏：这样「火星难度的地图」这类筛选结果可以直接分享 / 收藏 */
+    function syncUrl() {
+      var p = new URLSearchParams();
+      var term = input.value.trim();
+      if (term) p.set('q', term);
+      if (selDiff.value) p.set('d', selDiff.value);
+      if (selGame.value) p.set('g', selGame.value);
+      if (selData.value) p.set('t', selData.value);
+      var s = p.toString();
+      history.replaceState(null, '', s ? location.pathname + '?' + s : location.pathname);
+    }
+
+    function clearAll() {
+      input.value = '';
+      selDiff.value = '';
+      selGame.value = '';
+      selData.value = '';
+      run();
+      input.focus();
+    }
+
+    function makeRow(d) {
+      var row = document.createElement('div');
+      row.className = 'pf-result';
+
+      var a = document.createElement('a');
+      a.className = 'pf-result-title';
+      a.href = d.url;
+      a.textContent = (d.meta && d.meta.title) || d.url;
+      row.appendChild(a);
+
+      var path = document.createElement('div');
+      path.className = 'pf-result-path';
+      path.textContent = d.url;
+      row.appendChild(path);
+
+      if (d.excerpt) {
+        var ex = document.createElement('p');
+        ex.className = 'pf-result-excerpt';
+        ex.innerHTML = d.excerpt; // Pagefind 生成的摘录，只额外带 <mark>
+        row.appendChild(ex);
       }
-      new PagefindUI({
-        element: '#search',
-        showSubResults: true,
-        showImages: false,
-        excerptLength: 30,
-        translations: {
-          placeholder: '搜索地图、攻略、神器…',
-          clear_search: '清空',
-          load_more: '加载更多结果',
-          search_label: '搜索本站',
-          filters_label: '筛选',
-          zero_results: '没有找到「[SEARCH_TERM]」相关的内容',
-          many_results: '找到 [COUNT] 条与「[SEARCH_TERM]」相关的结果',
-          one_result: '找到 1 条与「[SEARCH_TERM]」相关的结果',
-          alt_search: '没有「[SEARCH_TERM]」的结果，改为显示「[DIFFERENT_TERM]」的结果',
-          search_suggestion: '没有结果，试试这些关键词：',
-          searching: '搜索中…',
-        },
-      });
-      // 支持 /search/?q=关键词 直接出结果
-      var q = new URLSearchParams(location.search).get('q');
-      if (q) {
-        var input = host.querySelector('input');
-        if (input) {
-          input.value = q;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      var badges = document.createElement('div');
+      badges.className = 'pf-result-badges';
+      var diff = d.filters && d.filters['难度'] && d.filters['难度'][0];
+      if (diff) {
+        var b = document.createElement('span');
+        b.className = 'badge ' + (diffClass[diff] || '');
+        b.textContent = diff;
+        badges.appendChild(b);
+      }
+      var game = d.filters && d.filters['游戏'] && d.filters['游戏'][0];
+      if (game) {
+        var g = document.createElement('span');
+        g.className = 'badge';
+        g.textContent = game;
+        badges.appendChild(g);
+      }
+      if (badges.childNodes.length) row.appendChild(badges);
+
+      return row;
+    }
+
+    function render(items) {
+      listEl.innerHTML = '';
+      for (var i = 0; i < items.length; i++) listEl.appendChild(makeRow(items[i]));
+    }
+
+    async function run() {
+      var mine = ++seq;
+      try {
+        if (!anyCondition()) {
+          listEl.innerHTML = '';
+          emptyEl.style.display = 'none';
+          moreBtn.style.display = 'none';
+          countEl.textContent = '输入关键词开始搜索，或直接选上面的难度 / 分类筛选';
+          syncUrl();
+          return;
+        }
+
+        // ⚠️ 下划线必须换成空格再送去搜。
+        // 实测（2026-09-24，Pagefind 1.5.2，中文索引）：查询里出现下划线时，
+        // Pagefind 会把下划线**后面的词整段丢掉** ——
+        //     ze_mako            → 806 条（等于是只搜了 ze，全站几乎全中）
+        //     ze_ffvii_mako_reactor → 806 条（输完整地图名照样废）
+        //     ze mako            →   9 条，目标地图排第 1 ✅
+        // 而站内所有地图的内部名都是 ze_xxx 这种写法，正是最主流的搜法。
+        // 连字符 / 点 / 冒号都正常（ze-mako、ze.mako 都是 9 条），所以只换下划线。
+        var typed = input.value.trim();
+        var term = typed.replace(/_/g, ' ');
+        syncUrl();
+        shown = PER_PAGE;
+        countEl.textContent = '搜索中…';
+
+        // 关键词为空时传 null：Pagefind 会只按筛选条件列出全部匹配页
+        var res = await pf.search(term || null, { filters: currentFilters() });
+        if (mine !== seq) return;
+
+        var total = res.results.length;
+        var ft = filterText();
+        var msg = typed ? '找到 ' + total + ' 条与「' + typed + '」相关的结果' : '符合条件的有 ' + total + ' 条';
+        if (ft) msg += '（' + ft + '）';
+        countEl.textContent = msg;
+
+        if (total === 0) {
+          listEl.innerHTML = '';
+          moreBtn.style.display = 'none';
+          emptyTextEl.textContent = typed ? '没有找到「' + typed + '」相关的内容' : '没有符合这些条件的内容';
+          emptyEl.style.display = '';
+          return;
+        }
+        emptyEl.style.display = 'none';
+
+        var datas = await Promise.all(
+          res.results.slice(0, shown).map(function (r) {
+            return r.data();
+          })
+        );
+        if (mine !== seq) return;
+
+        /*
+         * 核对一下这些结果是不是真的命中了搜的词。
+         * 为什么需要：Pagefind 在「一个词都没匹配上」时**不会**返回 0 条，而是给一批
+         * 相近的结果，而且响应里只有 results / unfilteredResultCount / filters /
+         * totalFilters / timings —— 没有「我实际换成了哪个词」这个信息，界面无从得知。
+         * 实测（2026-09-24）：qqqq → 11 条、zzzz…（16 个 z）→ 1 条、神器123 → 11 条，
+         * 而这些字符串在这些页面里根本不存在（grep 构建产物 0 处）。
+         * 所以自己核一遍：前几条里一个词都没出现，就如实说明这是相近结果。
+         * 拼写容错是好事（makoo → 9 条且目标排第 1），所以结果照旧列出，只是别让
+         * 用户以为「搜到了」。
+         */
+        var tokens = term.split(/\s+/).filter(function (t) {
+          return t.length >= 2; // 单字母查询本来就模糊，不参与判定
+        });
+        var exact = tokens.length === 0;
+        for (var i = 0; i < datas.length && !exact; i++) {
+          var d = datas[i];
+          var hay = (((d.meta && d.meta.title) || '') + ' ' + d.url + ' ' + (d.excerpt || '')).toLowerCase();
+          for (var j = 0; j < tokens.length; j++) {
+            if (hay.indexOf(tokens[j].toLowerCase()) !== -1) {
+              exact = true;
+              break;
+            }
+          }
+        }
+        if (!exact) countEl.textContent = msg + ' · 没有精确匹配，下面是相近的结果';
+
+        render(datas);
+        moreBtn.style.display = total > shown ? '' : 'none';
+      } catch (e) {
+        if (mine === seq) {
+          listEl.innerHTML = '';
+          moreBtn.style.display = 'none';
+          emptyTextEl.textContent = '搜索出错了：' + (e && e.message ? e.message : e);
+          emptyEl.style.display = '';
         }
       }
     }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-    else boot();
+
+    function loadMore() {
+      if (!pf) return;
+      shown += PER_PAGE;
+      run();
+    }
+
+    input.addEventListener('input', function () {
+      if (!pf) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(run, 250); // 跟手，但别一个字一次搜索
+    });
+    [selDiff, selGame, selData].forEach(function (s) {
+      s.addEventListener('change', run);
+    });
+    moreBtn.addEventListener('click', loadMore);
+    resetBtn.addEventListener('click', clearAll);
+
+    async function boot() {
+      try {
+        pf = await import('/pagefind/pagefind.js');
+      } catch (e) {
+        pf = null;
+      }
+      if (!pf || typeof pf.search !== 'function') {
+        fbEl.style.display = '';
+        input.disabled = true;
+        selDiff.disabled = true;
+        selGame.disabled = true;
+        selData.disabled = true;
+        return;
+      }
+      var sp = new URLSearchParams(location.search);
+      if (sp.get('q')) input.value = sp.get('q');
+      if (sp.get('d')) selDiff.value = sp.get('d');
+      if (sp.get('g')) selGame.value = sp.get('g');
+      if (sp.get('t')) selData.value = sp.get('t');
+      run();
+    }
+
+    boot();
   })();
 </script>

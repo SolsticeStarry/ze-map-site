@@ -90,6 +90,23 @@ const related = all
   description={`${title}（${titleEn}）— 僵尸逃跑地图资料：关卡流程、实体分布与预览。`}
   image={heroCover}
 >
+  {/*
+    Pagefind 筛选标记 —— 不显示任何内容，只是给站内搜索的索引器读的。
+
+    为什么必须有这三行：/search 页面的下拉框能不能筛，取决于**索引里有没有筛选维度**。
+    没有它们时构建日志会写「Indexed 0 filters」，索引元数据里连 filters 字段都没有，
+    搜索页自然「没有难度、没有分类」可筛 —— 界面怎么改都没用。
+
+    语法是 Pagefind 的内联写法 `键:值`（元素是什么、可不可见都不影响取值），
+    所以放在 <div hidden> 里是安全的。值要和 /search 下拉框里的文案**逐字一致**，
+    因为筛选是精确字符串匹配（「已有攻略」少写一个字就会筛出 0 条）。
+  */}
+  <div hidden>
+    <span data-pagefind-filter={`难度:${difficulty}`}></span>
+    <span data-pagefind-filter={`游戏:${game}`}></span>
+    <span data-pagefind-filter={`资料:${stub ? '资料待补充' : '已有攻略资料'}`}></span>
+  </div>
+
   <section class="map-hero">
     {heroCover && <div class="map-hero-bg" style={`background-image:url('${heroCover}')`}></div>}
     <div class="container">

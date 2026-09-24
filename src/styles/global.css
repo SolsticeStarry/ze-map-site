@@ -1491,50 +1491,22 @@ img { max-width: 100%; display: block; }
 .tag-chip .tc-sample { font-size: 11.5px; color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-theme="light"] .tag-chip .tc-name { color: var(--text); }
 
-/* 站内搜索（Pagefind UI 主题化，跟随站点暗色/亮色） */
-.search-host {
-  --pagefind-ui-scale: 0.85;
-  --pagefind-ui-primary: var(--accent);
-  --pagefind-ui-text: var(--text);
-  --pagefind-ui-background: var(--panel);
-  --pagefind-ui-border: var(--border);
-  --pagefind-ui-tag: var(--panel-2);
-  --pagefind-ui-border-width: 1px;
-  --pagefind-ui-border-radius: 10px;
-  --pagefind-ui-font: inherit;
-  max-width: 900px;
-}
-.search-host .pagefind-ui__search-input {
-  background: var(--panel);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 16px;
-}
-.search-host .pagefind-ui__search-input::placeholder { color: var(--muted); }
-.search-host .pagefind-ui__search-clear { color: var(--muted); }
-.search-host .pagefind-ui__result { border-top: 1px solid var(--border); padding: 16px 0; }
-.search-host .pagefind-ui__result-link { color: var(--accent-2); }
-.search-host .pagefind-ui__result-excerpt { color: #c8cede; font-size: 14px; line-height: 1.75; }
-.search-host .pagefind-ui__result-excerpt mark,
-.search-host .pagefind-ui__result-title mark {
+/* 站内搜索：结果列表由 src/pages/search.astro 自己渲染（不用 Pagefind 默认 UI，原因见该文件注释） */
+.pf-results { max-width: 900px; }
+.pf-result { border-top: 1px solid var(--border); padding: 16px 0; }
+.pf-result:first-child { border-top: 0; }
+.pf-result-title { color: var(--accent-2); font-size: 17.5px; font-weight: 600; }
+.pf-result-title:hover { text-decoration: underline; }
+.pf-result-path { color: var(--muted); font-size: 12px; margin-top: 3px; word-break: break-all; }
+.pf-result-excerpt { color: #c8cede; font-size: 14px; line-height: 1.75; margin: 8px 0 0; }
+.pf-result-excerpt mark {
   background: rgba(255, 77, 77, 0.22);
   color: #fff;
   padding: 0 3px;
   border-radius: 4px;
 }
-.search-host .pagefind-ui__message { color: var(--muted); }
-.search-host .pagefind-ui__button {
-  background: var(--panel-2);
-  border-color: var(--border-2);
-  color: var(--text);
-}
-.search-host .pagefind-ui__button:hover { border-color: var(--accent); color: #fff; }
-[data-theme="light"] .search-host {
-  --pagefind-ui-text: var(--text);
-  --pagefind-ui-background: var(--panel);
-  --pagefind-ui-border: var(--border);
-}
-[data-theme="light"] .search-host .pagefind-ui__result-excerpt { color: var(--text); }
+.pf-result-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+[data-theme="light"] .pf-result-excerpt { color: var(--text); }
 
 /* 资料来源列表 */.source-list { margin: 12px 0 0; padding-left: 20px; font-size: 13.5px; line-height: 2; }
 .source-list a { color: var(--accent-2); word-break: break-all; }

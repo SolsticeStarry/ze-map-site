@@ -55,7 +55,10 @@ const stubCount = maps.filter((m) => m.data.stub).length;
 
     <p class="list-count" id="list-count">共 {maps.length} 张</p>
 
-    <div class="map-grid" id="map-grid">
+    {/* data-pagefind-ignore：这一格是全部 545 张地图的卡片，全是地图名。
+        不忽略掉的话，站内搜索任何一个图名，地图库都会排到真正的地图前面。
+        页面标题和简介照常参与搜索，所以搜「地图库」仍然能找到本页。 */}
+    <div class="map-grid" id="map-grid" data-pagefind-ignore>
       {maps.map((map) => <MapCard map={map} />)}
     </div>
 

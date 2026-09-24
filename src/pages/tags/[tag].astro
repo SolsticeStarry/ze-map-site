@@ -32,7 +32,14 @@ const maps = all
   <div class="container" style="padding-bottom: 60px;">
     {maps.length > 0 ? (
       <>
-        <div class="map-grid" id="map-grid">
+        {/*
+          data-pagefind-ignore：这一格列的是**该标签下所有地图的卡片**（神器标签下有 200 多张），
+          卡片里全是地图名 —— 于是任何「搜某张地图」的查询都会命中一堆标签页，
+          而且因为命中密度高，标签页会排在真正的地图**前面**（实测：搜「魔晄炉」时地图排第 8）。
+          忽略掉卡片列表后，标签页只按自己的标题参与搜索（搜「神器」照样能找到本页），
+          但不会再抢地图的排名。卡片本身是链接，导航不受影响。
+        */}
+        <div class="map-grid" id="map-grid" data-pagefind-ignore>
           {maps.map((map) => <MapCard map={map} />)}
         </div>
         <button class="load-more" id="load-more" type="button" style="display:none">显示更多</button>
