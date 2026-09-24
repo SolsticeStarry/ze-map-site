@@ -1,0 +1,59 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import MapListTabs from '../components/MapListTabs.astro';
+import MapListRow from '../components/MapListRow.astro';
+import { getHotMaps } from '../lib/map-dates';
+
+/*
+ * 工坊热门 = 按工坊订阅数排行。
+ * 只收订阅数 > 0 的图：没有工坊数据的条目排在最后没有意义（547 张里 545 张有数据）。
+ * 不设时间窗口 —— 排行榜看的是长期人气，不是「最近」。
+ */
+const LIMIT = 100;
+const hot = await getHotMaps(LIMIT);
+const totalSubs = hot.reduce((a, m) => a + (m.data.workshopSubs ?? 0), 0);
+---
+
+<BaseLayout
+  title="工坊热门 | ZE 地图资料站"
+  description={`按 Steam 创意工坊订阅数排行的僵尸逃跑地图前 ${hot.length} 名。`}
+>
+  <section class="hero" style="padding: 70px 0 24px;">
+    <div class="container">
+      <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
+        工坊<span class="gradient-text">热门</span>
+      </h1>
+      <p class="hero-sub">
+        按 Steam 创意工坊订阅数排行 · 取前 {hot.length} 名 · 合计订阅 {totalSubs.toLocaleString('en-US')}
+      </p>
+    </div>
+  </section>
+
+  <div class="container" style="padding-bottom: 70px;">
+    <MapListTabs active="hot" />
+
+    <p class="list-count">
+      订阅数是工坊的累计数字，不是本站统计；排行榜不随时间过期（与
+      <a href="/new/">新增地图</a>、<a href="/updates/">最新更新</a> 不同）
+    </p>
+
+    <div class="list-rows">
+      {
+        hot.map((map, i) => (
+          <MapListRow
+            map={map}
+            rank={i + 1}
+            note={`订阅 ${(map.data.workshopSubs ?? 0).toLocaleString('en-US')}`}
+          />
+        ))
+      }
+    </div>
+
+    {hot.length === 0 && (
+      <div class="empty-state">
+        <p><b>还没有带工坊订阅数的图。</b></p>
+        <p style="font-size: 13px">等工坊数据同步之后这里就会出现排行。</p>
+      </div>
+    )}
+  </div>
+</BaseLayout>

@@ -1,0 +1,56 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import MapListTabs from '../components/MapListTabs.astro';
+import MapListRow from '../components/MapListRow.astro';
+import ListExpiry from '../components/ListExpiry.astro';
+import { getNewMaps, WINDOW_DAYS } from '../lib/map-dates';
+
+/*
+ * 新增地图 = 工坊上最近发布的图（frontmatter 的 releaseDate）。
+ *
+ * 为什么不用「本站首次收录」：这个仓库的历史只有几天，544 张图是 9-23 一次性导入的，
+ * 按收录日期算的话，接下来一个月这个页面会是全部 547 张 —— 等于没有意义。
+ * 工坊发布日期天然就是「最近有什么新图」，而且会随时间自然增长。
+ * （data/map-dates.json 里仍然记着每张图的收录日期，将来若想改成收录口径，数据是现成的。）
+ */
+const items = await getNewMaps();
+const countTpl = `最近 ${WINDOW_DAYS} 天共发布 {n} 张`;
+---
+
+<BaseLayout
+  title="新增地图 | ZE 地图资料站"
+  description={`最近 ${WINDOW_DAYS} 天工坊发布的僵尸逃跑新图，发布满 ${WINDOW_DAYS} 天后自动移出本页。`}
+>
+  <section class="hero" style="padding: 70px 0 24px;">
+    <div class="container">
+      <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
+        <span class="gradient-text">新增</span>地图
+      </h1>
+      <p class="hero-sub">
+        工坊上最近 {WINDOW_DAYS} 天发布的图 —— 发布满 {WINDOW_DAYS} 天后自动从这里移出（条目本身照旧保留）
+      </p>
+    </div>
+  </section>
+
+  <div class="container" style="padding-bottom: 70px;">
+    <MapListTabs active="new" />
+
+    <p class="list-count" id="list-count" data-template={countTpl}>
+      {countTpl.replace('{n}', String(items.length))}
+    </p>
+
+    <div class="list-rows" id="list-rows">
+      {items.map((it) => <MapListRow map={it.map} date={it.date} dateLabel="发布" />)}
+    </div>
+
+    <div class="empty-state" id="list-expired" style={items.length === 0 ? '' : 'display:none'}>
+      <p><b>最近 {WINDOW_DAYS} 天没有新发布的图。</b></p>
+      <p style="font-size: 13px">
+        新图发布后会自动出现在这里。想看别的，可以按难度 / 分类去 <a href="/maps/">地图库</a>，
+        或者看 <a href="/updates/">最新更新</a>、<a href="/hot/">工坊热门</a>。
+      </p>
+    </div>
+  </div>
+
+  <ListExpiry />
+</BaseLayout>

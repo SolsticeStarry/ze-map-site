@@ -1,0 +1,47 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { DIFFICULTY_CLASS } from '../../shared/difficulty.mjs';
+
+/**
+ * 动态列表里的一行地图（新增地图 / 最新更新 / 工坊热门共用）。
+ *
+ * data-date 是给页面末尾那段「按访问者本地时间判断 30 天」的脚本读的：
+ * 站点是静态的，没人推代码就不会重新构建，构建期筛过的名单会一直挂到下次部署，
+ * 所以到点自动消失这件事必须在浏览器里再做一次。
+ */
+interface Props {
+  map: CollectionEntry<'maps'>;
+  /** YYYY-MM-DD，用于排序与过期判断 */
+  date?: string | null;
+  /** 排行榜名次 */
+  rank?: number;
+  /** 右侧的补充说明，例如「订阅 12,345」 */
+  note?: string;
+  /** 日期前面显示的字，例如「发布」「改动」 */
+  dateLabel?: string;
+}
+
+const { map, date = null, rank, note, dateLabel } = Astro.props;
+const { title, titleEn, difficulty, workshopSubs, stub } = map.data;
+const diffClass = DIFFICULTY_CLASS[difficulty as keyof typeof DIFFICULTY_CLASS] ?? 'diff-unknown';
+---
+
+<a class="list-row" href={`/maps/${map.id}/`} data-date={date ?? undefined}>
+  {rank ? <span class={`list-rank${rank <= 3 ? ' top' : ''}`}>{rank}</span> : null}
+  <span class="list-main">
+    <span class="list-title">{title}</span>
+    <span class="list-en">{titleEn}</span>
+  </span>
+  <span class="list-meta">
+    {stub ? <span class="map-flag">资料待补充</span> : null}
+    <span class={`badge ${diffClass}`}>{difficulty}</span>
+    {note ? <span class="list-note">{note}</span> : null}
+    {date ? (
+      <span class="list-date">
+        {dateLabel ? `${dateLabel} ` : ''}
+        {date}
+      </span>
+    ) : null}
+    {!note && workshopSubs ? <span class="list-note">订阅 {workshopSubs.toLocaleString('en-US')}</span> : null}
+  </span>
+</a>

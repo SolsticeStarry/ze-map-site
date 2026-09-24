@@ -1,0 +1,70 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import MapListTabs from '../components/MapListTabs.astro';
+import MapListRow from '../components/MapListRow.astro';
+import ListExpiry from '../components/ListExpiry.astro';
+import { getUpdatedMaps, WINDOW_DAYS } from '../lib/map-dates';
+
+/*
+ * 最新更新 = 本站资料最近被改过的图，日期来自 git 历史（data/map-dates.json）。
+ *
+ * 口径（在 scripts/content/build-map-dates.mjs 里实现）：
+ *   · data/research/<slug>.json、data/community/<slug>.json 的改动 —— 算
+ *     （包括新建：那是有人给这张图补了资料）
+ *   · src/content/maps/<slug>.mdx 的改动 —— 只有非「新建」才算
+ *     （新建只是数据导入生成的文件，不代表有人写了内容）
+ *   · 单次提交动了几百个文件的那种（整批导入 / 生成器改版）—— 全部不算，
+ *     否则一次改版就会让所有地图在这里挂 30 天
+ */
+const items = await getUpdatedMaps();
+const countTpl = `最近 ${WINDOW_DAYS} 天共 {n} 张资料有变动`;
+---
+
+<BaseLayout
+  title="最新更新 | ZE 地图资料站"
+  description={`最近 ${WINDOW_DAYS} 天本站资料被补充或修改过的僵尸逃跑地图，数据来自 GitHub 提交记录。`}
+>
+  <section class="hero" style="padding: 70px 0 24px;">
+    <div class="container">
+      <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
+        最新<span class="gradient-text">更新</span>
+      </h1>
+      <p class="hero-sub">
+        最近 {WINDOW_DAYS} 天本站资料被补充 / 修改过的图 —— 这里的日期是<strong>本站资料的改动</strong>，
+        不是工坊更新（工坊那侧看 <a href="/new/">新增地图</a> 和 <a href="/hot/">工坊热门</a>）
+      </p>
+    </div>
+  </section>
+
+  <div class="container" style="padding-bottom: 70px;">
+    <MapListTabs active="updates" />
+
+    <p class="list-count" id="list-count" data-template={countTpl}>
+      {countTpl.replace('{n}', String(items.length))}
+    </p>
+
+    <div class="list-rows" id="list-rows">
+      {items.map((it) => <MapListRow map={it.map} date={it.date} dateLabel="改动" />)}
+    </div>
+
+    <div class="empty-state" id="list-expired" style={items.length === 0 ? '' : 'display:none'}>
+      <p><b>最近 {WINDOW_DAYS} 天还没有资料更新。</b></p>
+      <p style="font-size: 13px">
+        谁都可以来补 —— 在 <a href="/contribute/">投稿页</a> 看看怎么参与，
+        补充或修正某张图的资料，合并之后它就会出现在这里。
+      </p>
+    </div>
+
+    <div class="sidebar-card" style="max-width: 820px; margin-top: 26px;">
+      <h3>这里的「更新」指什么</h3>
+      <ul class="sidebar-hint" style="list-style: none; padding: 0">
+        <li>· 有人给某张图补了简介、难度、来源、通关视频（<code>data/research/</code>）</li>
+        <li>· 有人提交了社区补充（<code>data/community/</code>）</li>
+        <li>· 不算：工坊作者自己更新了地图（那属于工坊，见「新增地图」页）</li>
+        <li>· 不算：整批导入 / 生成器改版那种一次动几百个文件的提交</li>
+      </ul>
+    </div>
+  </div>
+
+  <ListExpiry />
+</BaseLayout>

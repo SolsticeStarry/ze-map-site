@@ -1,0 +1,32 @@
+---
+/**
+ * 「新增地图 / 最新更新 / 工坊热门」三个页面共用的标签栏。
+ * 三个页面各自是独立 URL（可以单独分享、被搜索收录），但看起来是一组标签。
+ */
+interface Props {
+  active: 'new' | 'updates' | 'hot';
+}
+
+const { active } = Astro.props;
+
+const tabs = [
+  { key: 'new', href: '/new/', label: '新增地图', hint: '最近 30 天工坊发布的图' },
+  { key: 'updates', href: '/updates/', label: '最新更新', hint: '最近 30 天资料被补充过的图' },
+  { key: 'hot', href: '/hot/', label: '工坊热门', hint: '按工坊订阅数排行' },
+];
+---
+
+<nav class="list-tabs" aria-label="地图动态">
+  {
+    tabs.map((t) => (
+      <a
+        class={`list-tab${active === t.key ? ' is-active' : ''}`}
+        href={t.href}
+        title={t.hint}
+        aria-current={active === t.key ? 'page' : undefined}
+      >
+        {t.label}
+      </a>
+    ))
+  }
+</nav>

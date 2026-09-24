@@ -984,65 +984,100 @@ img { max-width: 100%; display: block; }
   color: var(--muted);
 }
 
-/* ===== 时间线 ===== */
-.timeline {
-  position: relative;
-  padding-left: 28px;
-  border-left: 1px solid var(--border);
+/* ===== 动态列表：新增地图 / 最新更新 / 工坊热门（主页上是它们的预览） ===== */
+.list-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: fit-content;
 }
 
-.timeline-item {
-  display: grid;
-  grid-template-columns: 110px 1fr auto;
-  align-items: baseline;
-  gap: 16px;
-  padding: 14px 0;
+.list-tab {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: background 0.2s, color 0.2s;
+}
+
+.list-tab:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+.list-tab.is-active { background: var(--accent); color: #fff; }
+
+.list-rows { display: flex; flex-direction: column; }
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 6px;
   border-bottom: 1px solid var(--border);
   transition: background 0.2s;
 }
 
-.timeline-item:last-child { border-bottom: none; }
+.list-row:last-child { border-bottom: none; }
+.list-row:hover { background: rgba(255, 255, 255, 0.02); }
+.list-row:hover .list-title { color: var(--accent-2); }
 
-.timeline-item:hover { background: rgba(255,255,255,0.02); }
-
-.timeline-item:hover .timeline-title { color: var(--accent-2); }
-
-.timeline-dot {
-  position: absolute;
-  left: -5px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 12px var(--accent);
-  margin-top: 8px;
-}
-
-.timeline-date {
+.list-rank {
+  min-width: 30px;
+  flex-shrink: 0;
   font-family: ui-monospace, monospace;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
+  text-align: right;
 }
 
-.timeline-title {
+.list-rank.top { color: var(--accent); font-weight: 700; }
+
+.list-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.list-title {
   font-weight: 700;
   color: #fff;
   transition: color 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.timeline-en {
+.list-en {
   font-family: ui-monospace, monospace;
   font-size: 12px;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.list-note { font-size: 12.5px; color: var(--muted); }
+
+.list-date {
+  font-family: ui-monospace, monospace;
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 @media (max-width: 700px) {
-  .timeline-item {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-  .timeline-dot { display: none; }
-  .timeline { padding-left: 0; border-left: none; }
+  .list-row { flex-wrap: wrap; padding: 12px 0; }
+  .list-meta { width: 100%; justify-content: flex-start; }
+  .list-tabs { width: 100%; }
+  .list-tab { flex: 1; text-align: center; padding: 8px 6px; font-size: 13px; }
 }
 
 /* ===== 亮色覆盖 ===== */
@@ -1192,9 +1227,10 @@ img { max-width: 100%; display: block; }
   color: var(--text);
 }
 /* ===== 亮色模式：文字颜色修复 ===== */
-[data-theme="light"] .timeline-title { color: var(--text); }
-[data-theme="light"] .timeline-date { color: var(--muted); }
-[data-theme="light"] .timeline-en { color: var(--muted); }
+[data-theme="light"] .list-title { color: var(--text); }
+[data-theme="light"] .list-date { color: var(--muted); }
+[data-theme="light"] .list-en { color: var(--muted); }
+[data-theme="light"] .list-tab:hover { background: rgba(0, 0, 0, 0.04); }
 
 [data-theme="light"] .hot-tag { color: var(--text); }
 [data-theme="light"] .hot-tag-name { color: var(--text); }

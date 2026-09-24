@@ -1,7 +1,10 @@
 ---
 import { getMaps } from '../lib/maps';
+import { getNewMaps, getUpdatedMaps, getHotMaps } from '../lib/map-dates';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import MapCard from '../components/MapCard.astro';
+import MapListRow from '../components/MapListRow.astro';
+import ListExpiry from '../components/ListExpiry.astro';
 
 const maps = await getMaps();
 
@@ -10,13 +13,17 @@ const featured = maps.filter((m) => m.data.featured);
 const totalEntities = maps.reduce((a, m) => a + (m.data.entityCount ?? 0), 0);
 const previewable = maps.filter((m) => m.data.entitySlug).length;
 
-const latest = [...maps]
-  .sort((a, b) => {
-    const da = a.data.lastUpdated ? new Date(a.data.lastUpdated).getTime() : 0;
-    const db = b.data.lastUpdated ? new Date(b.data.lastUpdated).getTime() : 0;
-    return db - da;
-  })
-  .slice(0, 6);
+/*
+ * 三个版块各取前 6 条做预览，完整名单在各自的标签页里（/new/、/updates/、/hot/）。
+ * 注意「新增地图」和「最新更新」是两件事：
+ *   新增地图 —— 工坊最近 30 天**发布**的图
+ *   最新更新 —— 本站**资料**最近 30 天被改过的图（来自 git 提交）
+ * 改动前这里只有一个「最新更新」，用的还是工坊的 lastUpdated（工坊更新），名不副实。
+ */
+const HOME_ROWS = 6;
+const newMaps = (await getNewMaps()).slice(0, HOME_ROWS);
+const updatedMaps = (await getUpdatedMaps()).slice(0, HOME_ROWS);
+const popular = await getHotMaps(HOME_ROWS);
 
 // 热门标签统计
 const tagCount: Record<string, number> = {};
@@ -28,12 +35,6 @@ for (const m of maps) {
 const hotTags = Object.entries(tagCount)
   .sort((a, b) => b[1] - a[1])
   .slice(0, 12);
-
-// 按工坊订阅数排的热门图
-const popular = [...maps]
-  .filter((m) => (m.data.workshopSubs ?? 0) > 0)
-  .sort((a, b) => (b.data.workshopSubs ?? 0) - (a.data.workshopSubs ?? 0))
-  .slice(0, 6);
 ---
 
 <BaseLayout>
@@ -111,21 +112,26 @@ const popular = [...maps]
       </section>
     )}
 
-    {latest.length > 0 && (
+    {newMaps.length > 0 && (
+      <section>
+        <div class="section-head">
+          <h2>新增地图</h2>
+          <a href="/new/">查看全部 →</a>
+        </div>
+        <div class="list-rows">
+          {newMaps.map((it) => <MapListRow map={it.map} date={it.date} dateLabel="发布" />)}
+        </div>
+      </section>
+    )}
+
+    {updatedMaps.length > 0 && (
       <section>
         <div class="section-head">
           <h2>最新更新</h2>
-          <a href="/maps/">查看全部 →</a>
+          <a href="/updates/">查看全部 →</a>
         </div>
-        <div class="timeline">
-          {latest.map((map) => (
-            <a class="timeline-item" href={`/maps/${map.id}/`}>
-              <span class="timeline-dot"></span>
-              <span class="timeline-date">{map.data.lastUpdated ?? '—'}</span>
-              <span class="timeline-title">{map.data.title}</span>
-              <span class="timeline-en">{map.data.titleEn}</span>
-            </a>
-          ))}
+        <div class="list-rows">
+          {updatedMaps.map((it) => <MapListRow map={it.map} date={it.date} dateLabel="改动" />)}
         </div>
       </section>
     )}
@@ -134,17 +140,18 @@ const popular = [...maps]
       <section>
         <div class="section-head">
           <h2>工坊热门</h2>
-          <a href="/maps/">查看全部 →</a>
+          <a href="/hot/">查看全部 →</a>
         </div>
-        <div class="timeline">
-          {popular.map((map) => (
-            <a class="timeline-item" href={`/maps/${map.id}/`}>
-              <span class="timeline-dot"></span>
-              <span class="timeline-date">订阅 {(map.data.workshopSubs ?? 0).toLocaleString('en-US')}</span>
-              <span class="timeline-title">{map.data.title}</span>
-              <span class="timeline-en">{map.data.titleEn}</span>
-            </a>
-          ))}
+        <div class="list-rows">
+          {
+            popular.map((m, i) => (
+              <MapListRow
+                map={m}
+                rank={i + 1}
+                note={`订阅 ${(m.data.workshopSubs ?? 0).toLocaleString('en-US')}`}
+              />
+            ))
+          }
         </div>
       </section>
     )}
@@ -185,4 +192,8 @@ const popular = [...maps]
     );
     counters.forEach((el) => io.observe(el));
   </script>
+
+  {/* 主页也要按访问者本机时间再筛一次：否则站点两个月没重新部署的话，
+      主页还挂着已经过期的条目，而 /new/ 页早已空了。 */}
+  <ListExpiry />
 </BaseLayout>

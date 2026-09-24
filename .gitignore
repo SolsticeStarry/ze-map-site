@@ -141,6 +141,9 @@ data/*
 !data/community/
 # 检索代理留下的临时抓取目录（_ws / _imgs 等）
 data/research/_*/
+# 每张地图的「进站 / 最近改动」日期，由 scripts/content/build-map-dates.mjs 从 git 历史生成。
+# 必须入库：线上构建若是浅克隆就读不到历史，页面要退回用这份清单，否则「最新更新」会一片空白。
+!data/map-dates.json
 
 # Astro 生成的类型与缓存（不要入库）
 .astro/

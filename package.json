@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/content/generate-map-entries.mjs && astro build && node scripts/content/build-search.mjs",
+    "build": "node scripts/content/build-map-dates.mjs && node scripts/content/generate-map-entries.mjs && astro build && node scripts/content/build-search.mjs",
     "build:site": "astro build",
     "search:index": "pagefind --site dist",
     "preview": "astro preview",
@@ -17,6 +17,7 @@
     "data:image": "node scripts/entity-data/render-map-image.mjs",
     "data:covers": "node scripts/entity-data/render-covers.mjs",
     "maps:generate": "node scripts/content/generate-map-entries.mjs",
+    "content:dates": "node scripts/content/build-map-dates.mjs",
     "content:verify": "node scripts/content/verify-research.mjs",
     "content:rename-difficulty": "node scripts/content/rename-difficulty.mjs",
     "gfl:parse": "node scripts/content/parse-gfl-configs.mjs",
