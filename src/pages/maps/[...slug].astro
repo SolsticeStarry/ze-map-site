@@ -2,6 +2,8 @@
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import MapCard from '../../components/MapCard.astro';
+import DifficultyVote from '../../components/DifficultyVote.astro';
+import { DIFFICULTY_CLASS } from '../../../shared/difficulty.mjs';
 
 export async function getStaticPaths() {
   const maps = await getCollection('maps');
@@ -39,15 +41,7 @@ const {
   videoUrls,
 } = entry.data;
 
-const diffMap: Record<string, string> = {
-  简单: 'diff-easy',
-  中等: 'diff-medium',
-  困难: 'diff-hard',
-  极难: 'diff-extreme',
-  地狱: 'diff-hell',
-  未知: 'diff-unknown',
-};
-const diffClass = diffMap[difficulty] ?? 'diff-unknown';
+const diffClass = DIFFICULTY_CLASS[difficulty as keyof typeof DIFFICULTY_CLASS] ?? 'diff-unknown';
 
 const previewUrl = entitySlug ? `/preview/?map=${entitySlug}` : null;
 const hasBasics = Boolean(author || version || players || duration || stages);
@@ -148,6 +142,8 @@ const related = all
         {authorNote && <p class="sidebar-hint">署名详情：{authorNote}</p>}
         {!hasBasics && <p class="sidebar-hint">作者、人数、时长等资料待补充。</p>}
       </div>
+
+      <DifficultyVote slug={entry.id} current={difficulty} />
 
       {(workshopUrl || downloadUrl) && (
         <div class="sidebar-card">

@@ -1,0 +1,56 @@
+name: 报告网站问题
+description: 页面打不开、显示错乱、按钮没反应、链接失效、手机上不好用等
+title: "[问题] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！描述得越具体越好，能附截图就更好。
+
+  - type: input
+    id: url
+    attributes:
+      label: 出问题的页面地址
+      placeholder: https://ze-map.cn/...
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 什么现象
+      description: 例如：点右上角月亮图标没反应；地图卡片上的实体预览按钮点不动
+    validations:
+      required: true
+
+  - type: textarea
+    id: expect
+    attributes:
+      label: 你期望的结果
+    validations:
+      required: false
+
+  - type: input
+    id: device
+    attributes:
+      label: 设备与浏览器
+      description: 手机端问题尤其需要这一项
+      placeholder: 例如 iPhone 15 / Safari；小米 14 / Chrome；Windows / Edge
+    validations:
+      required: false
+
+  - type: input
+    id: when
+    attributes:
+      label: 大概什么时候开始出现的
+      placeholder: 例如：今天下午；一直都有
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: 截图
+      description: 直接把图片拖进这个框就可以上传
+    validations:
+      required: false

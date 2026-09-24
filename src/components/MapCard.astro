@@ -1,5 +1,6 @@
 ---
 import type { CollectionEntry } from 'astro:content';
+import { DIFFICULTY_CLASS } from '../../shared/difficulty.mjs';
 
 interface Props {
   map: CollectionEntry<'maps'>;
@@ -9,15 +10,7 @@ const { map } = Astro.props;
 const { title, titleEn, difficulty, players, duration, stages, tags, cover, entityCount, stub, entitySlug } =
   map.data;
 const slug = map.id;
-const diffMap: Record<string, string> = {
-  简单: 'diff-easy',
-  中等: 'diff-medium',
-  困难: 'diff-hard',
-  极难: 'diff-extreme',
-  地狱: 'diff-hell',
-  未知: 'diff-unknown',
-};
-const diffClass = diffMap[difficulty] ?? 'diff-unknown';
+const diffClass = DIFFICULTY_CLASS[difficulty as keyof typeof DIFFICULTY_CLASS] ?? 'diff-unknown';
 
 const metaBits = [
   players ? `${players} 人` : null,

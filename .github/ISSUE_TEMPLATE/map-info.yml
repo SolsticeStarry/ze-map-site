@@ -1,0 +1,68 @@
+name: 补充地图资料
+description: 补充某张地图的剧情、作者、难度、神器、攻略等资料
+title: "[资料] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢投稿！**不确定的字段留空就行，不用硬凑**。
+        请尽量附上可核对的来源链接；查不到的宁缺勿假。
+
+        不想用 GitHub 也可以直接联系站长 QQ **3157410575**。
+
+  - type: input
+    id: map_name
+    attributes:
+      label: 地图英文名或中文名
+      description: 例如 ze_ffvii_mako_reactor，或直接写「魔晄炉」
+      placeholder: ze_xxx
+    validations:
+      required: true
+
+  - type: dropdown
+    id: field
+    attributes:
+      label: 想补充哪方面（可多选）
+      multiple: true
+      options:
+        - 背景故事 / 题材出处
+        - 作者 / 移植者
+        - 难度 / 建议人数 / 通关时长
+        - 关卡流程 / 团灭点
+        - 神器与机关（名称、效果、刷新点）
+        - 攻略视频
+        - 截图 / 路线图
+        - 其它
+    validations:
+      required: true
+
+  - type: textarea
+    id: content
+    attributes:
+      label: 要补充的内容
+      description: 越具体越好
+      placeholder: |
+        例如：第二关的 BOSS 有两条命，第一次打完后会召唤小怪；
+        守点建议人类分成左中右三组……
+    validations:
+      required: true
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: 来源链接（有就填，很重要）
+      description: 工坊页面、B 站视频、论坛帖、社区攻略等，一行一个
+      placeholder: |
+        https://steamcommunity.com/sharedfiles/filedetails/?id=...
+        https://www.bilibili.com/video/BV...
+    validations:
+      required: false
+
+  - type: input
+    id: credit
+    attributes:
+      label: 署名（可选）
+      description: 希望站上怎么标注你的贡献
+      placeholder: 例如：资料由 XXX 提供
+    validations:
+      required: false

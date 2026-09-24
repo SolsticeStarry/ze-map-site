@@ -1567,3 +1567,79 @@ img { max-width: 100%; display: block; }
 [data-theme="light"] .map-main code { background: rgba(0, 0, 0, 0.06); color: #0e7490; }
 [data-theme="light"] .stat-row .chip b { color: var(--text); }
 [data-theme="light"] .entity-cta .ec-t { color: var(--text); }
+
+/* ===== 难度投票（社区收录，P1） =====
+   卡片默认 hidden，接口通了才由脚本取消隐藏；
+   接口没启用 / 挂了 / 断网时脚本直接 remove()，页面上什么都不会留下。 */
+.vote-card[hidden] { display: none !important; }
+.vote-card .sidebar-hint { margin-bottom: 10px; }
+
+.vote-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+  gap: 6px;
+}
+
+.vote-btn {
+  position: relative;
+  overflow: hidden;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-2);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+/* 得票占比条：宽度由脚本写入 --pct */
+.vote-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--pct, 0%);
+  background: currentColor;
+  opacity: 0.14;
+  transition: width 0.3s ease;
+  pointer-events: none;
+}
+
+.vote-btn .vote-label,
+.vote-btn .vote-count { position: relative; }
+
+.vote-btn .vote-count {
+  margin-left: 3px;
+  font-size: 11px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.vote-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.vote-btn:disabled { cursor: default; opacity: 0.65; }
+.vote-btn.is-mine { border-color: currentColor; }
+.vote-btn.is-mine .vote-label { font-weight: 700; }
+
+/* 难度配色：与详情页徽章同一套色 */
+.vote-btn.diff-easy { color: #4ade80; border-color: rgba(74, 222, 128, 0.35); }
+.vote-btn.diff-medium { color: #60a5fa; border-color: rgba(96, 165, 250, 0.35); }
+.vote-btn.diff-hard { color: #fb923c; border-color: rgba(251, 146, 60, 0.35); }
+.vote-btn.diff-extreme { color: #f87171; border-color: rgba(248, 113, 113, 0.35); }
+.vote-btn.diff-hell { color: #c084fc; border-color: rgba(192, 132, 252, 0.4); }
+.vote-btn.diff-unknown { color: var(--muted); }
+
+.vote-status {
+  margin: 10px 0 0;
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 亮色主题：上面那套浅色在白底上对比度不够，换深一档 */
+[data-theme="light"] .vote-btn.diff-easy { color: #15803d; border-color: rgba(21, 128, 61, 0.3); }
+[data-theme="light"] .vote-btn.diff-medium { color: #1d4ed8; border-color: rgba(29, 78, 216, 0.3); }
+[data-theme="light"] .vote-btn.diff-hard { color: #c2410c; border-color: rgba(194, 65, 12, 0.3); }
+[data-theme="light"] .vote-btn.diff-extreme { color: #b91c1c; border-color: rgba(185, 28, 28, 0.3); }
+[data-theme="light"] .vote-btn.diff-hell { color: #7e22ce; border-color: rgba(126, 34, 206, 0.35); }

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 不想用 GitHub？直接联系站长
+    url: https://ze-map.cn/contribute/
+    about: 通过 QQ 3157410575 把资料发过来，整理的事交给站长
+  - name: 投稿指南（先看这个）
+    url: https://ze-map.cn/contribute/
+    about: 现在最需要什么、该改哪个文件、手写条目与自动生成条目的区别

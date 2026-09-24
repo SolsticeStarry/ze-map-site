@@ -1,0 +1,23 @@
+name: 其它建议
+description: 功能建议、内容方向、站点体验等
+title: "[建议] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        欢迎提任何想法，不用怕"不专业"。
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: 你的建议
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 为什么觉得需要
+      description: 说说你的使用场景会更有说服力
+    validations:
+      required: false

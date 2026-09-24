@@ -1,5 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
+import { DIFFICULTIES, DIFFICULTY_DEFAULT } from '../shared/difficulty.mjs';
 
 const maps = defineCollection({
   loader: glob({ pattern: '**/*.mdx', base: './src/content/maps' }),
@@ -12,7 +13,10 @@ const maps = defineCollection({
     /** 作者署名的补充说明（多作者 / 原作与移植的区分），侧栏只显示简短 author */
     authorNote: z.string().optional(),
     version: z.string().optional(),
-    difficulty: z.enum(['简单', '中等', '困难', '极难', '地狱', '未知']).default('未知'),
+    /* 难度枚举取自 shared/difficulty.mjs —— 与投票 Worker 共用一份定义。
+       类型断言只是因为 z.enum 需要「非空元组」字面量类型，运行时校验完全按 DIFFICULTIES 走。
+       2026-09-24 的线上构建失败就是有人写了枚举外的「普通」，这份共享定义就是为了不再重演。 */
+    difficulty: z.enum(DIFFICULTIES as [string, ...string[]]).default(DIFFICULTY_DEFAULT),
     players: z.string().optional(),
     duration: z.string().optional(),
     stages: z.number(),

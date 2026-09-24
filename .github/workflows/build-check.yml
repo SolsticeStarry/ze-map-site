@@ -1,0 +1,50 @@
+# 提交者检查：有人提 PR 时，先在 Linux 上跑一遍和 Cloudflare 一样的构建。
+#
+# 为什么需要它：
+# Cloudflare 的构建只在 main 上跑（控制台里「Builds for non-production branches」
+# 没勾选），所以 PR 分支在合并前完全没人验证。2026-09-24 就吃了这个亏——
+# 贡献者把 frontmatter 的 tags 写成两个并列数组：
+#     tags: ["传送门多"]  ["风景"]  ["多关"]
+# YAML 解析直接报「bad indentation of a mapping entry」，而且就算修好 YAML，
+# difficulty: 普通 也不在 schema 允许的枚举里，还会再挂一次。
+# 这次错误合并进 main 之后，线上构建红叉，站点没能更新。
+# 有了这个 workflow，同样的错误会直接显示在 PR 页面上，合并前就能看到。
+#
+# 说明：
+# - 公开仓库的 Actions 额度免费，这个任务约 1~2 分钟。
+# - 跑在 ubuntu 上还有个额外好处：Linux 文件系统大小写敏感，能提前抓出
+#   「Windows 本地能过、线上 404」的标签目录/路径大小写问题（踩过一次）。
+# - 不部署、不需要任何密钥，只做「构建 + 查站内死链」。
+# - Node 用 22（对应 npm 10.x），与 Cloudflare 构建环境保持一致。
+
+name: Build check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建站点
+        run: npm run build
+
+      - name: 检查站内死链
+        run: npm run content:links

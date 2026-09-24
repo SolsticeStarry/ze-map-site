@@ -1,0 +1,119 @@
+---
+/**
+ * 难度投票（社区收录，P1）
+ *
+ * 渐进增强：卡片默认 hidden，只有 /api/stats 成功返回才显示。
+ * 这样在投票服务未启用 / 接口挂掉 / 断网时，页面与现在完全一样，
+ * 绝不会留下一个「点了没反应」的死按钮。
+ */
+import { DIFFICULTIES, DIFFICULTY_CLASS } from '../../shared/difficulty.mjs';
+
+interface Props {
+  slug: string;
+  /** 当前条目里写的难度，仅用于文案 */
+  current: string;
+}
+
+const { slug, current } = Astro.props;
+---
+
+<div class="sidebar-card vote-card" data-vote-slug={slug} hidden>
+  <h3>难度投票</h3>
+  <p class="sidebar-hint">
+    条目现在标的是「{current}」。你的体感呢？点一下就行，不用登录，随时可以改。
+  </p>
+
+  <div class="vote-options">
+    {
+      DIFFICULTIES.map((d: string) => (
+        <button type="button" class={`vote-btn ${DIFFICULTY_CLASS[d] ?? ''}`} data-vote-value={d}>
+          <span class="vote-label">{d}</span>
+          <span class="vote-count" data-vote-count={d}></span>
+        </button>
+      ))
+    }
+  </div>
+
+  <p class="vote-status" data-vote-status aria-live="polite">正在连接投票服务…</p>
+</div>
+
+<script>
+  const card = document.querySelector<HTMLElement>('[data-vote-slug]');
+  if (card) {
+    const slug = card.dataset.voteSlug as string;
+    const statusEl = card.querySelector<HTMLElement>('[data-vote-status]');
+    const buttons = [...card.querySelectorAll<HTMLButtonElement>('[data-vote-value]')];
+
+    interface Stats {
+      ok?: boolean;
+      error?: string;
+      total: number;
+      counts: Record<string, number>;
+      myVote: string | null;
+    }
+
+    function render(data: Stats) {
+      card!.hidden = false;
+      const total = data.total || 0;
+
+      for (const btn of buttons) {
+        const value = btn.dataset.voteValue as string;
+        const n = data.counts?.[value] ?? 0;
+        const countEl = btn.querySelector<HTMLElement>('[data-vote-count]');
+        if (countEl) countEl.textContent = n > 0 ? String(n) : '';
+        btn.style.setProperty('--pct', total > 0 ? `${Math.round((n / total) * 100)}%` : '0%');
+        btn.classList.toggle('is-mine', data.myVote === value);
+      }
+
+      if (statusEl) {
+        statusEl.textContent =
+          total > 0
+            ? `共 ${total} 票${data.myVote ? ` · 你投的是「${data.myVote}」` : ''}`
+            : '还没有人投票，你来投第一票？';
+      }
+    }
+
+    function setStatus(text: string) {
+      if (statusEl) statusEl.textContent = text;
+    }
+
+    let busy = false;
+
+    async function vote(value: string) {
+      if (busy) return;
+      busy = true;
+      buttons.forEach((b) => (b.disabled = true));
+      setStatus('提交中…');
+      try {
+        const res = await fetch('/api/vote', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ map: slug, value }),
+        });
+        const data = (await res.json()) as Stats;
+        if (!data.ok) throw new Error(data.error || '投票失败');
+        render(data);
+      } catch (err) {
+        setStatus(err instanceof Error && err.message ? err.message : '投票失败了，稍后再试');
+      } finally {
+        busy = false;
+        buttons.forEach((b) => (b.disabled = false));
+      }
+    }
+
+    for (const btn of buttons) {
+      btn.addEventListener('click', () => vote(btn.dataset.voteValue as string));
+    }
+
+    fetch(`/api/stats?map=${encodeURIComponent(slug)}`)
+      .then((r) => r.json() as Promise<Stats>)
+      .then((data) => {
+        if (!data.ok) throw new Error();
+        render(data);
+      })
+      .catch(() => {
+        // 服务没启用 / 出错 / 断网 —— 整张卡片拿掉，不留半死状态
+        card.remove();
+      });
+  }
+</script>

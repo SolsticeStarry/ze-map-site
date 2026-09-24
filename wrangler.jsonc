@@ -1,6 +1,6 @@
-// Cloudflare Workers 部署配置（纯静态资源，站点由 Astro 构建到 ./dist）
+// Cloudflare Workers 部署配置（站点由 Astro 构建到 ./dist，Worker 脚本只处理 /api/*）
 //
-// 这个文件有两个作用，都别删：
+// 这个文件有几个作用，都别删：
 //
 // 1) 关掉 wrangler 的「自动配置」（autoconfig）。
 //    仓库里没有 wrangler 配置文件时，`npx wrangler deploy` 会自作主张地执行
@@ -13,15 +13,45 @@
 // 2) 让静态资源用 dist/404.html 兜底。
 //    not_found_handling 默认是 none（未命中的路径返回空 body 的 404）。
 //
+// 3) previews 空块：给「Worker Previews」用的占位。
+//    Cloudflare 的 Worker Previews（预览环境，走 `npx wrangler preview`）要求配置里
+//    有 previews 段，纯顶层设置的项目留空即可。见
+//    https://developers.cloudflare.com/workers/configuration/previews/
+//
+// 4) 社区难度投票（P1）—— main / binding / run_worker_first / d1_databases
+//    main              Worker 脚本入口（wrangler 原生支持 TS，无需额外构建步骤）
+//    assets.binding    让脚本能 env.ASSETS.fetch()，把非 /api/* 的请求**原样交回**
+//                      静态资源。⚠️ 少了它就没法把未知路径交回 resources 层，
+//                      站内那个 404 页会被顶掉。
+//    run_worker_first  只有 /api/* 先走脚本。其余请求仍是官方的「静态资源优先」，
+//                      所以 808 个页面照旧由边缘直接发出，速度不受影响，
+//                      脚本出问题也只是投票接口 500，站点照常访问。
+//    d1_databases      投票数据（库名 ze-map-community）
+//    设计与分期：docs/community-editing-plan.md
+//
 // ⚠️ name 必须与线上 Worker 同名（ze-map-site），否则会新建一个 Worker，
 //    自定义域名 ze-map.cn 不会跟过去。
 // ⚠️ assets.directory 必须指向 ./dist，写错会导致整站没有静态资源。
+// ⚠️ 部署前必须设置 secret：npx wrangler secret put IP_SALT
+//    没设置时 /api/* 会返回 503 —— 这是故意的：盐写在公开仓库里等于没有盐，
+//    别人可以拿它暴力枚举 IPv4 反查出投票者 IP。
 {
   "name": "ze-map-site",
   "compatibility_date": "2026-09-23",
+  "main": "worker/index.ts",
   "assets": {
     "directory": "./dist",
     "not_found_handling": "404-page",
-    "html_handling": "auto-trailing-slash"
-  }
+    "html_handling": "auto-trailing-slash",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ze-map-community",
+      "database_id": "314ae078-618f-463d-b0e5-798b35386dbf"
+    }
+  ],
+  "previews": {}
 }
