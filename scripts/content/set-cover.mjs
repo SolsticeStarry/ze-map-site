@@ -10,9 +10,11 @@
  * 产物：public/images/covers/custom/<地图内部名>.webp
  *
  * ⚠️ 为什么放在 custom/ 子目录，而不是直接覆盖 /images/covers/<分片名>.webp：
- *    那个目录是 `npm run data:covers` 的产物，重跑一次批量渲染就全被覆盖。
- *    放在 custom/ 里，生成器会优先取它（见 generate-map-entries.mjs 里 cover 那段），
- *    批量重渲染也不会动它。想换回渲染图，把 custom/ 里那个文件删掉就行 —— 不用改任何配置。
+ *    那个目录是 `npm run data:covers` 的产物。直接换掉它平时能用（渲染脚本默认跳过
+ *    已存在的文件），但 `npm run data:covers --force` 一跑就被冲掉，
+ *    而且事后分不清哪张是脚本渲染的、哪张是人换的。
+ *    放在 custom/ 则两者互不干扰：生成器优先取它，批量重渲染不碰它。
+ *    想换回渲染图，把 custom/ 里那个文件删掉即可 —— 不用改任何配置。
  *
  * 图片规格（页面上的两处用法）：
  *   · 地图卡片封面 —— 16:9 画幅

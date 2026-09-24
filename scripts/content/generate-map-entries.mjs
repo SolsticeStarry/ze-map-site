@@ -237,8 +237,9 @@ function renderEntry(rec, research, wsRec, gfl) {
    *   1. 人工上传的 public/images/covers/custom/<地图内部名>.<ext>
    *      （自己用 `npm run cover:set` 生成，或者贡献者直接往这个目录传图）
    *   2. 实体数据渲染的 /images/covers/<分片名>.webp（render-covers.mjs 的产物）
-   * 人工封面特意放在 custom/ 子目录：那个目录是批量渲染的产物，重跑一次就全被覆盖，
-   * 放在别处才不会被冲掉。删掉 custom/ 里的文件即可换回渲染图。
+   * 人工封面特意放在 custom/ 子目录：渲染目录（render-covers.mjs）默认会跳过已存在的文件，
+   * 直接换掉渲染图平时也能用，但 `--force` 重渲染会冲掉它，事后也分不清哪张是人换的。
+   * 放 custom/ 两者互不干扰，删掉那里的文件即可换回渲染图。
    *
    * 为什么认多种扩展名而不是只认 webp：贡献者大多不会转 webp（要装工具），
    * 但人人都会从截图工具里存出 png / jpg。只认 webp 等于把「提 PR 换封面」这条路堵死。

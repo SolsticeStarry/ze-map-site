@@ -73,7 +73,13 @@ if (!fs.existsSync(DIR)) {
   process.exit(0);
 }
 
-const files = fs.readdirSync(DIR).filter((f) => !f.startsWith('.'));
+/*
+ * 说明文件跟封面放在同一个目录，是故意的：GitHub 浏览目录时会把该目录的 README.md
+ * 渲染在文件列表下面，正好拦住「想换封面 → 点进渲染目录 → 换错地方」这个常见误会。
+ * 所以校验时要跳过它们，不能当成「不支持的格式」。
+ */
+const isDoc = (f) => /\.(md|txt)$/i.test(f);
+const files = fs.readdirSync(DIR).filter((f) => !f.startsWith('.') && !isDoc(f));
 const bySlug = new Map();
 
 for (const file of files) {
