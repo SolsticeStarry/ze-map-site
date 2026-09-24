@@ -1,8 +1,8 @@
 ---
-import { getCollection } from 'astro:content';
+import { getMaps } from '../../lib/maps';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
-const maps = await getCollection('maps');
+const maps = await getMaps();
 const tagCount: Record<string, number> = {};
 const tagMaps: Record<string, typeof maps> = {};
 for (const m of maps) {

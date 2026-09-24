@@ -1,8 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getCollection } from 'astro:content';
+import { getMaps } from '../lib/maps';
 
-const maps = await getCollection('maps');
+const maps = await getMaps();
 const researched = maps.filter((m) => !m.data.stub).length;
 ---
 

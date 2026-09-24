@@ -1,10 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getCollection } from 'astro:content';
+import { getMaps } from '../lib/maps';
 // 构建期导入（由打包器按模块图解析，与运行时工作目录无关）
 import catalog from '../../public/entity/catalog.json';
 
-const maps = await getCollection('maps');
+const maps = await getMaps();
 const withEntities = maps.filter((m) => m.data.entitySlug).length;
 const withSubs = maps.filter((m) => (m.data.workshopSubs ?? 0) > 0).length;
 const stub = maps.filter((m) => m.data.stub).length;

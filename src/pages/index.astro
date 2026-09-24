@@ -1,9 +1,9 @@
 ---
-import { getCollection } from 'astro:content';
+import { getMaps } from '../lib/maps';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import MapCard from '../components/MapCard.astro';
 
-const maps = await getCollection('maps');
+const maps = await getMaps();
 
 const featured = maps.filter((m) => m.data.featured);
 

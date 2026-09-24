@@ -135,6 +135,10 @@ data/*
 !data/creators.json
 !data/gfl/
 !data/gfl-parsed/
+# 社区投稿落盘目录（P2）—— 审核通过后由 Worker 写入，必须入库，
+# 否则构建期读不到，而且 git 也失去「内容变更史」的作用。
+# ⚠️ 上面那条 data/* 会连它一起忽略，所以这行不能删。
+!data/community/
 # 检索代理留下的临时抓取目录（_ws / _imgs 等）
 data/research/_*/
 

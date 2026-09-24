@@ -1,10 +1,10 @@
 ---
-import { getCollection } from 'astro:content';
+import { getMaps } from '../../lib/maps';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import MapCard from '../../components/MapCard.astro';
 
 export async function getStaticPaths() {
-  const maps = await getCollection('maps');
+  const maps = await getMaps();
   const allTags = [...new Set(maps.flatMap((m) => m.data.tags))];
   return allTags.map((tag) => ({
     params: { tag },
@@ -13,7 +13,7 @@ export async function getStaticPaths() {
 }
 
 const { tag } = Astro.props;
-const all = await getCollection('maps');
+const all = await getMaps();
 const maps = all
   .filter((m) => m.data.tags.includes(tag))
   .sort((a, b) => (b.data.entityCount ?? 0) - (a.data.entityCount ?? 0));

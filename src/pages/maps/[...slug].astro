@@ -1,12 +1,13 @@
 ---
-import { getCollection, render } from 'astro:content';
+import { render } from 'astro:content';
+import { getMaps } from '../../lib/maps';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import MapCard from '../../components/MapCard.astro';
 import DifficultyVote from '../../components/DifficultyVote.astro';
 import { DIFFICULTY_CLASS } from '../../../shared/difficulty.mjs';
 
 export async function getStaticPaths() {
-  const maps = await getCollection('maps');
+  const maps = await getMaps();
   return maps.map((entry) => ({
     params: { slug: entry.id },
     props: { entry },
@@ -16,18 +17,16 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const { Content } = await render(entry);
 
+/*
+ * 这些值**已经由 content loader 合并过社区覆盖**（见 src/content.config.ts 的
+ * mapsLoader）。页面里不要再自己读一遍 data/community/ —— 地图库、标签页、
+ * 首页、同类推荐都走同一个 loader，页面自己读会造成「详情页说困难、列表说中等」。
+ */
 const {
   title,
   titleEn,
-  difficulty,
-  players,
-  duration,
-  stages,
-  author,
-  authorNote,
-  version,
   game,
-  tags,
+  cover: heroCover,
   workshopUrl,
   downloadUrl,
   entitySlug,
@@ -36,19 +35,31 @@ const {
   workshopViews,
   workshopMissing,
   uploader,
-  stub,
+  difficulty,
+  tags,
+  author,
+  authorNote,
+  version,
+  players,
+  duration,
+  stages,
   sources,
   videoUrls,
+  stub,
+  communityNotes,
+  communityPeople,
 } = entry.data;
+
+const hasCommunity = communityPeople.length > 0 || communityNotes.length > 0;
+const communityHistoryUrl = `https://github.com/hhjjdsj/ze-map-site/commits/main/data/community/${entry.id}.json`;
 
 const diffClass = DIFFICULTY_CLASS[difficulty as keyof typeof DIFFICULTY_CLASS] ?? 'diff-unknown';
 
 const previewUrl = entitySlug ? `/preview/?map=${entitySlug}` : null;
 const hasBasics = Boolean(author || version || players || duration || stages);
-const heroCover = entry.data.cover;
 
 // 同类地图推荐：共同标签多的优先，其次看工坊订阅
-const all = await getCollection('maps');
+const all = await getMaps();
 const related = all
   .filter((m) => m.id !== entry.id && m.data.tags.length > 0)
   .map((m) => ({ m, shared: m.data.tags.filter((t) => tags.includes(t)).length }))
@@ -101,6 +112,20 @@ const related = all
 
       <Content />
 
+      {communityNotes.length > 0 && (
+        <section class="community-block">
+          <h2>社区补充</h2>
+          {communityNotes.map((n: { text: string; by: string; at: string | null }) => (
+            <div class="community-note">
+              <p class="community-note-text">{n.text}</p>
+              <p class="community-note-by">
+                由 {n.by} 补充{n.at ? ` · ${n.at.slice(0, 10)}` : ''}
+              </p>
+            </div>
+          ))}
+        </section>
+      )}
+
       {related.length > 0 && (
         <section>
           <h2>同类地图</h2>
@@ -123,7 +148,7 @@ const related = all
       )}
 
       <div class="sidebar-card">
-        <h3>基本信息</h3>
+        <h3>基本信息{hasCommunity && <span class="field-src">含社区补充</span>}</h3>
         <dl>
           <dt>英文名</dt><dd>{titleEn}</dd>
           {author && <><dt>作者</dt><dd>{author}</dd></>}
@@ -166,6 +191,21 @@ const related = all
         <div class="tag-list">
           {tags.length > 0 ? tags.map((t: string) => <a href={`/tags/${t}/`}>{t}</a>) : <span class="sidebar-hint">暂无标签</span>}
         </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>补充 / 纠错</h3>
+        <p class="sidebar-hint">
+          发现错漏、或者知道更多资料？不用会 git，填个表单就行 —— 审核通过后会出现在本页。
+        </p>
+        <a class="btn" href={`/submit/?map=${entry.id}`}>✏️ 补充这张图的资料</a>
+        {hasCommunity && (
+          <p class="community-credit">
+            本条目含社区补充，感谢：{communityPeople.join('、')}
+            {' · '}
+            <a href={communityHistoryUrl} target="_blank" rel="noopener">改动记录 ↗</a>
+          </p>
+        )}
       </div>
 
       <div class="sidebar-card">

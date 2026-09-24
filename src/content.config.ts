@@ -2,6 +2,12 @@ import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 import { DIFFICULTIES, DIFFICULTY_DEFAULT } from '../shared/difficulty.mjs';
 
+/*
+ * ⚠️ 读地图数据请用 src/lib/maps.ts 的 getMaps()，不要直接 getCollection('maps')。
+ * 社区投稿（data/community/<slug>.json）对难度/标签等字段的覆盖是在那一层合并的，
+ * 直接 getCollection 会拿到未合并的原始数据，造成页面之间自相矛盾。
+ */
+
 const maps = defineCollection({
   loader: glob({ pattern: '**/*.mdx', base: './src/content/maps' }),
   schema: z.object({
@@ -50,6 +56,27 @@ const maps = defineCollection({
     stub: z.boolean().default(false),
     /** 资料出处链接 */
     sources: z.array(z.string()).optional(),
+
+    /*
+     * ===== 社区补充 =====
+     * 下面三项由 src/lib/maps.ts 的 mergeEntry() 在读取时注入，
+     * 不要手写进 MDX（写了也会被合并结果覆盖）。这里声明是为了让类型与
+     * 默认值稳定，页面可以直接解构不用担心 undefined。
+     */
+    /** 已被社区覆盖的字段名，用于在页面上标注来源 */
+    communityFields: z.array(z.string()).default([]),
+    /** 社区补充正文（审核通过后写入 data/community/<slug>.json） */
+    communityNotes: z
+      .array(
+        z.object({
+          text: z.string(),
+          by: z.string(),
+          at: z.string().nullable().default(null),
+        })
+      )
+      .default([]),
+    /** 贡献者昵称（去重） */
+    communityPeople: z.array(z.string()).default([]),
   }),
 });
 

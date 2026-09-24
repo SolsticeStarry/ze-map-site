@@ -1,0 +1,299 @@
+---
+/**
+ * 投稿表单（P2）
+ *
+ * 不用会 git：填完提交 → 进 D1 待审队列 → 站长在 /admin 审核 → 通过后写回
+ * data/community/<slug>.json → Cloudflare 重建 → 内容出现在地图条目里。
+ *
+ * 字段定义全部来自 shared/submission-fields.mjs（与 Worker 共用一份），
+ * 所以这里既不用手写控件，也不会和「什么算合法投稿」的规则漂移。
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { FIELD_RULES } from '../../../shared/submission-fields.mjs';
+
+const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => ({
+  key,
+  kind: rule.kind as string,
+  label: rule.label as string,
+  hint: (rule.hint as string) ?? '',
+  values: (rule.values as string[]) ?? [],
+}));
+---
+
+<BaseLayout
+  title="补充 / 纠错 | ZE 地图资料站"
+  description="不用会 git：发现地图资料有错漏，填个表单提交即可，人工审核通过后会更新到条目里。"
+>
+  <div class="container">
+    <div class="form-card">
+      <h1>补充 / 纠错</h1>
+      <p class="form-hint">
+        任何人都可以提交，<strong>不需要 GitHub 账号</strong>。提交后进入人工审核队列，
+        通过后会更新到对应地图的条目里，并署上你的昵称。
+      </p>
+
+      <p class="form-hint" id="ctx">正在读取地图信息…</p>
+    </div>
+
+    <form class="form-card" id="sub-form" hidden>
+      <div class="form-row">
+        <label for="f-map">地图</label>
+        <input id="f-map" readonly />
+      </div>
+
+      <div class="form-row">
+        <label for="f-field">要提交哪一项</label>
+        <select id="f-field">
+          {fields.map((f) => <option value={f.key}>{f.label}</option>)}
+        </select>
+        <p class="form-hint" id="f-hint"></p>
+      </div>
+
+      {
+        fields.map((f) => (
+          <div class="form-row" data-block={f.key} hidden>
+            <label for={`f-in-${f.key}`}>{f.label}</label>
+            {f.kind === 'enum' ? (
+              <select id={`f-in-${f.key}`} data-input={f.key}>
+                {f.values.map((v) => (
+                  <option value={v}>{v}</option>
+                ))}
+              </select>
+            ) : f.kind === 'longtext' ? (
+              <textarea id={`f-in-${f.key}`} data-input={f.key} rows="8" />
+            ) : f.kind === 'tags' || f.kind === 'urlList' ? (
+              <textarea
+                id={`f-in-${f.key}`}
+                data-input={f.key}
+                rows="3"
+                placeholder={f.kind === 'tags' ? '每行一个标签' : '每行一个链接（https:// 开头）'}
+              />
+            ) : (
+              <input
+                id={`f-in-${f.key}`}
+                data-input={f.key}
+                type={f.kind === 'int' ? 'number' : 'text'}
+              />
+            )}
+            <p class="form-hint">
+              条目现在的值：<span data-current={f.key}>—</span>
+            </p>
+          </div>
+        ))
+      }
+
+      <div class="form-row">
+        <label for="f-note">理由 / 来源（选填，但很有帮助）</label>
+        <textarea id="f-note" rows="2" maxlength="500"
+          placeholder="例如：工坊页面描述里写的是普通难度；或者给出参考链接"></textarea>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-row">
+          <label for="f-submitter">你的昵称（选填，会署在条目里）</label>
+          <input id="f-submitter" maxlength="32" />
+        </div>
+        <div class="form-row">
+          <label for="f-contact">联系方式（选填，便于追问）</label>
+          <input id="f-contact" maxlength="80" placeholder="QQ / 邮箱" />
+        </div>
+      </div>
+
+      <button class="btn btn-primary" type="submit" id="f-submit">提交</button>
+      <p class="form-error" id="f-error" hidden></p>
+    </form>
+
+    <div class="form-card" id="result" hidden></div>
+
+    <div class="form-card">
+      <h2>查审核状态</h2>
+      <p class="form-hint">提交成功后会给你一个编号，凭它就能查。</p>
+      <div class="form-grid">
+        <div class="form-row">
+          <label for="q-id">投稿编号</label>
+          <input id="q-id" type="number" min="1" placeholder="例如 12" />
+        </div>
+        <div class="form-row">
+          <label>&nbsp;</label>
+          <button class="btn" type="button" id="q-go">查询</button>
+        </div>
+      </div>
+      <p class="form-hint" id="q-out"></p>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  /* 与 Worker 共用同一份字段规则与校验 —— 前端只是「提前告诉你哪里不对」，
+     真正的权威校验在服务端（worker/submissions.ts）。 */
+  import { FIELD_RULES, validateValue } from '../../../shared/submission-fields.mjs';
+
+  const slug = new URLSearchParams(location.search).get('map') ?? '';
+  const ctxEl = document.getElementById('ctx') as HTMLElement;
+  const form = document.getElementById('sub-form') as HTMLFormElement;
+  const fieldSel = document.getElementById('f-field') as HTMLSelectElement;
+  const hintEl = document.getElementById('f-hint') as HTMLElement;
+  const errEl = document.getElementById('f-error') as HTMLElement;
+  const resultEl = document.getElementById('result') as HTMLElement;
+  const submitBtn = document.getElementById('f-submit') as HTMLButtonElement;
+
+  let mapInfo: Record<string, unknown> | null = null;
+
+  const rules = FIELD_RULES as Record<string, { kind: string; hint?: string }>;
+
+  function formatValue(v: unknown): string {
+    if (v === undefined || v === null || v === '') return '（空）';
+    if (Array.isArray(v)) return v.length ? v.join('、') : '（空）';
+    return String(v);
+  }
+
+  function showField(key: string) {
+    for (const el of document.querySelectorAll<HTMLElement>('[data-block]')) {
+      el.hidden = el.dataset.block !== key;
+    }
+    hintEl.textContent = rules[key]?.hint ?? '';
+  }
+
+  function prefill(key: string) {
+    const input = document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      `[data-input="${key}"]`
+    );
+    const curEl = document.querySelector<HTMLElement>(`[data-current="${key}"]`);
+    const cur = mapInfo?.[key];
+    if (curEl) curEl.textContent = formatValue(cur);
+    if (!input) return;
+    if (cur === undefined || cur === null) input.value = '';
+    else if (Array.isArray(cur)) input.value = cur.join('\n');
+    else input.value = String(cur);
+  }
+
+  function collect(key: string): unknown {
+    const el = document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      `[data-input="${key}"]`
+    );
+    if (!el) return undefined;
+    const kind = rules[key]?.kind;
+    if (kind === 'int') return el.value === '' ? '' : Number(el.value);
+    if (kind === 'tags' || kind === 'urlList') {
+      return el.value
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    return el.value;
+  }
+
+  function showError(msg: string) {
+    errEl.textContent = msg;
+    errEl.hidden = false;
+  }
+
+  fieldSel.addEventListener('change', () => {
+    showField(fieldSel.value);
+    prefill(fieldSel.value);
+    errEl.hidden = true;
+  });
+
+  /* 载入地图索引（构建期生成的 /submit/maps.json） */
+  fetch('/submit/maps.json')
+    .then((r) => r.json())
+    .then((list: Array<Record<string, unknown>>) => {
+      if (!slug) {
+        ctxEl.innerHTML =
+          '没有指定地图。请先到 <a href="/maps/">地图库</a> 打开某张图的详情页，' +
+          '点右侧栏的「✏️ 补充这张图的资料」。';
+        return;
+      }
+      mapInfo = list.find((m) => m.slug === slug) ?? null;
+      if (!mapInfo) {
+        ctxEl.textContent = `找不到地图「${slug}」，请从地图详情页重新进入。`;
+        return;
+      }
+      ctxEl.innerHTML = `正在为 <strong>《${mapInfo.title}》</strong>（${mapInfo.titleEn}）补充资料。`;
+      (document.getElementById('f-map') as HTMLInputElement).value =
+        `${mapInfo.title}（${mapInfo.titleEn}）`;
+      form.hidden = false;
+      showField(fieldSel.value);
+      prefill(fieldSel.value);
+    })
+    .catch(() => {
+      ctxEl.textContent = '读取地图索引失败，请刷新重试。';
+    });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errEl.hidden = true;
+
+    const field = fieldSel.value;
+    const value = collect(field);
+    const checked = validateValue(field, value);
+    if (!checked.ok) return showError(checked.error);
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = '提交中…';
+    try {
+      const res = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          map: slug,
+          field,
+          value: checked.value,
+          note: (document.getElementById('f-note') as HTMLTextAreaElement).value,
+          submitter: (document.getElementById('f-submitter') as HTMLInputElement).value,
+          contact: (document.getElementById('f-contact') as HTMLInputElement).value,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; id?: number; error?: string };
+      if (!data.ok) throw new Error(data.error || '提交失败');
+
+      form.hidden = true;
+      resultEl.hidden = false;
+      resultEl.innerHTML =
+        `<h2>提交成功 ✅</h2>` +
+        `<p class="form-ok">编号 <strong>${data.id}</strong> —— 请记下它，可以回来查审核状态。</p>` +
+        `<p class="form-hint">站长审核通过后，内容会被写进仓库并自动重建，` +
+        `大约几分钟内就会出现在 <a href="/maps/${slug}/">《${mapInfo?.title}》的条目</a> 里。</p>`;
+      const qid = document.getElementById('q-id') as HTMLInputElement;
+      if (qid) qid.value = String(data.id ?? '');
+    } catch (err) {
+      showError(err instanceof Error && err.message ? err.message : '提交失败，请稍后再试');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '提交';
+    }
+  });
+
+  /* 审核状态查询 */
+  const qOut = document.getElementById('q-out') as HTMLElement;
+  document.getElementById('q-go')?.addEventListener('click', async () => {
+    const id = (document.getElementById('q-id') as HTMLInputElement).value.trim();
+    if (!id) {
+      qOut.textContent = '请先填编号。';
+      return;
+    }
+    qOut.textContent = '查询中…';
+    try {
+      const res = await fetch(`/api/submission?id=${encodeURIComponent(id)}`);
+      const data = (await res.json()) as {
+        ok?: boolean;
+        status?: string;
+        field?: string;
+        reject_note?: string;
+        error?: string;
+      };
+      if (!data.ok) throw new Error(data.error || '查不到');
+      const label: Record<string, string> = {
+        pending: '待审核',
+        applied: '已通过并上线',
+        rejected: '未通过',
+        approved: '已通过，等待发布',
+      };
+      qOut.textContent =
+        `编号 ${id}：${label[data.status ?? ''] ?? data.status}` +
+        (data.reject_note ? `　理由：${data.reject_note}` : '');
+    } catch (err) {
+      qOut.textContent = err instanceof Error ? err.message : '查询失败';
+    }
+  });
+</script>

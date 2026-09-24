@@ -1,9 +1,9 @@
 ---
-import { getCollection } from 'astro:content';
+import { getMaps } from '../../lib/maps';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import MapCard from '../../components/MapCard.astro';
 
-const maps = (await getCollection('maps')).sort((a, b) =>
+const maps = (await getMaps()).sort((a, b) =>
   a.data.title.localeCompare(b.data.title, 'zh-Hans-CN')
 );
 

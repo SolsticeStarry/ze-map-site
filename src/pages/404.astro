@@ -1,8 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getCollection } from 'astro:content';
+import { getMaps } from '../lib/maps';
 
-const maps = await getCollection('maps');
+const maps = await getMaps();
 const hot = [...maps]
   .filter((m) => m.data.entitySlug)
   .sort((a, b) => (b.data.entityCount ?? 0) - (a.data.entityCount ?? 0))

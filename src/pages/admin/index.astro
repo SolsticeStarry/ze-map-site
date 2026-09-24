@@ -1,0 +1,274 @@
+---
+/**
+ * 审核台（P2）—— 只有站长用。
+ *
+ * 认证方式：ADMIN_TOKEN（Worker secret）。密钥存在浏览器 localStorage，
+ * 请求时走 Authorization: Bearer。没有密钥的人打开这个页面只会看到一个输入框。
+ *
+ * 为什么不用 Cloudflare Access：Access 要在控制台配 Zero Trust + Access 应用，
+ * 而且官方文档写明「Worker 带静态资源时 ctx.access 不会传给用户 Worker」，
+ * 在 Worker 里读不到登录身份。密钥方案自包含、可端到端测试。以后想加 Access
+ * 作为第二层照样能叠加。
+ *
+ * ⚠️ 渲染投稿内容一律用 textContent，绝不用 innerHTML —— 投稿是陌生人写的，
+ *    用 innerHTML 就等于让投稿人往审核台里注入脚本偷密钥。
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="审核台 | ZE 地图资料站" description="社区投稿审核">
+  <div class="container">
+    <div class="form-card">
+      <h1>审核台</h1>
+      <p class="form-hint">
+        密钥只保存在你这台浏览器里（localStorage），不会发往别处。
+        审核通过后会直接写回 GitHub 仓库的 <code>data/community/</code>，并触发 Cloudflare 重建。
+      </p>
+      <div class="form-grid">
+        <div class="form-row">
+          <label for="a-token">管理密钥（ADMIN_TOKEN）</label>
+          <input id="a-token" type="password" placeholder="粘贴后点连接" autocomplete="off" />
+        </div>
+        <div class="form-row">
+          <label for="a-reviewer">审核人署名（会写进 git 提交信息）</label>
+          <input id="a-reviewer" maxlength="32" placeholder="站长" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="a-connect" type="button">连接</button>
+      <p class="form-hint" id="a-status"></p>
+    </div>
+
+    <div class="form-card" id="a-panel" hidden>
+      <div class="queue-actions" style="margin-bottom: 14px">
+        <button class="btn" type="button" data-status="pending" id="a-tab-pending">待审</button>
+        <button class="btn" type="button" data-status="applied">已上线</button>
+        <button class="btn" type="button" data-status="rejected">已驳回</button>
+        <button class="btn" type="button" id="a-reload">刷新</button>
+      </div>
+      <p class="queue-counts" id="a-counts"></p>
+      <div id="a-list"></div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { FIELD_RULES } from '../../../shared/submission-fields.mjs';
+
+  const rules = FIELD_RULES as Record<string, { label: string }>;
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+  const tokenEl = $<HTMLInputElement>('a-token');
+  const reviewerEl = $<HTMLInputElement>('a-reviewer');
+  const statusEl = $<HTMLElement>('a-status');
+  const panel = $<HTMLElement>('a-panel');
+  const countsEl = $<HTMLElement>('a-counts');
+  const listEl = $<HTMLElement>('a-list');
+
+  let token = localStorage.getItem('ze-admin-token') ?? '';
+  let reviewer = localStorage.getItem('ze-admin-reviewer') ?? '';
+  let currentStatus = 'pending';
+
+  tokenEl.value = token;
+  reviewerEl.value = reviewer;
+
+  interface QueueItem {
+    id: number;
+    map_slug: string;
+    field: string;
+    value: unknown;
+    current: unknown;
+    note: string | null;
+    submitter: string | null;
+    contact: string | null;
+    status: string;
+    created_at: number;
+    commit_sha: string | null;
+    error: string | null;
+    reject_note: string | null;
+  }
+
+  /** 建节点用 textContent 赋值 —— 天然免疫 HTML 注入 */
+  function el(tag: string, cls?: string, text?: string): HTMLElement {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+
+  function fmt(v: unknown): string {
+    if (v === null || v === undefined || v === '') return '（空）';
+    if (Array.isArray(v)) return v.length ? v.join('、') : '（空）';
+    return String(v);
+  }
+
+  async function api(
+    path: string,
+    init: { method?: string; body?: unknown } = {}
+  ): Promise<{ status: number; data: any }> {
+    const res = await fetch(path, {
+      method: init.method ?? 'GET',
+      headers: {
+        authorization: `Bearer ${token}`,
+        ...(init.body ? { 'content-type': 'application/json' } : {}),
+      },
+      body: init.body ? JSON.stringify(init.body) : undefined,
+    });
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      /* 非 JSON */
+    }
+    return { status: res.status, data };
+  }
+
+  function setStatus(text: string, isError = false) {
+    statusEl.textContent = text;
+    statusEl.className = isError ? 'form-error' : 'form-hint';
+  }
+
+  function renderItem(item: QueueItem): HTMLElement {
+    const box = el('div', 'queue-item');
+
+    const head = el('div', 'queue-head');
+    head.append(
+      el('span', 'queue-map', `《${item.map_slug}》`),
+      el('span', 'queue-field', rules[item.field]?.label ?? item.field),
+      el('span', 'queue-meta', new Date(item.created_at).toLocaleString('zh-CN'))
+    );
+    box.append(head);
+
+    const diff = el('p', 'queue-diff');
+    diff.append(
+      el('del', undefined, fmt(item.current)),
+      el('span', undefined, ' → '),
+      el('ins', undefined, fmt(item.value))
+    );
+    box.append(diff);
+
+    if (item.note) box.append(el('p', 'queue-note', `理由：${item.note}`));
+
+    const who = [
+      item.submitter ? `投稿人：${item.submitter}` : '投稿人：匿名',
+      item.contact ? `联系：${item.contact}` : '',
+    ]
+      .filter(Boolean)
+      .join('　');
+    box.append(el('p', 'queue-note', who));
+
+    if (item.error) box.append(el('p', 'form-error', `上次写回失败：${item.error}`));
+    if (item.commit_sha) box.append(el('p', 'queue-note', `提交：${item.commit_sha.slice(0, 8)}`));
+    if (item.reject_note) box.append(el('p', 'queue-note', `驳回理由：${item.reject_note}`));
+
+    const actions = el('div', 'queue-actions');
+
+    if (item.status === 'pending' || item.status === 'approved') {
+      const ok = el('button', 'btn btn-primary', '通过并写回仓库') as HTMLButtonElement;
+      ok.type = 'button';
+      ok.onclick = () => review(item.id, 'approve');
+      actions.append(ok);
+    }
+
+    if (item.status === 'pending') {
+      const no = el('button', 'btn', '驳回') as HTMLButtonElement;
+      no.type = 'button';
+      no.onclick = () => {
+        const reason = prompt('驳回理由（会展示给投稿人）：', '');
+        if (reason !== null && reason.trim()) review(item.id, 'reject', reason.trim());
+      };
+      actions.append(no);
+    }
+
+    if (item.status !== 'applied') {
+      const ban = el('button', 'btn', '封禁此来源') as HTMLButtonElement;
+      ban.type = 'button';
+      ban.onclick = () => {
+        const reason = prompt('封禁理由（内部记录）：', '垃圾投稿');
+        if (reason !== null && reason.trim()) banSource(item.id, reason.trim());
+      };
+      actions.append(ban);
+    }
+
+    const view = el('a', 'btn', '打开条目 ↗') as HTMLAnchorElement;
+    view.href = `/maps/${item.map_slug}/`;
+    view.target = '_blank';
+    view.rel = 'noopener';
+    actions.append(view);
+
+    box.append(actions);
+    return box;
+  }
+
+  async function load() {
+    listEl.replaceChildren(el('p', 'form-hint', '加载中…'));
+    const { status, data } = await api(`/api/admin/queue?status=${currentStatus}`);
+    if (status !== 200) {
+      listEl.replaceChildren();
+      setStatus(data?.error ?? `加载失败（HTTP ${status}）`, true);
+      if (status === 401) panel.hidden = true;
+      return;
+    }
+    setStatus('');
+    panel.hidden = false;
+
+    const c = data.counts ?? {};
+    countsEl.textContent =
+      `待审 ${c.pending ?? 0} · 已上线 ${c.applied ?? 0} · 已驳回 ${c.rejected ?? 0}` +
+      (data.gitReady ? '' : '　⚠️ 服务端还没配 GITHUB_TOKEN，审核通过也无法写回仓库');
+
+    listEl.replaceChildren();
+    const items: QueueItem[] = data.items ?? [];
+    if (items.length === 0) {
+      listEl.append(el('p', 'form-hint', currentStatus === 'pending' ? '没有待审投稿 🎉' : '暂无记录'));
+      return;
+    }
+    for (const item of items) listEl.append(renderItem(item));
+  }
+
+  async function review(id: number, action: 'approve' | 'reject', rejectNote?: string) {
+    setStatus(action === 'approve' ? '正在写回仓库…' : '处理中…');
+    const { status, data } = await api('/api/admin/review', {
+      method: 'POST',
+      body: { id, action, rejectNote, reviewer },
+    });
+    if (status !== 200) {
+      setStatus(`${data?.error ?? '操作失败'}（HTTP ${status}）`, true);
+      await load();
+      return;
+    }
+    setStatus(data.note ?? '完成');
+    await load();
+  }
+
+  async function banSource(id: number, reason: string) {
+    setStatus('正在封禁…');
+    const { status, data } = await api('/api/admin/ban', { method: 'POST', body: { id, reason } });
+    if (status !== 200) {
+      setStatus(`${data?.error ?? '封禁失败'}（HTTP ${status}）`, true);
+      return;
+    }
+    setStatus('已封禁，该来源的待审投稿也一并驳回了');
+    await load();
+  }
+
+  $<HTMLButtonElement>('a-connect').onclick = async () => {
+    token = tokenEl.value.trim();
+    reviewer = reviewerEl.value.trim() || '站长';
+    localStorage.setItem('ze-admin-token', token);
+    localStorage.setItem('ze-admin-reviewer', reviewer);
+    setStatus('连接中…');
+    await load();
+  };
+
+  $<HTMLButtonElement>('a-reload').onclick = () => load();
+
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-status]')) {
+    btn.onclick = () => {
+      currentStatus = btn.dataset.status as string;
+      load();
+    };
+  }
+
+  /* 已经有密钥就自动连一次 */
+  if (token) load();
+</script>
