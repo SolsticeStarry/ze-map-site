@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && node scripts/content/build-search.mjs",
+    "build": "node scripts/content/generate-map-entries.mjs && astro build && node scripts/content/build-search.mjs",
     "build:site": "astro build",
     "search:index": "pagefind --site dist",
     "preview": "astro preview",
