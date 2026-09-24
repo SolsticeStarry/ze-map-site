@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "slug": "ze_lotr_minas_tirith",
+  "updatedAt": "2026-09-24T08:48:13.509Z",
+  "fields": {
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1ZiAoexEWt/?spm_id_from=333.1007.top_right_bar_window_history.content.click"
+      ],
+      "by": "Liyuu~",
+      "at": "2026-09-24T08:48:13.509Z",
+      "submission": 5
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1ZiAoexEWt/?spm_id_from=333.1007.top_right_bar_window_history.content.click"
+      ],
+      "by": "Liyuu~",
+      "at": "2026-09-24T08:48:13.509Z",
+      "submission": 5
+    }
+  ]
+}
