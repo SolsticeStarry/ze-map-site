@@ -67,7 +67,8 @@
 1. 打开 `public/images/covers/custom/` 目录
 2. 右上角 **Add file → Upload files**
 3. 把图片拖进去。**文件名必须正好是「地图英文名」**，例如 `ze_obj_abyss_v2.jpg`
-   - 格式 `.jpg` / `.png` / `.webp` 都可以，不用自己转格式、不用压缩工具
+   - 格式 `.jpg` / `.png` / `.webp` 都收。**但截图直接存 PNG 往往有 1~2 MB，会超限** ——
+     尽量存成 JPG（画质 80 左右），或者用 `npm run cover:set` 让脚本压成 webp（通常只有 1/10）
    - ⚠️ **不是** Steam 分片名（`2001-ze_xxx-123456`）。名字写错这张图**永远不会显示**，而页面和构建全都正常，你不会收到任何报错
 4. 下面写一句「换了 xx 的封面」，点 **Propose changes** → **Create pull request**
 

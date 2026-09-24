@@ -270,7 +270,7 @@ const fieldRows = Object.entries(R).map(([key, r]) => ({
         <li>右上角 <b>Add file → Upload files</b>，把图片拖进去</li>
         <li>
           <b>文件名必须正好是「地图英文名」</b>，例如 <code>ze_obj_abyss_v2.jpg</code>。
-          格式 <code>.jpg</code> / <code>.png</code> / <code>.webp</code> 都行，不用自己转格式
+          格式 <code>.jpg</code> / <code>.png</code> / <code>.webp</code> 都收
         </li>
         <li>下面写一句「换了 xx 的封面」，点 <b>Propose changes</b> → <b>Create pull request</b></li>
       </ol>
@@ -284,7 +284,7 @@ const fieldRows = Object.entries(R).map(([key, r]) => ({
         <tbody>
           <tr><td>比例</td><td>横向 16:9。竖图会被裁成中间一条</td></tr>
           <tr><td>宽度</td><td>1280px 左右最合适，至少 640px（详情页顶部会放大当背景）</td></tr>
-          <tr><td>体积</td><td>尽量 300 KB 以内，<b>硬上限 800 KB</b>（超了检查会红）</td></tr>
+          <tr><td>体积</td><td>尽量 300 KB 以内，<b>硬上限 800 KB</b>（超了检查会红）。<b>截图直接存 PNG 往往有 1~2 MB</b>，存成 JPG（画质 80 左右）就行</td></tr>
         </tbody>
       </table>
       <div class="doc-note warn">

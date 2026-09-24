@@ -106,7 +106,12 @@ for (const file of files) {
   }
 
   if (size > MAX_BYTES) {
-    errors.push(`${file}: ${kb} KB，太大了（上限 ${MAX_BYTES / 1024} KB）。封面是网页资源，请先压缩。`);
+    errors.push(
+      `${file}: ${kb} KB，太大了（上限 ${MAX_BYTES / 1024} KB）。` +
+        `截图存成 PNG 往往就是这么肥（同一张图转 webp 通常只有 1/10）。` +
+        `本机有仓库的话跑 npm run cover:set -- <地图英文名> <这张图> 会自动压好；` +
+        `或者用看图工具另存为 JPG（画质 80 左右）再传。`
+    );
   } else if (size > WARN_BYTES) {
     warns.push(`${file}: ${kb} KB，偏大（建议 300 KB 以内）`);
   }
