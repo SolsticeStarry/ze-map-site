@@ -77,6 +77,12 @@ const maps = defineCollection({
       .default([]),
     /** 贡献者昵称（去重） */
     communityPeople: z.array(z.string()).default([]),
+    /**
+     * 社区**单独**补充的来源链接。
+     * 与 sources 分开：sources 是合并后的完整清单，这个只是社区那一份，
+     * 侧栏标注「社区补充的来源」时用，避免和研究来源混在一起显示。
+     */
+    communitySources: z.array(z.string()).default([]),
   }),
 });
 

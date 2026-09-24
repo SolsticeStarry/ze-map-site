@@ -18,6 +18,7 @@
  */
 import { getCollection } from 'astro:content';
 import { contributors, fieldValue, hasContent, normalizeDoc } from '../../shared/community-doc.mjs';
+import { FIELD_RULES } from '../../shared/submission-fields.mjs';
 
 /*
  * 社区文件由打包器解析路径 —— 绝不要改成 fs.readFile + 相对路径，
@@ -25,22 +26,26 @@ import { contributors, fieldValue, hasContent, normalizeDoc } from '../../shared
  */
 const communityModules = import.meta.glob('../../data/community/*.json', { eager: true });
 
-/** 社区可以覆盖的字段（与 shared/submission-fields.mjs 保持一致） */
-const OVERRIDABLE = [
-  'difficulty',
-  'tags',
-  'author',
-  'authorNote',
-  'version',
-  'players',
-  'duration',
-  'stages',
-  'sources',
-  'videoUrls',
-];
+/**
+ * 社区可以覆盖的字段 —— **直接从投稿表单的字段规则派生**。
+ *
+ * 以前这里是手写一份列表，两边一旦不同步就会出现「表单能投、但页面不渲染」
+ * 这种静默失效 —— `videoUrls`（页面压根没渲染）和 `sources`（烤进正文里、
+ * 覆盖了也不显示）都栽在这上面。派生出来就不会再漂移：
+ * 在 shared/submission-fields.mjs 加一个字段，它自动成为可覆盖字段。
+ *
+ * body 排除在外：它进的是 communityNotes（页面上的「社区补充」区块），不是条目字段。
+ */
+const OVERRIDABLE: string[] = Object.keys(FIELD_RULES).filter((k) => k !== 'body');
+
+/** 按「追加 + 去重」而不是替换合并的字段 —— 标记在字段规则的 `append` 上 */
+const APPEND_FIELDS = new Set(
+  Object.entries(FIELD_RULES)
+    .filter(([, rule]) => (rule as { append?: boolean }).append)
+    .map(([k]) => k)
+);
 
 const docCache = new Map<string, ReturnType<typeof normalizeDoc> | null>();
-
 function communityFor(slug: string) {
   if (docCache.has(slug)) return docCache.get(slug) ?? null;
   const raw = communityModules[`../../data/community/${slug}.json`] as
@@ -60,6 +65,7 @@ export function mergeEntry<T extends { id: string; data: Record<string, any> }>(
     data.communityFields = [];
     data.communityNotes = [];
     data.communityPeople = [];
+    data.communitySources = [];
     return { ...entry, data } as T;
   }
 
@@ -67,7 +73,21 @@ export function mergeEntry<T extends { id: string; data: Record<string, any> }>(
   for (const field of OVERRIDABLE) {
     const v = fieldValue(doc, field);
     if (v === undefined || v === null) continue;
-    data[field] = v;
+
+    /*
+     * sources / videoUrls 的语义是**追加**，不是替换。
+     *
+     * 投稿人是在补充清单（「我找到一个视频」），不是在重写整份。用替换会静默
+     * 丢掉原有条目 —— 例如研究里已经整理好 3 个视频，社区补第 4 个时把前 3 个顶掉，
+     * 页面上只剩 1 个，而且没有任何提示。去重后合并才符合意图。
+     * 想删条目仍然可以改 data/research/ 下的原稿，走的不是这条路径。
+     */
+    if (APPEND_FIELDS.has(field) && Array.isArray(v)) {
+      const base: unknown[] = Array.isArray(data[field]) ? data[field] : [];
+      data[field] = [...base, ...v.filter((x: unknown) => !base.includes(x))];
+    } else {
+      data[field] = v;
+    }
     applied.push(field);
   }
 
@@ -77,6 +97,9 @@ export function mergeEntry<T extends { id: string; data: Record<string, any> }>(
   data.communityFields = applied;
   data.communityNotes = doc.notes;
   data.communityPeople = contributors(doc);
+  /* 社区那一份来源单独留一份：侧栏要标注「社区补充」，不能和研究来源混在一起显示 */
+  const onlySources = fieldValue(doc, 'sources');
+  data.communitySources = Array.isArray(onlySources) ? onlySources : [];
 
   return { ...entry, data } as T;
 }

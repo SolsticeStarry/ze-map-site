@@ -42,8 +42,24 @@ export const FIELD_RULES = {
   players: { kind: 'text', label: '人数', hint: '如「最多 64 人」', maxLen: 40 },
   duration: { kind: 'text', label: '时长', hint: '如「约 40 分钟」', maxLen: 40 },
   stages: { kind: 'int', label: '关卡数', min: 1, max: 30 },
-  videoUrls: { kind: 'urlList', label: '攻略视频', hint: '每行一个，https 开头', max: 5 },
-  sources: { kind: 'urlList', label: '资料来源', hint: '每行一个，https 开头', max: 5 },
+  videoUrls: {
+    kind: 'urlList',
+    label: '攻略视频',
+    hint: '每行一个，https 开头。B 站和 YouTube 会直接嵌播放器，其它站会显示成链接',
+    /* 上限 12：站内已有 10 张图的视频超过 5 个（最多 9 个），
+       上限太小会导致「想补全但提交不了」。 */
+    max: 12,
+    /* 社区补的按「追加 + 去重」合并，不替换 —— 否则补 1 个会把原有的全顶掉 */
+    append: true,
+  },
+  sources: {
+    kind: 'urlList',
+    label: '资料来源',
+    hint: '每行一个，https 开头',
+    /* 同理：现有资料里超过 5 条来源的很多 */
+    max: 12,
+    append: true,
+  },
   body: {
     kind: 'longtext',
     label: '补充说明 / 纠错',

@@ -9,12 +9,13 @@
     "神器",
     "短流程"
   ],
-  "duration": "约 25 分钟",
+  "videoUrls": [],
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3164817189",
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3521710695",
     "https://playmon.ru/server/178.33.160.187:27015"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "duration": "约 25 分钟"
 }

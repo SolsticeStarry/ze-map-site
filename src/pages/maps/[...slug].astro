@@ -4,6 +4,7 @@ import { getMaps } from '../../lib/maps';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import MapCard from '../../components/MapCard.astro';
 import DifficultyVote from '../../components/DifficultyVote.astro';
+import VideoEmbed from '../../components/VideoEmbed.astro';
 import { DIFFICULTY_CLASS } from '../../../shared/difficulty.mjs';
 
 export async function getStaticPaths() {
@@ -46,12 +47,23 @@ const {
   sources,
   videoUrls,
   stub,
+  communityFields,
   communityNotes,
   communityPeople,
+  communitySources,
 } = entry.data;
 
 const hasCommunity = communityPeople.length > 0 || communityNotes.length > 0;
 const communityHistoryUrl = `https://github.com/hhjjdsj/ze-map-site/commits/main/data/community/${entry.id}.json`;
+
+/*
+ * 社区补过的「资料来源」由 mergeEntry 注入 entry.data.communitySources。
+ *
+ * 为什么单独列一份：sources 是**生成器烤进正文**的（正文里那个「## 资料来源」列表
+ * 来自 data/research/<地图>.json），社区补的来源不会出现在正文里 ——
+ * 所以侧栏单独列出来并标明来自社区。研究来源仍在正文，不重复。
+ */
+const shortUrl = (u: string) => u.replace(/^https?:\/\/(www\.)?/, '').replace(/\/+$/, '');
 
 const diffClass = DIFFICULTY_CLASS[difficulty as keyof typeof DIFFICULTY_CLASS] ?? 'diff-unknown';
 
@@ -111,6 +123,20 @@ const related = all
       )}
 
       <Content />
+
+      {/*
+        攻略视频。
+        ⚠️ 这一块以前不存在 —— videoUrls 只被生成器写进 frontmatter，本页解构了却从不渲染，
+        所以 544 个自动生成条目（以及社区投稿补充的视频）在页面上一律看不到。
+        （手写条目是自己 import VideoEmbed 嵌进正文的，不受影响。）
+        组件里已经有 loading="lazy"，视频多的图不会一次性加载全部播放器。
+      */}
+      {(videoUrls ?? []).length > 0 && (
+        <section>
+          <h2>攻略视频</h2>
+          {(videoUrls ?? []).map((url: string) => <VideoEmbed url={url} />)}
+        </section>
+      )}
 
       {communityNotes.length > 0 && (
         <section class="community-block">
@@ -213,6 +239,18 @@ const related = all
         <p class="sidebar-hint">
           实体数据来自 CS2 服务端实体 dump（StarDance），坐标为实体原点，快照 2026-09-23。
         </p>
+        {communitySources.length > 0 && (
+          <p class="sidebar-hint">
+            社区补充的来源：
+            <br />
+            {communitySources.map((s: string) => (
+              <>
+                <a href={s} target="_blank" rel="noopener">{shortUrl(s)}</a>
+                <br />
+              </>
+            ))}
+          </p>
+        )}
       </div>
     </aside>
   </div>

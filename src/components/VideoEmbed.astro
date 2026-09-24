@@ -1,4 +1,14 @@
 ---
+/**
+ * 视频嵌入。
+ *
+ * 只有 B 站和 YouTube 能嵌播放器（这是它们提供的 iframe 播放器接口决定的）。
+ * 其它站点的链接**不再硬塞进 iframe** —— 那会渲染出一个加载失败的空框，
+ * 看起来像站坏了。改成渲染一张可点的链接卡。
+ *
+ * 这个 fallback 是给社区投稿兜底的：投稿表单只校验「是合法的 https 链接」，
+ * 不限制站点，所以一定会有人投来别的站。宁可显示成链接，也不要显示成坏框。
+ */
 interface Props {
   url: string;
   title?: string;
@@ -6,8 +16,8 @@ interface Props {
 
 const { url, title = '' } = Astro.props;
 
-let embedUrl = url;
-let platform = 'unknown';
+let embedUrl: string | null = null;
+let platform = 'other';
 
 if (url.includes('bilibili.com')) {
   platform = 'bilibili';
@@ -25,23 +35,36 @@ if (url.includes('bilibili.com')) {
     embedUrl = `https://www.youtube.com/embed/${idMatch[1]}`;
   }
 }
+
+/* 拿不到播放器地址就退化成链接（例如 B 站短链、或别的视频站） */
+const canEmbed = Boolean(embedUrl);
 ---
 
-<figure class="video-embed" data-platform={platform}>
-  <div class="video-frame">
-    <iframe
-      src={embedUrl}
-      title={title || '视频'}
-      loading="lazy"
-      allowfullscreen
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-    ></iframe>
-  </div>
-  {title && <figcaption>{title}</figcaption>}
-  <a class="video-source" href={url} target="_blank" rel="noopener">
-    在原站打开 ↗
-  </a>
-</figure>
+{
+  canEmbed ? (
+    <figure class="video-embed" data-platform={platform}>
+      <div class="video-frame">
+        <iframe
+          src={embedUrl}
+          title={title || '视频'}
+          loading="lazy"
+          allowfullscreen
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        />
+      </div>
+      {title && <figcaption>{title}</figcaption>}
+      <a class="video-source" href={url} target="_blank" rel="noopener">
+        在原站打开 ↗
+      </a>
+    </figure>
+  ) : (
+    <p class="video-plain">
+      <a href={url} target="_blank" rel="noopener">
+        ▶ {title || `打开视频（${platform === 'other' ? '外部站点' : platform}）`} ↗
+      </a>
+    </p>
+  )
+}
 
 <style>
   .video-embed {
@@ -55,7 +78,7 @@ if (url.includes('bilibili.com')) {
 
   .video-embed:hover {
     border-color: var(--border-2);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   }
 
   .video-frame {
@@ -88,6 +111,21 @@ if (url.includes('bilibili.com')) {
   }
 
   .video-source:hover {
+    color: var(--accent-2);
+  }
+
+  /* 不能嵌入时的链接卡 */
+  .video-plain {
+    margin: 10px 0;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+
+  .video-plain a {
     color: var(--accent-2);
   }
 </style>
