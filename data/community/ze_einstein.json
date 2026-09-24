@@ -1,0 +1,24 @@
+{
+  "v": 1,
+  "slug": "ze_einstein",
+  "updatedAt": "2026-09-24T08:58:26.733Z",
+  "fields": {
+    "difficulty": {
+      "v": "普通",
+      "by": "白叶",
+      "at": "2026-09-24T08:58:26.733Z",
+      "submission": 8
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "普通",
+      "by": "白叶",
+      "at": "2026-09-24T08:58:26.733Z",
+      "submission": 8
+    }
+  ]
+}
