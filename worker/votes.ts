@@ -2,7 +2,7 @@
  * 难度投票（P1）—— 从 index.ts 拆出来，逻辑没变。
  */
 
-import { DIFFICULTIES, isDifficulty } from '../shared/difficulty.mjs';
+import { DIFFICULTIES, isDifficulty, normalizeDifficulty } from '../shared/difficulty.mjs';
 import { allowWrite, fail, json, readJsonBody, type Env } from './http';
 
 /** 地图 slug 形如 ze_flowering —— 与 src/content/maps/*.mdx 的文件名一致 */
@@ -27,7 +27,14 @@ export async function readStats(env: Env, slug: string, ipHash: string): Promise
   const counts: Record<string, number> = {};
   let total = 0;
   for (const row of results ?? []) {
-    counts[row.value] = row.n;
+    /*
+     * 历史票可能是改名之前的旧称（中等 / 极难 / 地狱）。
+     * 归一后再统计 —— 否则它们会被算进总票数，却不出现在任何一个按钮上，
+     * 页面上就会出现「共 8 票」但各按钮加起来只有 6 票的怪现象。
+     * 用 += 而不是 = ：万一新旧称同时存在，要合并到同一个键。
+     */
+    const key = normalizeDifficulty(row.value);
+    counts[key] = (counts[key] ?? 0) + row.n;
     total += row.n;
   }
 
@@ -37,7 +44,7 @@ export async function readStats(env: Env, slug: string, ipHash: string): Promise
     .bind(slug, ipHash)
     .first<{ value: string }>();
 
-  return { total, counts, myVote: mine?.value ?? null };
+  return { total, counts, myVote: mine?.value ? normalizeDifficulty(mine.value) : null };
 }
 
 /** GET /api/stats?map=<slug> */

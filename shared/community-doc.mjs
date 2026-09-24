@@ -9,12 +9,12 @@
  *   "slug": "ze_flowering",
  *   "updatedAt": "2026-09-24T07:00:00.000Z",
  *   "fields": {
- *     "difficulty": { "v": "中等", "by": "老王", "at": "...", "submission": 12 }
+ *     "difficulty": { "v": "普通", "by": "老王", "at": "...", "submission": 12 }
  *   },
  *   "notes": [
  *     { "text": "第二关的传送门……", "by": "某人", "at": "...", "submission": 13 }
  *   ],
- *   "log": [ { "field": "difficulty", "from": "未知", "to": "中等", "by": "...", "at": "..." } ]
+ *   "log": [ { "field": "difficulty", "from": "未知", "to": "普通", "by": "...", "at": "..." } ]
  * }
  *
  * 渲染优先级：社区（本文件） > 人工资料 data/research > 自动生成 src/content/maps
@@ -39,7 +39,7 @@ export function normalizeDoc(slug, raw) {
       if (v && typeof v === 'object' && 'v' in v) {
         fields[k] = { v: v.v, by: v.by ?? '匿名', at: v.at ?? null, submission: v.submission ?? null };
       } else if (v !== undefined && v !== null) {
-        /* 容忍手写的简写形式：difficulty: "中等" */
+        /* 容忍手写的简写形式：difficulty: "普通" */
         fields[k] = { v, by: '匿名', at: null, submission: null };
       }
     }

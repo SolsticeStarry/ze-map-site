@@ -2,12 +2,14 @@
 import { getMaps } from '../../lib/maps';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import MapCard from '../../components/MapCard.astro';
+import { DIFFICULTIES } from '../../../shared/difficulty.mjs';
 
 const maps = (await getMaps()).sort((a, b) =>
   a.data.title.localeCompare(b.data.title, 'zh-Hans-CN')
 );
 
-const difficulties = ['简单', '中等', '困难', '极难', '地狱', '未知'];
+// 与站点 schema / 投票 Worker 共用同一份枚举，别再硬编码（改一处全站生效）
+const difficulties = DIFFICULTIES;
 const games = ['CS2', 'CS:GO', 'CS:S'];
 
 const withData = maps.filter((m) => m.data.entitySlug).length;

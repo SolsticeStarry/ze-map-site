@@ -2,7 +2,7 @@
   "slug": "ze_jurassic_park_story_p",
   "title": "侏罗纪公园:故事",
   "summary": "这是站内第三张侏罗纪公园，和前两张都不是同一支。`ze_jurassicpark_p` 是 CS:S 时代 Butterknife（Jaekto）的原版 ze_jurassicpark 经 Creat_1 重制成 c1v4 之后由 Source2ZE 移植的；`ze_jurassicpark_escape_p` 是 thegregster101 2010 年 ze_JurassicPark_Escape 的移植版；Source2ZE 公开的移植源文件仓库（Port-Vmaps）里只有这两支的 .vmap，没有本图的，说明 `ze_jurassic_park_story_p` 不在那条重制谱系里。它对应的图名在 CS:GO 时期就已经在用：那时叫 `ze_jurassic_park_story_csgo`，B 站 2020 年 11 月就有这张图的 CS:GO 实录，UB 社区 2022 年 1 月的「地图反馈」帖讨论的也是它（当时报的 bug 是「核爆处死不了僵尸」，随后被修复）；CS2 版按 Source2ZE 的命名习惯写作 `ze_jurassic_park_story_p`，2024 年 9 月 6 日上传、2025 年 11 月 11 日最后一次更新，订阅 2883、文件约 250 MB，是这四张里体量最大的一张，工坊上另有一份其他账号上传的同名副本（3352239051）。\n\n题材还是 1993 年的电影《侏罗纪公园》，工坊评论区把它概括为「把电影浓缩成一张地图」（It's literally a summary of the movie in map form）。关卡只有一关，但规模比老图大得多：服务端实体 dump 里它有 1697 个实体（`ze_jurassicpark_p` 只有 261 个），其中 `path_track` 203 个、可破坏物一类 257 个、传送点 30 个、出生点 64 个——大量轨道运动加可破坏的木板/挡板，说明流程里有连续的载具或升降段落；B 站指挥视角实录的描述提到「少一个飞机路没录」，即路线中还有一段飞机相关流程。中文社区把它算作「咸鱼图」（可以放松打的图），但同时强调「需要火力」。\n\nGFL 公开的 entwatch 配置给这张图配了两件道具：Flamethrower（黄色）和 Taser（蓝色），都带按钮触发的使用端，冷却 60 秒、次数不限、可传递；没有 BOSS HUD 配置，也没有 musicname 配置，也就是 GFL 端没有为它单独指定 BGM。\n\n难度按 UB 社区 2022 年 1 月的难度表是「普通」（该表译名直接写作「侏罗纪公园」）。Steam 评论区目前可见的三条都是好评，除了「nostalgic」，还有玩家直接催更后续剧情（pls end the game i think if you will end the story its gonna be the best map ever），可见这张图是被当成一个分章节的故事在做。原作者的公开署名没有查到，工坊条目只署名移植方。",
-  "difficulty": "中等",
+  "difficulty": "普通",
   "author": "Source 2 Zombie Escape（CS2 移植）",
   "tags": [
     "侏罗纪公园",

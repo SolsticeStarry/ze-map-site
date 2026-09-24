@@ -24,6 +24,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DIFFICULTIES, isDifficulty, normalizeDifficulty } from '../../shared/difficulty.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MAPS_DIR = path.join(ROOT, 'src/content/maps');
@@ -222,7 +223,10 @@ function renderEntry(rec, research, wsRec, gfl) {
         .filter(Boolean)
     ),
   ];
-  const diff = ['简单', '中等', '困难', '极难', '地狱'].includes(research?.difficulty) ? research.difficulty : '未知';
+  // 难度：先用共享表把旧称归一（中等→普通 等），再严格校验当前枚举，认不出来退回「未知」。
+  // 用 DIFFICULTIES 而不是本地硬编码数组，改名时不会再漏掉这一处。
+  const researchDiff = normalizeDifficulty(research?.difficulty);
+  const diff = isDifficulty(researchDiff) ? researchDiff : '未知';
   // 发布日期优先用工坊 API 的权威时间
   const released = wsRec?.timeCreated || rec.d;
   const updated = wsRec?.timeUpdated || rec.d || catalog.meta.built.slice(0, 10);

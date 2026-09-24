@@ -22,7 +22,7 @@
   "updatedAt": "2026-09-24T07:00:00.000Z",
   "fields": {
     // 只出现「被社区覆盖过」的字段
-    "difficulty": { "v": "中等", "by": "某玩家", "at": "…", "submission": 12 }
+    "difficulty": { "v": "普通", "by": "某玩家", "at": "…", "submission": 12 }
   },
   "notes": [
     { "text": "补充说明正文……", "by": "某玩家", "at": "…", "submission": 13 }

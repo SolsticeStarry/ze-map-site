@@ -18,6 +18,7 @@
     "data:covers": "node scripts/entity-data/render-covers.mjs",
     "maps:generate": "node scripts/content/generate-map-entries.mjs",
     "content:verify": "node scripts/content/verify-research.mjs",
+    "content:rename-difficulty": "node scripts/content/rename-difficulty.mjs",
     "gfl:parse": "node scripts/content/parse-gfl-configs.mjs",
     "gfl:link": "node scripts/content/link-gfl-configs.mjs",
     "content:links": "node scripts/content/check-links.mjs"

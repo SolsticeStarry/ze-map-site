@@ -7,12 +7,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DIFFICULTIES } from '../../shared/difficulty.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DIR = path.join(ROOT, 'data/research');
 const FIX = process.argv.includes('--fix-tags');
 
-const DIFFS = ['简单', '中等', '困难', '极难', '地狱'];
+// 难度枚举与站点/Worker 共用一份定义（shared/difficulty.mjs），别再这里硬编码
+const DIFFS = DIFFICULTIES.filter((d) => d !== '未知');
 const BAD_PHRASES = ['根据搜索结果', '我查到', '作为AI', '作为 AI', '以下是', '综上所述，我们', '无法访问'];
 const SAFE_TAG = (t) => String(t || '').replace(/[\\/:*?"<>|#%]/g, '·').replace(/\s+/g, ' ').trim().slice(0, 24);
 const isUrl = (u) => /^https?:\/\/\S+$/i.test(String(u || ''));
