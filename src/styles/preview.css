@@ -272,3 +272,13 @@ aside{ background:var(--panel); border-right-color:var(--line); }
     border-radius: 8px; padding: 6px 10px; font-size: 12px; font-family: inherit; cursor: pointer;
   }
 }
+
+/* 轻提示（行走模式缺地形、滚轮调速之类的即时反馈） */
+.toast{
+  position: fixed; left: 50%; bottom: 88px; transform: translate(-50%, 12px);
+  max-width: min(78vw, 460px); padding: 9px 16px; border-radius: 999px;
+  background: rgba(20,24,35,.92); color: #fff; font-size: 13px; line-height: 1.5;
+  box-shadow: 0 6px 22px rgba(0,0,0,.28); pointer-events: none;
+  opacity: 0; transition: opacity .18s, transform .18s; z-index: 60;
+}
+.toast.on{ opacity: 1; transform: translate(-50%, 0); }

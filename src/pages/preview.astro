@@ -91,6 +91,17 @@ const desc = `CS2 僵尸逃跑地图实体预览：传送门、可破坏物、�
       <label class="ctl">点径 <input type="range" id="psize" min="1" max="9" step="0.5" value="3"></label>
       <label class="ctl"><input type="checkbox" id="glow"> 区域光晕</label>
       <label class="ctl"><input type="checkbox" id="full"> 全范围</label>
+      <label class="ctl" id="msensbox" style="display:none" title="自由视角下左键拖拽环顾的灵敏度">灵敏度
+        <input type="range" id="msens" min="0.3" max="3" step="0.1" value="1">
+        <span class="v" id="msensv">1.0×</span></label>
+      <label class="ctl" id="fspdbox" style="display:none" title="自由飞行移动速度倍率（0.1×~5×），Shift 疾跑再乘 2.6；设置自动记忆">移速
+        <input type="range" id="fspd" min="1" max="50" step="1" value="10">
+        <span class="v" id="fspdv">1.0×</span></label>
+      <label class="ctl" id="eyehbox" style="display:none" title="行走模式视点离地高度（米），默认 1.7m">眼高
+        <input type="range" id="eyeh" min="3" max="400" step="1" value="17">
+        <span class="v" id="eyehv">1.7m</span></label>
+      <button class="btn" id="fly" title="自由飞行视角（F 键切换）：不受轨道限制，可飞到任意位置">🕊 自由视角</button>
+      <button class="btn" id="walk" title="第一人称行走（V 键切换）：贴着真实碰撞地形跑图，可穿墙、无墙体碰撞">🚶 行走模式</button>
       <button class="btn" id="fit">适应窗口</button>
       <button class="btn" id="png">导出 PNG</button>
     </div>
@@ -102,9 +113,9 @@ const desc = `CS2 僵尸逃跑地图实体预览：传送门、可破坏物、�
         <canvas class="axiscue" id="axis" width="152" height="152"></canvas>
         <div class="glerr" id="glerr"></div>
         <div class="v3hud">
-          <div class="card keys">
+          <div class="card keys" id="camkeys">
             <span>左键拖拽</span> 旋转 · <span>右键/Shift</span> 平移 · <span>滚轮</span> 缩放 ·
-            <span>R</span> 复位 · <span>T</span> 俯视
+            <span>R</span> 复位 · <span>T</span> 俯视 · <span>V</span> 行走
           </div>
           <div class="card" id="v3info">—</div>
         </div>

@@ -481,9 +481,12 @@ async function refreshTerrain(){
     const e = await fetchTerrMesh(wf);
     if(forKey !== S.key) return;              // 期间切走了，结果丢弃
     GL3D.setMesh(e.verts, e.idxs, e.o, e.s, e.nt);
+    buildHeightField(e);                      // 行走模式要用的地面高度场，跟网格一起建
     meshErrKey = null;
   }catch(err){
     GL3D.clearMesh();
+    HFG = null;
+    if(CAM.walk) setWalk(false);              // 地形没了就没法贴地，退出行走
     meshErrKey = forKey;
     console.warn('地形加载失败：' + (err && err.message ? err.message : err));
   }
@@ -538,24 +541,342 @@ function stageOk(o){
 }
 
 /* ---------------- 3D 相机 ---------------- */
+/* 单位换算：Source 1 单位 ≈ 2.54cm。行走相关的常量按米写，用这个换成世界单位。 */
+const UNITS_PER_M = 39.3701;
+
 const CAM = {
   tx:0, ty:0, tz:0,        // 目标点（世界坐标）
   dist:4000,               // 眼睛到目标距离
   yaw:-Math.PI/2, pitch:0.62,
   fogK:0, fog:[0.72,0.75,0.82],
   ready:false, lastT:0,
+  /* --- 自由视角 / 行走模式（移植自「云朵小铺」预览页的相机） ---
+     free=true 时眼睛位置由 ex/ey/ez 决定（轨道目标点不再参与）；
+     walk=true 表示在 free 基础上贴地（沿视线水平移动，眼高跟随地形高度场）。 */
+  free:false, walk:false,
+  ex:0, ey:0, ez:0,        // 眼睛位置（世界坐标）
+  eyeH:1.7,                // 行走眼高（米，滑杆可调）
+  wspd:1,                  // 行走速度倍率（滚轮 0.25~6x，记忆）
+  fspd:1,                  // 自由飞行移速倍率（滑杆 0.1~5x，记忆）
+  wtgt:0,                  // 贴地目标眼高（用于上坡快贴 / 下坡平滑）
+  msens:1,                 // 鼠标灵敏度（滑杆 0.3~3x）
 };
+function mapSpan(){
+  const bb = (cur && cur.m && cur.m.fb) || [0,0,0,1,1,1];
+  return Math.max(bb[3]-bb[0], bb[4]-bb[1], bb[5]-bb[2], 256);
+}
 function camEye(){
+  if(CAM.free) return [CAM.ex, CAM.ey, CAM.ez];
   const cp = Math.cos(CAM.pitch), sp = Math.sin(CAM.pitch);
   return [CAM.tx + CAM.dist*cp*Math.cos(CAM.yaw),
           CAM.ty + CAM.dist*sp,
           CAM.tz + CAM.dist*cp*Math.sin(CAM.yaw)];
 }
+function camDir(){
+  const cp = Math.cos(CAM.pitch), sp = Math.sin(CAM.pitch);
+  return [-cp*Math.cos(CAM.yaw), -sp, -cp*Math.sin(CAM.yaw)];
+}
 function camVP(){
   const eye = camEye();
-  const p = GL3D.M4.persp(45*Math.PI/180, (W||1)/(H||1), Math.max(4, CAM.dist*0.004), CAM.dist*14);
-  const v = GL3D.M4.look(eye, [CAM.tx, CAM.ty, CAM.tz], [0,1,0]);
+  const d = camDir();
+  const span = mapSpan();
+  /* 近裁剪面：第一人称要贴到 0.1m 左右，否则贴墙时会把眼前削掉 */
+  const near = CAM.walk ? 0.1*UNITS_PER_M
+             : CAM.free ? Math.max(2, span*0.0005)
+             : Math.max(4, CAM.dist*0.004);
+  const far = CAM.free ? span*24 : CAM.dist*14;
+  const p = GL3D.M4.persp(45*Math.PI/180, (W||1)/(H||1), near, far);
+  const v = GL3D.M4.look(eye,
+      CAM.free ? [eye[0]+d[0], eye[1]+d[1], eye[2]+d[2]] : [CAM.tx, CAM.ty, CAM.tz],
+      [0,1,0]);
   return { eye, vp: GL3D.M4.mul(p, v) };
+}
+
+/* ============================ 自由视角 / 行走模式 ============================
+ * 移植自「云朵小铺 · 地图实体预览」（preview3d.html）的相机与行走实现：
+ *   V 切行走 · F 切自由飞行 · 行走时 WASD 走 / 左键拖拽环顾 / G 下穿楼层 / 滚轮调速
+ *   飞行时 WASD 平移 · E 或空格升 / Q 或 C 降 · 滚轮前进后退 · Shift 疾跑
+ * 单位差异：原实现全程用米，本站用 Source 单位，所以行走相关的常量都乘 UNITS_PER_M
+ * （18 m/s 的步速、1.7m 眼高、0.6m 台阶容差、1.2m 爬升上限）。
+ * 行走没有墙体碰撞，只贴地 —— 和软件里一样，定位是「跑图认路」。
+ */
+const FLYKEYS = new Set();
+let flyRaf = 0, flyLast = 0, perfAcc = 0, perfN = 0, RSCALE = 1;
+
+/* 地面高度场：把地形网格按 2m 分格，记下每格里所有三角形的 z（Source 坐标，z 朝上） */
+const HF_CELL = 2 * UNITS_PER_M;
+let HFG = null;
+
+function buildHeightField(e){
+  HFG = null;
+  if(!e || !e.nt || !e.verts) return;
+  const v = e.verts, o = e.o, s = e.s, cs = HF_CELL;
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+  for(let i=0;i<v.length;i+=3){
+    const x = o[0]+v[i]*s[0], y = o[1]+v[i+1]*s[1];
+    if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+  }
+  const gw = Math.ceil((x1-x0)/cs)+1;
+  const cells = new Map();
+  for(let t=0;t<e.nt;t++){
+    const i0=e.idxs[t*3]*3, i1=e.idxs[t*3+1]*3, i2=e.idxs[t*3+2]*3;
+    const ax=o[0]+v[i0]*s[0], ay=o[1]+v[i0+1]*s[1], az=o[2]+v[i0+2]*s[2];
+    const bx=o[0]+v[i1]*s[0], by=o[1]+v[i1+1]*s[1], bz=o[2]+v[i1+2]*s[2];
+    const cx=o[0]+v[i2]*s[0], cy=o[1]+v[i2+1]*s[1], cz=o[2]+v[i2+2]*s[2];
+    const gx0=Math.max(0,((Math.min(ax,bx,cx)-x0)/cs)|0), gx1=((Math.max(ax,bx,cx)-x0)/cs)|0;
+    const gy0=Math.max(0,((Math.min(ay,by,cy)-y0)/cs)|0), gy1=((Math.max(ay,by,cy)-y0)/cs)|0;
+    /* 只登记「朝上」的面 —— 真正能站的地板和斜坡。
+       碰撞网格是闭合体块：楼板有上下面、墙是竖直面，全都登记的话
+       「该列最低面」会落到楼板内部（实测出生点就卡在板里，眼前一片实心），
+       天花板也会被当成脚下的地面。朝下的面和竖直面一律跳过。 */
+    const cx0=bx-ax, cy0=by-ay, cz0=bz-az, dx0=cx-ax, dy0=cy-ay, dz0=cz-az;
+    const nz0 = cx0*dy0 - cy0*dx0;                 // 叉积的 z 分量（法线朝上为正）
+    if(nz0 <= 0) continue;
+    /* 按包围盒展开：大三角形中间的格子也得有地面，否则走到大平面中间会查空、掉下去。
+       超大三角形（>50×50 格）展开代价高，退回只登记三个顶点所在的格。 */
+    if((gx1-gx0+1)*(gy1-gy0+1) <= 2500){
+      for(let gy=gy0; gy<=gy1; gy++) for(let gx=gx0; gx<=gx1; gx++){
+        const key = gy*gw+gx;
+        let a = cells.get(key); if(!a){ a = []; cells.set(key, a); }
+        a.push(az, bz, cz);
+      }
+    } else {
+      for(const [px,py,pz] of [[ax,ay,az],[bx,by,bz],[cx,cy,cz]]){
+        const key = (((py-y0)/cs)|0)*gw + (((px-x0)/cs)|0);
+        let a = cells.get(key); if(!a){ a = []; cells.set(key, a); }
+        a.push(pz);
+      }
+    }
+  }
+  HFG = { x0, y0, cs, gw, cells };
+}
+
+/* 查 (x, z) 处的地面高度：
+   优先取 refY+0.6m（台阶高）之下最高的面；脚下没面时向上找最近的面让调用者爬出去（限 climb）；
+   refY<-1e8 = 直接取该列最低面（出生落地用）。没有地形或该列无面返回 null。 */
+function groundAt(glx, glz, refY, climb){
+  if(!HFG) return null;
+  const gx = ((glx - HFG.x0)/HFG.cs)|0, gy = ((-glz - HFG.y0)/HFG.cs)|0;
+  const a = HFG.cells.get(gy*HFG.gw+gx);
+  if(!a) return null;
+  const step = 0.6*UNITS_PER_M;
+  let best = null, above = null;
+  for(let i=0;i<a.length;i++){
+    const z = a[i];
+    if(z <= refY + step){ if(best === null || z > best) best = z; }
+    else if(above === null || z < above) above = z;
+  }
+  if(refY < -1e8) return above;                       // 出生/落地：要最低面
+  if(best !== null) return best;
+  const cl = (climb === undefined) ? 1.2*UNITS_PER_M : climb;
+  if(cl >= 0 && above !== null && above <= refY + step + cl) return above;
+  return null;
+}
+
+function flySpeed(){ return mapSpan() * 0.45; }     // 基准飞行速度（单位/秒；原实现是 span(米)×0.45）
+
+function flyMove(dt){
+  const d = camDir();
+  let rx = -d[2], rz = d[0];
+  const rl = Math.hypot(rx, rz) || 1; rx/=rl; rz/=rl;
+  if(CAM.walk){
+    /* 行走：沿视线水平分量移动，贴地交给 groundSnap（固定步速，滚轮调速） */
+    let fx = d[0], fz = d[2];
+    const fl = Math.hypot(fx, fz) || 1; fx/=fl; fz/=fl;
+    const sp = 18*UNITS_PER_M * CAM.wspd * dt * (FLYKEYS.has('shift') ? 2.2 : 1);
+    let mx=0, mz=0;
+    if(FLYKEYS.has('w')){ mx+=fx; mz+=fz; }
+    if(FLYKEYS.has('s')){ mx-=fx; mz-=fz; }
+    if(FLYKEYS.has('d')){ mx+=rx; mz+=rz; }
+    if(FLYKEYS.has('a')){ mx-=rx; mz-=rz; }
+    const l = Math.hypot(mx, mz);
+    if(l){ CAM.ex += mx/l*sp; CAM.ez += mz/l*sp; }
+    return;
+  }
+  const sp = flySpeed() * CAM.fspd * dt * (FLYKEYS.has('shift') ? 2.6 : 1);
+  let mx=0,my=0,mz=0;
+  if(FLYKEYS.has('w')){ mx+=d[0]; my+=d[1]; mz+=d[2]; }
+  if(FLYKEYS.has('s')){ mx-=d[0]; my-=d[1]; mz-=d[2]; }
+  if(FLYKEYS.has('d')){ mx+=rx; mz+=rz; }
+  if(FLYKEYS.has('a')){ mx-=rx; mz-=rz; }
+  if(FLYKEYS.has('e') || FLYKEYS.has(' ')) my+=1;
+  if(FLYKEYS.has('q') || FLYKEYS.has('c')) my-=1;
+  const l = Math.hypot(mx,my,mz);
+  if(l){ CAM.ex += mx/l*sp; CAM.ey += my/l*sp; CAM.ez += mz/l*sp; }
+}
+
+/* 行走贴地：目标眼高 = 脚下地面 + 眼高；上坡/台阶快速上贴，下坡平滑下落 */
+function groundSnap(dt){
+  const eyeU = CAM.eyeH * UNITS_PER_M;
+  const g = groundAt(CAM.ex, CAM.ez, CAM.ey - eyeU);
+  if(g === null) return;
+  CAM.wtgt = g + eyeU;
+  const diff = CAM.wtgt - CAM.ey;
+  if(diff > 0) CAM.ey += Math.min(diff, Math.max(diff*dt*14, dt*25*UNITS_PER_M));
+  else CAM.ey += diff * Math.min(1, dt*14);
+}
+
+function flyTick(t){
+  /* 没按键且贴地已收敛就停表，按键时再由 ensureFlyLoop 启动（省 CPU） */
+  if(!CAM.free || S.mode !== '3d' ||
+     (!FLYKEYS.size && Math.abs(CAM.ey - CAM.wtgt) < 0.02*UNITS_PER_M)){
+    flyRaf = 0; return;
+  }
+  const dt = Math.min(0.1, (t - flyLast)/1000) || 0.016;
+  flyMove(dt);
+  if(CAM.walk) groundSnap(dt);
+  render3D();
+  /* 自适应分辨率：连续 30 帧平均 >24ms 降档 12.5%（最低 50%），<13ms 回升 —— 卡顿时保流畅 */
+  perfAcc += dt; perfN++;
+  if(perfN >= 30){
+    const avg = perfAcc / perfN; perfAcc = 0; perfN = 0;
+    if(avg > 0.024 && RSCALE > 0.5){ RSCALE = Math.max(0.5, RSCALE - 0.125); size3D(); }
+    else if(avg < 0.013 && RSCALE < 1){ RSCALE = Math.min(1, RSCALE + 0.125); size3D(); }
+  }
+  flyLast = t;
+  flyRaf = requestAnimationFrame(flyTick);
+}
+function ensureFlyLoop(){ if(!flyRaf){ flyLast = performance.now(); flyRaf = requestAnimationFrame(flyTick); } }
+
+/* --- 模式切换：自由飞行 / 行走 --- */
+function setFree(on){
+  if(on === CAM.free || !cur) return;
+  FLYKEYS.clear();          // 防止切换瞬间残留的移动键让相机「自己飘」
+  if(on){
+    const e = camEye();
+    CAM.ex = e[0]; CAM.ey = e[1]; CAM.ez = e[2];
+    CAM.free = true;
+    ensureFlyLoop();
+  } else {
+    const d = camDir();
+    CAM.tx = CAM.ex + d[0]*CAM.dist;
+    CAM.ty = CAM.ey + d[1]*CAM.dist;
+    CAM.tz = CAM.ez + d[2]*CAM.dist;
+    CAM.free = false;
+  }
+  CAM.walk = false;
+  syncCamUi();
+  render3D();
+}
+
+function setWalk(on){
+  if(on === CAM.walk || !cur) return;
+  if(on && !HFG){ flashMsg('行走模式需要先加载地形（这张图本地没有地形分包）'); return; }
+  if(on){
+    if(!CAM.free){ const e0 = camEye(); CAM.ex=e0[0]; CAM.ey=e0[1]; CAM.ez=e0[2]; }
+    CAM.free = true; CAM.walk = true;
+    try{
+      const w0 = parseFloat(localStorage.getItem('zmWalkSpd'));
+      CAM.wspd = (w0 >= 0.25 && w0 <= 6) ? w0 : 1;      // 滚轮调速的记忆
+    }catch(e){ CAM.wspd = 1; }
+    /* 原地进入：直接取当前位置脚下的地面，不重置视角；悬空在无地形处才兜底落到该列最低面 */
+    const g0 = groundAt(CAM.ex, CAM.ez, CAM.ey - CAM.eyeH*UNITS_PER_M, -1);
+    if(g0 !== null){
+      CAM.ey = g0 + CAM.eyeH*UNITS_PER_M; CAM.wtgt = CAM.ey;
+      CAM.pitch = 0.08;                                  // 第一人称平视
+    } else {
+      walkDrop(true);
+    }
+    ensureFlyLoop();
+  } else {
+    CAM.walk = false;
+    setFree(false);
+    return;
+  }
+  syncCamUi();
+}
+
+/* 出生点：取「地形覆盖格子的重心」最近的有地面格。
+   为什么不用实体包围盒的中心：那个包围盒含天空盒、灯探针之类，中心经常压根不在图里，
+   从那儿开始走两步就出地形了（实测踩到过）。重心一定落在有图的区域上。 */
+function spawnPoint(){
+  if(!HFG) return null;
+  let sx=0, sy=0, n=0;
+  for(const [k, arr] of HFG.cells){
+    if(!arr.length) continue;
+    sx += k % HFG.gw; sy += (k / HFG.gw) | 0; n++;
+  }
+  if(!n) return null;
+  const cx = Math.round(sx/n), cy = Math.round(sy/n);
+  /* 在「三角形密集」的格子里挑离重心最近的那个：密集 = 真正的可走地面（大厅/主路），
+     光取重心容易落到一块孤立的小结构上（实测出生后水平望去一片空）。 */
+  let maxLen = 0;
+  for(const [, arr] of HFG.cells) if(arr.length > maxLen) maxLen = arr.length;
+  const busy = maxLen * 0.5;
+  let best = null, bestD = Infinity;
+  for(const [k, arr] of HFG.cells){
+    if(arr.length < busy) continue;
+    const gx = k % HFG.gw, gy = (k / HFG.gw) | 0;
+    const d = (gx-cx)*(gx-cx) + (gy-cy)*(gy-cy);
+    if(d < bestD){ bestD = d; best = { gx, gy, arr }; }
+  }
+  /* 一块密集格都没有（极端稀疏的图）就退回原来的「从重心向外找」 */
+  if(best){
+    let lo = best.arr[0];
+    for(let i=1;i<best.arr.length;i++) if(best.arr[i] < lo) lo = best.arr[i];
+    return { x: HFG.x0 + (best.gx+0.5)*HFG.cs, z: -(HFG.y0 + (best.gy+0.5)*HFG.cs), y: lo };
+  }
+  /* 从重心格向外一圈圈找最近的有地面格（最多 40 圈，约 80m） */
+  for(let r=0; r<=40; r++){
+    for(let dy=-r; dy<=r; dy++) for(let dx=-r; dx<=r; dx++){
+      if(Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+      const arr = HFG.cells.get((cy+dy)*HFG.gw + (cx+dx));
+      if(arr && arr.length){
+        let lo = arr[0];
+        for(let i=1;i<arr.length;i++) if(arr[i] < lo) lo = arr[i];
+        return {
+          x: HFG.x0 + (cx+dx+0.5)*HFG.cs,
+          z: -(HFG.y0 + (cy+dy+0.5)*HFG.cs),
+          y: lo,                         // 该列最低面 = 这格的底层地面
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/* lowest=true：落到该列最低面（出生兜底）；false：G 下穿 —— 排除当前层再往下找。
+   楼板在碰撞网格里上下两面都有：掉落距离 <0.5m（落在板底）就继续往下穿，直到真正的下层地面。 */
+function walkDrop(lowest){
+  let g = null;
+  if(lowest){
+    g = groundAt(CAM.ex, CAM.ez, -1e9);
+  } else {
+    let probe = CAM.ey - CAM.eyeH*UNITS_PER_M, best = null;
+    for(let i=0;i<8;i++){
+      const g2 = groundAt(CAM.ex, CAM.ez, probe - 0.8*UNITS_PER_M, -1);
+      if(g2 === null) break;
+      best = g2;
+      if(probe - g2 > 0.5*UNITS_PER_M) break;
+      probe = g2;
+    }
+    g = best;
+  }
+  if(g === null){
+    /* 当前位置没有地形（轨道相机退出来时眼睛常在图外）：挪到地形重心附近再落地 */
+    const sp = spawnPoint();
+    if(sp){ CAM.ex = sp.x; CAM.ez = sp.z; g = sp.y; }
+  }
+  if(g === null) return;
+  CAM.ey = g + CAM.eyeH*UNITS_PER_M;
+  CAM.wtgt = CAM.ey;
+  if(CAM.walk){ render3D(); ensureFlyLoop(); }
+}
+
+/* 相机模式对应的界面状态 + 操作提示 */
+function syncCamUi(){
+  const fb = $('fly'), wb = $('walk');
+  if(fb) fb.classList.toggle('on', CAM.free && !CAM.walk);
+  if(wb) wb.classList.toggle('on', CAM.walk);
+  const spd = $('fspdbox'); if(spd) spd.style.display = (CAM.free && !CAM.walk) ? '' : 'none';
+  const sen = $('msensbox'); if(sen) sen.style.display = CAM.free ? '' : 'none';
+  const eh = $('eyehbox'); if(eh) eh.style.display = CAM.walk ? '' : 'none';
+  const keys = $('camkeys');
+  if(keys) keys.innerHTML = CAM.walk
+    ? '<span>WASD</span> 走 · <span>左键拖拽</span> 环顾 · <span>G</span> 下穿楼层 · <span>滚轮</span> 调速 · <span>Shift</span> 疾跑 · <span>V</span> 退出 · 无墙体碰撞'
+    : CAM.free
+      ? '<span>WASD</span> 移动 · <span>E/Q</span> 升/降 · <span>左键拖拽</span> 环顾 · <span>滚轮</span> 前后 · <span>移速</span> 面板滑杆 · <span>F</span> 退出'
+      : '<span>左键拖拽</span> 旋转 · <span>右键/Shift</span> 平移 · <span>滚轮</span> 缩放 · <span>R</span> 复位 · <span>T</span> 俯视 · <span>V</span> 行走';
 }
 
 /* ============================ 工具 ============================ */
@@ -819,13 +1140,28 @@ window.addEventListener('keydown', e=>{
   const tag = (e.target.tagName || '').toLowerCase();
   if(tag === 'input' || tag === 'textarea') return;
   const k = e.key.toLowerCase();
-  if(k === 'r' && S.mode === '3d'){ resetCam(); render3D(); }
-  else if(k === 't' && S.mode === '3d'){ topCam(); }
+  /* 行走/飞行时 WASD 等键要连续生效，攒进 FLYKEYS 交给 flyTick 按帧推进 */
+  if(S.mode === '3d' && CAM.walk && k === 'g'){ walkDrop(false); ensureFlyLoop(); return; }
+  if(S.mode === '3d' && CAM.free && ('wasdqec '.includes(k) || k === 'shift')){
+    FLYKEYS.add(k);
+    if(k === ' ') e.preventDefault();
+    ensureFlyLoop();
+    return;
+  }
+  if(k === 'r' && S.mode === '3d'){ if(CAM.free) setFree(false); resetCam(); render3D(); }
+  else if(k === 't' && S.mode === '3d'){ if(CAM.free) setFree(false); topCam(); }
+  else if(k === 'f' && S.mode === '3d'){
+    if(CAM.walk){ CAM.walk = false; syncCamUi(); ensureFlyLoop(); }   // 行走 → 自由飞行：原地直接切
+    else setFree(!CAM.free);
+  }
+  else if(k === 'v' && S.mode === '3d'){ setWalk(!CAM.walk); }
   else if(k === 'escape'){
     $('edetail').style.display='none';
     if(S.sel){ S.sel = null; build3D(); render3D(); draw(); }
   }
 });
+window.addEventListener('keyup', e=>{ FLYKEYS.delete((e.key || '').toLowerCase()); });
+window.addEventListener('blur', ()=>{ FLYKEYS.clear(); });
 
 function fit(){
   if(!W || !H){ setTimeout(fit, 60); return; }
@@ -946,8 +1282,25 @@ function init3D(){
 function size3D(){
   const r = cv3.parentElement.getBoundingClientRect();
   const d = Math.min(window.devicePixelRatio || 1, 2);
-  const w = Math.max(1, Math.round(r.width * d)), h = Math.max(1, Math.round(r.height * d));
+  /* RSCALE：飞行/行走时若帧时间偏高会自动降档（见 flyTick），这里只负责按它分配绘制缓冲 */
+  const w = Math.max(1, Math.round(r.width * d * RSCALE)), h = Math.max(1, Math.round(r.height * d * RSCALE));
   if(cv3.width !== w || cv3.height !== h){ cv3.width = w; cv3.height = h; }
+}
+
+/* 轻提示（行走模式缺地形之类的提醒） */
+let toastT = 0;
+function flashMsg(msg){
+  let el = $('toast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('on'), 2800);
 }
 
 /* --- 构建当前图的 3D 场景 --- */
@@ -1182,24 +1535,49 @@ cv3.addEventListener('pointermove', e => {
   if(!drag3) return;
   const dx = e.clientX - drag3.x, dy = e.clientY - drag3.y;
   if(drag3.pan){
-    // 屏幕平移 → 世界平移（沿相机右向 / 上向）
     const eye = camEye();
-    const f = [CAM.tx-eye[0], CAM.ty-eye[1], CAM.tz-eye[2]];
-    const fl = Math.hypot(...f)||1; const fw = f.map(x=>x/fl);
-    let rt = [fw[2], 0, -fw[0]]; const rl = Math.hypot(...rt)||1; rt = rt.map(x=>x/rl);
-    const up = [rt[1]*fw[2]-rt[2]*fw[1], rt[2]*fw[0]-rt[0]*fw[2], rt[0]*fw[1]-rt[1]*fw[0]];
-    const k = CAM.dist / Math.max(1, H) * 1.4;
-    CAM.tx = drag3.tx - (rt[0]*dx - up[0]*dy) * k;
-    CAM.ty = drag3.ty - (rt[1]*dx - up[1]*dy) * k;
-    CAM.tz = drag3.tz - (rt[2]*dx - up[2]*dy) * k;
+    const f0 = camDir();
+    let rt = [f0[2], 0, -f0[0]]; const rl = Math.hypot(...rt)||1; rt = rt.map(x=>x/rl);
+    const up = [rt[1]*f0[2]-rt[2]*f0[1], rt[2]*f0[0]-rt[0]*f0[2], rt[0]*f0[1]-rt[1]*f0[0]];
+    if(CAM.free){
+      /* 自由视角：直接平移眼睛，不挪轨道目标点 */
+      const kf = mapSpan() / Math.max(1, H) * 1.4;
+      CAM.ex -= (rt[0]*dx - up[0]*dy) * kf;
+      CAM.ey -= (rt[1]*dx - up[1]*dy) * kf;
+      CAM.ez -= (rt[2]*dx - up[2]*dy) * kf;
+    } else {
+      // 屏幕平移 → 世界平移（沿相机右向 / 上向）
+      const f = [CAM.tx-eye[0], CAM.ty-eye[1], CAM.tz-eye[2]];
+      const fl = Math.hypot(...f)||1; const fw = f.map(x=>x/fl);
+      const k = CAM.dist / Math.max(1, H) * 1.4;
+      CAM.tx = drag3.tx - (rt[0]*dx - up[0]*dy) * k;
+      CAM.ty = drag3.ty - (rt[1]*dx - up[1]*dy) * k;
+      CAM.tz = drag3.tz - (rt[2]*dx - up[2]*dy) * k;
+    }
   } else {
-    CAM.yaw = drag3.yaw - dx * 0.008;
-    CAM.pitch = Math.max(-1.52, Math.min(1.52, drag3.pitch + dy * 0.008));
+    const s = 0.008 * (CAM.free ? CAM.msens : 1);   // 自由视角下灵敏度滑杆生效
+    CAM.yaw = drag3.yaw - dx * s;
+    CAM.pitch = Math.max(-1.52, Math.min(1.52, drag3.pitch + dy * s));
   }
   render3D();
 });
 cv3.addEventListener('wheel', e => {
   e.preventDefault();
+  if(CAM.walk){
+    /* 行走：滚轮调速（0.25~6x，记忆） */
+    CAM.wspd = Math.max(0.25, Math.min(6, CAM.wspd * (e.deltaY < 0 ? 1.15 : 1/1.15)));
+    try{ localStorage.setItem('zmWalkSpd', CAM.wspd); }catch(err){}
+    flashMsg('行走速度 ' + CAM.wspd.toFixed(2) + '×');
+    return;
+  }
+  if(CAM.free){
+    /* 自由飞行：滚轮沿视线前后移动 */
+    const d = camDir();
+    const st = flySpeed() * CAM.fspd * (e.deltaY < 0 ? 0.12 : -0.12);
+    CAM.ex += d[0]*st; CAM.ey += d[1]*st; CAM.ez += d[2]*st;
+    render3D();
+    return;
+  }
   CAM.dist = Math.max(40, Math.min(60000, CAM.dist * (e.deltaY < 0 ? 1/1.13 : 1.13)));
   render3D();
 }, {passive:false});
@@ -1258,6 +1636,8 @@ function setMode(m){
   $('row3dt').style.display = is3 ? '' : 'none';
   if(is3){ render3D(); }
   else { resize(); }
+  // 回平面视图就退出自由/行走（那两个只在 3D 下有意义，留着会让滑杆在 2D 里显形）
+  if(!is3 && CAM.free){ CAM.walk = false; setFree(false); }
   refreshTerrain();   // 进 3D 时按需拉地形；回 2D 时把网格释放掉
 }
 
@@ -1503,6 +1883,48 @@ $('full').addEventListener('change', e=>{ S.full=e.target.checked; if(S.key) loa
 $('psize').addEventListener('input', e=>{ S.psize=parseFloat(e.target.value); draw(); });
 $('vbox').addEventListener('change', e=>{ S.vbox=e.target.checked; build3D(); render3D(); });
 $('terbox').addEventListener('change', e=>{ S.terrain=e.target.checked; refreshTerrain(); });
+
+/* ===== 自由视角 / 行走模式：按钮与滑杆（设置自动记忆）=====
+   用 on() 而不是直接 $().addEventListener：万一页面是旧的缓存版本、元素不存在，
+   也不至于让后面所有脚本（包括加载地图）一起挂掉。 */
+function on(id, ev, fn){ const el = $(id); if(el) el.addEventListener(ev, fn); }
+const LS = {
+  num(k, d, lo, hi){
+    try{ const v = parseFloat(localStorage.getItem(k)); return (v >= lo && v <= hi) ? v : d; }
+    catch(e){ return d; }
+  },
+  set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} },
+};
+
+CAM.fspd  = LS.num('zmFlySpd', 1, 0.1, 5);
+CAM.msens = LS.num('zmMouseSens', 1, 0.3, 3);
+CAM.eyeH  = LS.num('zmEyeH', 1.7, 0.3, 40);
+if($('fspd')){ $('fspd').value = Math.round(CAM.fspd*10); $('fspdv').textContent = CAM.fspd.toFixed(1)+'×'; }
+if($('msens')){ $('msens').value = CAM.msens; $('msensv').textContent = CAM.msens.toFixed(1)+'×'; }
+if($('eyeh')){ $('eyeh').value = Math.round(CAM.eyeH*10); $('eyehv').textContent = CAM.eyeH.toFixed(1)+'m'; }
+
+on('fly', 'click', ()=>{
+  if(CAM.walk){ CAM.walk = false; syncCamUi(); ensureFlyLoop(); }   // 行走 → 自由飞行：原地切
+  else setFree(!CAM.free);
+});
+on('walk', 'click', ()=> setWalk(!CAM.walk));
+on('fspd', 'input', e=>{
+  CAM.fspd = parseInt(e.target.value, 10)/10;
+  $('fspdv').textContent = CAM.fspd.toFixed(1)+'×';
+  LS.set('zmFlySpd', CAM.fspd);
+});
+on('msens', 'input', e=>{
+  CAM.msens = parseFloat(e.target.value);
+  $('msensv').textContent = CAM.msens.toFixed(1)+'×';
+  LS.set('zmMouseSens', CAM.msens);
+});
+on('eyeh', 'input', e=>{
+  const v = parseInt(e.target.value, 10)/10, old = CAM.eyeH;
+  CAM.eyeH = v;
+  $('eyehv').textContent = v.toFixed(1)+'m';
+  LS.set('zmEyeH', v);
+  if(CAM.walk && CAM.free){ CAM.ey += (v-old)*UNITS_PER_M; ensureFlyLoop(); }  // 脚底不动，只抬降视点
+});
 $('bopa').addEventListener('input', e=>{ S.bopa=e.target.value/100; build3D(); render3D(); });
 $('stagesel').addEventListener('change', e=>{
   S.stage = parseInt(e.target.value, 10) || 0;
