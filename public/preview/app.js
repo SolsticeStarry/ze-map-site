@@ -19,7 +19,7 @@ window.GL3D = (function(){
     '}'].join('\n');
   const FS = [
     'precision mediump float;',
-    'uniform vec3 uEye;','uniform float uAlpha;','uniform float uFogK;','uniform vec3 uFogC;',
+     'uniform vec3 uEye;','uniform float uAlpha;','uniform float uXray;','uniform float uFogK;','uniform vec3 uFogC;',
     'varying vec3 vN;','varying vec3 vC;','varying float vS;','varying vec3 vW;',
     'void main(){',
     '  if(vS < -0.5) discard;',
@@ -31,7 +31,8 @@ window.GL3D = (function(){
     '  vec3 col = vC * (amb + d * 0.58);',
     '  vec3 V = normalize(uEye - vW);',
     '  float fr = pow(1.0 - max(dot(N, V), 0.0), 3.0);',
-    '  col += fr * 0.12;',
+     '  col += fr * 0.12;',
+     '  col = mix(col, vec3(1.0), uXray * 0.42);',
     '  float dist = length(uEye - vW);',
     '  float fog = clamp(exp(-dist * uFogK), 0.0, 1.0);',
     '  col = mix(uFogC, col, fog);',
@@ -40,7 +41,7 @@ window.GL3D = (function(){
     '}'].join('\n');
   const PVS = [
     'attribute vec3 aPos;','attribute vec3 aCol;','attribute float aSz;',
-    'uniform mat4 uVP;','uniform float uPx;',
+     'uniform mat4 uVP;','uniform float uPx;','uniform float uXray;',
     'varying vec3 vC;',
     'void main(){',
     '  vC = aCol;',
@@ -50,14 +51,14 @@ window.GL3D = (function(){
     '}'].join('\n');
   const PFS = [
     'precision mediump float;',
-    'uniform float uAlpha;','uniform vec3 uFogC;','uniform float uFogK;','uniform vec3 uEye;',
+     'uniform float uAlpha;','uniform float uXray;','uniform vec3 uFogC;','uniform float uFogK;','uniform vec3 uEye;',
     'varying vec3 vC;',
     'void main(){',
     '  vec2 c = gl_PointCoord - vec2(0.5);',
     '  float r2 = dot(c, c);',
     '  if(r2 > 0.25) discard;',
     '  float a = uAlpha * (1.0 - r2 * 3.2);',
-    '  gl_FragColor = vec4(vC, a);',
+     '  gl_FragColor = vec4(mix(vC, vec3(1.0), uXray * 0.42), a * mix(1.0, 0.72, uXray));',
     '}'].join('\n');
 
   /* --- 真实碰撞地形（地图的 world_physics 碰撞网格）---
@@ -288,25 +289,28 @@ window.GL3D = (function(){
        半透明时（cam.topa < 1）不写深度，避免挡住后面的块体。 */
     if(nMesh && cam.terrain !== false){
       const ta = cam.topa === undefined ? 1.0 : cam.topa;
-      gl.useProgram(mprog);
-      gl.disable(gl.CULL_FACE);
-      for(let i=0;i<8;i++) gl.disableVertexAttribArray(i);
-      gl.uniformMatrix4fv(UM.uVP, false, cam.vp);
-      gl.uniform3f(UM.uEye, cam.eye[0], cam.eye[1], cam.eye[2]);
-      gl.uniform1f(UM.uFogK, fogK);
-      gl.uniform3f(UM.uFogC, cam.fog[0], cam.fog[1], cam.fog[2]);
-      gl.uniform1f(UM.uCutY, cam.cutY === undefined ? 1e9 : cam.cutY);
-      gl.uniform1f(UM.uCutLo, cam.cutLo === undefined ? -1e9 : cam.cutLo);
-      gl.uniform1f(UM.uA, ta);
-      gl.uniform3f(UM.uO, mO[0], mO[1], mO[2]);
-      gl.uniform3f(UM.uS, mS[0], mS[1], mS[2]);
-      gl.bindBuffer(gl.ARRAY_BUFFER, bufM);
-      gl.vertexAttribPointer(UM.aPos, 3, gl.UNSIGNED_SHORT, false, 12, 0);
-      gl.vertexAttribPointer(UM.aNrm, 3, gl.BYTE, true, 12, 6);
-      gl.enableVertexAttribArray(UM.aPos);
-      gl.enableVertexAttribArray(UM.aNrm);
-      gl.drawArrays(gl.TRIANGLES, 0, nMesh * 3);
-      gl.enable(gl.CULL_FACE);
+       if(ta > 0){
+         gl.useProgram(mprog);
+         gl.disable(gl.CULL_FACE);
+         for(let i=0;i<8;i++) gl.disableVertexAttribArray(i);
+        gl.uniformMatrix4fv(UM.uVP, false, cam.vp);
+        gl.uniform3f(UM.uEye, cam.eye[0], cam.eye[1], cam.eye[2]);
+        gl.uniform1f(UM.uFogK, fogK);
+        gl.uniform3f(UM.uFogC, cam.fog[0], cam.fog[1], cam.fog[2]);
+        gl.uniform1f(UM.uCutY, cam.cutY === undefined ? 1e9 : cam.cutY);
+        gl.uniform1f(UM.uCutLo, cam.cutLo === undefined ? -1e9 : cam.cutLo);
+        gl.uniform1f(UM.uA, ta);
+        gl.uniform3f(UM.uO, mO[0], mO[1], mO[2]);
+        gl.uniform3f(UM.uS, mS[0], mS[1], mS[2]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, bufM);
+        gl.vertexAttribPointer(UM.aPos, 3, gl.UNSIGNED_SHORT, false, 12, 0);
+        gl.vertexAttribPointer(UM.aNrm, 3, gl.BYTE, true, 12, 6);
+        gl.enableVertexAttribArray(UM.aPos);
+         gl.enableVertexAttribArray(UM.aNrm);
+         gl.drawArrays(gl.TRIANGLES, 0, nMesh * 3);
+         gl.depthMask(true);
+        gl.enable(gl.CULL_FACE);
+      }
     }
 
     /* --- 块体（drawArrays：顶点数据已展开三角形环绕，无索引上限） --- */
@@ -315,8 +319,9 @@ window.GL3D = (function(){
       gl.enable(gl.CULL_FACE);
       for(let i=0;i<8;i++) gl.disableVertexAttribArray(i);
       gl.uniformMatrix4fv(U.uVP, false, cam.vp);
-      gl.uniform3f(U.uEye, cam.eye[0], cam.eye[1], cam.eye[2]);
-      gl.uniform1f(U.uAlpha, cam.alpha);
+       gl.uniform3f(U.uEye, cam.eye[0], cam.eye[1], cam.eye[2]);
+       gl.uniform1f(U.uAlpha, cam.alpha);
+       gl.uniform1f(U.uXray, 0.0);
       gl.uniform1f(U.uFogK, fogK);
       gl.uniform3f(U.uFogC, cam.fog[0], cam.fog[1], cam.fog[2]);
       gl.bindBuffer(gl.ARRAY_BUFFER, bufB);
@@ -338,8 +343,9 @@ window.GL3D = (function(){
       gl.depthMask(false);
       for(let i=0;i<8;i++) gl.disableVertexAttribArray(i);
       gl.uniformMatrix4fv(UP.uVP, false, cam.vp);
-      gl.uniform1f(UP.uPx, cam.px);
-      gl.uniform1f(UP.uAlpha, cam.pAlpha);
+       gl.uniform1f(UP.uPx, cam.px);
+       gl.uniform1f(UP.uAlpha, cam.pAlpha);
+       gl.uniform1f(UP.uXray, 0.0);
       gl.uniform1f(UP.uFogK, fogK);
       gl.uniform3f(UP.uFogC, cam.fog[0], cam.fog[1], cam.fog[2]);
       gl.uniform3f(UP.uEye, cam.eye[0], cam.eye[1], cam.eye[2]);
@@ -350,10 +356,64 @@ window.GL3D = (function(){
       gl.enableVertexAttribArray(UP.aPos);
       gl.enableVertexAttribArray(UP.aCol);
       gl.enableVertexAttribArray(UP.aSz);
-      gl.drawArrays(gl.POINTS, 0, nPt);
-      gl.depthMask(true);
-    }
-  }
+       gl.drawArrays(gl.POINTS, 0, nPt);
+       gl.depthMask(true);
+     }
+
+     /* --- 地形穿透高亮：保留地形原有深度与透明度，只补画被地形挡住的实体 ---
+        GREATER 只通过实体深度大于地形深度的片段，因此前景实体不会被重复
+        变亮；高亮采用偏白颜色与较低透明度，效果类似《我的世界》的透视提示。 */
+     if(nMesh && cam.terrain !== false && (cam.topa === undefined || cam.topa > 0)){
+       if(nBox && cam.solid){
+         gl.useProgram(prog);
+         gl.enable(gl.CULL_FACE);
+         gl.depthFunc(gl.GREATER);
+         gl.depthMask(false);
+         for(let i=0;i<8;i++) gl.disableVertexAttribArray(i);
+         gl.uniformMatrix4fv(U.uVP, false, cam.vp);
+         gl.uniform3f(U.uEye, cam.eye[0], cam.eye[1], cam.eye[2]);
+         gl.uniform1f(U.uAlpha, cam.alpha * 0.78);
+         gl.uniform1f(U.uXray, 1.0);
+         gl.uniform1f(U.uFogK, fogK);
+         gl.uniform3f(U.uFogC, cam.fog[0], cam.fog[1], cam.fog[2]);
+         gl.bindBuffer(gl.ARRAY_BUFFER, bufB);
+         gl.vertexAttribPointer(U.aPos, 3, gl.FLOAT, false, strideB, 0);
+         gl.vertexAttribPointer(U.aNrm, 3, gl.FLOAT, false, strideB, 12);
+         gl.vertexAttribPointer(U.aCol, 3, gl.FLOAT, false, strideB, 24);
+         gl.vertexAttribPointer(U.aSel, 1, gl.FLOAT, false, strideB, 36);
+         gl.enableVertexAttribArray(U.aPos);
+         gl.enableVertexAttribArray(U.aNrm);
+         gl.enableVertexAttribArray(U.aCol);
+         gl.enableVertexAttribArray(U.aSel);
+         gl.drawArrays(gl.TRIANGLES, 0, nBox * 36);
+       }
+       if(nPt){
+         gl.useProgram(pprog);
+         gl.disable(gl.CULL_FACE);
+         gl.depthFunc(gl.GREATER);
+         gl.depthMask(false);
+         for(let i=0;i<8;i++) gl.disableVertexAttribArray(i);
+         gl.uniformMatrix4fv(UP.uVP, false, cam.vp);
+         gl.uniform1f(UP.uPx, cam.px);
+         gl.uniform1f(UP.uAlpha, cam.pAlpha * 0.78);
+         gl.uniform1f(UP.uXray, 1.0);
+         gl.uniform1f(UP.uFogK, fogK);
+         gl.uniform3f(UP.uFogC, cam.fog[0], cam.fog[1], cam.fog[2]);
+         gl.uniform3f(UP.uEye, cam.eye[0], cam.eye[1], cam.eye[2]);
+         gl.bindBuffer(gl.ARRAY_BUFFER, bufP);
+         gl.vertexAttribPointer(UP.aPos, 3, gl.FLOAT, false, strideP, 0);
+         gl.vertexAttribPointer(UP.aCol, 3, gl.FLOAT, false, strideP, 12);
+         gl.vertexAttribPointer(UP.aSz, 1, gl.FLOAT, false, strideP, 24);
+         gl.enableVertexAttribArray(UP.aPos);
+         gl.enableVertexAttribArray(UP.aCol);
+         gl.enableVertexAttribArray(UP.aSz);
+         gl.drawArrays(gl.POINTS, 0, nPt);
+       }
+       gl.depthMask(true);
+       gl.depthFunc(gl.LEQUAL);
+       gl.enable(gl.CULL_FACE);
+     }
+   }
   /* 线段（网格 / 坐标轴）：每帧重建，量小 */
   let lineBuf = null, lineProg = null, lineU = {};
   const LVS = 'attribute vec3 aPos; attribute vec3 aCol; uniform mat4 uVP;' +
@@ -867,8 +927,9 @@ function walkDrop(lowest){
 
 /* 相机模式对应的界面状态 + 操作提示 */
 function syncCamUi(){
-  const fb = $('fly'), wb = $('walk');
+  const fb = $('fly'), ob = $('orbit'), wb = $('walk');
   if(fb) fb.classList.toggle('on', CAM.free && !CAM.walk);
+  if(ob) ob.classList.toggle('on', !CAM.free && !CAM.walk);
   if(wb) wb.classList.toggle('on', CAM.walk);
   const spd = $('fspdbox'); if(spd) spd.style.display = (CAM.free && !CAM.walk) ? '' : 'none';
   const sen = $('msensbox'); if(sen) sen.style.display = CAM.free ? '' : 'none';
@@ -962,6 +1023,8 @@ function loadMap(k){
   const clsG = CLS.map(c => gidOf(c));
 
   let xs=[],ys=[],zs=[];
+  const bbT = m.bb, bbM = m.bbm;
+  let eix = 0;
   for(const e of m.e){
     const gid = clsG[e[3]];
     const g = gmap[gid];
@@ -976,6 +1039,14 @@ function loadMap(k){
     const sgr = e[end] || 0;
     const obj = {x:e[0],y:e[1],z:e[2],px,py,cn:CLS[e[3]],gid,nm:nm||'',ci:e[3],ai,gi,
                  sg:Math.abs(sgr), sgp:sgr<0};
+    /* 云朵小铺的包围盒表：每项为中心 XYZ + 半长 XYZ（原始值按 10 倍整数压缩）。
+       没有包围盒的实体继续走 classname 典型尺寸回退。 */
+    if(bbT && bbM && bbM[eix] >= 0){
+      const q6 = bbM[eix] * 6;
+      obj.bb = [bbT[q6]/10, bbT[q6+1]/10, bbT[q6+2]/10,
+                bbT[q6+3]/10, bbT[q6+4]/10, bbT[q6+5]/10];
+    }
+    eix++;
     cur.pts.push(obj);
     cur.groups[gid] = (cur.groups[gid]||0)+1;
     const cx = Math.floor(px/cur.cell), cy = Math.floor(py/cur.cell);
@@ -1335,12 +1406,15 @@ function build3D(){
                 o.gid === 'env' ? 0.55 : 1.0);
     } else {
       // 玩法实体：实体块（统一材质 + 类别色）· bsz = 块体大小倍率
-      const h = half[o.ci] || [30,30,30];
-      const bs = S.bsz;
-      const isSel = (S.sel === o);
-      boxes.push({
-        x:o.x, y:o.z, z:-o.y,
-        ex:h[0]*bs, ey:h[2]*bs, ez:h[1]*bs,
+     const h = half[o.ci] || [30,30,30];
+     const bs = S.bsz;
+     const center = o.bb ? [o.bb[0], o.bb[2], -o.bb[1]] : [o.x, o.z, -o.y];
+     const ext = o.bb ? [o.bb[3]*bs, o.bb[5]*bs, o.bb[4]*bs]
+                      : [h[0]*bs, h[2]*bs, h[1]*bs];
+     const isSel = (S.sel === o);
+     boxes.push({
+       x:center[0], y:center[1], z:center[2],
+       ex:ext[0], ey:ext[1], ez:ext[2],
         c: isSel ? [1.0,0.24,0.50] : [rgb[0]/255, rgb[1]/255, rgb[2]/255],
         a: isSel ? 1.0 : (o.gid === 'tele' ? S.bopa*0.72 : S.bopa),
         s: isSel,
@@ -1428,6 +1502,12 @@ function resetCam(){
   CAM.span = span;
   CAM.yaw = -Math.PI/2; CAM.pitch = 0.62;
   CAM.fogK = 0.22 / span;
+  if(CAM.free){
+    const cp = Math.cos(CAM.pitch), sp = Math.sin(CAM.pitch);
+    CAM.ex = CAM.tx + CAM.dist*cp*Math.cos(CAM.yaw);
+    CAM.ey = CAM.ty + CAM.dist*sp;
+    CAM.ez = CAM.tz + CAM.dist*cp*Math.sin(CAM.yaw);
+  }
   CAM.ready = true;
 }
 function topCam(){
@@ -1827,7 +1907,13 @@ $('lbody').addEventListener('click', e=>{
     if(S.off.has(g)){ S.off.delete(g); if(S.solo===g) S.solo=null; }
     else S.off.add(g);
   }
-  renderLayers(); draw();
+  renderLayers();
+  if(S.mode === '3d'){
+    build3D();
+    render3D();
+  } else {
+    draw();
+  }
 });
 
 /* 图层悬停说明（点云层 + 面板内功能行） */
@@ -1920,6 +2006,10 @@ if($('eyeh')){ $('eyeh').value = Math.round(CAM.eyeH*10); $('eyehv').textContent
 on('fly', 'click', ()=>{
   if(CAM.walk){ CAM.walk = false; syncCamUi(); ensureFlyLoop(); }   // 行走 → 自由飞行：原地切
   else setFree(!CAM.free);
+});
+on('orbit', 'click', ()=>{
+  if(CAM.walk) setWalk(false);
+  else setFree(false);
 });
 on('walk', 'click', ()=> setWalk(!CAM.walk));
 on('fspd', 'input', e=>{
@@ -2117,4 +2207,7 @@ $('ltoggle').addEventListener('click', ()=>{ $('layers').style.display='flex'; $
       if(li) ltipShow(li);
     }, 900);
   })();
+  // 默认使用自由视角；环绕视角通过工具栏按钮主动切换。
+  // 放在 stage / yaw 参数处理之后，确保首次进入时仍聚焦到正确范围。
+  if(S.mode === '3d' && !CAM.free) setFree(true);
 })();
