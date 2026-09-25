@@ -1,0 +1,24 @@
+{
+  "v": 1,
+  "slug": "ze_overkill_p",
+  "updatedAt": "2026-09-25T15:12:47.012Z",
+  "fields": {
+    "difficulty": {
+      "v": "困难",
+      "by": "白叶",
+      "at": "2026-09-25T15:12:47.012Z",
+      "submission": 14
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "白叶",
+      "at": "2026-09-25T15:12:47.012Z",
+      "submission": 14
+    }
+  ]
+}
