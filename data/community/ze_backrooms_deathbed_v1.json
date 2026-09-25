@@ -1,0 +1,24 @@
+{
+  "v": 1,
+  "slug": "ze_backrooms_deathbed_v1",
+  "updatedAt": "2026-09-25T14:52:27.970Z",
+  "fields": {
+    "difficulty": {
+      "v": "困难",
+      "by": "白叶",
+      "at": "2026-09-25T14:52:27.970Z",
+      "submission": 12
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "白叶",
+      "at": "2026-09-25T14:52:27.970Z",
+      "submission": 12
+    }
+  ]
+}
