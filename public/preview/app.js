@@ -532,7 +532,9 @@ function syncUrl(slug){
 let DATA=null, GMAP={}, CLS=[], MAPKEYS=[];
 const S = { key:null, entry:null, listMode:'2001', mode:'3d', proj:'xy', hcol:false, psize:3, glow:false, full:false,
             off:new Set(), solo:null, sort:'k', bmap:true, bop:0.6, sel:null,
-            vbox:true, bopa:0.88, cutz:1, stage:0, terrain:true };
+            vbox:true, bopa:0.88, cutz:1, stage:0, terrain:true,
+            /* 显示设置（对齐云朵小铺那块面板）：块体大小 / 点云大小 / 地形不透明度 / 切掉此高度以下 */
+            bsz:1, psz:1, topa:1, cutb:0 };
 let view = {s:1, ox:0, oy:0};
 /* 关卡过滤：0=全部 · -1=未标注 · n=第 n 关 */
 function stageOk(o){
@@ -1313,7 +1315,8 @@ function build3D(){
   const clsG = CLS.map(c => gidOf(c));
   const half = DATA.clsHalf || [];
   const zLo = m.fb[2], zHi = m.fb[5], zR = Math.max(1, zHi - zLo);
-  const cutZ = zLo + zR * S.cutz;
+  const cutZ = zLo + zR * S.cutz;        // 上剖切面
+  const cutLo = zLo + zR * S.cutb;       // 下剖切面（0% = 不切）
 
   const boxes = [];
   const parr = [];
@@ -1322,8 +1325,8 @@ function build3D(){
     if(!stageOk(o)) continue;
     const g = gmap[o.gid]; if(!g) continue;
     const rgb = hex2rgb(S.hcol ? ramp((o.z - zLo) / zR) : g.color);
-    // 高度剖切：只画下半部分（看内部触发区）
-    if(o.z > cutZ && o.gid !== 'env') continue;
+    // 高度剖切：只画 [cutLo, cutZ] 这一段（看内部触发区）
+    if(o.gid !== 'env' && (o.z > cutZ || o.z < cutLo)) continue;
 
     if(o.gid === 'env' || o.gid === 'logic' || o.gid === 'misc' || o.gid === 'item' ||
        o.gid === 'spawn' || o.gid === 'prop') {
@@ -1331,12 +1334,13 @@ function build3D(){
       parr.push(o.x, o.z, -o.y, rgb[0]/255, rgb[1]/255, rgb[2]/255,
                 o.gid === 'env' ? 0.55 : 1.0);
     } else {
-      // 玩法实体：实体块（统一材质 + 类别色）
+      // 玩法实体：实体块（统一材质 + 类别色）· bsz = 块体大小倍率
       const h = half[o.ci] || [30,30,30];
+      const bs = S.bsz;
       const isSel = (S.sel === o);
       boxes.push({
         x:o.x, y:o.z, z:-o.y,
-        ex:h[0], ey:h[2], ez:h[1],
+        ex:h[0]*bs, ey:h[2]*bs, ez:h[1]*bs,
         c: isSel ? [1.0,0.24,0.50] : [rgb[0]/255, rgb[1]/255, rgb[2]/255],
         a: isSel ? 1.0 : (o.gid === 'tele' ? S.bopa*0.72 : S.bopa),
         s: isSel,
@@ -1437,19 +1441,22 @@ function render3D(){
   size3D();
   const { eye, vp } = camVP();
   GL3D.setVP(vp);
-  /* 剖切面：和 build3D() 用同一个口径（Source Z 坐标，只保留下半部分） */
+  /* 剖切面：和 build3D() 用同一个口径（Source Z 坐标，保留 [cutb, cutz] 这一段） */
   const bb = cur.m.fb;
-  const cutZ = bb[2] + Math.max(1, bb[5] - bb[2]) * S.cutz;
+  const zR = Math.max(1, bb[5] - bb[2]);
+  const cutZ = bb[2] + zR * S.cutz;
+  const cutLo = bb[2] + zR * S.cutb;
   GL3D.draw({
     vp, eye,
     alpha: 1.0,
-    px: W / 700,
+    px: W / 700 * S.psz,           // psz = 点云大小倍率
     pAlpha: 0.85,
     solid: S.vbox,
     fogK: CAM.fogK, fog: CAM.fog,
     terrain: S.terrain,
+    topa: S.topa,                  // 地形不透明度（拉低可透视内部）
     cutY: cutZ,
-    cutLo: -1e9,
+    cutLo: cutZ >= bb[5] - 0.5 && cutLo <= bb[2] + 0.5 ? -1e9 : cutLo,
   });
   drawGrid(vp);
   drawAxis();
@@ -1522,6 +1529,7 @@ cv3.addEventListener('pointerdown', e => {
   cv3.classList.add('grabbing');
   drag3 = { x:e.clientX, y:e.clientY, yaw:CAM.yaw, pitch:CAM.pitch,
             tx:CAM.tx, ty:CAM.ty, tz:CAM.tz,
+            ex:CAM.ex, ey:CAM.ey, ez:CAM.ez,        // 自由视角平移要用
             pan: (e.button === 2 || e.shiftKey) };
 });
 cv3.addEventListener('pointerup', e => {
@@ -1536,28 +1544,36 @@ cv3.addEventListener('pointermove', e => {
   const dx = e.clientX - drag3.x, dy = e.clientY - drag3.y;
   if(drag3.pan){
     const eye = camEye();
-    const f0 = camDir();
-    let rt = [f0[2], 0, -f0[0]]; const rl = Math.hypot(...rt)||1; rt = rt.map(x=>x/rl);
-    const up = [rt[1]*f0[2]-rt[2]*f0[1], rt[2]*f0[0]-rt[0]*f0[2], rt[0]*f0[1]-rt[1]*f0[0]];
+    const d = camDir();
     if(CAM.free){
-      /* 自由视角：直接平移眼睛，不挪轨道目标点 */
-      const kf = mapSpan() / Math.max(1, H) * 1.4;
-      CAM.ex -= (rt[0]*dx - up[0]*dy) * kf;
-      CAM.ey -= (rt[1]*dx - up[1]*dy) * kf;
-      CAM.ez -= (rt[2]*dx - up[2]*dy) * kf;
+      /* 自由视角：直接平移眼睛，不挪轨道目标点。
+         右向量 / 上向量 / 系数都照软件的取法（rt = [-dz, 0, dx]，k = span/H*0.85），
+         用轨道那一套会让拖动方向反掉。 */
+      let rt = [-d[2], 0, d[0]];
+      const rl = Math.hypot(rt[0], rt[2]) || 1; rt = [rt[0]/rl, 0, rt[2]/rl];
+      const up = [-rt[2]*d[1], rt[2]*d[0]-rt[0]*d[2], rt[0]*d[1]];
+      const k = mapSpan() / Math.max(1, H) * 0.85;
+      CAM.ex = drag3.ex - (rt[0]*dx - up[0]*dy) * k;
+      CAM.ey = drag3.ey - (rt[1]*dx - up[1]*dy) * k;
+      CAM.ez = drag3.ez - (rt[2]*dx - up[2]*dy) * k;
     } else {
-      // 屏幕平移 → 世界平移（沿相机右向 / 上向）
+      // 轨道视角：屏幕平移 → 世界平移（沿相机右向 / 上向）
       const f = [CAM.tx-eye[0], CAM.ty-eye[1], CAM.tz-eye[2]];
       const fl = Math.hypot(...f)||1; const fw = f.map(x=>x/fl);
+      let rt = [fw[2], 0, -fw[0]]; const rl = Math.hypot(...rt)||1; rt = rt.map(x=>x/rl);
+      const up = [rt[1]*fw[2]-rt[2]*fw[1], rt[2]*fw[0]-rt[0]*fw[2], rt[0]*fw[1]-rt[1]*fw[0]];
       const k = CAM.dist / Math.max(1, H) * 1.4;
       CAM.tx = drag3.tx - (rt[0]*dx - up[0]*dy) * k;
       CAM.ty = drag3.ty - (rt[1]*dx - up[1]*dy) * k;
       CAM.tz = drag3.tz - (rt[2]*dx - up[2]*dy) * k;
     }
   } else {
-    const s = 0.008 * (CAM.free ? CAM.msens : 1);   // 自由视角下灵敏度滑杆生效
-    CAM.yaw = drag3.yaw - dx * s;
-    CAM.pitch = Math.max(-1.52, Math.min(1.52, drag3.pitch + dy * s));
+    /* 转头方向两种模式符号相反（软件里就是这么分的）：
+       自由视角 = FPS 惯例（右拖右看），轨道视角 = 抓住世界拖（场景跟随光标）。 */
+    const sens = CAM.free ? CAM.msens : 1;
+    CAM.yaw = CAM.free ? drag3.yaw + dx * 0.008 * sens
+                       : drag3.yaw - dx * 0.008;
+    CAM.pitch = Math.max(-1.52, Math.min(1.52, drag3.pitch + dy * 0.008 * sens));
   }
   render3D();
 });
@@ -1630,10 +1646,8 @@ function setMode(m){
       ? 'none' : '';
   });
   document.querySelector('.hud').style.display = is3 ? 'none' : '';
-  // 3D 专属行
-  $('row3da').style.display = is3 ? '' : 'none';
-  $('row3db').style.display = is3 ? '' : 'none';
-  $('row3dt').style.display = is3 ? '' : 'none';
+  // 3D 专属行（统一用 .row3d 标记，新增设置项不用再改这里）
+  document.querySelectorAll('.row3d').forEach(el => { el.style.display = is3 ? '' : 'none'; });
   if(is3){ render3D(); }
   else { resize(); }
   // 回平面视图就退出自由/行走（那两个只在 3D 下有意义，留着会让滑杆在 2D 里显形）
@@ -1938,6 +1952,27 @@ $('cutz').addEventListener('input', e=>{
   S.cutz = e.target.value/100;
   $('cutzv').textContent = e.target.value + '%';
   build3D(); render3D();
+});
+/* --- 显示设置四项（对齐云朵小铺那块面板）--- */
+$('cutb').addEventListener('input', e=>{
+  S.cutb = e.target.value/100;
+  $('cutbv').textContent = e.target.value + '%';
+  build3D(); render3D();
+});
+$('bsz').addEventListener('input', e=>{
+  S.bsz = e.target.value/100;
+  $('bszv').textContent = e.target.value + '%';
+  build3D(); render3D();
+});
+$('psz').addEventListener('input', e=>{
+  S.psz = e.target.value/100;
+  $('pszv').textContent = e.target.value + '%';
+  render3D();
+});
+$('topa').addEventListener('input', e=>{
+  S.topa = e.target.value/100;
+  $('topav').textContent = e.target.value + '%';
+  render3D();
 });
 $('fit').addEventListener('click', ()=>{ if(S.mode==='3d'){ resetCam(); render3D(); } else fit(); });
 $('png').addEventListener('click', ()=>{
