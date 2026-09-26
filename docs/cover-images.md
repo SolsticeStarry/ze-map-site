@@ -47,14 +47,27 @@ npm run cover:set -- ze_obj_abyss_v2 --remove
 
 删掉人工封面，再跑一次构建，这张图就回到实体数据渲染的封面。**不需要改任何配置。**
 
-## 别人（贡献者）提 PR 换封面
+## 别人（贡献者）换封面
 
-**可以，而且不需要会用命令行。** 整个流程在 GitHub 网页上：
+**首选：投稿页直接传（不需要 GitHub 账号、不需要 Fork、不用命令行）。**
+地图详情页右侧栏 →「✏️ 补充这张图的资料」→「要提交哪一项」选 **地图封面** → 选图。
+浏览器端会裁成 16:9、转 webp、压到几十 KB；服务端（`worker/covers.ts`）再做权威校验，
+审核通过后由 Worker 提交进 `public/images/covers/custom/<地图英文名>.<ext>` 并把待审副本从 KV 删掉。
 
-1. 打开 `public/images/covers/custom/` 目录
-2. **Add file → Upload files**，把图片拖进去
-3. 文件名 = **地图英文名**（`ze_obj_abyss_v2.jpg`），格式 `.jpg` / `.png` / `.webp` 都行
-4. **Propose changes** → **Create pull request**
+## 想直接改文件（提 PR）
+
+**可以，但必须先 Fork。**
+2026-09-25 更正：以前这里写的是「打开目录 → Add file → Upload files」，那是**错的** ——
+在别人的仓库里没有写权限时 GitHub 会直接拒绝上传（「You need write access to this repository」），
+所以贡献者必须在自己账号下的副本里操作。
+
+1. 仓库首页右上角 **Fork** → **Create fork**（得到 `你的用户名/ze-map-site`）
+2. 在**自己这份副本**里打开 `public/images/covers/custom/`
+3. **Add file → Upload files**，把图片拖进去
+4. 文件名 = **地图英文名**（`ze_obj_abyss_v2.jpg`），格式 `.jpg` / `.png` / `.webp` 都行
+5. 拉到底 **Commit changes**
+6. 回到原仓库 `hhjjdsj/ze-map-site` → **Compare & pull request**（没看到就用 **Contribute → Open pull request**）
+7. **Create pull request**
 
 生成器在构建时会自动认这个文件，**不需要贡献者同时改 MDX**（合并后线上构建自己会重新生成）。所以 PR 里只有一个图片文件。
 
@@ -62,9 +75,13 @@ npm run cover:set -- ze_obj_abyss_v2 --remove
 
 | 想做的事 | 怎么做 |
 | --- | --- |
-| 新增封面 | **Add file → Upload files**，文件名 = 地图英文名 |
+| 新增封面 | 在自己 fork 的 `custom/` 里 **Add file → Upload files**，文件名 = 地图英文名 |
 | 替换已有的封面 | 同样走上传，**文件名和路径保持一致**就是覆盖（PR 里显示为 modified） |
 | 换回渲染图 | 点开那张图 → **⋯ → Delete file** → 提 PR |
+
+**不折腾 GitHub 的路**：把图发给站长，站长用
+`npm run cover:set -- <地图英文名> <图片>` 代传（自动裁 16:9、压 webp、文件名对齐）。
+投稿表单目前**还收不了封面**（只收文字字段），要在网页上自助传图得等表单支持上传。
 
 网页上传单文件上限 25 MB（GitHub 的规则），不过封面本来就不该那么大 —— `cover:verify` 的硬上限是 800 KB。
 

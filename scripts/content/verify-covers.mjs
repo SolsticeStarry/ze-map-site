@@ -16,12 +16,14 @@
  * 大写扩展名不再静默失效（这里只提醒统一小写），但「仅大小写不同的两个同名文件」
  * 必须按错误拦下 —— 那种情况不同系统上表现不一致（见下方注释）。
  *
- * 尺寸读取不引第三方库：sharp 只是 astro 的传递依赖，
- * 校验脚本不该依赖它（哪天 astro 换了实现，CI 就会莫名其妙挂掉）。
+ * 尺寸读取不引第三方库：sharp 只是 astro 的传递依赖，校验脚本不该依赖它
+ * （哪天 astro 换了实现，CI 就会莫名其妙挂掉）。解析逻辑现在是
+ * shared/image-size.mjs —— Worker 端上传封面时用的是同一份，避免两处漂移。
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { imageSize } from '../../shared/image-size.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DIR = path.join(ROOT, 'public/images/covers/custom');
@@ -40,37 +42,7 @@ const RATIO_TOLERANCE = 0.15; // 与 16:9 的偏差超过 15% 提醒一下
 const errors = [];
 const warns = [];
 
-/** 只读文件头拿宽高（png / jpeg / webp / gif），读不出返回 null */
-function imageSize(buf) {
-  if (buf.length > 24 && buf.toString('ascii', 1, 4) === 'PNG') {
-    return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
-  }
-  if (buf.length > 30 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
-    const fmt = buf.toString('ascii', 12, 16);
-    if (fmt === 'VP8X') return { w: 1 + buf.readUIntLE(24, 3), h: 1 + buf.readUIntLE(27, 3) };
-    if (fmt === 'VP8 ') return { w: buf.readUInt16LE(26) & 0x3fff, h: buf.readUInt16LE(28) & 0x3fff };
-    if (fmt === 'VP8L') {
-      const b = buf.readUInt32LE(21);
-      return { w: (b & 0x3fff) + 1, h: ((b >> 14) & 0x3fff) + 1 };
-    }
-  }
-  if (buf.length > 4 && buf[0] === 0xff && buf[1] === 0xd8) {
-    let i = 2;
-    while (i < buf.length - 9) {
-      if (buf[i] !== 0xff) {
-        i++;
-        continue;
-      }
-      const marker = buf[i + 1];
-      const len = buf.readUInt16BE(i + 2);
-      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
-        return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
-      }
-      i += 2 + len;
-    }
-  }
-  return null;
-}
+/* 尺寸解析在 shared/image-size.mjs（Worker 上传封面时用同一份） */
 
 if (!fs.existsSync(DIR)) {
   console.log('人工封面目录还不存在（public/images/covers/custom/）——没事，没有人工封面而已');

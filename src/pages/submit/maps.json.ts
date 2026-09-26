@@ -29,6 +29,8 @@ export const GET: APIRoute = async () => {
     if (d.duration) row.duration = d.duration;
     if (d.videoUrls?.length) row.videoUrls = d.videoUrls;
     if (d.sources?.length) row.sources = d.sources;
+    /* 封面：投稿表单要显示「当前封面」缩略图（换封面时好对比） */
+    if (d.cover) row.cover = d.cover;
     return row;
   });
 

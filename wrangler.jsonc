@@ -29,6 +29,15 @@
 //    d1_databases      投票数据（库名 ze-map-community）
 //    设计与分期：docs/community-editing-plan.md
 //
+// 5) 投稿封面（B 方案）—— kv_namespaces
+//    待审的封面图片先放 Workers KV 的 pending/ 前缀下（不公开可访问，只有审核台用鉴权接口能取），
+//    审核通过后由 Worker 提交进仓库 public/images/covers/custom/ 并删掉 KV 里的副本。
+//    ⚠️ 选 KV 而不是 R2 的原因：KV 免费额度**不需要绑卡**（1 GB 存储 / 每天 1000 次写入），
+//       而且 put 时能直接设 expirationTtl=30 天，传了没人审的图会自己过期。
+//    ⚠️ id 必须填你在控制台建的 namespace id（KV 绑定不认名字，只认 id）：
+//       Workers & Pages → KV → Create instance，名字随便（建议 ze-map-uploads），建完把 ID 贴到这里。
+//    ⚠️ 没配这个绑定时，只有封面相关接口返回 503，站点和其它投稿不受影响。
+//
 // ⚠️ name 必须与线上 Worker 同名（ze-map-site），否则会新建一个 Worker，
 //    自定义域名 ze-map.cn 不会跟过去。
 // ⚠️ assets.directory 必须指向 ./dist，写错会导致整站没有静态资源。
@@ -51,6 +60,14 @@
       "binding": "DB",
       "database_name": "ze-map-community",
       "database_id": "314ae078-618f-463d-b0e5-798b35386dbf"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      // 待审封面图（pending/<uuid>.<ext>，put 时设了 30 天过期）。
+      // id 是控制台里那个 namespace 的 ID（KV 绑定只认 id，不认名字）。
+      "binding": "UPLOADS",
+      "id": "384e8441523d4da4bcc660f330f1bc2e"
     }
   ],
   "previews": {}

@@ -13,6 +13,7 @@
  * 需要的绑定与密钥：
  *   DB                 D1（wrangler.jsonc）
  *   ASSETS             静态资源（wrangler.jsonc）
+ *   UPLOADS            Workers KV：投稿封面的临时存放（wrangler.jsonc；没配只有封面接口不可用）
  *   IP_SALT            必须
  *   ADMIN_TOKEN        审核台必须
  *   GITHUB_TOKEN       审核通过要写回仓库时必须
@@ -30,10 +31,12 @@ import {
 } from './http';
 import {
   handleAdminBan,
+  handleAdminCover,
   handleAdminQueue,
   handleAdminReview,
   handleSubmissionStatus,
   handleSubmit,
+  handleSubmitCover,
 } from './submissions';
 import { handleStats, handleVote } from './votes';
 
@@ -65,6 +68,9 @@ export default {
       if (path === '/api/admin/queue') return handleAdminQueue(request, env, url);
       if (path === '/api/admin/review') return handleAdminReview(request, env);
       if (path === '/api/admin/ban') return handleAdminBan(request, env);
+      /* 待审封面的缩略图：<img> 带不了自定义头，所以审核台用 fetch + Bearer 取 blob，
+         这样密钥不会出现在 URL 里（也就不进任何日志）。 */
+      if (path.startsWith('/api/admin/cover/')) return handleAdminCover(request, env, path);
       return fail('未知接口', 404);
     }
 
@@ -84,6 +90,7 @@ export default {
     if (path === '/api/stats') return handleStats(request, env, url, ipHash);
     if (path === '/api/vote') return handleVote(request, env, ipHash);
     if (path === '/api/submit') return handleSubmit(request, env, ipHash, clientIp(request));
+    if (path === '/api/submit-cover') return handleSubmitCover(request, env, ipHash, clientIp(request));
     if (path === '/api/submission') return handleSubmissionStatus(request, env, url);
 
     return fail('未知接口', 404);

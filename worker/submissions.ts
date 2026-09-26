@@ -12,6 +12,17 @@
 import { applySubmission, isNoteField, touch } from '../shared/community-doc.mjs';
 import { FIELD_RULES, LIMITS, isField, validateValue } from '../shared/submission-fields.mjs';
 import { GitError, readCommunityDoc, writeCommunityDoc } from './community';
+import {
+  checkCoverBytes,
+  commitCoverToRepo,
+  coverMetaOf,
+  coverRepoPath,
+  dropPendingCover,
+  imageResponse,
+  pendingCoverKey,
+  putPendingCover,
+  readPendingCover,
+} from './covers';
 import { allowWrite, fail, isBanned, json, readJsonBody, type Env } from './http';
 import { SLUG_RE } from './votes';
 
@@ -50,6 +61,15 @@ function short(v: unknown): string {
   if (v === null || v === undefined || v === '') return '（新增）';
   const s = Array.isArray(v) ? v.join('、') : String(v);
   return s.length > 40 ? s.slice(0, 40) + '…' : s;
+}
+
+/** 投稿内容存在 submissions.value 里（TEXT，JSON）。坏掉时返回 null，由调用方决定怎么报错。 */
+function parseStoredValue(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 function commitMessage(sub: SubmissionRow, change: { field: string; from: unknown; to: unknown }, reviewer: string): string {
@@ -162,6 +182,129 @@ export async function handleSubmissionStatus(
   return json({ ok: true, id, ...row });
 }
 
+/* ===== 封面投稿（B 方案）：multipart 上传 → KV 暂存 → 审核后进仓库 ===== */
+
+/**
+ * POST /api/submit-cover —— multipart/form-data
+ *   map / submitter / contact / note / turnstileToken + 文件字段 cover
+ *
+ * 与 /api/submit 的关系：走同一套限流桶（免得有人靠两个入口把额度翻倍）、
+ * 同一套封禁与人机校验，只是内容从 JSON 换成文件。
+ */
+export async function handleSubmitCover(
+  request: Request,
+  env: Env,
+  ipHash: string,
+  rawIp: string
+): Promise<Response> {
+  if (request.method !== 'POST') return fail('只支持 POST', 405);
+
+  /* 先看 Content-Length：明显超限的直接拒，别把整个 body 读进内存 */
+  const declared = Number(request.headers.get('content-length') ?? 0);
+  if (declared && declared > 2 * 1024 * 1024) return fail('上传内容过大', 413);
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return fail('上传格式不对（应为 multipart/form-data）');
+  }
+
+  const slug = typeof form.get('map') === 'string' ? String(form.get('map')).trim() : '';
+  if (!SLUG_RE.test(slug)) return fail('地图参数不合法');
+
+  const file = form.get('cover');
+  if (!(file instanceof File) && !(file instanceof Blob)) return fail('没有收到图片文件');
+  const bytes = new Uint8Array(await (file as Blob).arrayBuffer());
+
+  /* 服务端权威校验：不看 content-type，只看字节（客户端压缩只是省流量，不算数） */
+  const check = checkCoverBytes(bytes);
+  if (!check.ok || !check.format) return fail(check.error ?? '图片不合法');
+
+  const submitter = optString(form.get('submitter'), LIMITS.submitter, '昵称');
+  if (!submitter.ok) return fail(submitter.error);
+  const contact = optString(form.get('contact'), LIMITS.contact, '联系方式');
+  if (!contact.ok) return fail(contact.error);
+  const note = optString(form.get('note'), LIMITS.note, '理由');
+  if (!note.ok) return fail(note.error);
+
+  if (await isBanned(env, ipHash)) return fail('该来源已被禁止投稿', 403);
+
+  if (env.TURNSTILE_SECRET && !(await verifyTurnstile(env, form.get('turnstileToken'), rawIp))) {
+    return fail('人机验证没通过，请重试', 400);
+  }
+
+  if (!(await allowWrite(env, ipHash, 'submit', LIMITS.perHour))) {
+    return fail(`投稿太频繁了（每小时最多 ${LIMITS.perHour} 条），请过一会儿再试`, 429);
+  }
+
+  /* 先写 KV 再写 D1：反过来的话 D1 里会留下指向不存在图片的记录 */
+  const key = pendingCoverKey(check.format);
+  try {
+    await putPendingCover(env, key, bytes, check.format);
+  } catch (err) {
+    const e = err as GitError;
+    return fail(e?.message || '图片暂存失败', typeof e?.status === 'number' ? e.status : 500);
+  }
+
+  const meta = {
+    key,
+    ext: check.format,
+    bytes: bytes.length,
+    width: check.width ?? 0,
+    height: check.height ?? 0,
+  };
+
+  try {
+    const row = await env.DB.prepare(
+      `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at)
+       VALUES (?1,'cover',?2,?3,?4,?5,?6,'pending',?7) RETURNING id`
+    )
+      .bind(slug, JSON.stringify(meta), note.value, submitter.value, contact.value, ipHash, Date.now())
+      .first<{ id: number }>();
+
+    return json({
+      ok: true,
+      id: row?.id ?? null,
+      width: meta.width,
+      height: meta.height,
+      bytes: meta.bytes,
+      message: '已收到封面，审核通过后会出现在条目里',
+    });
+  } catch (err) {
+    await dropPendingCover(env, key); // 回滚：别留下没人认领的图片
+    throw err;
+  }
+}
+
+/** GET /api/admin/cover/<id> —— 审核台取待审图片（走 /api/admin/* 的密钥校验） */
+export async function handleAdminCover(request: Request, env: Env, path: string): Promise<Response> {
+  if (request.method !== 'GET') return fail('只支持 GET', 405);
+
+  const id = Number(path.slice('/api/admin/cover/'.length));
+  if (!Number.isInteger(id) || id <= 0) return fail('id 不合法');
+
+  const row = await env.DB.prepare(`SELECT field, value FROM submissions WHERE id = ?1`)
+    .bind(id)
+    .first<{ field: string; value: string }>();
+  if (!row) return fail('没有这条投稿', 404);
+  if (row.field !== 'cover') return fail('这条投稿不是封面', 400);
+
+  const meta = coverMetaOf(parseStoredValue(row.value));
+  if (!meta) return fail('这条封面投稿缺少图片信息', 500);
+
+  try {
+    const pending = await readPendingCover(env, meta.key);
+    if (!pending) {
+      return fail('待审图片已不存在（可能已被清理或过期），请让投稿人重新上传', 410);
+    }
+    return imageResponse(pending.bytes, pending.contentType);
+  } catch (err) {
+    const e = err as GitError;
+    return fail(e?.message || '读取图片失败', typeof e?.status === 'number' ? e.status : 500);
+  }
+}
+
 /* ===== 审核台接口（全部要 ADMIN_TOKEN） ===== */
 
 /** GET /api/admin/queue?status=pending&limit=50 */
@@ -255,16 +398,20 @@ export async function handleAdminReview(request: Request, env: Env): Promise<Res
     )
       .bind(Date.now(), reviewer, reasonRaw.value, id)
       .run();
+    /* 封面被驳回：把 KV 里的待审图删掉，别白占空间（也没人会再来看了） */
+    if (sub.field === 'cover') {
+      const meta = coverMetaOf(parseStoredValue(sub.value));
+      if (meta) await dropPendingCover(env, meta.key);
+    }
     return json({ ok: true, id, status: 'rejected' });
   }
 
   /* --- 通过：写回 git --- */
-  let value: unknown;
-  try {
-    value = JSON.parse(sub.value);
-  } catch {
-    return fail('这条投稿的值已损坏，无法应用', 500);
-  }
+  const value = parseStoredValue(sub.value);
+  if (value === null) return fail('这条投稿的值已损坏，无法应用', 500);
+
+  /* 封面走单独一条路：先把图片提交进仓库，再把路径记进社区文档 */
+  if (sub.field === 'cover') return applyCoverSubmission(env, sub, reviewer, value);
 
   try {
     const { doc, sha } = await readCommunityDoc(env, sub.map_slug);
@@ -307,6 +454,94 @@ export async function handleAdminReview(request: Request, env: Env): Promise<Res
     // 失败也要留痕，但**不改状态** —— 投稿仍是 pending，修好配置后可以重试
     await env.DB.prepare(`UPDATE submissions SET error=?1 WHERE id=?2`)
       .bind(message.slice(0, 300), id)
+      .run();
+    return fail(message, typeof e?.status === 'number' ? e.status : 500);
+  }
+}
+
+/**
+ * 封面投稿的落盘：图片进仓库 → 路径记进社区文档 → 删掉 KV 里的待审副本。
+ *
+ * 为什么单独一条路：普通字段只要写一次 JSON，封面要动二进制（还会顺带清掉同名其它扩展名）、
+ * 再写一次社区文档、最后清理临时文件 —— 混在主干里会把那段读成一团。
+ *
+ * 失败语义与主干一致：任何一步抛错都**不改状态**（投稿仍 pending），修好后可以重试。
+ */
+async function applyCoverSubmission(
+  env: Env,
+  sub: SubmissionRow,
+  reviewer: string,
+  value: unknown
+): Promise<Response> {
+  const meta = coverMetaOf(value);
+  if (!meta) return fail('这条封面投稿缺少图片信息，无法应用', 500);
+
+  try {
+    const pending = await readPendingCover(env, meta.key);
+    if (!pending) {
+      return fail('待审图片已不存在（可能被清理或过期），请让投稿人重新上传', 410);
+    }
+    /* 再校验一次：KV 里的字节才是真正要进仓库的东西 */
+    const check = checkCoverBytes(pending.bytes);
+    if (!check.ok || !check.format) return fail(`待审图片校验未通过：${check.error}`, 400);
+
+    const path = coverRepoPath(sub.map_slug, check.format);
+    const who = sub.submitter || '匿名';
+    const audit = reviewer ? `，审核 ${reviewer}` : '';
+
+    /* 1) 图片进仓库（顺带删掉同一张图的其它扩展名，避免 custom/ 里留两份） */
+    const { sha: imageSha, removed } = await commitCoverToRepo(
+      env,
+      sub.map_slug,
+      pending.bytes,
+      check.format,
+      `社区投稿：${sub.map_slug} 封面（by ${who}${audit}）`
+    );
+
+    /* 2) 社区文档里记一笔：谁什么时候换的（值为最终路径，页面侧也能覆盖显示） */
+    const { doc, sha } = await readCommunityDoc(env, sub.map_slug);
+    const change = applySubmission(doc, {
+      id: sub.id,
+      field: 'cover',
+      value: path,
+      submitter: sub.submitter,
+      reviewedAt: Date.now(),
+    });
+    touch(doc);
+    const { created } = await writeCommunityDoc(
+      env,
+      sub.map_slug,
+      doc,
+      `社区投稿：${sub.map_slug} 封面登记（by ${who}${audit}）`,
+      sha
+    );
+
+    /* 3) 清理临时副本（失败不影响结果，另有 KV 的 30 天过期兜底） */
+    await dropPendingCover(env, meta.key);
+
+    await env.DB.prepare(
+      `UPDATE submissions SET status='applied', reviewed_at=?1, reviewer=?2, commit_sha=?3, error=NULL WHERE id=?4`
+    )
+      .bind(Date.now(), reviewer, imageSha, sub.id)
+      .run();
+
+    return json({
+      ok: true,
+      id: sub.id,
+      status: 'applied',
+      map: sub.map_slug,
+      field: change.field,
+      commit: imageSha,
+      coverPath: path,
+      removedOldCovers: removed,
+      createdDoc: created,
+      note: '封面已写回仓库，Cloudflare 会在 1~2 分钟内重建上线',
+    });
+  } catch (err) {
+    const e = err as GitError;
+    const message = e?.message || String(err);
+    await env.DB.prepare(`UPDATE submissions SET error=?1 WHERE id=?2`)
+      .bind(message.slice(0, 300), sub.id)
       .run();
     return fail(message, typeof e?.status === 'number' ? e.status : 500);
   }

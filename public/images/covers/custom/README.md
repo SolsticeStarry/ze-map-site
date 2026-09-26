@@ -31,13 +31,29 @@ ze_obj_abyss.jpg         ❌ 拼错了，永远不会生效
 | 体积 | 300 KB 以内，硬上限 800 KB |
 | 格式 | `.jpg` / `.png` / `.webp` 都收，但**截图直接存 PNG 往往有 1~2 MB，会超限** —— 尽量存成 JPG（画质 80 左右），或者用 `npm run cover:set` 让脚本帮你压成 webp（通常只有 1/10） |
 
-## 怎么传（网页上就能做）
+## 怎么传（**推荐走投稿页，不用 GitHub 账号**）
 
-1. 本目录右上角 **Add file → Upload files**，把图片拖进去
-2. 文件名按上面的规则取
-3. **Propose changes** → **Create pull request**
+最省事的一条路：打开那张图的详情页 → 右侧栏「✏️ 补充这张图的资料」→「要提交哪一项」选
+**地图封面** → 选图提交。图片会在浏览器里自动裁成 16:9、压成 webp 再上传，站长审核通过后自动生效。
+
+下面这条是「直接改文件」的路（提 PR），**必须先 Fork**：
+
+⚠️ **本站仓库你没有写权限，直接在这里点「Add file → Upload files」是传不上去的** ——
+GitHub 会在提交时报「You need write access to this repository」。
+必须先把仓库复制一份到你自己账号下，在**你自己的副本**里上传，最后发一个 PR 回来：
+
+1. 打开仓库首页 → 右上角 **Fork** → **Create fork**（得到 `你的用户名/ze-map-site`）
+2. 在**你自己那份副本**里进 `public/images/covers/custom/`
+3. **Add file → Upload files**，把图片拖进去，文件名按上面的规则取
+4. 拉到底 **Commit changes**（提交进你自己的副本，动不了本站）
+5. 回到原仓库 `hhjjdsj/ze-map-site` —— 顶部会出现 **Compare & pull request** 按钮；
+   没看到就点 **Contribute → Open pull request**
+6. 写一句「换了 xx 的封面」→ **Create pull request**
 
 图片是二进制文件，GitHub 的**铅笔编辑对它不可用**，但上传、替换（同名同路径再传一次）、删除都能在网页上完成。
+
+**嫌麻烦 / 不想碰 GitHub**：把图发给站长（QQ **3157410575**），站长在本地跑
+`npm run cover:set -- <地图英文名> <图片>` 代传 —— 会自动裁成 16:9、压成 webp，文件名也帮你对上。
 
 ## 想换回脚本渲染的封面
 

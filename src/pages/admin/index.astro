@@ -127,6 +127,31 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     statusEl.className = isError ? 'form-error' : 'form-hint';
   }
 
+  /**
+   * 待审封面缩略图。`<img src>` 带不了 Authorization 头，所以用 fetch 取 blob 再 objectURL ——
+   * 这样密钥不会出现在 URL 里（也就不会进任何日志/Referer）。
+   */
+  async function loadCoverThumb(id: number, img: HTMLImageElement) {
+    try {
+      const res = await fetch(`/api/admin/cover/${id}`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          msg = (await res.json())?.error ?? msg;
+        } catch {
+          /* 非 JSON */
+        }
+        img.replaceWith(el('p', 'form-error', `待审图片取不到：${msg}`));
+        return;
+      }
+      img.src = URL.createObjectURL(await res.blob());
+    } catch {
+      img.replaceWith(el('p', 'form-error', '待审图片取不到（网络错误）'));
+    }
+  }
+
   function renderItem(item: QueueItem): HTMLElement {
     const box = el('div', 'queue-item');
 
@@ -138,13 +163,32 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     );
     box.append(head);
 
-    const diff = el('p', 'queue-diff');
-    diff.append(
-      el('del', undefined, fmt(item.current)),
-      el('span', undefined, ' → '),
-      el('ins', undefined, fmt(item.value))
-    );
-    box.append(diff);
+    if (item.field === 'cover') {
+      /* 封面没有「现值 → 新值」这种对比，直接给图看 */
+      const meta = (item.value ?? {}) as Record<string, unknown>;
+      const img = el('img') as HTMLImageElement;
+      img.alt = '待审封面';
+      img.style.cssText =
+        'max-width:340px;width:100%;border-radius:8px;border:1px solid var(--border);display:block;margin:8px 0';
+      box.append(img);
+      void loadCoverThumb(item.id, img);
+      box.append(
+        el(
+          'p',
+          'queue-note',
+          `${meta.width ?? '?'}×${meta.height ?? '?'} · ${Math.round((Number(meta.bytes) || 0) / 1024)} KB` +
+            ` · 通过后写成 public/images/covers/custom/${item.map_slug}.${meta.ext ?? '?'}`
+        )
+      );
+    } else {
+      const diff = el('p', 'queue-diff');
+      diff.append(
+        el('del', undefined, fmt(item.current)),
+        el('span', undefined, ' → '),
+        el('ins', undefined, fmt(item.value))
+      );
+      box.append(diff);
+    }
 
     if (item.note) box.append(el('p', 'queue-note', `理由：${item.note}`));
 

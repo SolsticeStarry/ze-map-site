@@ -17,9 +17,28 @@ export interface D1 {
   prepare(query: string): D1Prepared;
 }
 
+/*
+ * 同理，只声明用到的 Workers KV 接口（避免引 @cloudflare/workers-types）。
+ * 线上真正的 KVNamespace 是这个形状的超集，结构兼容。
+ */
+export interface KVLike {
+  put(
+    key: string,
+    value: ArrayBuffer | Uint8Array,
+    options?: { expirationTtl?: number; metadata?: unknown }
+  ): Promise<void>;
+  getWithMetadata(
+    key: string,
+    type: 'arrayBuffer'
+  ): Promise<{ value: ArrayBuffer | null; metadata: unknown }>;
+  delete(key: string): Promise<void>;
+}
+
 export interface Env {
   DB: D1;
   ASSETS: { fetch(request: Request): Promise<Response> };
+  /** 待审封面的临时存储（wrangler.jsonc 的 kv_namespaces → UPLOADS） */
+  UPLOADS?: KVLike;
   /** IP 哈希用的盐，必须用 `wrangler secret put IP_SALT` 设置 */
   IP_SALT?: string;
   /** 审核台密钥，必须用 `wrangler secret put ADMIN_TOKEN` 设置 */

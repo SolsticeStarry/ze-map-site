@@ -62,15 +62,26 @@
 
 这张图会同时出现在两个地方，所以**挑横向的**：地图库卡片（16:9 画幅）和详情页顶部（满宽背景大图，上面压了一层暗色遮罩）。
 
-### 网页上怎么做
+### 网页上怎么做（**推荐走投稿页，不用 GitHub 账号**）
 
-1. 打开 `public/images/covers/custom/` 目录
-2. 右上角 **Add file → Upload files**
-3. 把图片拖进去。**文件名必须正好是「地图英文名」**，例如 `ze_obj_abyss_v2.jpg`
+最省事：地图详情页右侧栏 →「✏️ 补充这张图的资料」→「要提交哪一项」选 **地图封面** → 选图提交，
+浏览器会自动裁成 16:9、压成 webp，审核通过后生效。
+
+下面这条是「直接改文件」的路（提 PR），**必须先 Fork**：
+
+⚠️ 你在这个仓库里没有写权限，**直接在目录里点「Add file → Upload files」会被 GitHub 拒绝**
+（`You need write access to this repository`）。要先复制一份到你自己的账号下：
+
+1. 仓库首页右上角 **Fork** → **Create fork**（得到 `你的用户名/ze-map-site`）
+2. 在**你自己那份副本**里打开 `public/images/covers/custom/`
+3. **Add file → Upload files**，把图片拖进去。**文件名必须正好是「地图英文名」**，例如 `ze_obj_abyss_v2.jpg`
    - 格式 `.jpg` / `.png` / `.webp` 都收。**但截图直接存 PNG 往往有 1~2 MB，会超限** ——
      尽量存成 JPG（画质 80 左右），或者用 `npm run cover:set` 让脚本压成 webp（通常只有 1/10）
    - ⚠️ **不是** Steam 分片名（`2001-ze_xxx-123456`）。名字写错这张图**永远不会显示**，而页面和构建全都正常，你不会收到任何报错
-4. 下面写一句「换了 xx 的封面」，点 **Propose changes** → **Create pull request**
+4. 拉到底 **Commit changes**（提交进你自己的副本）
+5. 回到原仓库 → **Compare & pull request**（没看到就 **Contribute → Open pull request**）→ **Create pull request**
+
+嫌麻烦就把图发给站长代传（站长跑 `npm run cover:set -- <地图英文名> <图片>` 会自动压好、文件名也帮你对上）。
 
 ### 图片要求
 
@@ -84,7 +95,7 @@
 
 ### 替换 / 删除
 
-图片是二进制文件，GitHub 的**铅笔编辑改不了它**（只给文字文件用），但下面两件事都能在网页上做：
+图片是二进制文件，GitHub 的**铅笔编辑改不了它**（只给文字文件用），但下面两件事都能在网页上做（同样在你自己 fork 的 `custom/` 里操作）：
 
 - **换成另一张**：还是 **Add file → Upload files**，**文件名和路径保持一致**，就是覆盖
 - **换回脚本渲染的封面**：在 `custom/` 里点开那张图 → 右上角 **⋯ → Delete file** → 提个小 PR。不需要改任何配置

@@ -30,13 +30,21 @@ const canFill = (r: (typeof R)[string]) => {
       return `每行一个 https 链接，最多 ${r.max} 条`;
     case 'int':
       return `${r.min} ~ ${r.max} 的整数`;
+    case 'image':
+      return '一张图：浏览器里自动裁成 16:9、压成 webp（上限 700 KB）再上传，不用自己处理';
     default:
       return `最多 ${r.maxLen} 字`;
   }
 };
 
 const mergeNote = (r: (typeof R)[string]) =>
-  r.append ? '追加合并，不会顶掉已有的' : r.kind === 'tags' ? '整组替换' : '';
+  r.append
+    ? '追加合并，不会顶掉已有的'
+    : r.kind === 'tags'
+      ? '整组替换'
+      : r.kind === 'image'
+        ? '替换当前人工封面（渲染图仍在，删掉人工封面即回退）'
+        : '';
 
 const fieldRows = Object.entries(R).map(([key, r]) => ({
   key,
@@ -97,8 +105,8 @@ const fieldRows = Object.entries(R).map(([key, r]) => ({
           </tr>
           <tr>
             <td>想给某张图换封面（要传图片）</td>
-            <td><a href="#cover">④ 传封面</a></td>
-            <td>要</td>
+            <td><a href="#cover">④ 传封面</a>，或把图发给站长代传</td>
+            <td>要（注册免费，<b>且必须先 Fork</b>）</td>
           </tr>
           <tr>
             <td>什么都不想学，把东西发过来就行</td>
@@ -258,27 +266,60 @@ const fieldRows = Object.entries(R).map(([key, r]) => ({
       </div>
 
       <h2 id="cover">④ 换地图封面（要传图片）</h2>
+      <div class="doc-note">
+        <p>
+          <b>推荐：直接在投稿页传，不用 GitHub 账号。</b>
+          在<b>地图详情页右侧栏</b>点「✏️ 补充这张图的资料」→ 在「要提交哪一项」里选
+          <b>地图封面</b> → 选一张图。图片会在你的浏览器里<b>自动裁成 16:9、压成 webp</b>（通常几十 KB）再上传，
+          站长审核通过后就换上了，和本站其它社区内容一样。
+        </p>
+      </div>
       <p>
         地图封面默认是脚本从地图数据渲染的（俯视密度图 + 实体点）。觉得某张图有更好看的封面，可以换成自己的图。
         这张图会同时用在两处：<b>地图库卡片</b>（16:9 画幅）和<b>详情页顶部</b>（满宽背景大图，上面压了一层暗色遮罩），
-        所以<b>挑横向的图</b>。
+        所以<b>挑横向的图</b>。想直接改成文件（提 PR）也行，下面是那条路 —— 但它<b>必须先 Fork</b>：
       </p>
+      <div class="doc-note warn">
+        <p>
+          ⚠️ <b>这一步必须先 Fork，不能直接往本站仓库传。</b>
+          你在这个仓库没有写权限，直接在目录里点「Add file → Upload files」会被 GitHub 拒绝
+          （提示 <code>You need write access to this repository</code>）。
+          正确做法是先把仓库复制一份到你自己的账号下，在<b>你自己的副本</b>里上传，最后发一个 PR 回来：
+        </p>
+      </div>
       <ol>
         <li>
-          打开
+          打开仓库
+          <a href="https://github.com/hhjjdsj/ze-map-site" target="_blank" rel="noopener"
+            >hhjjdsj/ze-map-site</a
+          >，右上角点 <b>Fork</b> → <b>Create fork</b>（得到 <code>你的用户名/ze-map-site</code>）
+        </li>
+        <li>
+          在<b>你自己那份副本</b>里打开
           <a
             href="https://github.com/hhjjdsj/ze-map-site/tree/main/public/images/covers/custom"
             target="_blank"
             rel="noopener">public/images/covers/custom/</a
           > 目录
         </li>
-        <li>右上角 <b>Add file → Upload files</b>，把图片拖进去</li>
+        <li><b>Add file → Upload files</b>，把图片拖进去</li>
         <li>
           <b>文件名必须正好是「地图英文名」</b>，例如 <code>ze_obj_abyss_v2.jpg</code>。
           格式 <code>.jpg</code> / <code>.png</code> / <code>.webp</code> 都收
         </li>
-        <li>下面写一句「换了 xx 的封面」，点 <b>Propose changes</b> → <b>Create pull request</b></li>
+        <li>拉到底 <b>Commit changes</b>（提交进你自己的副本，不会影响本站）</li>
+        <li>
+          回到原仓库 <b>hhjjdsj/ze-map-site</b> —— 顶部会出现 <b>Compare &amp; pull request</b>；
+          没看到就点 <b>Contribute → Open pull request</b>，写一句「换了 xx 的封面」再 <b>Create pull request</b>
+        </li>
       </ol>
+      <div class="doc-note">
+        <p>
+          <b>嫌折腾？</b>直接把图发给站长（⑤ 里那个 QQ）就行，站长在本地跑
+          <code>npm run cover:set</code> 代传：会自动裁成 16:9、压成 webp，文件名也帮你对上。
+          投稿表单目前<b>只收文字字段，还传不了图片</b>—— 想自助传图的话跟站长说一声，可以加。
+        </p>
+      </div>
       <table class="doc-table">
         <thead>
           <tr>
@@ -303,11 +344,11 @@ const fieldRows = Object.entries(R).map(([key, r]) => ({
         <p>
           <b>为什么换封面必须用「上传」，不能用铅笔？</b>
           GitHub 的铅笔编辑只能改文字文件 —— 图片这类二进制文件它不给编辑器。
-          不过<b>新增、替换、删除图片都能在网页上完成</b>，不用装任何东西：
+          不过<b>新增、替换、删除图片都能在网页上完成</b>，不用装任何东西（都要在你自己 fork 的副本里做）：
         </p>
         <ul>
           <li>
-            <b>换成另一张</b>：还是 <b>Add file → Upload files</b>，
+            <b>换成另一张</b>：在你 fork 的 <code>custom/</code> 里还是 <b>Add file → Upload files</b>，
             <b>文件名和路径保持一模一样</b>，就是覆盖（PR 里会显示成修改）
           </li>
           <li>

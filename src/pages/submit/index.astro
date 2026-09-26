@@ -92,6 +92,41 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
                   <option value={v}>{v}</option>
                 ))}
               </select>
+            ) : f.kind === 'image' ? (
+              /*
+                封面：选图后**在浏览器里**裁成 16:9、转 webp、压到 ~100 KB 再上传。
+                这样手机截图（2~5 MB）不会卡在上传上，服务端也不必做图像处理。
+                真正的权威校验（种类 / 体积 / 尺寸）在 worker/covers.ts。
+              */
+              <div>
+                <input
+                  id={`f-in-${f.key}`}
+                  data-input={f.key}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                />
+                <p class="form-hint" id="cover-status">
+                  还没选图。选一张横向图，会自动裁成 16:9、压成 webp 再上传，不用自己处理。
+                </p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
+                  <figure id="cover-cur-wrap" hidden style="margin:0;max-width:200px">
+                    <img
+                      id="cover-current"
+                      alt="当前封面"
+                      style="width:100%;border-radius:8px;border:1px solid var(--border);display:block"
+                    />
+                    <figcaption class="form-hint" style="text-align:center">当前封面</figcaption>
+                  </figure>
+                  <figure id="cover-new-wrap" hidden style="margin:0;max-width:200px">
+                    <img
+                      id="cover-preview"
+                      alt="新封面预览"
+                      style="width:100%;border-radius:8px;border:1px solid var(--border);display:block"
+                    />
+                    <figcaption class="form-hint" style="text-align:center">上传后</figcaption>
+                  </figure>
+                </div>
+              </div>
             ) : f.kind === 'longtext' ? (
               <textarea id={`f-in-${f.key}`} data-input={f.key} rows="8" />
             ) : f.kind === 'tags' || f.kind === 'urlList' ? (
@@ -239,7 +274,21 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     const curEl = document.querySelector<HTMLElement>(`[data-current="${key}"]`);
     const cur = mapInfo?.[key];
     if (curEl) curEl.textContent = formatValue(cur);
-    if (!input) return;
+
+    /* 封面：把当前那张显示成缩略图，换的时候好对比 */
+    if (key === 'cover') {
+      const wrap = document.getElementById('cover-cur-wrap');
+      const img = document.getElementById('cover-current') as HTMLImageElement | null;
+      if (wrap && img && typeof cur === 'string' && cur) {
+        img.src = cur;
+        wrap.hidden = false;
+      } else if (wrap) {
+        wrap.hidden = true;
+      }
+    }
+
+    /* 文件控件不能赋值（会抛异常），而且封面本来就不预填 */
+    if (!input || (input as HTMLInputElement).type === 'file') return;
     if (cur === undefined || cur === null) input.value = '';
     else if (Array.isArray(cur)) input.value = cur.join('\n');
     else input.value = String(cur);
@@ -297,11 +346,169 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
       ctxEl.textContent = '读取地图索引失败，请刷新重试。';
     });
 
+  /* ===== 封面：在浏览器里裁成 16:9、压成 webp =====
+     为什么不直接传原图：手机截图动辄 2~5 MB，而封面在页面里最大只用 1280px 宽。
+     本地先处理掉，上传快、仓库小，服务端也不必引图像库（Worker 里那点运行时做不了这个）。
+     这里压得再狠也不算数 —— 权威校验在 worker/covers.ts，它只看字节。 */
+  const COVER_MAX_BYTES = 700 * 1024; // 与 worker/covers.ts 保持一致
+  const COVER_TARGET_W = 1280;
+
+  let coverBlob: Blob | null = null;
+  let coverExt = 'webp';
+
+  const coverInput = document.getElementById('f-in-cover') as HTMLInputElement | null;
+  const coverStatus = document.getElementById('cover-status') as HTMLElement | null;
+  const coverPreview = document.getElementById('cover-preview') as HTMLImageElement | null;
+  const coverNewWrap = document.getElementById('cover-new-wrap') as HTMLElement | null;
+
+  /** 解码：优先 createImageBitmap，失败退 <img>（HEIC 这类浏览器解不开的要给人话术） */
+  async function loadBitmap(file: File): Promise<ImageBitmap | HTMLImageElement> {
+    if (typeof createImageBitmap === 'function') {
+      try {
+        return await createImageBitmap(file);
+      } catch {
+        /* 交给下面的 <img> 再试一次 */
+      }
+    }
+    return await new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('浏览器解不开这个图片格式（比如手机直出的 HEIC），先另存为 JPG 再传'));
+      };
+      img.src = url;
+    });
+  }
+
+  const encodeCanvas = (canvas: HTMLCanvasElement, type: string, quality: number) =>
+    new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), type, quality));
+
+  async function buildCover(file: File): Promise<{ blob: Blob; ext: string; w: number; h: number }> {
+    const src = await loadBitmap(file);
+    const sw = src.width;
+    const sh = src.height;
+    if (!sw || !sh) throw new Error('读不出这张图的尺寸');
+
+    /* 居中裁成 16:9（和 npm run cover:set 的默认行为一致） */
+    const ratio = 16 / 9;
+    let cw = sw;
+    let ch = sh;
+    if (sw / sh > ratio) cw = Math.round(sh * ratio);
+    else ch = Math.round(sw / ratio);
+    const cx = Math.round((sw - cw) / 2);
+    const cy = Math.round((sh - ch) / 2);
+
+    const outW = Math.min(COVER_TARGET_W, cw);
+    const outH = Math.max(1, Math.round(outW / ratio));
+    const canvas = document.createElement('canvas');
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('这个浏览器不支持 canvas，换一个浏览器试试');
+    ctx.drawImage(src as CanvasImageSource, cx, cy, cw, ch, 0, 0, outW, outH);
+    if ('close' in src && typeof (src as ImageBitmap).close === 'function') (src as ImageBitmap).close();
+
+    /* 优先 webp（体积最小）；浏览器不支持编码 webp 时退 jpg */
+    let blob = await encodeCanvas(canvas, 'image/webp', 0.82);
+    let ext = 'webp';
+    if (!blob || blob.type !== 'image/webp') {
+      blob = await encodeCanvas(canvas, 'image/jpeg', 0.85);
+      ext = 'jpg';
+    }
+    if (!blob) throw new Error('压缩失败，换一张图试试');
+
+    /* 还偏大就降质量重压（1280×720 正常只有几十 KB，很少走到这里） */
+    for (const q of [0.7, 0.6, 0.5]) {
+      if (blob.size <= COVER_MAX_BYTES) break;
+      const again = await encodeCanvas(canvas, blob.type || 'image/jpeg', q);
+      if (again) blob = again;
+    }
+    return { blob, ext, w: outW, h: outH };
+  }
+
+  coverInput?.addEventListener('change', async () => {
+    const file = coverInput.files?.[0];
+    coverBlob = null;
+    if (coverNewWrap) coverNewWrap.hidden = true;
+    if (!file) {
+      if (coverStatus) coverStatus.textContent = '还没选图。';
+      return;
+    }
+    if (coverStatus) coverStatus.textContent = '正在裁剪压缩…';
+    errEl.hidden = true;
+    try {
+      const r = await buildCover(file);
+      coverBlob = r.blob;
+      coverExt = r.ext;
+      if (coverPreview) {
+        coverPreview.src = URL.createObjectURL(r.blob);
+        if (coverNewWrap) coverNewWrap.hidden = false;
+      }
+      if (coverStatus) {
+        coverStatus.textContent =
+          `已压好：${r.w}×${r.h} · ${Math.round(r.blob.size / 1024)} KB` +
+          `（原图 ${Math.round(file.size / 1024)} KB → ${r.ext}）`;
+      }
+    } catch (err) {
+      if (coverStatus) coverStatus.textContent = '这张图用不了。';
+      showError(err instanceof Error && err.message ? err.message : '图片处理失败');
+    }
+  });
+
+  /** 提交成功后统一的展示（文本字段与封面共用） */
+  function showSuccess(id: number, extra: string) {
+    form.hidden = true;
+    resultEl.hidden = false;
+    resultEl.innerHTML =
+      `<h2>提交成功 ✅</h2>` +
+      `<p class="form-ok">编号 <strong>${id}</strong> —— 请记下它，可以回来查审核状态。</p>` +
+      `<p class="form-hint">${extra}</p>`;
+    const qid = document.getElementById('q-id') as HTMLInputElement;
+    if (qid) qid.value = String(id ?? '');
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errEl.hidden = true;
 
     const field = fieldSel.value;
+    const note = (document.getElementById('f-note') as HTMLTextAreaElement).value;
+    const submitter = (document.getElementById('f-submitter') as HTMLInputElement).value;
+    const contact = (document.getElementById('f-contact') as HTMLInputElement).value;
+    const backLink =
+      `站长审核通过后，内容会被写进仓库并自动重建，大约几分钟内就会出现在 ` +
+      `<a href="/maps/${slug}/">《${mapInfo?.title}》的条目</a> 里。`;
+
+    /* 封面走 multipart 上传接口 —— 值是一张压好的图，不是文本 */
+    if (field === 'cover') {
+      if (!coverBlob) return showError('先选一张图片，等它压好之后再提交。');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '上传中…';
+      try {
+        const fd = new FormData();
+        fd.append('map', slug);
+        fd.append('cover', coverBlob, `cover.${coverExt}`);
+        fd.append('note', note);
+        fd.append('submitter', submitter);
+        fd.append('contact', contact);
+        const res = await fetch('/api/submit-cover', { method: 'POST', body: fd });
+        const data = (await res.json()) as { ok?: boolean; id?: number; error?: string };
+        if (!data.ok) throw new Error(data.error || '上传失败');
+        showSuccess(Number(data.id), `审核通过后封面会替换成这张。${backLink}`);
+      } catch (err) {
+        showError(err instanceof Error && err.message ? err.message : '上传失败，请稍后再试');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '提交';
+      }
+      return;
+    }
+
     const value = collect(field);
     const checked = validateValue(field, value);
     if (!checked.ok) return showError(checked.error);
@@ -312,27 +519,11 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
       const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          map: slug,
-          field,
-          value: checked.value,
-          note: (document.getElementById('f-note') as HTMLTextAreaElement).value,
-          submitter: (document.getElementById('f-submitter') as HTMLInputElement).value,
-          contact: (document.getElementById('f-contact') as HTMLInputElement).value,
-        }),
+        body: JSON.stringify({ map: slug, field, value: checked.value, note, submitter, contact }),
       });
       const data = (await res.json()) as { ok?: boolean; id?: number; error?: string };
       if (!data.ok) throw new Error(data.error || '提交失败');
-
-      form.hidden = true;
-      resultEl.hidden = false;
-      resultEl.innerHTML =
-        `<h2>提交成功 ✅</h2>` +
-        `<p class="form-ok">编号 <strong>${data.id}</strong> —— 请记下它，可以回来查审核状态。</p>` +
-        `<p class="form-hint">站长审核通过后，内容会被写进仓库并自动重建，` +
-        `大约几分钟内就会出现在 <a href="/maps/${slug}/">《${mapInfo?.title}》的条目</a> 里。</p>`;
-      const qid = document.getElementById('q-id') as HTMLInputElement;
-      if (qid) qid.value = String(data.id ?? '');
+      showSuccess(Number(data.id), backLink);
     } catch (err) {
       showError(err instanceof Error && err.message ? err.message : '提交失败，请稍后再试');
     } finally {

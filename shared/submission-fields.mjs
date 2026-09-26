@@ -32,6 +32,8 @@ export const LIMITS = {
  *   tags     字符串数组（标签）
  *   int      整数
  *   urlList  链接数组
+ *   image    图片文件（**不走这里的 text 校验**：由 /api/submit-cover 以 multipart 上传，
+ *            校验与落盘在 worker/covers.ts；这里只用于表单控件与审核台标签）
  *   longtext 多行正文（**正文类字段不做条目字段覆盖，而是进「社区补充」区块的笔记** ——
  *            见 shared/community-doc.mjs 的 applySubmission 与 isNoteField）
  */
@@ -61,6 +63,13 @@ export const FIELD_RULES = {
     /* 同理：现有资料里超过 5 条来源的很多 */
     max: 12,
     append: true,
+  },
+  cover: {
+    kind: 'image',
+    label: '地图封面',
+    hint: '选一张横向图（16:9 最好）。会在你的浏览器里自动裁成 16:9、压成 webp 再上传，不用自己处理',
+    /* 图片上限在 worker/covers.ts（700 KB，比 cover:verify 的 800 KB 略低：
+       二进制要 base64 后走 GitHub contents API，留出余量） */
   },
   story: {
     kind: 'longtext',
@@ -156,6 +165,11 @@ export function validateValue(field, raw) {
       return { ok: true, value: n };
     }
 
+    case 'image':
+      /* 图片不走 JSON 投稿：表单会用 multipart 打到 /api/submit-cover，
+         服务端在那里做权威校验（种类、体积、尺寸）。走到这里说明调用方搞错了入口。 */
+      return { ok: false, error: '封面请用表单里的图片上传控件（接口是 /api/submit-cover）' };
+
     case 'urlList': {
       const list = Array.isArray(raw)
         ? raw
@@ -188,6 +202,7 @@ export function inputKind(field) {
   if (rule.kind === 'tags' || rule.kind === 'urlList') return 'lines';
   if (rule.kind === 'longtext') return 'textarea';
   if (rule.kind === 'enum') return 'select';
+  if (rule.kind === 'image') return 'file';
   return 'text';
 }
 

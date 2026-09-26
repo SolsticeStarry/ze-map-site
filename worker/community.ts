@@ -141,3 +141,97 @@ export async function writeCommunityDoc(
   const data = (await res.json()) as { commit?: { sha?: string } };
   return { sha: data.commit?.sha ?? '', created: !currentSha };
 }
+
+/* ===== 二进制文件（投稿封面图）=====
+ *
+ * 为什么用 contents API 而不是 Git Data API：
+ *   封面上限 700 KB（见 worker/covers.ts 的说明），base64 后约 960 KB，
+ *   在 contents API 的承受范围内；换成 blob/tree/commit/ref 四步反而更长、
+ *   还丢掉「按 sha 做乐观并发」这个现成的保护。
+ */
+
+export interface RepoFileEntry {
+  name: string;
+  path: string;
+  sha: string;
+}
+
+/** 列目录（contents API 返回数组）。目录不存在返回空数组，不算错误。 */
+export async function listRepoDir(env: Env, dir: string): Promise<RepoFileEntry[]> {
+  const res = await gh(env, `/repos/${repo(env)}/contents/${dir}?ref=${encodeURIComponent(branch(env))}`);
+  if (res.status === 404) return [];
+  if (!res.ok) throw new GitError(`读取仓库目录失败（HTTP ${res.status}）`, 502);
+  const data = (await res.json()) as unknown;
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter((e): e is Record<string, unknown> => Boolean(e) && typeof e === 'object' && e.type === 'file')
+    .map((e) => ({ name: String(e.name), path: String(e.path), sha: String(e.sha) }));
+}
+
+/** 取单个文件的 blob sha；不存在返回 null */
+export async function repoFileSha(env: Env, path: string): Promise<string | null> {
+  const res = await gh(env, `/repos/${repo(env)}/contents/${path}?ref=${encodeURIComponent(branch(env))}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new GitError(`读取仓库文件失败（HTTP ${res.status}）`, 502);
+  const data = (await res.json()) as { sha?: string };
+  return data.sha ?? null;
+}
+
+/** 写一个二进制文件（新建或覆盖） */
+export async function writeRepoBinary(
+  env: Env,
+  path: string,
+  bytes: Uint8Array,
+  message: string
+): Promise<{ sha: string; created: boolean }> {
+  const currentSha = await repoFileSha(env, path);
+  let bin = '';
+  const CHUNK = 0x8000; // 一次展开太多会爆栈
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  const content = btoa(bin);
+
+  const res = await gh(env, `/repos/${repo(env)}/contents/${path}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      content,
+      branch: branch(env),
+      ...(currentSha ? { sha: currentSha } : {}),
+    }),
+  });
+
+  if (res.status === 409 || res.status === 422) {
+    throw new GitError('仓库里的这个文件刚刚被改动过，请刷新后重试', 409);
+  }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new GitError(
+      `写回仓库失败（HTTP ${res.status}）${detail ? '：' + detail.slice(0, 200) : ''}`,
+      502
+    );
+  }
+  const data = (await res.json()) as { commit?: { sha?: string } };
+  return { sha: data.commit?.sha ?? '', created: !currentSha };
+}
+
+/** 删一个文件（换封面时清掉同名的其它扩展名）。文件不存在视为成功。 */
+export async function deleteRepoFile(env: Env, path: string, message: string): Promise<boolean> {
+  const sha = await repoFileSha(env, path);
+  if (!sha) return false;
+  const res = await gh(env, `/repos/${repo(env)}/contents/${path}`, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ message, sha, branch: branch(env) }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new GitError(
+      `删除仓库文件失败（HTTP ${res.status}）${detail ? '：' + detail.slice(0, 200) : ''}`,
+      502
+    );
+  }
+  return true;
+}
