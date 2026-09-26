@@ -101,6 +101,14 @@ const label = title || '视频';
     iframe.src = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'autoplay=1';
     iframe.title = fig.dataset.title || '视频';
     iframe.allowFullscreen = true;
+    /*
+     * 关键尺寸在这里也写一份（对应样式里的 :global(iframe)）。
+     * 原因：Astro 的 scoped CSS 只作用于模板里的元素，JS 新建的 iframe 不带
+     * data-astro-cid-* 属性 —— 一旦上面那条样式被改回带作用域的形式，iframe 会
+     * 静默缩成默认的 300×150，看着就像「视频只有一小块」。行内样式不会被作用域影响，
+     * 相当于给这条样式上了一道保险；两处都改才可能失效。
+     */
+    iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;';
     iframe.setAttribute(
       'allow',
       'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
@@ -131,7 +139,15 @@ const label = title || '视频';
     background: #000;
   }
 
-  .video-frame iframe {
+  /*
+   * ⚠️ 这里必须用 :global(iframe)。
+   * Astro 的 scoped CSS 会把选择器变成 `.video-frame[data-astro-cid-x] iframe[data-astro-cid-x]`，
+   * 要求 iframe **自己也带那个属性** —— 而点击后插进来的 iframe 是 JS 新建的、拿不到属性，
+   * 这条规则就整条不匹配，iframe 退回浏览器默认的 300×150 缩在左上角
+   * （2026-09-25 上线后被抓到：「点开以后视频只有屏幕的十分之一」）。
+   * JS 那边还写了一份关键尺寸兜底，见脚本里的注释。
+   */
+  .video-frame :global(iframe) {
     position: absolute;
     inset: 0;
     width: 100%;
