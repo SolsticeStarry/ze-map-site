@@ -1,6 +1,17 @@
 ---
 /**
- * 视频嵌入。
+ * 视频嵌入 —— **点击才加载播放器**（门面 / facade 模式）。
+ *
+ * 为什么不直接把 iframe 放上去：
+ *   1. B 站播放器会自己开始播 —— 一张挂了 5~9 个视频的条目，打开就是好几个同时在响；
+ *   2. 每个 iframe 都是几百 KB 的第三方播放器脚本，9 个视频的首屏要多拉好几 MB；
+ *   3. 还没看就先给 B 站 / YouTube 发请求、留 cookie，没必要。
+ * 所以先渲染一块「播放键」门面，点击才把 iframe 插进来，并带 `autoplay=1` ——
+ * 这一次点击本身就是明确的播放意图，不会再出现「莫名其妙自己响」。
+ *
+ * 门面本身是 `<a href=原视频>`：
+ *   - 没 JS 时点它 = 在原站打开，不会变成点不动的死按钮；
+ *   - 中键 / Ctrl / Cmd / Shift / Alt + 点击照常开新标签（脚本只接管普通左键）。
  *
  * 只有 B 站和 YouTube 能嵌播放器（这是它们提供的 iframe 播放器接口决定的）。
  * 其它站点的链接**不再硬塞进 iframe** —— 那会渲染出一个加载失败的空框，
@@ -38,19 +49,23 @@ if (url.includes('bilibili.com')) {
 
 /* 拿不到播放器地址就退化成链接（例如 B 站短链、或别的视频站） */
 const canEmbed = Boolean(embedUrl);
+const platformLabel = platform === 'bilibili' ? 'bilibili' : platform === 'youtube' ? 'YouTube' : '外部站点';
+const label = title || '视频';
 ---
 
 {
   canEmbed ? (
-    <figure class="video-embed" data-platform={platform}>
+    <figure class="video-embed" data-platform={platform} data-embed={embedUrl} data-title={label}>
       <div class="video-frame">
-        <iframe
-          src={embedUrl}
-          title={title || '视频'}
-          loading="lazy"
-          allowfullscreen
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        />
+        <a class="video-play" href={url} target="_blank" rel="noopener" aria-label={`点击播放：${label}`}>
+          <span class="vp-btn" aria-hidden="true">
+            ▶
+          </span>
+          <span class="vp-label">点击播放</span>
+          <span class="vp-meta">
+            {platformLabel} · 播放器在点击后才加载
+          </span>
+        </a>
       </div>
       {title && <figcaption>{title}</figcaption>}
       <a class="video-source" href={url} target="_blank" rel="noopener">
@@ -65,6 +80,35 @@ const canEmbed = Boolean(embedUrl);
     </p>
   )
 }
+
+<script>
+  /*
+   * 点击门面 → 把 iframe 插进 .video-frame。
+   * 用事件委托：整页只装一个监听器，多个视频共用；Astro 会把这段脚本按页去重打包一次。
+   */
+  document.addEventListener('click', (event) => {
+    const link = event.target instanceof Element ? event.target.closest('.video-play') : null;
+    if (!link) return;
+    /* 只接管普通左键：修饰键 / 中键仍走浏览器默认行为（新标签打开原视频） */
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const fig = link.closest('.video-embed');
+    const src = fig && fig.dataset ? fig.dataset.embed : null;
+    if (!fig || !src) return;
+    event.preventDefault();
+    const frame = fig.querySelector('.video-frame');
+    if (!frame || frame.querySelector('iframe')) return;
+    const iframe = document.createElement('iframe');
+    iframe.src = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'autoplay=1';
+    iframe.title = fig.dataset.title || '视频';
+    iframe.allowFullscreen = true;
+    iframe.setAttribute(
+      'allow',
+      'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
+    );
+    frame.replaceChildren(iframe);
+    fig.classList.add('playing');
+  });
+</script>
 
 <style>
   .video-embed {
@@ -93,6 +137,65 @@ const canEmbed = Boolean(embedUrl);
     width: 100%;
     height: 100%;
     border: 0;
+  }
+
+  /* 门面：点击前显示的那一块（点击后整块被 iframe 替换掉） */
+  .video-play {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px;
+    text-align: center;
+    text-decoration: none;
+    color: #dde2ee;
+    background:
+      radial-gradient(120% 130% at 50% 0%, rgba(255, 255, 255, 0.07), transparent 62%),
+      linear-gradient(180deg, #171a24, #0b0d14);
+    transition: background 0.25s;
+  }
+
+  .video-play:hover {
+    background:
+      radial-gradient(120% 130% at 50% 0%, rgba(255, 255, 255, 0.12), transparent 62%),
+      linear-gradient(180deg, #1c2029, #0d1017);
+  }
+
+  .vp-btn {
+    display: grid;
+    place-items: center;
+    width: 62px;
+    height: 62px;
+    padding-left: 4px;
+    border-radius: 50%;
+    font-size: 22px;
+    color: #fff;
+    background: var(--accent, #ff4d4d);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    transition: transform 0.2s;
+  }
+
+  .video-play:hover .vp-btn {
+    transform: scale(1.07);
+  }
+
+  .vp-label {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .vp-meta {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* 兜底：万一脚本没走到 replaceChildren，也别让门面盖在播放器上 */
+  .video-embed.playing .video-play {
+    display: none;
   }
 
   figcaption {
