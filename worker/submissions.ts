@@ -17,6 +17,7 @@ import {
   commitCoverToRepo,
   coverMetaOf,
   coverRepoPath,
+  coverUrl,
   dropPendingCover,
   imageResponse,
   pendingCoverKey,
@@ -491,7 +492,10 @@ async function applyCoverSubmission(
     const check = checkCoverBytes(pending.bytes);
     if (!check.ok || !check.format) return fail(`待审图片校验未通过：${check.error}`, 400);
 
-    const path = coverRepoPath(sub.map_slug, check.format);
+    const repoPath = coverRepoPath(sub.map_slug, check.format);
+    /* ⚠️ 存进社区文档的必须是 **URL**（/images/...），不是仓库路径：
+       页面会把 data.cover 直接当 <img src>，存成 public/images/... 就是破图。 */
+    const url = coverUrl(sub.map_slug, check.format);
     const who = sub.submitter || '匿名';
     const audit = reviewer ? `，审核 ${reviewer}` : '';
 
@@ -504,12 +508,12 @@ async function applyCoverSubmission(
       `社区投稿：${sub.map_slug} 封面（by ${who}${audit}）`
     );
 
-    /* 2) 社区文档里记一笔：谁什么时候换的（值为最终路径，页面侧也能覆盖显示） */
+    /* 2) 社区文档里记一笔：谁什么时候换的（值为页面用的 URL） */
     const { doc, sha } = await readCommunityDoc(env, sub.map_slug);
     const change = applySubmission(doc, {
       id: sub.id,
       field: 'cover',
-      value: path,
+      value: url,
       submitter: sub.submitter,
       reviewedAt: Date.now(),
     });
@@ -538,7 +542,8 @@ async function applyCoverSubmission(
       map: sub.map_slug,
       field: change.field,
       commit: imageSha,
-      coverPath: path,
+      coverPath: repoPath,
+      coverUrl: url,
       removedOldCovers: removed,
       createdDoc: created,
       note: '封面已写回仓库，Cloudflare 会在 1~2 分钟内重建上线',

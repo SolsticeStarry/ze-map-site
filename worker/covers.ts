@@ -149,6 +149,16 @@ export async function dropPendingCover(env: Env, key: string): Promise<void> {
 export const coverRepoPath = (slug: string, ext: string) => `${COVER_DIR}/${slug}.${ext}`;
 
 /**
+ * 页面用的 **URL** 形式。
+ *
+ * ⚠️ 记进 data/community/<slug>.json 的必须是这个，不是仓库路径。
+ * 生成器写进 frontmatter 的 `cover:` 是 URL（`/images/...`），社区覆盖的值会被直接当 URL 用；
+ * 存成 `public/images/...` 的话，浏览器会按相对路径去 `/maps/<图>/public/images/...` 取，
+ * 结果就是「封面变黑 + 一个破图小图标」（2026-09-26 真踩过，两处只差一个前缀）。
+ */
+export const coverUrl = (slug: string, ext: string) => `/images/covers/custom/${slug}.${ext}`;
+
+/**
  * 把封面提交进仓库，并清掉**同一张图的其它扩展名**。
  *
  * 为什么要清：生成器按 webp → png → jpg → jpeg 取第一个命中的文件，

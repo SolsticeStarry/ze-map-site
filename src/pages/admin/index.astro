@@ -164,22 +164,33 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     box.append(head);
 
     if (item.field === 'cover') {
-      /* 封面没有「现值 → 新值」这种对比，直接给图看 */
       const meta = (item.value ?? {}) as Record<string, unknown>;
-      const img = el('img') as HTMLImageElement;
-      img.alt = '待审封面';
-      img.style.cssText =
-        'max-width:340px;width:100%;border-radius:8px;border:1px solid var(--border);display:block;margin:8px 0';
-      box.append(img);
-      void loadCoverThumb(item.id, img);
-      box.append(
-        el(
-          'p',
-          'queue-note',
-          `${meta.width ?? '?'}×${meta.height ?? '?'} · ${Math.round((Number(meta.bytes) || 0) / 1024)} KB` +
-            ` · 通过后写成 public/images/covers/custom/${item.map_slug}.${meta.ext ?? '?'}`
-        )
-      );
+      const size = `${meta.width ?? '?'}×${meta.height ?? '?'} · ${Math.round((Number(meta.bytes) || 0) / 1024)} KB`;
+      const target = `public/images/covers/custom/${item.map_slug}.${meta.ext ?? 'webp'}`;
+
+      /* 只有还躺在队列里的才去取图。已上线/已驳回的，KV 里的临时副本
+         **按设计已经删掉了** —— 以前这里照样去取，结果审核台把「成功」显示成
+         一片红字「待审图片取不到」，2026-09-26 被误解成上传失败（其实 git 里已经提交了）。 */
+      if (item.status === 'pending' || item.status === 'approved') {
+        const img = el('img') as HTMLImageElement;
+        img.alt = '待审封面';
+        img.style.cssText =
+          'max-width:340px;width:100%;border-radius:8px;border:1px solid var(--border);display:block;margin:8px 0';
+        box.append(img);
+        void loadCoverThumb(item.id, img);
+        box.append(el('p', 'queue-note', `${size} · 通过后写成 ${target}`));
+      } else {
+        box.append(el('p', 'queue-note', `${size} · 目标路径 ${target}`));
+        box.append(
+          el(
+            'p',
+            'queue-note',
+            item.status === 'applied'
+              ? '✅ 图片已写回仓库（KV 里的临时副本已清理）'
+              : '已驳回（KV 里的临时副本已清理）'
+          )
+        );
+      }
     } else {
       const diff = el('p', 'queue-diff');
       diff.append(
