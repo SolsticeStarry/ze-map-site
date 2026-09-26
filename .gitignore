@@ -160,3 +160,13 @@ data/research/_*/
 .wrangler/
 .dev.vars*
 !.dev.vars.example
+
+# terr-bake：本地工具链与运行时产物，由 setup.ps1 生成，不入库
+tools/terr-bake/core/.tools/
+tools/terr-bake/core/bounds/
+tools/terr-bake/core/work/
+# done.txt / failed.txt 是入库的烘焙记录，由各机器共享，故意不忽略
+tools/terr-bake/core/incremental.txt
+tools/terr-bake/core/incremental-chunk.txt
+tools/terr-bake/core/baked-this-run.txt
+tools/terr-bake/core/engine.pid
