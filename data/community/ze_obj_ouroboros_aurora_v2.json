@@ -1,13 +1,13 @@
 {
   "v": 1,
   "slug": "ze_obj_ouroboros_aurora_v2",
-  "updatedAt": "2026-09-26T07:35:36.445Z",
+  "updatedAt": "2026-09-26T07:40:36.746Z",
   "fields": {
     "cover": {
       "v": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
-      "by": "白叶",
-      "at": "2026-09-26T07:35:36.445Z",
-      "submission": 25
+      "by": "匿名",
+      "at": "2026-09-26T07:40:36.746Z",
+      "submission": 26
     }
   },
   "notes": [],
@@ -43,6 +43,14 @@
       "by": "白叶",
       "at": "2026-09-26T07:35:36.445Z",
       "submission": 25
+    },
+    {
+      "field": "cover",
+      "from": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "to": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "by": "匿名",
+      "at": "2026-09-26T07:40:36.746Z",
+      "submission": 26
     }
   ]
 }
