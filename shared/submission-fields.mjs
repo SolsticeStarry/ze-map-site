@@ -10,6 +10,7 @@
  * 就是同一类事故，所以这次一开始就共用一份。
  *
  * 加字段的步骤：在这里加一条规则 → 表单自动出现控件 → Worker 自动开始校验。
+ * kind=longtext 的字段还会自动进社区补充区块（不用改页面）。
  */
 
 import { DIFFICULTIES } from './difficulty.mjs';
@@ -31,7 +32,8 @@ export const LIMITS = {
  *   tags     字符串数组（标签）
  *   int      整数
  *   urlList  链接数组
- *   longtext 多行正文
+ *   longtext 多行正文（**正文类字段不做条目字段覆盖，而是进「社区补充」区块的笔记** ——
+ *            见 shared/community-doc.mjs 的 applySubmission 与 isNoteField）
  */
 export const FIELD_RULES = {
   difficulty: { kind: 'enum', label: '难度', hint: '必须从这几个里选', values: DIFFICULTIES },
@@ -59,6 +61,12 @@ export const FIELD_RULES = {
     /* 同理：现有资料里超过 5 条来源的很多 */
     max: 12,
     append: true,
+  },
+  story: {
+    kind: 'longtext',
+    label: '背景故事',
+    hint: '地图的剧情、设定与来历，可以分多段写。支持简单 Markdown，不支持 HTML 与 MDX',
+    maxLen: 4000,
   },
   body: {
     kind: 'longtext',

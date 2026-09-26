@@ -34,6 +34,11 @@
 可覆盖字段：`difficulty` `tags` `author` `authorNote` `version` `players`
 `duration` `stages` `sources` `videoUrls`（定义在 `shared/submission-fields.mjs`）。
 
+**正文类字段**（`story` 背景故事、`body` 补充说明 / 纠错）**不进 `fields`** ——
+它们是往 `notes` 里**追加一条**，由地图页的「社区补充」区块渲染（多条会按顺序全部显示，
+各自署名）。判定走 `shared/community-doc.mjs` 的 `isNoteField()`，也就是字段表里
+`kind: 'longtext'` 的那些；以后再加长文本字段不用改这里。
+
 ## 渲染优先级
 
 **社区（本目录） > 人工资料 `data/research/` > 自动生成 `src/content/maps/`**

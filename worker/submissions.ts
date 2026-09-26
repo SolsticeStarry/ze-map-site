@@ -9,8 +9,8 @@
  *   push 触发 Cloudflare 重建 → 页面出现社区内容
  */
 
-import { applySubmission, touch } from '../shared/community-doc.mjs';
-import { LIMITS, isField, validateValue } from '../shared/submission-fields.mjs';
+import { applySubmission, isNoteField, touch } from '../shared/community-doc.mjs';
+import { FIELD_RULES, LIMITS, isField, validateValue } from '../shared/submission-fields.mjs';
 import { GitError, readCommunityDoc, writeCommunityDoc } from './community';
 import { allowWrite, fail, isBanned, json, readJsonBody, type Env } from './http';
 import { SLUG_RE } from './votes';
@@ -55,8 +55,10 @@ function short(v: unknown): string {
 function commitMessage(sub: SubmissionRow, change: { field: string; from: unknown; to: unknown }, reviewer: string): string {
   const who = sub.submitter || '匿名';
   const audit = reviewer ? `，审核 ${reviewer}` : '';
-  if (change.field === 'body') {
-    return `社区投稿：${sub.map_slug} 补充说明（by ${who}${audit}）`;
+  /* 正文类字段（补充说明 / 背景故事）是「追加一条」，没有 from → to 可言，
+     所以用字段标签写一条更可读的提交信息；标签来自字段表，加字段不用改这里。 */
+  if (isNoteField(change.field)) {
+    return `社区投稿：${sub.map_slug} ${FIELD_RULES[change.field]?.label ?? '补充说明'}（by ${who}${audit}）`;
   }
   return `社区投稿：${sub.map_slug} ${change.field} ${short(change.from)} → ${short(change.to)}（by ${who}${audit}）`;
 }
@@ -198,7 +200,7 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
         cache.set(row.map_slug, doc.fields as Record<string, { v: unknown }>);
       }
       const fields = cache.get(row.map_slug);
-      current = row.field === 'body' ? null : (fields?.[row.field]?.v ?? null);
+      current = isNoteField(row.field) ? null : (fields?.[row.field]?.v ?? null);
     } catch {
       cache.set(row.map_slug, null);
     }

@@ -18,9 +18,21 @@
  * }
  *
  * 渲染优先级：社区（本文件） > 人工资料 data/research > 自动生成 src/content/maps
+ *
+ * 正文类字段（kind=longtext，例如「补充说明 / 纠错」body、「背景故事」story）
+ * **不进 fields**，而是作为一条 note 追加到 notes 里，由地图页的「社区补充」区块渲染。
+ * 判断走 isNoteField()，从字段表派生 —— 别再写死字段名。
  */
 
+import { FIELD_RULES } from './submission-fields.mjs';
+
 export const DOC_VERSION = 1;
+
+/**
+ * 这个字段是「正文类」吗（进 notes 而不是覆盖条目字段）。
+ * 从 shared/submission-fields.mjs 的 kind 派生：加一个 longtext 字段就自动跟上。
+ */
+export const isNoteField = (field) => FIELD_RULES?.[field]?.kind === 'longtext';
 
 /** 新建一个空文档 */
 export function emptyDoc(slug) {
@@ -69,10 +81,10 @@ export function applySubmission(doc, sub) {
   const at = new Date(sub.reviewedAt ?? Date.now()).toISOString();
   const by = sub.submitter || '匿名';
 
-  if (sub.field === 'body') {
+  if (isNoteField(sub.field)) {
     doc.notes.push({ text: sub.value, by, at, submission: sub.id ?? null });
-    doc.log.push({ field: 'body', from: null, to: null, by, at, submission: sub.id ?? null });
-    return { field: 'body', from: null, to: sub.value };
+    doc.log.push({ field: sub.field, from: null, to: null, by, at, submission: sub.id ?? null });
+    return { field: sub.field, from: null, to: sub.value };
   }
 
   const prev = doc.fields[sub.field]?.v ?? null;

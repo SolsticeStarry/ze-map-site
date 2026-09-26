@@ -17,7 +17,7 @@
  * 不认这种「包一层再回写」的用法，所以改成在读取层合并。
  */
 import { getCollection } from 'astro:content';
-import { contributors, fieldValue, hasContent, normalizeDoc } from '../../shared/community-doc.mjs';
+import { contributors, fieldValue, hasContent, isNoteField, normalizeDoc } from '../../shared/community-doc.mjs';
 import { FIELD_RULES } from '../../shared/submission-fields.mjs';
 
 /*
@@ -34,9 +34,11 @@ const communityModules = import.meta.glob('../../data/community/*.json', { eager
  * 覆盖了也不显示）都栽在这上面。派生出来就不会再漂移：
  * 在 shared/submission-fields.mjs 加一个字段，它自动成为可覆盖字段。
  *
- * body 排除在外：它进的是 communityNotes（页面上的「社区补充」区块），不是条目字段。
+ * 正文类字段（kind=longtext：body、story…）排除在外：它们进的是 communityNotes
+ * （页面上的「社区补充」区块），不是条目字段。判断走 community-doc.mjs 的 isNoteField()，
+ * 别再写死 "body" —— 否则以后再加一个长文本字段就会踩同一个坑。
  */
-const OVERRIDABLE: string[] = Object.keys(FIELD_RULES).filter((k) => k !== 'body');
+const OVERRIDABLE: string[] = Object.keys(FIELD_RULES).filter((k) => !isNoteField(k));
 
 /** 按「追加 + 去重」而不是替换合并的字段 —— 标记在字段规则的 `append` 上 */
 const APPEND_FIELDS = new Set(
