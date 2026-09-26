@@ -1,8 +1,21 @@
 {
-  "_说明": "改这个文件就行。difficulty 只能填：入门/简单/普通/困难/火星/入土/未知；summary 写介绍正文（分段就在段与段之间打 \\n\\n）；tags 是标签数组，例如 [\"神器\", \"多关卡\"]；videoUrls 放视频链接。改完点页面下面的 Commit changes 提交即可。",
-  "difficulty": "未知",
-  "summary": null,
-  "tags": [],
-  "videoUrls": [],
-  "confidence": "low"
+  "slug": "2001-ze_obj_abyss-3582313204",
+  "title": "行动代号:暗流涌动",
+  "difficulty": "火星",
+  "summary": "《行动代号：暗流涌动》Beta版本,本地图为行动代号:破渊之剑的V1版本，全流程仅有V2版本的简单路一条路，最初版本的abyss结局便是炸毁反应堆全员阵亡，而V2巧妙的运用这一点续借上了V1的剧情,地图相对较难，对于大部分新生萌新来说会是一张初见杀以及认路成本较高的地图",
+  "author": "PandaAwAke",
+  "tags": ["OBJ","行动代号","长征图","火力"],
+  "videoUrls": 
+  [
+    "https://www.bilibili.com/video/BV1nKkeBvEeo/",
+    "https://www.bilibili.com/video/BV1ixCAB5Eho/"
+  ],
+  "sources":
+  [
+    "https://steamcommunity.com/sharedfiles/filedetails/changelog/3582313204",
+    "https://www.bilibili.com/video/BV1nKkeBvEeo/",
+    "https://www.bilibili.com/video/BV1ixCAB5Eho/"
+  ],
+  "confidence": "medium",
+  "verified": true
 }
