@@ -203,6 +203,44 @@ const excerpt = (s, max = 420) => {
 /** MDX 是 JSX 语法：正文里的 < 和 { 会被当成标签/表达式，必须转义 */
 const mdSafe = (s) => String(s || '').replace(/</g, '&lt;').replace(/\{/g, '&#123;').replace(/\}/g, '&#125;');
 
+/* ---------------- 人工封面目录索引（文件名大小写不敏感） ----------------
+ * 为什么不能按 `<地图英文名>.<ext>` 直接猜路径：
+ * Windows / macOS 上截图工具与 GitHub 网页上传经常带出 `.PNG` / `.JPG`（大写），
+ * 而线上构建跑在 Linux 上、文件系统区分大小写。只按小写猜路径的后果是
+ * 「文件明明在仓库里、页面永远不显示」—— 构建绿、CI 绿、`cover:verify` 也绿
+ * （它会把扩展名转小写再判断），又是一次静默失效。2026-09-25 有贡献者报
+ * 「传了封面但不生效」，就是这一类。
+ *
+ * 索引里存的是**磁盘上的真实文件名**，不是拼接出来的名字：
+ * cover 会写进 frontmatter 当 URL 用，必须与线上文件名逐字符一致。
+ */
+const CUSTOM_COVER_DIR = path.join(ROOT, 'public/images/covers/custom');
+/** 取图优先级：同一张图存在多种格式时取列表里靠前的 */
+const CUSTOM_COVER_EXTS = ['webp', 'png', 'jpg', 'jpeg'];
+const customCoverIndex = (() => {
+  const idx = new Map(); // `<slug 小写>.<ext 小写>` → 真实文件名
+  let files = [];
+  try { files = fs.readdirSync(CUSTOM_COVER_DIR); } catch { return idx; }
+  /* 先排序再建索引：万一存在仅大小写不同的重名文件，取哪个也是确定的，
+     不依赖 readdir 的返回顺序（不同系统上顺序不同）。 */
+  for (const f of files.slice().sort()) {
+    if (f.startsWith('.')) continue;
+    const ext = path.extname(f).slice(1).toLowerCase();
+    if (!CUSTOM_COVER_EXTS.includes(ext)) continue;
+    const key = `${path.basename(f, path.extname(f)).toLowerCase()}.${ext}`;
+    if (!idx.has(key)) idx.set(key, f);
+  }
+  return idx;
+})();
+const customCoverOf = (mapName) => {
+  const slug = String(mapName || '').toLowerCase();
+  for (const ext of CUSTOM_COVER_EXTS) {
+    const f = customCoverIndex.get(`${slug}.${ext}`);
+    if (f) return `/images/covers/custom/${f}`;
+  }
+  return null;
+};
+
 /* ---------------- 生成一个条目的 MDX ---------------- */
 function renderEntry(rec, research, wsRec, gfl) {
   const slug = rec.m;
@@ -244,11 +282,9 @@ function renderEntry(rec, research, wsRec, gfl) {
    * 为什么认多种扩展名而不是只认 webp：贡献者大多不会转 webp（要装工具），
    * 但人人都会从截图工具里存出 png / jpg。只认 webp 等于把「提 PR 换封面」这条路堵死。
    * 顺序 = 优先级：同一张图同时存在多种格式时，取列表里靠前的那个。
+   * 查找走 customCoverOf()：**大小写不敏感**，且返回磁盘上的真实文件名（见上方索引注释）。
    */
-  const CUSTOM_COVER_EXTS = ['webp', 'png', 'jpg', 'jpeg'];
-  const customCoverRel = CUSTOM_COVER_EXTS.map((ext) => `/images/covers/custom/${rec.m}.${ext}`).find(
-    (rel) => fs.existsSync(path.join(ROOT, 'public', rel))
-  );
+  const customCoverRel = customCoverOf(rec.m);
   const renderCoverRel = `/images/covers/${rec.s}.webp`;
   const coverRel = customCoverRel ?? renderCoverRel;
   const hasCover = fs.existsSync(path.join(ROOT, 'public', coverRel));

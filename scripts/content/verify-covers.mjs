@@ -12,6 +12,10 @@
  * 而构建、CI、页面全部正常 —— 又是一次「改动静默消失」。
  * 所以这里第一个检查就是：文件名对不对得上某张真实存在的地图。
  *
+ * 2026-09-25 补两条与「大小写」有关的检查：生成器改成**大小写不敏感**找图之后，
+ * 大写扩展名不再静默失效（这里只提醒统一小写），但「仅大小写不同的两个同名文件」
+ * 必须按错误拦下 —— 那种情况不同系统上表现不一致（见下方注释）。
+ *
  * 尺寸读取不引第三方库：sharp 只是 astro 的传递依赖，
  * 校验脚本不该依赖它（哪天 astro 换了实现，CI 就会莫名其妙挂掉）。
  */
@@ -80,7 +84,8 @@ if (!fs.existsSync(DIR)) {
  */
 const isDoc = (f) => /\.(md|txt)$/i.test(f);
 const files = fs.readdirSync(DIR).filter((f) => !f.startsWith('.') && !isDoc(f));
-const bySlug = new Map();
+const bySlug = new Map(); // slug 小写 → Set(扩展名小写)，用于「同一张图存了多种格式」的提醒
+const byKey = new Map(); // `<slug 小写>.<扩展名小写>` → 真实文件名[]，用于抓「仅大小写不同」的重名
 
 for (const file of files) {
   const ext = path.extname(file).slice(1).toLowerCase();
@@ -92,6 +97,14 @@ for (const file of files) {
   if (!ALLOWED_EXT.includes(ext)) {
     errors.push(`${file}: 不支持的格式 .${ext}（只能用 ${ALLOWED_EXT.join(' / ')}）`);
     continue;
+  }
+
+  /* 扩展名大小写：生成器现在按大小写不敏感找图，所以大写**不会**再静默失效
+     （以前会：文件在仓库里、页面永远不显示，而这里把扩展名转小写后照样判它合法）。
+     因此只提醒、不报错；线上构建在 Linux 上、文件名大小写敏感，小写最不容易出错。 */
+  const rawExt = path.extname(file).slice(1);
+  if (rawExt !== ext) {
+    warns.push(`${file}: 扩展名建议改成小写（.${ext}）—— 构建在 Linux 上，文件名大小写敏感，小写最稳`);
   }
 
   // 第一条也是最重要的一条：文件名必须是一张真实存在的地图
@@ -135,15 +148,31 @@ for (const file of files) {
     }
   }
 
-  if (!bySlug.has(slug)) bySlug.set(slug, []);
-  bySlug.get(slug).push(ext);
+  const slugKey = slug.toLowerCase();
+  if (!bySlug.has(slugKey)) bySlug.set(slugKey, new Set());
+  bySlug.get(slugKey).add(ext);
+  const key = `${slugKey}.${ext}`;
+  if (!byKey.has(key)) byKey.set(key, []);
+  byKey.get(key).push(file);
 }
 
 // 同一张图存了多种格式：只有靠前的那个生效，其余的纯属占仓库
 for (const [slug, exts] of bySlug) {
-  if (exts.length > 1) {
-    const winner = PICK_ORDER.find((e) => exts.includes(e));
-    warns.push(`${slug}: 同时有 ${exts.join(' / ')}，实际只用 .${winner}，其余的可以删掉`);
+  if (exts.size > 1) {
+    const winner = PICK_ORDER.find((e) => exts.has(e));
+    warns.push(`${slug}: 同时有 ${[...exts].join(' / ')}，实际只用 .${winner}，其余的可以删掉`);
+  }
+}
+
+/* 仅大小写不同的同名文件必须拦下来：Linux 上这是两个文件、Windows / macOS 上会互相覆盖，
+   而线上取哪个取决于构建平台（现在是 Linux）—— 结果就是「本地看着对、线上是另一张」。
+   生成器虽然会确定性地挑一个（取排序靠前的），但贡献者显然不是这个意思，按错误处理。 */
+for (const [key, names] of byKey) {
+  if (names.length > 1) {
+    errors.push(
+      `${key}: 有 ${names.length} 个仅大小写不同的文件（${names.join(' / ')}）—— 只保留一个，` +
+        `否则不同系统上表现不一致（Windows / macOS 会互相覆盖，Linux 上是两个文件）`
+    );
   }
 }
 

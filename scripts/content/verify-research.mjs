@@ -93,6 +93,19 @@ for (const file of files) {
     if (j.summary.includes(ph)) errors.push(`${file}: 摘要里出现不该有的措辞「${ph}」`);
   }
 
+  /* 分段写成了双反斜杠：文件里写 \\n\\n 时，JSON 解析出来的是「反斜杠 + n」这两个字符本身，
+     页面上就原样显示成 `…水果\n\n该地图…`，不会换行 —— 而构建、CI、本脚本以前全都是绿的。
+     正确写法是单反斜杠加 n（JSON 的换行转义），让字符串里真正出现换行。
+     2026-09-25 站上真有两张图这样显示了（ze_forsaken_temple 来自贡献者 PR、ze_obf_rampage_v2 更早），
+     所以按错误处理。用 fromCharCode 拼出这对字符，避免源码里再套一层转义看不出所以然。 */
+  const LITERAL_BS_N = String.fromCharCode(92) + 'n';
+  if (j.summary.includes(LITERAL_BS_N)) {
+    errors.push(
+      `${file}: 摘要里有字面量「${LITERAL_BS_N}」（分段写成了双反斜杠）——` +
+        `页面上会原样显示、不会换行。改成单反斜杠加 n，也就是让 JSON 字符串里真的出现换行。`
+    );
+  }
+
   if (!Array.isArray(j.sources) || j.sources.length === 0) {
     errors.push(`${file}: 有摘要但没有任何来源链接`);
   } else {
