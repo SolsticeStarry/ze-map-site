@@ -1,8 +1,20 @@
 {
-  "_说明": "改这个文件就行。difficulty 只能填：入门/简单/普通/困难/火星/入土/未知；summary 写介绍正文（分段就在段与段之间打 \\n\\n）；tags 是标签数组，例如 [\"神器\", \"多关卡\"]；videoUrls 放视频链接。改完点页面下面的 Commit changes 提交即可。",
-  "difficulty": "未知",
-  "summary": null,
-  "tags": [],
-  "videoUrls": [],
-  "confidence": "low"
+  "slug": "2001-ze_obj_ouroboros_aurora-3353097518",
+  "title": "龙门行动: 落日余晖",
+  "difficulty": "火星",
+  "summary": "[衔尾蛇行动]代号：落日余晖，该地图为衔尾蛇计划最终章与[衔尾蛇行动]代号：落日余晖重生没有任何关联互为独立版本，地图围绕OUROBOROS小队在历经几次行动逃离灯塔之后途径aurora基地而对基地内人员营救展开\n该地图创新性的分为单路以及双路两种打法选择,与常见类OBJ不同的是地图采用了较为空旷的地形以及建筑设计",
+  "author": "℘菲洛不是非咯❀",
+  "tags": ["OBJ","长征图","传送门多","衔尾蛇计划"],
+  "videoUrls": 
+  [
+    "https://www.bilibili.com/video/BV1jHUYYmExM/",
+    "https://www.bilibili.com/video/BV1GaZfYuEAF/"
+  ],
+  "sources":[
+    "https://steamcommunity.com/sharedfiles/filedetails/?id=3353097518",
+    "https://www.bilibili.com/video/BV1jHUYYmExM/",
+    "https://www.bilibili.com/video/BV1GaZfYuEAF/"
+  ],
+  "confidence": "high",
+  "verified": true
 }
