@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_overkill_p",
-  "updatedAt": "2026-09-25T15:27:20.758Z",
+  "updatedAt": "2026-09-26T03:05:00.276Z",
   "fields": {
     "difficulty": {
       "v": "困难",
@@ -23,7 +23,14 @@
       "submission": 15
     }
   },
-  "notes": [],
+  "notes": [
+    {
+      "text": "地图的CS2版本移植由P组移植 Nide2026制图大赛第三名获得者 \n地图节奏把控好，音乐以及路线设计与氛围设计获得大量玩家喜爱\n故事背景:公元3050年，人类为了利益发动第四次世界战争，主角要去摧毁名叫\"overkill\"的武器。",
+      "by": "匿名",
+      "at": "2026-09-26T03:05:00.276Z",
+      "submission": 16
+    }
+  ],
   "log": [
     {
       "field": "difficulty",
@@ -47,6 +54,14 @@
       "by": "白叶",
       "at": "2026-09-25T15:27:20.758Z",
       "submission": 15
+    },
+    {
+      "field": "story",
+      "from": null,
+      "to": null,
+      "by": "匿名",
+      "at": "2026-09-26T03:05:00.276Z",
+      "submission": 16
     }
   ]
 }
