@@ -296,7 +296,10 @@ export async function handleAdminCover(request: Request, env: Env, path: string)
   try {
     const pending = await readPendingCover(env, meta.key);
     if (!pending) {
-      return fail('待审图片已不存在（可能已被清理或过期），请让投稿人重新上传', 410);
+      return fail(
+        `待审图片在 KV 里找不到（key=${meta.key}）。常见原因是投稿时线上还是旧版本或换了存储，也可能已过期 —— 让投稿人重新上传即可`,
+        410
+      );
     }
     return imageResponse(pending.bytes, pending.contentType);
   } catch (err) {
@@ -479,7 +482,10 @@ async function applyCoverSubmission(
   try {
     const pending = await readPendingCover(env, meta.key);
     if (!pending) {
-      return fail('待审图片已不存在（可能被清理或过期），请让投稿人重新上传', 410);
+      return fail(
+        `待审图片在 KV 里找不到（key=${meta.key}），无法写回。请让投稿人重新上传`,
+        410
+      );
     }
     /* 再校验一次：KV 里的字节才是真正要进仓库的东西 */
     const check = checkCoverBytes(pending.bytes);

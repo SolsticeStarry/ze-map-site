@@ -27,9 +27,10 @@ export interface KVLike {
     value: ArrayBuffer | Uint8Array,
     options?: { expirationTtl?: number; metadata?: unknown }
   ): Promise<void>;
+  /** ⚠️ 线上必须用对象形式 `{ type: 'arrayBuffer' }`，字符串简写会被当成"没指定类型" */
   getWithMetadata(
     key: string,
-    type: 'arrayBuffer'
+    options: { type: 'arrayBuffer' }
   ): Promise<{ value: ArrayBuffer | null; metadata: unknown }>;
   delete(key: string): Promise<void>;
 }

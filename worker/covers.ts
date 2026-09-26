@@ -102,13 +102,30 @@ export async function putPendingCover(
   });
 }
 
+/**
+ * 从 KV 读出待审图片。
+ *
+ * ⚠️ 一律用**对象形式** `{ type: 'arrayBuffer' }`（KV 官方文档的写法）。
+ * 之前这里写的是字符串简写 `getWithMetadata(key, 'arrayBuffer')` —— 简写一旦被当成
+ * "没指定类型"，KV 就会按**文本**解码二进制，读出来是空值；而调用方只看到我写死的
+ * 「图片已不存在」，把真正的原因盖住了（2026-09-25 审核台就是被这条骗的）。
+ *
+ * 语义约定：返回 null 只代表「KV 里确实没这个 key」（或已过期）；读法/类型不对一律抛错，
+ * 不许和"没有"混为一谈。
+ */
 export async function readPendingCover(
   env: Env,
   key: string
 ): Promise<{ bytes: Uint8Array; contentType: string } | null> {
   if (!env.UPLOADS) throw new GitError('封面功能尚未配置（缺少 KV 绑定 UPLOADS）', 503);
-  const { value, metadata } = await env.UPLOADS.getWithMetadata(key, 'arrayBuffer');
-  if (!value) return null;
+  const { value, metadata } = await env.UPLOADS.getWithMetadata(key, { type: 'arrayBuffer' });
+  if (value === null || value === undefined) return null;
+  if (!(value instanceof ArrayBuffer)) {
+    throw new GitError(
+      `存储里的图片读出来不是二进制（key=${key}，实际类型 ${typeof value}）—— 说明读取方式不对，不是图丢了`,
+      500
+    );
+  }
   const meta = (metadata ?? {}) as { contentType?: string };
   return {
     bytes: new Uint8Array(value),
