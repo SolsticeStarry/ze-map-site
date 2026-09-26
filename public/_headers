@@ -23,7 +23,17 @@
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
 
-# 封面 / 路线图 / hero 背景：文件名不带哈希，给 7 天
-# 注意：换了图但文件名不变时，回访用户最多 7 天看到旧图；要立即生效请改文件名（如 hero-bg-2.webp）
+# 封面 / 路线图 / hero 背景：文件名不带哈希。
+#
+# ⚠️ 2026-09-26 从 7 天（604800）改成 1 分钟 + stale-while-revalidate，原因有两个：
+#   1. 投稿换封面走的是**同名覆盖**（`custom/<地图英文名>.webp`），7 天缓存意味着
+#      站长审核通过、站点也重建了，回访用户却要看一星期的旧封面/黑封面；
+#   2. 更糟的是**404 也会被按这条规则缓存**：任何一次瞬时取不到图（部署间隙、
+#      文件还没同步到边缘），用户那边就是"破图"卡 7 天，硬刷新才恢复。
+# 代价很小：`stale-while-revalidate` 让回访先吃缓存、后台再校验，页面不会变慢；
+# 只是每个文件每分钟最多多一次 304 条件请求。
+#
+# ⚠️ 注意不能单独给 `/images/covers/custom/*` 写一条更短的规则 —— 它和 `/images/*`
+#    重叠，两个 max-age 会被逗号拼起来（见文件顶部那条踩坑提醒）。要改就改这一条。
 /images/*
-  Cache-Control: public, max-age=604800
+  Cache-Control: public, max-age=60, stale-while-revalidate=86400
