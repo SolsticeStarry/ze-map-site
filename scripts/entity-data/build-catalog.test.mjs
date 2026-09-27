@@ -5,9 +5,11 @@ import path from 'node:path';
 import test from 'node:test';
 import zlib from 'node:zlib';
 import { buildCatalog } from './build-catalog.mjs';
-
-const LEGACY = 'fyscs/MapTracking-CS2（StarDance 实体 dump）';
-const BAKED = 'Source2Viewer default_ents.vents_c';
+import {
+  BAKED_SOURCE as BAKED,
+  LEGACY_SOURCE as LEGACY,
+  normalizeEntitySource,
+} from '../../shared/entity-source.mjs';
 
 function shard(root, slug, map, source, classes = ['trigger_teleport']) {
   const json = Buffer.from(JSON.stringify({ meta: { source, built: '2026-09-23 13:04' }, classes, map }));
@@ -52,4 +54,29 @@ test('reconciles baked shards, preserves historical metadata, and indexes new ma
   assert.equal(index.maps[2].c.tele, 1);
   assert.deepEqual(buildCatalog(root), { maps: 3, baked: 2, added: 0 });
   assert.equal(fs.readFileSync(indexFile, 'utf8'), first);
+});
+
+test('normalizes retired third-party source strings, including ones already in the index', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ze-catalog-retired-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, 'public/entity/data'), { recursive: true });
+  const RETIRED = 'fyscs/MapTracking-CS2（StarDance 实体 dump）';
+  const indexFile = path.join(root, 'public/entity/catalog.json');
+  fs.writeFileSync(indexFile, JSON.stringify({
+    meta: { source: RETIRED, built: '2026-09-23 13:04' }, groups: [], count: 1,
+    maps: [{ k: '2001/ze_old/1', s: '2001-ze_old-1', m: 'ze_old', a: '2001', f: '1', n: 1, k2: 1, source: RETIRED }],
+  }));
+  shard(root, '2001-ze_old-1', { m: 'ze_old', f: '1', n: 1, b: [0, 0, 0, 1, 1, 1], e: [[0, 0, 0, 0, 0]] }, RETIRED);
+
+  buildCatalog(root);
+  const index = JSON.parse(fs.readFileSync(indexFile, 'utf8'));
+  assert.equal(index.meta.legacySource, LEGACY);
+  assert.equal(index.maps[0].source, LEGACY);
+  assert.equal(index.maps[0].sourceBuilt, '2026-09-23 13:04');
+  assert.ok(!JSON.stringify(index).toLowerCase().includes('fyscs'), '旧来源串不该再出现在索引里');
+
+  assert.equal(normalizeEntitySource(undefined), LEGACY);
+  assert.equal(normalizeEntitySource(''), LEGACY);
+  assert.equal(normalizeEntitySource(BAKED), BAKED);
+  assert.equal(normalizeEntitySource('某个未来工具 dump'), '某个未来工具 dump');
 });

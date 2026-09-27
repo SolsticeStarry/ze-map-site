@@ -25,6 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DIFFICULTIES, isDifficulty, normalizeDifficulty } from '../../shared/difficulty.mjs';
+import { BAKED_SOURCE, normalizeEntitySource } from '../../shared/entity-source.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MAPS_DIR = path.join(ROOT, 'src/content/maps');
@@ -246,10 +247,10 @@ function renderEntry(rec, research, wsRec, gfl) {
   const slug = rec.m;
   const wsUrl = `https://steamcommunity.com/sharedfiles/filedetails/?id=${rec.f}`;
   const groups = Object.fromEntries((catalog.groups || []).map((g) => [g.id, g]));
-  const baked = rec.source === 'Source2Viewer default_ents.vents_c';
+  const baked = rec.source === BAKED_SOURCE;
   const provenance = baked
     ? 'Steam 创意工坊地图包中的实体定义（Source2Viewer 解析）'
-    : `CS2 服务端实体快照（${rec.source || catalog.meta.legacySource}，${rec.sourceBuilt || catalog.meta.legacyBuilt}）`;
+    : `${normalizeEntitySource(rec.source || catalog.meta.legacySource)}（${rec.sourceBuilt || catalog.meta.legacyBuilt}）`;
   const cats = Object.entries(rec.c || {}).sort((a, b) => b[1] - a[1]);
   const subs = wsRec?.result === 1 ? (wsRec.subscriptions ?? 0) : 0;
   const tags = [

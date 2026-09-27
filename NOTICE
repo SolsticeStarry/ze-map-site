@@ -16,7 +16,7 @@ NOTICE —— 站点内容与第三方资料的版权说明
 
 - `src/content/maps/*.mdx` —— 地图条目正文（背景故事、关卡流程、神器、攻略）
 - `data/` —— 工坊抓取结果、线上检索资料、GFL 公开配置的解析结果
-- `public/entity/` —— 实体数据分片与索引（数据来自第三方实体 dump：fyscs/MapTracking-CS2）
+- `public/entity/` —— 实体数据分片与索引（早期部分来自第三方服务端实体 dump，其余由本站从创意工坊地图包烘焙）
 - `public/images/` —— 卡片封面、路线图等渲染图
 
 ## 版权归属

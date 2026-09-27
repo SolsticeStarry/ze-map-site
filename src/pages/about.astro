@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { getMaps } from '../lib/maps';
 // 构建期导入（由打包器按模块图解析，与运行时工作目录无关）
 import catalog from '../../public/entity/catalog.json';
+import { BAKED_SOURCE } from '../../shared/entity-source.mjs';
 
 const maps = await getMaps();
 const withEntities = maps.filter((m) => m.data.entitySlug).length;
@@ -16,7 +17,7 @@ const entities = maps.reduce((a, m) => a + (m.data.entityCount ?? 0), 0);
 // cwd 变成 /bundle，会直接构建失败（2026-09-23 线上部署失败的根因）。
 const allMaps = catalog.count;
 const otherMaps = catalog.maps.filter((m) => m.a !== '2001').length;
-const bakedMaps = catalog.maps.filter((m) => m.source === 'Source2Viewer default_ents.vents_c').length;
+const bakedMaps = catalog.maps.filter((m) => m.source === BAKED_SOURCE).length;
 ---
 
 <BaseLayout title="关于 | ZE 地图资料站" description="ZE 地图资料站：僵尸逃跑地图中文资料库，数据来源与说明。">
@@ -74,23 +75,12 @@ const bakedMaps = catalog.maps.filter((m) => m.source === 'Source2Viewer default
           本站最有价值的那部分内容，几乎全靠别人铺路。这里必须单独致谢。
         </p>
         <p>
-          <b>FYS 社区（风云社）</b>——中文 CS2 僵尸逃跑里技术力与开放精神兼具的标杆。
-          本站早期的实体预览与地图索引得益于 FYS 公开的服务端实体数据；历史资料仍保留来源标注。
-          后续实体与地形分片由本站从创意工坊地图包烘焙。
+          <b>Source2Viewer（s2v）</b>——开源的 Source 2 资源解析工具。
+          本站的实体预览与 3D 地形，靠它从创意工坊地图包里解出实体定义、模型与真实碰撞壳；
+          没有这个工具，这两块功能都无从谈起。
         </p>
         <p>
-          <b>FYS 的 GitHub 公开仓库</b>：
-          <a href="https://github.com/fyscs" target="_blank" rel="noopener">github.com/fyscs</a>。
-          本站早期的实体快照来自其中的
-          <a href="https://github.com/fyscs/MapTracking-CS2" target="_blank" rel="noopener">MapTracking-CS2</a>
-          （StarDance 构建）；同一个组织下的
-          <a href="https://github.com/fyscs/servers-config" target="_blank" rel="noopener">servers-config</a>、
-          <a href="https://github.com/fyscs/cs2" target="_blank" rel="noopener">cs2</a>
-          等仓库，把多年积累的服务器配置也整套公开。愿意这样无偿开源，
-          受益的是整个中文 ZE 社区——这份格局值得所有人记着。
-        </p>
-        <p>
-          <b>Kxnrl</b>——衷心感谢他为 FYS 所作出的贡献。他在 Source / CS2 服务端技术上长期深耕，
+          <b>Kxnrl</b>——他在 Source / CS2 服务端技术上长期深耕，
           账号下公开了 <b>100 个仓库</b>，其中
           <a href="https://github.com/Kxnrl/modsharp-public" target="_blank" rel="noopener">ModSharp</a>（Source 2 现代模组方案）、
           <a href="https://github.com/Kxnrl/Store" target="_blank" rel="noopener">Store</a>、
@@ -101,7 +91,8 @@ const bakedMaps = catalog.maps.filter((m) => m.source === 'Source2Viewer default
           技术过硬，又肯长期无偿投入，这样的人是社区真正的基石。
         </p>
         <p style="margin-bottom:0;">
-          再次向 <b>FYS 社区（风云社）</b>、<b>FYS 的 GitHub 公开仓库</b> 与 <b>Kxnrl 本人</b>致以诚挚谢意。
+          另外，本站建站早期入库过一份第三方公开的服务端实体 dump，这部分历史数据至今原样保留，
+          条目里只写中性的来源说明。再次向 <b>Source2Viewer</b> 与 <b>Kxnrl 本人</b>致以诚挚谢意。
           本站只是站在他们铺好的路上，做了一点整理工作。
         </p>
       </div>

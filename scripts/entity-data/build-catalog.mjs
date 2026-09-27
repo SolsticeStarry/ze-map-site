@@ -5,10 +5,9 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { classify } from './lib/entity-common.mjs';
+import { BAKED_SOURCE, LEGACY_SOURCE, normalizeEntitySource } from '../../shared/entity-source.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const LEGACY_SOURCE = 'fyscs/MapTracking-CS2（StarDance 实体 dump）';
-const BAKED_SOURCE = 'Source2Viewer default_ents.vents_c';
 
 function readShard(file) {
   const raw = zlib.gunzipSync(fs.readFileSync(file));
@@ -45,7 +44,7 @@ export function buildCatalog(root = ROOT) {
     const a = old?.a || parsed[1];
     const mapName = m.m || parsed[2];
     const id = String(m.f || parsed[3]);
-    const source = payload.meta?.source || old?.source || existing.meta.legacySource || LEGACY_SOURCE;
+    const source = normalizeEntitySource(payload.meta?.source || old?.source || existing.meta.legacySource || LEGACY_SOURCE);
     const baked = source === BAKED_SOURCE;
     const classes = new Map();
     const counts = {};
@@ -85,8 +84,10 @@ export function buildCatalog(root = ROOT) {
   // Preserve historical index entries if a shard is temporarily unavailable.
   maps.push(...previous.values());
   maps.sort((x, y) => x.a.localeCompare(y.a) || x.m.localeCompare(y.m) || x.f.localeCompare(y.f));
-  const legacySource = existing.meta.legacySource ||
-    (existing.meta.source?.includes('MapTracking-CS2') ? existing.meta.source : LEGACY_SOURCE);
+  const legacySource = normalizeEntitySource(
+    existing.meta.legacySource ||
+      (existing.meta.source?.includes('MapTracking-CS2') ? existing.meta.source : LEGACY_SOURCE)
+  );
   const legacyBuilt = existing.meta.legacyBuilt || existing.meta.built;
   const meta = {
     built: legacyBuilt,

@@ -140,14 +140,10 @@ src/pages/sitemap.xml.ts          静态 sitemap
 
 本站最有价值的那部分内容几乎全靠别人铺路，这里必须单独致谢。
 
-- **FYS 社区（风云社）** —— 中文 CS2 僵尸逃跑里技术力与开放精神兼具的标杆。
-  本站早期的实体预览与地图索引使用了 FYS 公开的服务端实体数据；现有历史元数据仍予以保留与署名。后续实体和地形分片改由工坊地图包烘焙。
-- **FYS 的 GitHub 公开仓库** —— <https://github.com/fyscs>。
-  本站早期的实体快照来自 [`MapTracking-CS2`](https://github.com/fyscs/MapTracking-CS2)（StarDance 构建）；
-  同一组织下的 [`servers-config`](https://github.com/fyscs/servers-config)、
-  [`cs2`](https://github.com/fyscs/cs2) 等仓库把多年积累的服务器配置也整套公开。
-  愿意这样无偿开源，受益的是整个中文 ZE 社区 —— 这份格局值得所有人记着。
-- **Kxnrl** —— <https://github.com/Kxnrl>。衷心感谢他为 FYS 所作出的贡献。
+- **Source2Viewer（s2v）** —— 开源的 Source 2 资源解析工具。
+  本站的实体预览与 3D 地形靠它从创意工坊地图包里解出实体定义、模型与真实碰撞壳；
+  没有这个工具，这两块功能都无从谈起。
+- **Kxnrl** —— <https://github.com/Kxnrl>。
   他在 Source / CS2 服务端技术上长期深耕，账号下公开了 100 个仓库，其中
   [ModSharp](https://github.com/Kxnrl/modsharp-public)（Source 2 现代模组方案）、
   [Store](https://github.com/Kxnrl/Store)、
@@ -156,5 +152,6 @@ src/pages/sitemap.xml.ts          静态 sitemap
   本站「神器 / 道具」栏目整理的那些配置，正是在这一层服务端技术之上 ——
   技术过硬，又肯长期无偿投入，这样的人是社区真正的基石。
 
-再次向 **FYS 社区（风云社）**、**FYS 的 GitHub 公开仓库** 与 **Kxnrl 本人** 致以诚挚谢意。
+另外，本站建站早期入库过一份第三方公开的服务端实体 dump，这部分历史数据至今原样保留，
+条目里只写中性的来源说明。再次向 **Source2Viewer** 与 **Kxnrl 本人** 致以诚挚谢意。
 本站只是站在他们铺好的路上，做了一点整理工作。
