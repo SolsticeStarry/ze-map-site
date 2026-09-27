@@ -87,6 +87,20 @@ canvas{display:block;width:100%;height:100%;cursor:crosshair}
 .li .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .li .ct{font-size:10.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
 .li.solo{background:#fff0f6;outline:1px dashed var(--accent2)}
+.lwrap{display:flex;flex-direction:column}
+.li .xbtn{flex:0 0 16px;width:16px;height:16px;line-height:15px;text-align:center;border-radius:5px;
+  color:var(--ink3);font-size:9px;user-select:none}
+.li .xbtn:hover{background:#ffe9f1;color:#d4547e}
+.li .xbtn.open{background:#fff0f6;color:#d4547e}
+.subs{display:flex;flex-direction:column;margin:0 0 2px 13px;padding-left:8px;border-left:2px solid var(--line)}
+.si{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:6px;cursor:pointer;
+  font-size:10.5px;color:var(--ink2)}
+.si:hover{background:#fff7fa}
+.si.off{opacity:.4}
+.si .sdot{width:6px;height:6px;border-radius:50%;flex:0 0 6px;opacity:.7}
+.si .snm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-family:Consolas,'Courier New',monospace;font-size:10px}
+.si .ct{font-size:10px;color:var(--ink3);font-variant-numeric:tabular-nums;white-space:nowrap}
 .layers .foot{font-size:10.5px;color:var(--ink3);padding:7px 11px;border-top:1px solid var(--line);
   line-height:1.5}
 .ltbtn{position:absolute;top:10px;right:10px;z-index:7;display:none}

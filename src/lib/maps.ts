@@ -109,5 +109,21 @@ export function mergeEntry<T extends { id: string; data: Record<string, any> }>(
 /** 所有地图（已合并社区覆盖） */
 export async function getMaps() {
   const maps = await getCollection('maps');
-  return maps.map((m) => mergeEntry(m as any));
+  // 生成条目已统一标签写法；社区追加的标签也要归到同一个大小写，
+  // 否则 Windows 构建时 /tags/BOSS战 与 /tags/boss战 会互相覆盖。
+  const variants = new Map<string, Map<string, number>>();
+  for (const m of maps) for (const tag of m.data.tags) {
+    const key = tag.toLowerCase();
+    if (!variants.has(key)) variants.set(key, new Map());
+    const counts = variants.get(key)!;
+    counts.set(tag, (counts.get(tag) || 0) + 1);
+  }
+  const canonical = new Map<string, string>();
+  for (const [key, counts] of variants) {
+    canonical.set(key, [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hans-CN'))[0][0]);
+  }
+  return maps.map((m) => {
+    const entry = mergeEntry(m as any);
+    return { ...entry, data: { ...entry.data, tags: [...new Set(entry.data.tags.map((tag: string) => canonical.get(tag.toLowerCase()) || tag))] } };
+  });
 }

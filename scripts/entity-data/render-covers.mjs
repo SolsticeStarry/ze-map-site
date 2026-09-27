@@ -51,6 +51,8 @@ for (const cat of maps) {
     continue;
   }
   if (!m.e || m.e.length === 0) { failed++; continue; }
+  // VPK 分片尚不含旧密度底图；强制重渲染也不要冲掉已有的完整封面。
+  if (!m.bg && fs.existsSync(out)) { skipped++; continue; }
 
   const bb = m.fb || m.b;
   let worldW = bb[3] - bb[0], worldH = bb[4] - bb[1];

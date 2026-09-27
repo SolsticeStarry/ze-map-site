@@ -6,6 +6,7 @@ import MapCard from '../../components/MapCard.astro';
 import DifficultyVote from '../../components/DifficultyVote.astro';
 import VideoEmbed from '../../components/VideoEmbed.astro';
 import { DIFFICULTY_CLASS } from '../../../shared/difficulty.mjs';
+import catalog from '../../../public/entity/catalog.json';
 
 export async function getStaticPaths() {
   const maps = await getMaps();
@@ -68,6 +69,8 @@ const shortUrl = (u: string) => u.replace(/^https?:\/\/(www\.)?/, '').replace(/\
 const diffClass = DIFFICULTY_CLASS[difficulty as keyof typeof DIFFICULTY_CLASS] ?? 'diff-unknown';
 
 const previewUrl = entitySlug ? `/preview/?map=${entitySlug}` : null;
+const entityMeta = entitySlug ? catalog.maps.find((m) => m.s === entitySlug) : null;
+const bakedEntities = entityMeta?.source === 'Source2Viewer default_ents.vents_c';
 const hasBasics = Boolean(author || version || players || duration || stages);
 
 // 同类地图推荐：共同标签多的优先，其次看工坊订阅
@@ -145,7 +148,7 @@ const related = all
         攻略视频。
         ⚠️ 这一块以前不存在 —— videoUrls 只被生成器写进 frontmatter，本页解构了却从不渲染，
         所以 544 个自动生成条目（以及社区投稿补充的视频）在页面上一律看不到。
-        （手写条目是自己 import VideoEmbed 嵌进正文的，不受影响。）
+        （富内容条目的组件嵌入由 JSON 的 document 字段生成，不受影响。）
         组件里已经有 loading="lazy"，视频多的图不会一次性加载全部播放器。
       */}
       {(videoUrls ?? []).length > 0 && (
@@ -254,7 +257,9 @@ const related = all
       <div class="sidebar-card">
         <h3>数据来源</h3>
         <p class="sidebar-hint">
-          实体数据来自 CS2 服务端实体 dump（StarDance），坐标为实体原点，快照 2026-09-23。
+          {bakedEntities
+            ? '实体数据从 Steam 创意工坊地图包解析，模型碰撞壳用于还原部分实体范围。'
+            : `实体数据保留历史服务端快照（${entityMeta?.sourceBuilt || catalog.meta.legacyBuilt}）。`}
         </p>
         {communitySources.length > 0 && (
           <p class="sidebar-hint">

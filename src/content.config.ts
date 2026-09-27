@@ -35,7 +35,7 @@ const maps = defineCollection({
     lastUpdated: z.coerce.string().optional(),
     featured: z.boolean().default(false),
 
-    /* ===== 实体预览（数据来自 CS2 服务端实体 dump） ===== */
+    /* ===== 实体预览（工坊地图包烘焙数据及已入库的历史快照） ===== */
     /** 实体数据分片 slug，对应 /entity/data/<entitySlug>.bin */
     entitySlug: z.string().optional(),
     /** 原始索引键：<模式>/<地图名>/<工坊ID> */
@@ -50,7 +50,7 @@ const maps = defineCollection({
     workshopMissing: z.boolean().default(false),
     /** 工坊上传者昵称（不一定是原作者，常见于 CS2 移植版） */
     uploader: z.string().optional(),
-    /** 实体总数（dump 统计） */
+    /** 实体总数（按图分片统计） */
     entityCount: z.number().optional(),
     /** 是否只有数据、正文待社区补充 */
     stub: z.boolean().default(false),

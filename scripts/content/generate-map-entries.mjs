@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * 用实体 dump 目录批量生成地图条目（MDX）。
+ * 根据索引与逐图实体分片批量生成地图条目（MDX）。
  *
- * 数据来源：public/entity/catalog.json（由 build-entity-data.mjs 生成）
+ * 数据来源：public/entity/catalog.json（入库的地图索引元数据）
  * 可选增强：data/research/<slug>.json（线上检索到的资料，见下方格式）
  *
  * 规则：
  *   - 只处理 ZE（模式 2001）
- *   - 不覆盖手写条目（没有生成标记的 MDX 一律跳过）
- *   - 自己生成的条目再次运行会整份重写
+ *   - MDX 一律从 JSON / 索引重新生成，人工改动只写 data/research/*.json
+ *   - 富内容条目由 JSON 中的 document 字段完整生成
  *   - 有 research 资料的条目：stub=false，并把摘要/难度/作者等写进 frontmatter 与正文
  *
  * research JSON 格式：
@@ -39,7 +39,7 @@ const PRIORITY = argv.includes('--priority') ? Number(argv[argv.indexOf('--prior
 const catalog = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/entity/catalog.json'), 'utf8'));
 const zeMaps = catalog.maps.filter((m) => m.a === '2001');
 
-/* 手写条目已经覆盖的地图（含各版本），生成时跳过，避免重复条目 */
+/* 富内容条目对应的地图版本：版本页面由 JSON 文档生成，避免重复条目。 */
 const LINKS = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/content/curated-links.json'), 'utf8'));
 const curatedMaps = new Set();
 for (const [slug, info] of Object.entries(LINKS)) {
@@ -88,7 +88,7 @@ const safeTag = (t) =>
 /* 标签大小写归一：
  * 同一个标签出现 Boss / boss / BOSS 三种写法时，Windows 上会写进同一个目录，
  * 但 Cloudflare 是大小写敏感的文件系统，另一种写法就会 404。
- * 这里先统计所有来源（手写条目 + 检索资料）的写法，按「手写优先 → 出现次数多优先」
+ * 这里先统计所有来源（富内容 JSON + 检索资料）的写法，按「富内容优先 → 出现次数多优先」
  * 选出一个规范写法，生成时统一使用。 */
 const tagVariants = new Map(); // lower -> Map(写法 -> {count, curated})
 const noteTag = (tag, curated) => {
@@ -246,6 +246,10 @@ function renderEntry(rec, research, wsRec, gfl) {
   const slug = rec.m;
   const wsUrl = `https://steamcommunity.com/sharedfiles/filedetails/?id=${rec.f}`;
   const groups = Object.fromEntries((catalog.groups || []).map((g) => [g.id, g]));
+  const baked = rec.source === 'Source2Viewer default_ents.vents_c';
+  const provenance = baked
+    ? 'Steam 创意工坊地图包中的实体定义（Source2Viewer 解析）'
+    : `CS2 服务端实体快照（${rec.source || catalog.meta.legacySource}，${rec.sourceBuilt || catalog.meta.legacyBuilt}）`;
   const cats = Object.entries(rec.c || {}).sort((a, b) => b[1] - a[1]);
   const subs = wsRec?.result === 1 ? (wsRec.subscriptions ?? 0) : 0;
   const tags = [
@@ -267,7 +271,7 @@ function renderEntry(rec, research, wsRec, gfl) {
   const diff = isDifficulty(researchDiff) ? researchDiff : '未知';
   // 发布日期优先用工坊 API 的权威时间
   const released = wsRec?.timeCreated || rec.d;
-  const updated = wsRec?.timeUpdated || rec.d || catalog.meta.built.slice(0, 10);
+  const updated = wsRec?.timeUpdated || rec.d || (baked ? null : catalog.meta.legacyBuilt.slice(0, 10));
   const desc = wsRec?.result === 1 ? (wsRec.description || '').trim() : '';
   const hasEditorial = Boolean(research?.summary);
   /*
@@ -318,13 +322,13 @@ function renderEntry(rec, research, wsRec, gfl) {
     `entityKey: ${JSON.stringify(rec.k)}`,
     `entityCount: ${rec.n}`,
     released ? `releaseDate: ${JSON.stringify(released)}` : null,
-    `lastUpdated: ${JSON.stringify(updated)}`,
+    updated ? `lastUpdated: ${JSON.stringify(updated)}` : null,
     research?.videoUrls?.length ? `videoUrls: [${research.videoUrls.map((x) => JSON.stringify(x)).join(', ')}]` : null,
     research?.sources?.length ? `sources: [${research.sources.map((x) => JSON.stringify(x)).join(', ')}]` : null,
     `stub: ${hasEditorial ? 'false' : 'true'}`,
     '---',
     '',
-    `{/* ${MARK} · 实体数据：${catalog.meta.source} · 快照 ${catalog.meta.built} · 工坊数据：Steam Web API */}`,
+    `{/* ${MARK} · 实体数据：${provenance} · 工坊数据：Steam Web API */}`,
     '',
   ].filter(Boolean);
 
@@ -346,7 +350,7 @@ function renderEntry(rec, research, wsRec, gfl) {
     );
   } else if (wsRec && wsRec.result !== 1) {
     body.push(
-      '> 该地图的工坊条目在 Steam 上已**查无此项**（可能是作者删除或设为隐藏），下方实体数据仍来自服务器端记录。',
+      '> 该地图的工坊条目在 Steam 上已**查无此项**（可能是作者删除或设为隐藏），下方实体数据仍保留在本站分片中。',
       ''
     );
   }
@@ -365,7 +369,7 @@ function renderEntry(rec, research, wsRec, gfl) {
     subs ? `| 工坊订阅数 | ${n(subs)} |` : null,
     wsRec?.views ? `| 工坊浏览量 | ${n(wsRec.views)} |` : null,
     `| 实体总数 | ${n(rec.n)} |`,
-    `| 可绘制点位 | ${n(rec.k2)} |`,
+    `| 分片点位 | ${n(rec.k2)} |`,
     `| 关卡数 | ${rec.st || 0}${rec.st ? '（按实体命名推断）' : ''} |`,
     ''
   );
@@ -373,7 +377,7 @@ function renderEntry(rec, research, wsRec, gfl) {
   body.push(
     '## 实体构成',
     '',
-    `本图共记录 ${n(rec.n)} 个实体，其中 ${n(rec.k2)} 个是可绘制的玩法点位：`,
+    `本图共记录 ${n(rec.n)} 个实体，分片包含 ${n(rec.k2)} 个实体点位：`,
     '',
     '| 类别 | 数量 |',
     '|---|---|',
@@ -450,9 +454,8 @@ function renderEntry(rec, research, wsRec, gfl) {
   body.push(
     '## 数据说明',
     '',
-    `- 实体数据来自 CS2 服务端实体 dump（${catalog.meta.source}），快照时间 ${catalog.meta.built}。`,
-    `- ${catalog.meta.note || ''}`,
-    `- ${catalog.meta.vol_note || ''}`,
+    `- 实体数据来源：${provenance}。`,
+    baked ? '- 实体点位来自地图实体定义；有模型碰撞壳的刷子实体带真实包围盒，其余使用类别典型尺寸。' : '- 历史快照的实体点位和体积说明保留原始口径。',
     gfl ? '- 神器 / 道具、BOSS 与音乐名单来自 GFL 公开服务器配置（entwatch / bosshud / musicname），可能与其它服务器不一致。' : null,
     '- 关卡数由实体命名（lvl2 / stage3 等）推断，未命名的按就近标注推断，可能与服务器配置或实际流程略有出入。',
     ''
@@ -494,16 +497,30 @@ if (brokenResearch.length) {
   console.error('  改好后重新构建即可。如果暂时不想处理，可以先把文件删掉或改成 data/research/ 之外的名字。\n');
   process.exit(1);
 }
+for (const [slug, research] of researchFiles) {
+  if (research.document && !(slug in LINKS)) {
+    throw new Error(`data/research/${slug}.json 的 document 没有在 curated-links.json 中配置页面映射`);
+  }
+}
 
 const existing = new Map(fs.readdirSync(MAPS_DIR).filter((f) => f.endsWith('.mdx')).map((f) => [f.replace(/\.mdx$/, ''), fs.readFileSync(path.join(MAPS_DIR, f), 'utf8')]));
 
-/* 收集标签写法：手写条目的写法优先当作规范写法 */
+/* 收集标签写法：富内容 JSON 文档中的标签优先当作规范写法 */
 const parseFmTags = (text) => {
   const m = text.match(/^tags:\s*\[(.*?)\]/m);
   if (!m) return [];
   return m[1].split(',').map((x) => x.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
 };
-for (const [, text] of existing) if (!text.includes(MARK)) for (const t of parseFmTags(text)) noteTag(t, true);
+async function writeEntry(file, text) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try { await fs.promises.writeFile(file, text); return; }
+    catch (e) {
+      if (!['EBUSY', 'EPERM', 'UNKNOWN'].includes(e.code) || attempt === 4) throw e;
+      await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+    }
+  }
+}
+for (const [, j] of researchFiles) if (j.document) for (const t of parseFmTags(j.document)) noteTag(t, true);
 for (const [, j] of researchFiles) for (const t of j.tags || []) noteTag(t, false);
 const variantReport = [...tagVariants.entries()].filter(([, v]) => v.size > 1);
 if (variantReport.length) {
@@ -519,16 +536,14 @@ if (variantReport.length) {
   }
 }
 
-let created = 0, updated = 0, skipped = 0, enriched = 0;
+let created = 0, updated = 0, enriched = 0;
 const usedSlugs = new Set(existing.keys());
 const stageFix = [];
 
 for (const rec of zeMaps) {
-  if (curatedMaps.has(rec.m)) { skipped++; continue; }           // 手写条目已覆盖这张图
+  if (curatedMaps.has(rec.m)) continue;
   let slug = rec.m;
   const prev = existing.get(slug);
-  const isOurs = prev ? prev.includes(MARK) : false;
-  if (prev && !isOurs) { skipped++; continue; }                 // 手写条目，保持不动
   if (!prev && usedSlugs.has(slug)) slug = `${rec.m}-${rec.f}`; // 同名不同版本，用工坊 ID 区分
 
   const research = researchFiles.get(rec.m) || researchFiles.get(rec.s) || null;
@@ -539,15 +554,28 @@ for (const rec of zeMaps) {
   const mdx = renderEntry({ ...rec, m: rec.m, st: stageInfo.stages }, research, loadWorkshop(rec.f), loadGfl(rec.m));
   if (research?.summary) enriched++;
 
-  if (DRY) { created++; continue; }
+  if (prev?.replace(/\r\n/g, '\n') === mdx) continue;
+  if (DRY) { if (prev) updated++; else created++; continue; }
   const file = path.join(MAPS_DIR, `${slug}.mdx`);
   if (prev) updated++; else created++;
-  fs.writeFileSync(file, mdx);
+  await writeEntry(file, mdx);
   usedSlugs.add(slug);
 }
 
+for (const slug of Object.keys(LINKS).filter((s) => !s.startsWith('_'))) {
+  const document = researchFiles.get(slug)?.document;
+  if (typeof document !== 'string' || !document.startsWith('---\n') || !document.includes(MARK)) {
+    throw new Error(`data/research/${slug}.json 缺少可生成的 document`);
+  }
+  const prev = existing.get(slug);
+  if (prev?.replace(/\r\n/g, '\n') === document) continue;
+  if (DRY) { if (prev) updated++; else created++; continue; }
+  if (prev) updated++; else created++;
+  await writeEntry(path.join(MAPS_DIR, `${slug}.mdx`), document);
+}
+
 console.log(`ZE 地图 ${zeMaps.length} 张`);
-console.log(`  ${DRY ? '将生成' : '新建'} ${created} · ${DRY ? '将更新' : '更新'} ${updated} · 跳过手写条目 ${skipped}`);
+console.log(`  ${DRY ? '将生成' : '新建'} ${created} · ${DRY ? '将更新' : '更新'} ${updated}`);
 console.log(`  其中带线上检索资料：${enriched} 张`);
 if (stageFix.length) {
   console.log(`  关卡数按实体命名修正 ${stageFix.length} 张：`);

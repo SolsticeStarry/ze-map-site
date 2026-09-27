@@ -1,5 +1,5 @@
 {
-  "_说明": "手写条目 ↔ 实体 dump 地图的对应关系。左边是 src/content/maps 里的手写条目 slug，右边是 dump 里的地图名（primary 为详情页默认打开的那张，variants 里的都会被生成脚本跳过，避免同一张图出现重复条目）。",
+  "_说明": "富内容 research JSON ↔ 实体分片地图的对应关系。左边是页面 slug，右边是对应的地图名；这些版本由 JSON 的 document 字段生成统一页面，不额外生成重复条目。",
   "ze_ffvii_mako_reactor": {
     "primary": "ze_ffvii_mako_reactor_v6_p",
     "versions": ["ze_ffvii_mako_reactor_v6_p", "ze_ffvii_mako_reactor_v5_3"],
