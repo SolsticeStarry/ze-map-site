@@ -1,0 +1,20 @@
+---------------
+Parent file: D:\AIG\ze-map-site\tools\terr-bake\core\work\3636650451\inner.vpk
+File: maps\ze_silent_hill_rengurn\world_physics.vmdl_c
+Exception: SharpGLTF.Validation.DataException: Accessor[65] NORMAL[6831]: Invalid Normal
+   at SharpGLTF.Validation.ValidationContext._DataThrow(ValueLocation pname, String msg)
+   at SharpGLTF.Schema2.Accessor._ValidateNormals(ValidationContext validate)
+   at SharpGLTF.Schema2.Accessor.ValidateVertexAttributes(ValidationContext validate, IReadOnlyDictionary`2 attributes, Int32 skinsMaxJointCount)
+   at SharpGLTF.Schema2.MeshPrimitive.OnValidateContent(ValidationContext validate)
+   at SharpGLTF.Schema2.ExtraProperties.OnValidateContent(ValidationContext validate)
+   at SharpGLTF.Schema2.Mesh.OnValidateContent(ValidationContext validate)
+   at SharpGLTF.Schema2.ExtraProperties.OnValidateContent(ValidationContext validate)
+   at SharpGLTF.Schema2.WriteContext._ValidateBeforeWriting(ModelRoot model)
+   at SharpGLTF.Schema2.WriteContext.WriteBinarySchema2(String name, ModelRoot model)
+   at ValveResourceFormat.IO.GltfModelExporter.WriteModelFile(ModelRoot exportedModel, String filePath, Stream stream) in /_/ValveResourceFormat/IO/GltfModelExporter.cs:line 942
+   at ValveResourceFormat.IO.GltfModelExporter.ExportToFile(String resourceName, String fileName, PhysAggregateData physAggregateData) in /_/ValveResourceFormat/IO/GltfModelExporter.cs:line 630
+   at ValveResourceFormat.IO.GltfModelExporter.ExportToFile(String resourceName, String fileName, Model model) in /_/ValveResourceFormat/IO/GltfModelExporter.cs:line 614
+   at ValveResourceFormat.IO.GltfModelExporter.<>c__DisplayClass71_0.<Export>b__0() in /_/ValveResourceFormat/IO/GltfModelExporter.cs:line 242
+   at ValveResourceFormat.IO.GltfModelExporter.RunExport(Action exportAction, String targetPath, CancellationToken cancellationToken) in /_/ValveResourceFormat/IO/GltfModelExporter.cs:line 164
+   at CLI.Decompiler.ProcessVPKEntries(String parentPath, Package package, IFileLoader fileLoader, String type, Dictionary`2 manifestData, Boolean useOutputAsDirectory) in /_/CLI/Decompiler.cs:line 1372
+

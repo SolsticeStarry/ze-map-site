@@ -7,15 +7,20 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/content/build-map-dates.mjs && node scripts/content/generate-map-entries.mjs && astro build && node scripts/content/build-search.mjs",
+    "build": "node scripts/entity-data/build-catalog.mjs && node scripts/content/build-map-dates.mjs && node scripts/content/generate-map-entries.mjs && astro build && node scripts/content/build-search.mjs",
     "build:site": "astro build",
+    "data:catalog": "node scripts/entity-data/build-catalog.mjs",
     "search:index": "pagefind --site dist",
     "preview": "astro preview",
     "astro": "astro",
-    "data:entity": "node scripts/entity-data/build-entity-data.mjs",
     "data:verify": "node scripts/entity-data/verify-entity-data.mjs --all",
+    "data:select": "node scripts/terr-bake/select-bake.mjs",
+    "map:add": "node scripts/content/add-map.mjs",
     "data:image": "node scripts/entity-data/render-map-image.mjs",
     "data:covers": "node scripts/entity-data/render-covers.mjs",
+    "bake:start": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','scripts/terr-bake/bootstrap.ps1'; Start-Sleep -Seconds 8; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/terr-bake/status-bake.ps1\"",
+    "bake:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/terr-bake/status-bake.ps1",
+    "bake:stop": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','scripts/terr-bake/stop-bake.ps1'\"",
     "maps:generate": "node scripts/content/generate-map-entries.mjs",
     "content:dates": "node scripts/content/build-map-dates.mjs",
     "cover:set": "node scripts/content/set-cover.mjs",
@@ -31,7 +36,8 @@
     "@astrojs/mdx": "^8.0.1",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.3.3",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "meshoptimizer": "^1.2.0"
   },
   "allowScripts": {
     "esbuild": true

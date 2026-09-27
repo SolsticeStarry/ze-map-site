@@ -15,7 +15,8 @@ const entities = maps.reduce((a, m) => a + (m.data.entityCount ?? 0), 0);
 // 不要改成 fs.readFile('public/...')——相对路径依赖 cwd，Cloudflare 适配器预渲染时
 // cwd 变成 /bundle，会直接构建失败（2026-09-23 线上部署失败的根因）。
 const allMaps = catalog.count;
-const otherMaps = allMaps - maps.length;
+const otherMaps = catalog.maps.filter((m) => m.a !== '2001').length;
+const bakedMaps = catalog.maps.filter((m) => m.source === 'Source2Viewer default_ents.vents_c').length;
 ---
 
 <BaseLayout title="关于 | ZE 地图资料站" description="ZE 地图资料站：僵尸逃跑地图中文资料库，数据来源与说明。">
@@ -44,7 +45,7 @@ const otherMaps = allMaps - maps.length;
         <li>其中 <b>{stub}</b> 张仍标注「资料待补充」——剧情、作者、难度、攻略等欢迎社区补全</li>
         <li>
           另外，<a href="/preview/">实体预览工具</a>里还收录了其它模式的 <b>{otherMaps}</b> 张地图
-          （TTT / MG / DE，合计 <b>{allMaps}</b> 张、<b>62.9 万</b>实体），
+          （TTT / MG / DE，合计 <b>{allMaps}</b> 张、<b>{catalog.meta.entities_all.toLocaleString('en-US')}</b> 个实体），
           所以预览页顶部徽章的数字会比上面的条目数大，两者口径不同。
         </li>
       </ul>
@@ -52,9 +53,8 @@ const otherMaps = allMaps - maps.length;
       <h3>数据来源</h3>
       <ul>
         <li>
-          <b>实体数据</b>：CS2 服务端实体 dump（fyscs/MapTracking-CS2，StarDance 构建），
-          快照时间 2026-09-23。坐标是 Source 单位（1 单位 ≈ 1.9cm），记录的是实体<b>原点</b>；
-          刷子类实体在导出里没有体积信息，3D 视图中的方块是按 classname 标定的近似尺寸。
+          <b>实体数据</b>：{bakedMaps} 张从 Steam 创意工坊地图包解析；其余保留已入库的历史服务端实体快照。
+          坐标为 Source 单位；有模型碰撞壳的实体使用真实包围盒，无包围盒的实体使用典型尺寸。
         </li>
         <li><b>工坊信息</b>：Steam Web API（发布时间、更新时间的、订阅数、作者自述正文摘录）。</li>
         <li><b>攻略资料</b>：社区检索整理，每篇尽量附来源链接；查不到的字段宁缺勿假。</li>
@@ -75,13 +75,13 @@ const otherMaps = allMaps - maps.length;
         </p>
         <p>
           <b>FYS 社区（风云社）</b>——中文 CS2 僵尸逃跑里技术力与开放精神兼具的标杆。
-          本站收录的 <b>645 张地图、62.9 万个实体点位</b>，之所以能做成可交互的 3D / 平面预览，
-          靠的正是 FYS 公开的服务端实体数据。可以说，<b>没有 FYS 愿意把数据拿出来共享，这个功能根本不会存在</b>。
+          本站早期的实体预览与地图索引得益于 FYS 公开的服务端实体数据；历史资料仍保留来源标注。
+          后续实体与地形分片由本站从创意工坊地图包烘焙。
         </p>
         <p>
           <b>FYS 的 GitHub 公开仓库</b>：
           <a href="https://github.com/fyscs" target="_blank" rel="noopener">github.com/fyscs</a>。
-          本站的实体数据来自其中的
+          本站早期的实体快照来自其中的
           <a href="https://github.com/fyscs/MapTracking-CS2" target="_blank" rel="noopener">MapTracking-CS2</a>
           （StarDance 构建）；同一个组织下的
           <a href="https://github.com/fyscs/servers-config" target="_blank" rel="noopener">servers-config</a>、

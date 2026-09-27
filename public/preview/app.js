@@ -1,7 +1,6 @@
 /* 地图实体预览 viewer —— 移植自「云朵小铺 · 地图实体预览」单文件版
- * 改动：数据改为按图 fetch(/entity/data/<slug>.bin) ；A/C 已在构建期解析为可读文本(A2/C2)；
- *      侧栏列表改用 /entity/catalog.json，不再一次性加载全部 645 张图。
- * 数据构建：scripts/entity-data/build-entity-data.mjs
+ * 按图加载 /entity/data/<slug>.bin，列表使用已入库的 /entity/catalog.json。
+ * 新实体与地形分片由 scripts/terr-bake/ 从工坊地图包烘焙。
  */
 /* =====================================================================
    ★ 3D 渲染引擎（独立于主逻辑，挂到 window.GL3D）
@@ -592,7 +591,8 @@ function syncUrl(slug){
 let DATA=null, GMAP={}, CLS=[], MAPKEYS=[];
 const S = { key:null, entry:null, listMode:'2001', mode:'3d', proj:'xy', hcol:false, psize:3, glow:false, full:false,
             off:new Set(), solo:null, sort:'k', bmap:true, bop:0.6, sel:null,
-            vbox:true, bopa:0.88, cutz:1, stage:0, terrain:true,
+            coff:new Set(), xopen:new Set(),
+            vbox:true, vbig:false, bopa:0.88, cutz:1, stage:0, terrain:true,
             /* 显示设置（对齐云朵小铺那块面板）：块体大小 / 点云大小 / 地形不透明度 / 切掉此高度以下 */
             bsz:1, psz:1, topa:1, cutb:0 };
 let view = {s:1, ox:0, oy:0};
@@ -1018,7 +1018,7 @@ function loadMap(k){
   const b = S.full ? m.fb : m.b;
   cur = { m, b,
     pad:0.06,
-    pts:[], grid:new Map(), cell:128, groups:{} };
+    pts:[], grid:new Map(), cell:128, groups:{}, cncnt:{}, cnsize:{} };
   const gmap = {}; DATA.groups.forEach(g => gmap[g.id]=g);
   const clsG = CLS.map(c => gidOf(c));
 
@@ -1039,7 +1039,7 @@ function loadMap(k){
     const sgr = e[end] || 0;
     const obj = {x:e[0],y:e[1],z:e[2],px,py,cn:CLS[e[3]],gid,nm:nm||'',ci:e[3],ai,gi,
                  sg:Math.abs(sgr), sgp:sgr<0};
-    /* 云朵小铺的包围盒表：每项为中心 XYZ + 半长 XYZ（原始值按 10 倍整数压缩）。
+    /* 实体包围盒表：每项为中心 XYZ + 半长 XYZ（原始值按 10 倍整数压缩）。
        没有包围盒的实体继续走 classname 典型尺寸回退。 */
     if(bbT && bbM && bbM[eix] >= 0){
       const q6 = bbM[eix] * 6;
@@ -1049,6 +1049,11 @@ function loadMap(k){
     eix++;
     cur.pts.push(obj);
     cur.groups[gid] = (cur.groups[gid]||0)+1;
+    cur.cncnt[gid] ||= {};
+    cur.cncnt[gid][obj.cn] = (cur.cncnt[gid][obj.cn]||0)+1;
+    cur.cnsize[gid] ||= {};
+    const extent = obj.bb ? Math.max(obj.bb[3], obj.bb[4], obj.bb[5]) * 2 : 0;
+    cur.cnsize[gid][obj.cn] = Math.max(cur.cnsize[gid][obj.cn]||0, extent);
     const cx = Math.floor(px/cur.cell), cy = Math.floor(py/cur.cell);
     const kk = cx+':'+cy;
     let arr = cur.grid.get(kk); if(!arr){arr=[];cur.grid.set(kk,arr);}
@@ -1082,11 +1087,24 @@ function renderLayers(){
   const ids = Object.keys(cur.groups).sort((a,b)=>cur.groups[b]-cur.groups[a]);
   $('lbody').innerHTML = ids.map(id=>{
     const g = gmap[id]; if(!g) return '';
+    const cns = Object.keys(cur.cncnt[id]||{}).sort((a,b)=>
+      (cur.cnsize[id]?.[b]||0)-(cur.cnsize[id]?.[a]||0) || a.localeCompare(b, 'en'));
+    const hidden = cns.filter(c=>S.coff.has(c));
+    const visible = cur.groups[id] - hidden.reduce((n,c)=>n+cur.cncnt[id][c],0);
     const on = !S.off.has(id) && (!S.solo || S.solo===id);
-    return `<div class="li${on?'':' off'}${S.solo===id?' solo':''}" data-g="${id}">
+    const sub = S.xopen.has(id) && cns.length > 1 ? `<div class="subs">${cns.map(c=>{
+      const off = S.coff.has(c);
+      const size = cur.cnsize[id]?.[c]||0;
+      return `<div class="si${off?' off':''}" data-g="${id}" data-cn="${esc(c)}" title="${off?'点击恢复显示':'点击隐藏该细类'}">
+        <span class="sdot" style="background:${g.color}"></span><span class="snm">${esc(c)}</span>
+        <span class="ct">${size?`${fmt(Math.round(size))}u · `:''}${fmt(cur.cncnt[id][c])}</span></div>`;
+    }).join('')}</div>` : '';
+    return `<div class="lwrap"><div class="li${on?'':' off'}${S.solo===id?' solo':''}" data-g="${id}">
       <span class="dot" style="background:${g.color}"></span>
       <span class="nm">${esc(g.label)}</span>
-      <span class="ct">${fmt(cur.groups[id])}</span></div>`;
+      <span class="ct"${hidden.length?` title="已隐藏 ${hidden.length} 个细类"`:''}>${fmt(visible)}</span>
+      ${cns.length>1?`<span class="xbtn${S.xopen.has(id)?' open':''}" data-g="${id}" title="展开细类，可单独隐藏">${S.xopen.has(id)?'▾':'▸'}</span>`:''}
+      </div>${sub}</div>`;
   }).join('');
   const shown = ids.filter(id=>!S.off.has(id) && (!S.solo||S.solo===id)).length;
   $('lvis').textContent = ` ${shown}/${ids.length} 层`;
@@ -1301,6 +1319,7 @@ function forEachDrawable(gmap, fn){
   for(const o of cur.pts){
     const g = gmap[o.gid]; if(!g) continue;
     if(S.off.has(o.gid) || (S.solo && S.solo!==o.gid)) continue;
+    if(S.coff.has(o.cn)) continue;
     if(!stageOk(o)) continue;
     fn(o,g);
   }
@@ -1388,11 +1407,21 @@ function build3D(){
   const zLo = m.fb[2], zHi = m.fb[5], zR = Math.max(1, zHi - zLo);
   const cutZ = zLo + zR * S.cutz;        // 上剖切面
   const cutLo = zLo + zR * S.cutb;       // 下剖切面（0% = 不切）
+  /* 覆盖全图/中心越界的巨型判定体积：默认不画，否则从外看会把整图实体块全遮住。
+     合法的“大范围传送框”一般远小于地图半幅，不受影响。 */
+  const fb = m.fb;
+  const mapSpan = Math.max(fb[3] - fb[0], fb[4] - fb[1], fb[5] - fb[2]);
+  const isGiant = (bb) => {
+    const cx = bb[0], cy = bb[1], cz = bb[2], hx = bb[3], hy = bb[4], hz = bb[5];
+    if (Math.max(hx, hy, hz) > 0.5 * mapSpan) return true;
+    return cx < fb[0] - 1000 || cx > fb[3] + 1000 || cy < fb[1] - 1000 || cy > fb[4] + 1000 || cz < fb[2] - 1000 || cz > fb[5] + 1000;
+  };
 
   const boxes = [];
   const parr = [];
   for(const o of cur.pts){
     if(S.off.has(o.gid) || (S.solo && S.solo !== o.gid)) continue;
+    if(S.coff.has(o.cn)) continue;
     if(!stageOk(o)) continue;
     const g = gmap[o.gid]; if(!g) continue;
     const rgb = hex2rgb(S.hcol ? ramp((o.z - zLo) / zR) : g.color);
@@ -1407,7 +1436,8 @@ function build3D(){
     } else {
       // 玩法实体：实体块（统一材质 + 类别色）· bsz = 块体大小倍率
      const h = half[o.ci] || [30,30,30];
-     const bs = S.bsz;
+      const bs = S.bsz;
+      if(o.bb && !S.vbig && isGiant(o.bb)) continue;
      const center = o.bb ? [o.bb[0], o.bb[2], -o.bb[1]] : [o.x, o.z, -o.y];
      const ext = o.bb ? [o.bb[3]*bs, o.bb[5]*bs, o.bb[4]*bs]
                       : [h[0]*bs, h[2]*bs, h[1]*bs];
@@ -1798,6 +1828,7 @@ function esRender(){
   if(!q || !cur){ box.style.display='none'; box.__hits=null; return; }
   const hits = [];
   for(const o of cur.pts){
+    if(S.coff.has(o.cn)) continue;
     if((o.nm && o.nm.toLowerCase().includes(q)) || o.cn.toLowerCase().includes(q)){
       hits.push(o);
       if(hits.length>=60) break;
@@ -1870,6 +1901,7 @@ function pick(mx,my){
     for(const o of arr){
       const g=gmap[o.gid]; if(!g) continue;
       if(S.off.has(o.gid) || (S.solo && S.solo!==o.gid)) continue;
+      if(S.coff.has(o.cn)) continue;
       if(!stageOk(o)) continue;
       const d=(o.px-wx)**2+(o.py-wy)**2;
       if(d<bd){bd=d;best=o;}
@@ -1900,6 +1932,21 @@ function hideTip(){ $('tip').style.display='none'; }
 
 /* 图层点击 */
 $('lbody').addEventListener('click', e=>{
+  const si = e.target.closest('.si');
+  if(si){
+    const cn = si.dataset.cn;
+    if(S.coff.has(cn)) S.coff.delete(cn); else S.coff.add(cn);
+    renderLayers();
+    if(S.mode === '3d'){ build3D(); render3D(); } else draw();
+    return;
+  }
+  const xb = e.target.closest('.xbtn');
+  if(xb){
+    const g = xb.dataset.g;
+    if(S.xopen.has(g)) S.xopen.delete(g); else S.xopen.add(g);
+    renderLayers();
+    return;
+  }
   const li = e.target.closest('.li'); if(!li) return;
   const g = li.dataset.g;
   if(e.detail>1){ S.solo = (S.solo===g) ? null : g; }
@@ -1982,6 +2029,7 @@ $('glow').addEventListener('change', e=>{ S.glow=e.target.checked; draw(); });
 $('full').addEventListener('change', e=>{ S.full=e.target.checked; if(S.key) loadMap(S.key); });
 $('psize').addEventListener('input', e=>{ S.psize=parseFloat(e.target.value); draw(); });
 $('vbox').addEventListener('change', e=>{ S.vbox=e.target.checked; build3D(); render3D(); });
+{ const el=$('vbig'); if(el) el.addEventListener('change', e=>{ S.vbig=e.target.checked; build3D(); render3D(); }); }
 $('terbox').addEventListener('change', e=>{ S.terrain=e.target.checked; refreshTerrain(); });
 
 /* ===== 自由视角 / 行走模式：按钮与滑杆（设置自动记忆）=====

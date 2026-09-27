@@ -11,6 +11,7 @@
 # NOTE: keep this file ASCII-only - Windows PowerShell 5.1 reads .ps1 as ANSI when it has no BOM.
 param(
   [string]$Mode = '',
+  [string]$Id = '',
   [int]$Batch = 80,
   [string]$Root = (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 )
@@ -23,7 +24,7 @@ $outDir = Join-Path $Root 'data/workshop'
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
 $catalog = Get-Content $catalogPath -Raw -Encoding UTF8 | ConvertFrom-Json
-$maps = $catalog.maps | Where-Object { -not $Mode -or $_.a -eq $Mode }
+$maps = $catalog.maps | Where-Object { (-not $Mode -or $_.a -eq $Mode) -and (-not $Id -or [string]$_.f -eq $Id) }
 $ids = $maps | ForEach-Object { [string]$_.f } | Where-Object { $_ } | Select-Object -Unique
 $cached = @(Get-ChildItem $outDir -Filter *.json -ErrorAction SilentlyContinue | ForEach-Object { $_.BaseName })
 $todo = @($ids | Where-Object { $cached -notcontains $_ })
