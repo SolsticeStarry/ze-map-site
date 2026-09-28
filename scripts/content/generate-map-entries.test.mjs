@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { cdText, mergeItems } from '../../shared/items.mjs';
+import { cdText, docItemRows, mergeItems } from '../../shared/items.mjs';
 import { validateValue } from '../../shared/submission-fields.mjs';
 import { applySubmission, emptyDoc, normalizeDoc } from '../../shared/community-doc.mjs';
 
@@ -165,8 +165,55 @@ test('投稿校验：神器 / 道具行必须说清改了什么', () => {
   assert.match(range.error, /0~3600/);
 });
 
-test('社区文档：items 落到自己的桶里，并记进贡献者名单', () => {
-  const doc = emptyDoc('ze_demo');
+/* ===== 手写正文里的神器表（魔晄炉 / 米纳斯 / 黑珍珠号）===== */
+
+test('手写资料：认得出三种写法的神器表（中文+英文 / 中文+分数 / 中文+效果+冷却）', () => {
+  const mako = `## 神器（Materia）
+
+<table class="item-table">
+  <tbody>
+    <tr><td>火焰</td><td>Fire</td><td>火焰伤害</td><td>可升级</td></tr>
+    <tr><td>究极</td><td>Ultima</td><td>大范围伤害</td><td>固定刷新点，不升级</td></tr>
+  </tbody>
+</table>
+
+## 视频攻略
+
+<table><tbody><tr><td>不该被读到</td></tr></tbody></table>`;
+
+  const makoRows = docItemRows(mako);
+  assert.deepEqual(
+    makoRows.map((r) => [r.name, r.label]),
+    [
+      ['Fire', '火焰'],
+      ['Ultima', '究极'],
+    ]
+  );
+
+  const lotr = `## 神器 / 道具表
+
+| 神器 | 分数 | 效果 |
+|---|---|---|
+| 旗子 | 100 | 血量变为 200 |
+| 甘道夫 | 300 | 圣光 |`;
+  assert.deepEqual(docItemRows(lotr).map((r) => r.name), ['旗子', '甘道夫']);
+
+  const potr = `## 神器 / 道具表
+
+<table><tbody>
+  <tr><td>炸药桶</td><td>放置后减速僵尸</td><td>60s</td><td>断后位</td></tr>
+  <tr><td>巴博萨</td><td>后 3 关出现</td><td>—</td><td>僵尸方</td></tr>
+</tbody></table>`;
+  const potrRows = docItemRows(potr);
+  assert.deepEqual(potrRows.map((r) => r.name), ['炸药桶', '巴博萨']);
+  assert.equal(potrRows[0].cd, 60, '独立的 60s 单元格应当认成冷却');
+  assert.equal(potrRows[1].cd, null);
+
+  assert.deepEqual(docItemRows('## 关卡\n\n没有表'), []);
+  assert.deepEqual(docItemRows(''), []);
+});
+
+test('社区文档：items 落到自己的桶里，并记进贡献者名单', () => {  const doc = emptyDoc('ze_demo');
   const change = applySubmission(doc, {
     id: 7,
     field: 'items',

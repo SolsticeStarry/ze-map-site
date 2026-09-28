@@ -279,52 +279,57 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
   }
 
   /* ===== 神器 / 道具行编辑器 =====
-     投稿是**逐行**更正：一行 = 一件道具 + 一个动作（更正 / 新增 / 删除）。
-     名字用 datalist 联想本站现有写法 —— 合并时按名字对上号，对不上就会被当成「新增一件」。 */
-  type ItemRow = { n?: string; c?: string; u?: string; k?: string };
+     一行 = 一件道具。**动作不让投稿人选**：名字对得上本站已有的表就是「更正」，
+     对不上就是「新增」，勾了「本图没有这件」就是「删除」（只加标注，不删行）。
+     理由：2026-09-28 的反馈——面对「更正 / 新增」下拉框，投稿人不知道该选哪个。 */
+  type ItemRow = { n?: string; c?: string; u?: string; k?: string; l?: string };
 
-  /** 本站这张图现在的表（来自 /submit/maps.json，构建期由服务器配置 + 社区已通过的更正合成） */
+  /** 本站这张图现在的表（手写正文 + 服务器配置 + 已通过的社区更正，构建期合成） */
   function currentItemRows(): ItemRow[] {
     const list = mapInfo?.items;
     return Array.isArray(list) ? (list as ItemRow[]) : [];
   }
 
-  function addItemRow(row: { name?: string; cd?: string; uses?: string; note?: string } = {}): void {
+  const keyOf = (name: unknown) => String(name ?? '').replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+
+  /** 名字在本站表里对得上的那一行（对上就是「更正」，对不上就是「新增」） */
+  function knownItemRow(name: string): ItemRow | null {
+    const key = keyOf(name);
+    if (!key) return null;
+    return currentItemRows().find((r) => keyOf(r.n) === key) ?? null;
+  }
+
+  /** 一行现在的样子（给投稿人看：表里写的是什么） */
+  function describeItemRow(row: ItemRow): string {
+    const label = row.l ? `${row.l} / ${row.n}` : String(row.n ?? '');
+    const nums = [row.c, row.u].filter((v) => v && v !== '—' && v !== '不限');
+    return nums.length ? `${label}（${nums.join(' / ')}）` : label;
+  }
+
+  function addItemRow(): void {
     const rowsEl = document.getElementById('items-rows');
     if (!rowsEl) return;
 
+    const known = currentItemRows();
     const wrap = document.createElement('div');
     wrap.className = 'item-row';
 
     const line1 = document.createElement('div');
-    line1.style.cssText = 'display:grid;grid-template-columns:96px minmax(0,1fr) 92px 92px auto;gap:6px';
-
-    const action = document.createElement('select');
-    action.dataset.k = 'action';
-    for (const [value, label] of [
-      ['update', '更正'],
-      ['add', '新增'],
-      ['remove', '删除'],
-    ]) {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = label;
-      action.append(opt);
-    }
+    line1.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) 92px 92px auto;gap:6px';
 
     const name = document.createElement('input');
     name.dataset.k = 'name';
     name.setAttribute('list', 'items-known');
-    name.placeholder = '道具名（如 Survivor）';
-    name.value = row.name ?? '';
+    name.placeholder = known.length ? `道具名（如 ${known[0].n}）` : '道具名';
+    name.autocomplete = 'off';
 
     const cd = document.createElement('input');
     cd.dataset.k = 'cd';
     cd.type = 'number';
     cd.min = '0';
     cd.max = '3600';
+    cd.step = '0.5';
     cd.placeholder = '冷却秒';
-    cd.value = row.cd ?? '';
 
     const uses = document.createElement('input');
     uses.dataset.k = 'uses';
@@ -332,7 +337,6 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     uses.min = '0';
     uses.max = '99';
     uses.placeholder = '次数';
-    uses.value = row.uses ?? '';
 
     const del = document.createElement('button');
     del.type = 'button';
@@ -341,19 +345,55 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     del.title = '删掉这一行';
     del.addEventListener('click', () => wrap.remove());
 
-    line1.append(action, name, cd, uses, del);
+    line1.append(name, cd, uses, del);
 
     const line2 = document.createElement('div');
-    line2.style.cssText = 'margin-top:6px';
+    line2.style.cssText = 'margin-top:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+
     const note = document.createElement('input');
     note.dataset.k = 'note';
     note.placeholder = '说明（选填）：例如「只在第四关出现」';
-    note.value = row.note ?? '';
-    note.style.width = '100%';
-    line2.append(note);
+    note.style.flex = '1 1 260px';
 
-    wrap.append(line1, line2);
+    const missingWrap = document.createElement('label');
+    missingWrap.style.cssText = 'display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)';
+    const missing = document.createElement('input');
+    missing.type = 'checkbox';
+    missing.dataset.k = 'missing';
+    missingWrap.append(missing, document.createTextNode('本图没有这件'));
+
+    line2.append(note, missingWrap);
+
+    const status = document.createElement('p');
+    status.className = 'form-hint';
+    status.dataset.k = 'status';
+    status.style.margin = '4px 0 0';
+
+    const refresh = () => {
+      const hit = knownItemRow(name.value);
+      if (missing.checked) {
+        status.textContent = hit
+          ? `提交后会把「${describeItemRow(hit)}」标成『本图没有这件』（原来的行保留，只加标注）`
+          : '表里没有这个名字，勾了也不会生效 —— 先填一个表里已有的名字';
+        return;
+      }
+      if (hit) {
+        status.textContent = `表里已有：${describeItemRow(hit)} → 你填的冷却 / 次数会改成新的，原值留在备注里`;
+      } else if (name.value.trim()) {
+        status.textContent = '表里没有这件 → 会作为新增（社区补充）加进表里';
+      } else {
+        status.textContent = currentItemRows().length
+          ? '名字从下面的联想里选，或者照条目页的写法填'
+          : '本站这张图还没有表 —— 你填的就成了它的第一张神器表';
+      }
+    };
+
+    name.addEventListener('input', refresh);
+    missing.addEventListener('change', refresh);
+
+    wrap.append(line1, line2, status);
     rowsEl.append(wrap);
+    refresh();
   }
 
   /** 读回编辑器里的行；整行全空的行直接丢掉（加了行又不用是常态） */
@@ -362,18 +402,15 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     for (const wrap of document.querySelectorAll<HTMLElement>('#items-rows .item-row')) {
       const val = (k: string) =>
         wrap.querySelector<HTMLInputElement | HTMLSelectElement>(`[data-k="${k}"]`)?.value.trim() ?? '';
+      const box = wrap.querySelector<HTMLInputElement>('[data-k="missing"]');
       const name = val('name');
       const cdRaw = val('cd');
       const usesRaw = val('uses');
       const note = val('note');
       if (!name && !cdRaw && !usesRaw && !note) continue;
-      out.push({
-        action: val('action') || 'update',
-        name,
-        cd: cdRaw,
-        uses: usesRaw,
-        note,
-      });
+      /* 动作由名字决定（见 updateStatus）：勾了「本图没有」→ remove，表里有 → update，否则 add */
+      const action = box?.checked ? 'remove' : knownItemRow(name) ? 'update' : 'add';
+      out.push({ action, name, cd: cdRaw, uses: usesRaw, note });
     }
     return out;
   }
@@ -389,15 +426,17 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
       known.textContent = '';
       for (const r of rows) {
         const opt = document.createElement('option');
-        opt.value = r.n ?? '';
-        opt.label = `${r.c ?? ''} / ${r.u ?? ''}${r.k && r.k !== 'server' ? '（已含社区更正）' : ''}`;
+        opt.value = String(r.n ?? '');
+        opt.label = r.l
+          ? String(r.l)
+          : [r.c, r.u].filter((v) => v && v !== '—').join(' / ');
         known.append(opt);
       }
     }
     if (curEl) {
       curEl.textContent = rows.length
-        ? rows.map((r) => `${r.n}（${r.c} / ${r.u}）`).join('、')
-        : '（本站还没有这张图的神器表 —— 可以直接用「新增」把你知道的填上）';
+        ? rows.map(describeItemRow).join('、')
+        : '（本站还没有这张图的神器表 —— 你填的会成为第一张）';
     }
     addItemRow();
   }

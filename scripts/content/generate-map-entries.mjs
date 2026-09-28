@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { DIFFICULTIES, isDifficulty, normalizeDifficulty } from '../../shared/difficulty.mjs';
 import { BAKED_SOURCE, normalizeEntitySource } from '../../shared/entity-source.mjs';
 import { normalizeDoc } from '../../shared/community-doc.mjs';
-import { cdText, mergeItems, usesText } from '../../shared/items.mjs';
+import { cdText, docItemRows, mergeItems, usesText } from '../../shared/items.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MAPS_DIR = path.join(ROOT, 'src/content/maps');
@@ -220,6 +220,28 @@ const mdSafe = (s) => String(s || '').replace(/</g, '&lt;').replace(/\{/g, '&#12
 
 /** Markdown 表格单元格：转义竖线（会把列切断）+ JSX 字符，并压掉换行 */
 const cell = (s) => mdSafe(String(s ?? '').replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' '));
+
+/**
+ * 「神器 / 道具」表的 Markdown 行。
+ * 两个地方要用：一般条目（renderEntry）与手写正文的条目（document 分支）——
+ * 后者没法重写正文里的表，只能在正文末尾补一节「社区更正」。
+ */
+function itemsBlock(rows, { title, lead, showNote }) {
+  return [
+    `## ${title}`,
+    '',
+    lead,
+    '',
+    showNote ? '| 道具 | 冷却 | 使用次数 | 备注 |' : '| 道具 | 冷却 | 使用次数 |',
+    showNote ? '|---|---|---|---|' : '|---|---|---|',
+    ...rows.map((r) =>
+      showNote
+        ? `| ${cell(r.name)} | ${cell(cdText(r.cd))} | ${cell(usesText(r.uses))} | ${cell(itemNoteCell(r))} |`
+        : `| ${cell(r.name)} | ${cell(cdText(r.cd))} | ${cell(usesText(r.uses))} |`
+    ),
+    '',
+  ];
+}
 
 /**
  * 神器 / 道具表的「备注」列。
@@ -447,24 +469,13 @@ function renderEntry(rec, research, wsRec, gfl) {
     /* 备注列只在真的有社区行时出现：没有社区投稿的图，表格保持三列，
        免得 340 多个条目凭空多出一列空白（也免得 diff 里全是噪音）。 */
     const showNote = communityCount > 0;
-    body.push(
-      '## 神器 / 道具' + (gfl?.items?.length ? '（服务器配置）' : '（社区补充）'),
-      '',
-      gfl?.items?.length
-        ? `以下 ${merged.rows.length} 件道具来自公开的服务器 entwatch 配置，是本图在服务器上实际注册的神器与道具${
-            gfl._from ? `（取自 GFL 的 \`${gfl._from}\` 配置）` : ''
-          }${communityCount ? '；备注里标了「社区更正 / 社区补充」的行来自社区投稿' : ''}：`
-        : `本站没有这张图的服务器配置解析结果，以下 ${merged.rows.length} 件来自[社区投稿](/contribute/)补充：`,
-      '',
-      showNote ? '| 道具 | 冷却 | 使用次数 | 备注 |' : '| 道具 | 冷却 | 使用次数 |',
-      showNote ? '|---|---|---|---|' : '|---|---|---|',
-      ...merged.rows.map((r) =>
-        showNote
-          ? `| ${cell(r.name)} | ${cell(cdText(r.cd))} | ${cell(usesText(r.uses))} | ${cell(itemNoteCell(r))} |`
-          : `| ${cell(r.name)} | ${cell(cdText(r.cd))} | ${cell(usesText(r.uses))} |`
-      ),
-      ''
-    );
+    const title = gfl?.items?.length ? '神器 / 道具（服务器配置）' : '神器 / 道具（社区补充）';
+    const lead = gfl?.items?.length
+      ? `以下 ${merged.rows.length} 件道具来自公开的服务器 entwatch 配置，是本图在服务器上实际注册的神器与道具${
+          gfl._from ? `（取自 GFL 的 \`${gfl._from}\` 配置）` : ''
+        }${communityCount ? '；备注里标了「社区更正 / 社区补充」的行来自社区投稿' : ''}：`
+      : `本站没有这张图的服务器配置解析结果，以下 ${merged.rows.length} 件来自[社区投稿](/contribute/)补充：`;
+    body.push(...itemsBlock(merged.rows, { title, lead, showNote }));
   }
 
   if (gfl?.bosses?.length) {
@@ -621,11 +632,33 @@ for (const slug of Object.keys(LINKS).filter((s) => !s.startsWith('_'))) {
   if (typeof document !== 'string' || !document.startsWith('---\n') || !document.includes(MARK)) {
     throw new Error(`data/research/${slug}.json 缺少可生成的 document`);
   }
+
+  /*
+   * 手写正文的条目（魔晄炉 / 米纳斯 / 黑珍珠号）**正文一个字都不改**，社区投稿的神器更正
+   * 追加在正文末尾单独一节 —— 正文里的表是人工整理的（还带 HTML 表格），
+   * 生成器不该去改它；但不能因此让投稿石沉大海（这三张图的神器表在页面上是看得见的，
+   * 玩家照着它纠错），所以要显式补出来。
+   */
+  const communityRows = communityItemsOf(slug);
+  const docRows = docItemRows(document);
+  const merged = mergeItems(
+    docRows.map((r) => ({ name: r.name, cd: r.cd, maxuses: null })),
+    communityRows
+  );
+  const changed = merged.rows.filter((r) => r.kind !== 'server');
+  const mdx = changed.length
+    ? `${document}\n${itemsBlock(changed, {
+        title: '神器 / 道具更正（社区投稿）',
+        lead: `上面的神器表由本站人工整理；以下是[社区投稿](/contribute/)的更正与补充（${changed.length} 件），未列出的行仍以原表为准：`,
+        showNote: true,
+      }).join('\n')}`
+    : document;
+
   const prev = existing.get(slug);
-  if (prev?.replace(/\r\n/g, '\n') === document) continue;
+  if (prev?.replace(/\r\n/g, '\n') === mdx) continue;
   if (DRY) { if (prev) updated++; else created++; continue; }
   if (prev) updated++; else created++;
-  await writeEntry(path.join(MAPS_DIR, `${slug}.mdx`), document);
+  await writeEntry(path.join(MAPS_DIR, `${slug}.mdx`), mdx);
 }
 
 console.log(`ZE 地图 ${zeMaps.length} 张`);

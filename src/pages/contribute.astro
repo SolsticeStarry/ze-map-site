@@ -33,7 +33,7 @@ const canFill = (r: (typeof R)[string]) => {
     case 'image':
       return '一张图：浏览器里自动裁成 16:9、压成 webp（上限 700 KB）再上传，不用自己处理';
     case 'itemlist':
-      return '一件一行：选「更正 / 新增 / 删除」+ 道具名 + 冷却秒数 + 次数（后两项留空表示不改）';
+      return '一件一行：填道具名 + 冷却秒 + 次数（后两项留空表示不改这一项）。名字选条目页表里的写法就是更正，表里没有的就是新增，不用自己选';
     default:
       return `最多 ${r.maxLen} 字`;
   }

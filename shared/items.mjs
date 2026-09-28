@@ -80,6 +80,109 @@ export function normalizeItemRow(raw, extra = {}) {
 }
 
 /**
+ * 从手写资料（data/research/<slug>.json 的 document）里抽出「神器 / 道具」表里的条目。
+ *
+ * 为什么需要它：有三张图（魔晄炉、米纳斯、黑珍珠号）的神器表是人工整理后写进正文的
+ * （HTML `<table class="item-table">`），本站没有对应的服务器配置。投稿表单如果只认
+ * `data/gfl-parsed`，就会对着这些图说「本站还没有这张图的神器表」——
+ * 而页面上明明摆着一张表，投稿人当场就懵了（2026-09-28 的反馈）。
+ *
+ * 只做「认名字」这一件事，不重写手写正文：命中的行用来做表单里的名称联想与对照。
+ * 名字取哪一列：中文列 + 英文名/ID 列并存时（火焰 | Fire）取英文列，否则取第一列。
+ */
+export function docItemRows(text) {
+  const src = String(text ?? '');
+  if (!src) return [];
+
+  const rows = [];
+  let active = false;
+  let level = 0;
+
+  for (const line of src.split(/\r?\n/)) {
+    const heading = line.match(/^(#{2,4})\s+(.*)$/);
+    if (heading) {
+      if (/(神器|道具)/.test(heading[2])) {
+        active = true;
+        level = heading[1].length;
+      } else if (active && heading[1].length <= level) {
+        active = false; /* 同级或更高级标题 = 这一节结束 */
+      }
+      continue;
+    }
+    if (!active) continue;
+
+    const html = line.match(/<tr\b[^>]*>([\s\S]*?)<\/tr>/i);
+    if (html) {
+      rows.push(cellsOfHtml(html[1]));
+      continue;
+    }
+    if (/^\s*\|/.test(line)) {
+      const cells = line
+        .replace(/^\s*\|/, '')
+        .replace(/\|\s*$/, '')
+        .split('|')
+        .map((s) => stripInline(s));
+      /* 表头分隔行 |---|---| 与表头本身都会被过滤掉（认不出名字） */
+      rows.push(cells);
+    }
+  }
+
+  const out = [];
+  const seen = new Set();
+  for (const cells of rows) {
+    const row = pickDocRow(cells);
+    if (!row) continue;
+    const key = itemKey(row.name);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
+}
+
+/** HTML 表格的 <td> 组合 → 纯文本单元格 */
+function cellsOfHtml(inner) {
+  const cells = [];
+  for (const m of inner.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)) cells.push(stripInline(m[1]));
+  return cells;
+}
+
+/** 去掉行内标签与常见实体，压掉多余空白 */
+function stripInline(s) {
+  return String(s ?? '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const CJK_RE = /[\u3400-\u9fff]/;
+const CD_RE = /^(\d+(?:\.\d+)?)\s*(?:s|sec|secs|second|seconds|秒)$/i;
+
+/** 一行单元格 → { name, label, cd }；认不出来返回 null */
+function pickDocRow(cells) {
+  const clean = (Array.isArray(cells) ? cells : []).map((c) => String(c ?? '').trim());
+  const [first = '', second = ''] = clean;
+  if (!first) return null;
+  /* 表头行 / 分隔行：第一格就是「神器」「道具」这类标题，或者整行都是横线 */
+  if (/^(神器|道具|名称|英文名|item|name)$/i.test(first)) return null;
+  if (/^-+$/.test(first) || clean.every((c) => !c || /^:?-+:?$/.test(c))) return null;
+
+  const secondIsId = Boolean(second) && !CJK_RE.test(second) && /[A-Za-z]/.test(second);
+  const name = CJK_RE.test(first) && secondIsId ? second : first;
+  const label = name === first ? '' : first;
+
+  const cdCell = clean.slice(1).find((c) => CD_RE.test(c));
+  const cd = cdCell ? Number(cdCell.match(CD_RE)[1]) : null;
+  return { name, label, cd };
+}
+
+/**
  * 把社区投稿行合并到服务器配置的基表上。
  *
  * @param base 服务器配置：[{ name, cd, maxuses }]

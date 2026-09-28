@@ -10,11 +10,11 @@
  */
 import { getMaps } from '../../lib/maps';
 import { normalizeDoc } from '../../../shared/community-doc.mjs';
-import { cdText, mergeItems, usesText } from '../../../shared/items.mjs';
+import { cdText, docItemRows, itemKey, mergeItems, usesText } from '../../../shared/items.mjs';
 import type { APIRoute } from 'astro';
 
 /*
- * 用 import.meta.glob 在构建期把两份数据读进来（打包器解析路径）。
+ * 用 import.meta.glob 在构建期把三份数据读进来（打包器解析路径）。
  * 绝不要改成 fs.readFile + 相对路径：Cloudflare 适配器预渲染时 cwd 会变成 /bundle，
  * 那正是 2026-09-23 线上构建失败的根因。
  */
@@ -23,6 +23,12 @@ const gflModules = import.meta.glob('../../../data/gfl-parsed/*.json', { eager: 
   { default?: unknown }
 >;
 const communityModules = import.meta.glob('../../../data/community/*.json', { eager: true }) as Record<
+  string,
+  { default?: unknown }
+>;
+/* 手写资料：魔晄炉 / 米纳斯 / 黑珍珠号的神器表在正文里（不是服务器配置），
+   投稿表单得认得它们，否则会对着有表的图说「本站还没有这张图的神器表」。 */
+const researchModules = import.meta.glob('../../../data/research/*.json', { eager: true }) as Record<
   string,
   { default?: unknown }
 >;
@@ -42,6 +48,10 @@ for (const [p, mod] of Object.entries(gflModules)) {
 /** 按 slug 索引的社区文档（里面可能有已审核通过的神器更正） */
 const communityBySlug = new Map<string, any>();
 for (const [p, mod] of Object.entries(communityModules)) communityBySlug.set(baseName(p), unwrap(mod));
+
+/** 按 slug 索引的手写资料（document 里可能带一张神器表） */
+const researchBySlug = new Map<string, any>();
+for (const [p, mod] of Object.entries(researchModules)) researchBySlug.set(baseName(p), unwrap(mod));
 
 export const GET: APIRoute = async () => {
   const maps = await getMaps();
@@ -67,20 +77,29 @@ export const GET: APIRoute = async () => {
     /* 封面：投稿表单要显示「当前封面」缩略图（换封面时好对比） */
     if (d.cover) row.cover = d.cover;
 
-    /* 神器 / 道具现状：服务器配置打底 + 社区已通过的更正。
-       字段用短键（n/c/u/k）—— 1700 多行，键名能省下十几 KB。 */
+    /* 神器 / 道具现状：手写表 + 服务器配置打底 + 社区已通过的更正。
+       字段用短键 —— 1700 多行，键名能省下十几 KB。
+       k: doc=手写正文里的表 / server=服务器配置 / updated,added,removed=社区改过。
+       l 只有手写表那种「中文名 + 英文名」两列时才有。 */
     const mapName = String(d.titleEn ?? '');
     const gfl = gflByName.get(aliases[mapName] ?? mapName) ?? null;
     const community = communityBySlug.has(m.id) ? normalizeDoc(m.id, communityBySlug.get(m.id)) : null;
     const merged = mergeItems(gfl?.items ?? [], community?.items ?? []);
-    if (merged.rows.length) {
-      row.items = merged.rows.map((r) => ({
+    const docRows = docItemRows(researchBySlug.get(m.id)?.document ?? '');
+
+    const byKey = new Map<string, Record<string, unknown>>();
+    for (const r of docRows) {
+      byKey.set(itemKey(r.name), {
         n: r.name,
-        c: cdText(r.cd),
-        u: usesText(r.uses),
-        k: r.kind,
-      }));
+        k: 'doc',
+        ...(r.label ? { l: r.label } : {}),
+        ...(r.cd === null ? {} : { c: cdText(r.cd) }),
+      });
     }
+    for (const r of merged.rows) {
+      byKey.set(itemKey(r.name), { n: r.name, c: cdText(r.cd), u: usesText(r.uses), k: r.kind });
+    }
+    if (byKey.size) row.items = [...byKey.values()];
     return row;
   });
 
