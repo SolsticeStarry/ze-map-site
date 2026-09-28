@@ -20,6 +20,7 @@
 | --- | --- |
 | `data/research/<地图英文名>.json` | ✅ **资料原稿，改这里** |
 | `data/community/<slug>.json` | ⚠️ 社区投稿落盘目录，由审核流程写入；手改请开 PR 说明理由 |
+| `data/community/<slug>.json` 的 `items[]` | ✅ 神器 / 道具就只能这么改：条目里的表来自 `data/gfl-parsed/`（服务器配置解析结果，脚本产出），社区更正逐行合并、原值保留在备注里 —— 走投稿页选「神器 / 道具」，或手改这里的 `items[]` |
 | `public/images/covers/custom/<地图英文名>.jpg`（或 `.png` / `.webp`） | ✅ 换地图封面（文件名必须正好是地图英文名） |
 | `src/content/maps/*.mdx` | ❌ **全部由脚本生成**，手改会被 `npm run maps:generate` 整段覆盖 |
 

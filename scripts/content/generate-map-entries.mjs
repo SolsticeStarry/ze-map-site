@@ -26,6 +26,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DIFFICULTIES, isDifficulty, normalizeDifficulty } from '../../shared/difficulty.mjs';
 import { BAKED_SOURCE, normalizeEntitySource } from '../../shared/entity-source.mjs';
+import { normalizeDoc } from '../../shared/community-doc.mjs';
+import { cdText, mergeItems, usesText } from '../../shared/items.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MAPS_DIR = path.join(ROOT, 'src/content/maps');
@@ -165,6 +167,18 @@ function loadGfl(mapName) {
   } catch { return null; }
 }
 
+/* 社区投稿里与神器 / 道具有关的部分（data/community/<地图英文名>.json 的 items[]）。
+   走 normalizeDoc 而不是直接 JSON.parse：仓库里的文件可能被人手改坏，
+   构建期不该因为一行坏数据整页崩掉。 */
+const COMMUNITY_DIR = path.join(ROOT, 'data/community');
+function communityItemsOf(slug) {
+  const f = path.join(COMMUNITY_DIR, `${slug}.json`);
+  if (!fs.existsSync(f)) return [];
+  try {
+    return normalizeDoc(slug, readJson(f)).items ?? [];
+  } catch { return []; }
+}
+
 /* 关卡数复核：dump 的 st 字段偶尔偏低（例：ze_minecraft_universe 记为 1，
    但实体里有 stage1_exit / 31 个 stage2_* 实体，GFL 也登记了 stage2 的 BOSS）。
    这里只在实体名**明确**写了 stageN / lvlN 时才修正，且要求编号基本连续，
@@ -203,6 +217,28 @@ const excerpt = (s, max = 420) => {
 
 /** MDX 是 JSX 语法：正文里的 < 和 { 会被当成标签/表达式，必须转义 */
 const mdSafe = (s) => String(s || '').replace(/</g, '&lt;').replace(/\{/g, '&#123;').replace(/\}/g, '&#125;');
+
+/** Markdown 表格单元格：转义竖线（会把列切断）+ JSX 字符，并压掉换行 */
+const cell = (s) => mdSafe(String(s ?? '').replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' '));
+
+/**
+ * 神器 / 道具表的「备注」列。
+ * 社区行要能一眼看出「这是玩家改的、原来是多少、谁改的」——
+ * 只写新值的话，过两天没人知道这张表和服务器配置哪里不一样了。
+ */
+function itemNoteCell(row) {
+  const who = row.by ? `（${row.by}）` : '';
+  const tail = row.note ? `；${row.note}` : '';
+  if (row.kind === 'updated') {
+    const bits = [];
+    if (row.original && row.original.cd !== row.cd) bits.push(`冷却 ${cdText(row.original.cd)} → ${cdText(row.cd)}`);
+    if (row.original && row.original.uses !== row.uses) bits.push(`次数 ${usesText(row.original.uses)} → ${usesText(row.uses)}`);
+    return `社区更正${bits.length ? `：${bits.join('，')}` : ''}${who}${tail}`;
+  }
+  if (row.kind === 'added') return `社区补充${who}${tail}`;
+  if (row.kind === 'removed') return `社区反馈：本图没有这件道具${who}${tail}`;
+  return row.note ?? '';
+}
 
 /* ---------------- 人工封面目录索引（文件名大小写不敏感） ----------------
  * 为什么不能按 `<地图英文名>.<ext>` 直接猜路径：
@@ -400,19 +436,33 @@ function renderEntry(rec, research, wsRec, gfl) {
     );
   }
 
-  if (gfl?.items?.length) {
+  /* 神器 / 道具：服务器配置打底，社区投稿逐行盖上（原值留在备注里）。
+     生成器**读社区文档**是有意的：表格在正文里，读时合并得让 MDX 里带组件，
+     而 MDX 一律由脚本生成 —— 两边都真实、且输出仍然确定（社区文件是入库的）。 */
+  const communityRows = communityItemsOf(rec.m);
+  const merged = mergeItems(gfl?.items ?? [], communityRows);
+  const communityCount = merged.rows.filter((r) => r.kind !== 'server').length;
+
+  if (merged.rows.length) {
+    /* 备注列只在真的有社区行时出现：没有社区投稿的图，表格保持三列，
+       免得 340 多个条目凭空多出一列空白（也免得 diff 里全是噪音）。 */
+    const showNote = communityCount > 0;
     body.push(
-      '## 神器 / 道具（服务器配置）',
+      '## 神器 / 道具' + (gfl?.items?.length ? '（服务器配置）' : '（社区补充）'),
       '',
-      `以下 ${gfl.items.length} 件道具来自公开的服务器 entwatch 配置，是本图在服务器上实际注册的神器与道具${gfl._from ? `（取自 GFL 的 \`${gfl._from}\` 配置）` : ''}：`,
+      gfl?.items?.length
+        ? `以下 ${merged.rows.length} 件道具来自公开的服务器 entwatch 配置，是本图在服务器上实际注册的神器与道具${
+            gfl._from ? `（取自 GFL 的 \`${gfl._from}\` 配置）` : ''
+          }${communityCount ? '；备注里标了「社区更正 / 社区补充」的行来自社区投稿' : ''}：`
+        : `本站没有这张图的服务器配置解析结果，以下 ${merged.rows.length} 件来自[社区投稿](/contribute/)补充：`,
       '',
-      '| 道具 | 冷却 | 使用次数 |',
-      '|---|---|---|',
-      ...gfl.items.map((it) => {
-        const uses = it.maxuses ? `${it.maxuses} 次` : '不限';
-        const cd = it.cd ? `${it.cd} 秒` : '—';
-        return `| ${mdSafe(it.name)} | ${cd} | ${uses} |`;
-      }),
+      showNote ? '| 道具 | 冷却 | 使用次数 | 备注 |' : '| 道具 | 冷却 | 使用次数 |',
+      showNote ? '|---|---|---|---|' : '|---|---|---|',
+      ...merged.rows.map((r) =>
+        showNote
+          ? `| ${cell(r.name)} | ${cell(cdText(r.cd))} | ${cell(usesText(r.uses))} | ${cell(itemNoteCell(r))} |`
+          : `| ${cell(r.name)} | ${cell(cdText(r.cd))} | ${cell(usesText(r.uses))} |`
+      ),
       ''
     );
   }
@@ -458,6 +508,9 @@ function renderEntry(rec, research, wsRec, gfl) {
     `- 实体数据来源：${provenance}。`,
     baked ? '- 实体点位来自地图实体定义；有模型碰撞壳的刷子实体带真实包围盒，其余使用类别典型尺寸。' : '- 历史快照的实体点位和体积说明保留原始口径。',
     gfl ? '- 神器 / 道具、BOSS 与音乐名单来自 GFL 公开服务器配置（entwatch / bosshud / musicname），可能与其它服务器不一致。' : null,
+    communityCount
+      ? '- 神器 / 道具表里标注「社区更正 / 社区补充」的行来自社区投稿（投稿页提交、人工审核）；原值保留在备注里，未标注的行仍是服务器配置原值。'
+      : null,
     '- 关卡数由实体命名（lvl2 / stage3 等）推断，未命名的按就近标注推断，可能与服务器配置或实际流程略有出入。',
     ''
   );

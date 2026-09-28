@@ -9,9 +9,9 @@
  *   push 触发 Cloudflare 重建 → 页面出现社区内容
  */
 
-import { applySubmission, isNoteField, touch } from '../shared/community-doc.mjs';
+import { applySubmission, isItemField, isNoteField, touch } from '../shared/community-doc.mjs';
 import { FIELD_RULES, LIMITS, isField, validateValue } from '../shared/submission-fields.mjs';
-import { GitError, readCommunityDoc, writeCommunityDoc } from './community';
+import { GitError, type CommunityFile, readCommunityDoc, writeCommunityDoc } from './community';
 import {
   checkCoverBytes,
   commitCoverToRepo,
@@ -81,6 +81,11 @@ function commitMessage(sub: SubmissionRow, change: { field: string; from: unknow
   if (isNoteField(change.field)) {
     return `社区投稿：${sub.map_slug} ${FIELD_RULES[change.field]?.label ?? '补充说明'}（by ${who}${audit}）`;
   }
+  /* 神器 / 道具是一次提交好几行，写「A → B」没有意义，报行数更可读 */
+  if (isItemField(change.field)) {
+    const n = Array.isArray(change.to) ? change.to.length : 0;
+    return `社区投稿：${sub.map_slug} ${FIELD_RULES[change.field]?.label ?? '神器 / 道具'} ${n} 行（by ${who}${audit}）`;
+  }
   return `社区投稿：${sub.map_slug} ${change.field} ${short(change.from)} → ${short(change.to)}（by ${who}${audit}）`;
 }
 
@@ -108,7 +113,9 @@ export async function handleSubmit(
 ): Promise<Response> {
   if (request.method !== 'POST') return fail('只支持 POST', 405);
 
-  const parsed = await readJsonBody(request, 8192);
+  /* 16 KB：神器 / 道具一次能交 40 行（字段规则里另有 6000 字的文本总量上限），
+     8 KB 装不下 —— 但也没有放开到「随便传」的程度。 */
+  const parsed = await readJsonBody(request, 16384);
   if (!parsed.ok) return parsed.response;
   const b = parsed.body;
 
@@ -337,19 +344,21 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
    * 读不到（没配 GITHUB_TOKEN、网络抽风）不算错误 —— 队列照样要能看，
    * 每张图只读一次。
    */
-  const cache = new Map<string, Record<string, { v: unknown }> | null>();
+  const cache = new Map<string, CommunityFile | null>();
   const items = [];
   for (const row of results ?? []) {
     let current: unknown = null;
     try {
-      if (!cache.has(row.map_slug)) {
-        const { doc } = await readCommunityDoc(env, row.map_slug);
-        cache.set(row.map_slug, doc.fields as Record<string, { v: unknown }>);
-      }
-      const fields = cache.get(row.map_slug);
-      current = isNoteField(row.field) ? null : (fields?.[row.field]?.v ?? null);
+      if (!cache.has(row.map_slug)) cache.set(row.map_slug, await readCommunityDoc(env, row.map_slug));
+      const doc = cache.get(row.map_slug)?.doc;
+      /* 神器 / 道具的「现值」是社区文档里已有的行，不是 fields 里的某个值 */
+      current = isItemField(row.field)
+        ? (doc?.items ?? [])
+        : isNoteField(row.field)
+          ? null
+          : (doc?.fields?.[row.field]?.v ?? null);
     } catch {
-      cache.set(row.map_slug, null);
+      cache.set(row.map_slug, null as never);
     }
 
     let value: unknown = null;

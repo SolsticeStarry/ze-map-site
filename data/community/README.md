@@ -27,6 +27,11 @@
   "notes": [
     { "text": "补充说明正文……", "by": "某玩家", "at": "…", "submission": 13 }
   ],
+  "items": [
+    // 神器 / 道具：一行一件，逐行合并进条目正文的表格（不整表替换）
+    { "action": "update", "name": "Survivor", "cd": 60, "uses": 1, "note": "第四关才有",
+      "by": "某玩家", "at": "…", "submission": 14 }
+  ],
   "log": [ /* 每次变更一行，便于追溯 */ ]
 }
 ```
@@ -38,6 +43,14 @@
 它们是往 `notes` 里**追加一条**，由地图页的「社区补充」区块渲染（多条会按顺序全部显示，
 各自署名）。判定走 `shared/community-doc.mjs` 的 `isNoteField()`，也就是字段表里
 `kind: 'longtext'` 的那些；以后再加长文本字段不用改这里。
+
+**神器 / 道具**（`items`，字段表里 `kind: 'itemlist'`）**也不进 `fields`** ——
+它是一行行的增量：`action` 取 `update`（更正）/ `add`（新增）/ `remove`（反馈「本图没有」），
+`cd` 是冷却秒数、`uses` 是次数（`0` 与 `null` 分别表示不限 / 不改这一项）。
+落进 `items[]` 后由生成器 `shared/items.mjs` 的 `mergeItems()` 合并：
+服务器配置（`data/gfl-parsed/`）打底，同名的社区行盖上，**原值保留在表格备注里**。
+判定走 `isItemField()`。为什么不做整表替换：这张表是服务器配置的整理结果，
+整表换掉就变成了「既不是 GFL、也不是别服」的第三份数据，谁也说不清对不对。
 
 ## 渲染优先级
 

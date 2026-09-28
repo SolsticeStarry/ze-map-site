@@ -5,6 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { cdText, mergeItems } from '../../shared/items.mjs';
+import { validateValue } from '../../shared/submission-fields.mjs';
+import { applySubmission, emptyDoc, normalizeDoc } from '../../shared/community-doc.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -15,7 +18,11 @@ test('JSON and catalog overwrite MDX regardless of its previous origin', (t) => 
     fs.mkdirSync(path.join(temp, dir), { recursive: true });
   }
   fs.copyFileSync(path.join(root, 'scripts/content/generate-map-entries.mjs'), path.join(temp, 'scripts/content/generate-map-entries.mjs'));
-  fs.copyFileSync(path.join(root, 'shared/difficulty.mjs'), path.join(temp, 'shared/difficulty.mjs'));
+  /* shared/ 整个复制：生成器依赖 difficulty / entity-source / community-doc / items，
+     漏一个就会在临时目录里 import 失败（这里是测生成器，不是测打包） */
+  for (const name of fs.readdirSync(path.join(root, 'shared'))) {
+    if (name.endsWith('.mjs')) fs.copyFileSync(path.join(root, 'shared', name), path.join(temp, 'shared', name));
+  }
   fs.writeFileSync(path.join(temp, 'package.json'), '{"type":"module"}');
   fs.writeFileSync(path.join(temp, 'scripts/content/curated-links.json'), JSON.stringify({
     ze_rich: { primary: 'ze_other', versions: ['ze_other'] },
@@ -43,4 +50,151 @@ test('JSON and catalog overwrite MDX regardless of its previous origin', (t) => 
   assert.equal(fs.readFileSync(path.join(temp, 'src/content/maps/ze_rich.mdx'), 'utf8'), rich);
   generate();
   assert.equal(fs.readFileSync(path.join(temp, 'src/content/maps/ze_demo.mdx'), 'utf8'), demo);
+});
+
+/* ===== 神器 / 道具（items 字段）===== */
+
+const base = [
+  { name: 'Survivor', cd: 45, maxuses: 1 },
+  { name: 'Sniper', cd: 45, maxuses: 1 },
+  { name: 'Heal', cd: 80, maxuses: 0 },
+];
+
+test('神器 / 道具：逐行合并，原值留在备注里', () => {
+  const { rows, changed } = mergeItems(base, [
+    { action: 'update', name: 'Survivor', cd: 60, uses: null, note: '第四关才有', by: '老王' },
+    { action: 'add', name: '新道具', cd: 30, uses: 2, note: '', by: '老王' },
+    { action: 'remove', name: 'Sniper', cd: null, uses: null, note: '本图没有', by: '小李' },
+  ]);
+
+  assert.equal(changed, 3);
+  assert.equal(rows.length, 4, '删除是标注而不是删行，避免正文里凭空少一件');
+
+  assert.equal(rows[0].name, 'Survivor');
+  assert.equal(rows[0].kind, 'updated');
+  assert.equal(rows[0].cd, 60);
+  assert.equal(rows[0].uses, 1, '次数留空 = 不改这一项');
+  assert.deepEqual(rows[0].original, { cd: 45, uses: 1 });
+  assert.equal(rows[0].by, '老王');
+
+  assert.equal(rows[1].name, 'Sniper');
+  assert.equal(rows[1].kind, 'removed');
+  assert.equal(rows[1].cd, 45, '原值保留');
+  assert.equal(rows[1].note, '本图没有');
+
+  assert.equal(rows[2].name, 'Heal');
+  assert.equal(rows[2].kind, 'server', '没被投稿碰过的行保持原样');
+
+  const added = rows.find((r) => r.name === '新道具');
+  assert.equal(added.kind, 'added');
+  assert.equal(added.cd, 30);
+  assert.equal(added.uses, 2);
+});
+
+test('神器 / 道具：同名一律按更正处理，大小写与全角空格不算新道具', () => {
+  const { rows, changed } = mergeItems(base, [
+    { action: 'add', name: '  survivor ', cd: 90, uses: null, note: '' },
+  ]);
+  assert.equal(changed, 1);
+  assert.equal(rows.length, 3, '不该多出一行同名道具');
+  assert.equal(rows[0].kind, 'updated');
+  assert.equal(rows[0].cd, 90);
+});
+
+test('神器 / 道具：没有服务器配置时整张表由社区提供', () => {
+  const { rows } = mergeItems([], [{ action: 'add', name: 'Foo', cd: 20, uses: 3, note: '仅第一关', by: '某人' }]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].kind, 'added');
+  assert.equal(rows[0].uses, 3);
+});
+
+test('神器 / 道具：配置里的小数冷却不能被抹掉（ze_dark_souls 一整排 4.5 / 2.5 秒）', () => {
+  const { rows } = mergeItems(
+    [
+      { name: 'Estus Flask', cd: 4.5, maxuses: 0 },
+      { name: 'Dark Orb', cd: 2.5, maxuses: 0 },
+    ],
+    []
+  );
+  assert.equal(rows[0].cd, 4.5);
+  assert.equal(rows[1].cd, 2.5);
+  assert.equal(cdText(rows[0].cd), '4.5 秒');
+  assert.equal(cdText(null), '—');
+
+  /* 投稿也允许小数冷却：不然「改成 4 秒」这种更正根本提交不上去 */
+  const ok = validateValue('items', [{ action: 'update', name: 'Dark Orb', cd: '4.5', uses: '', note: '' }]);
+  assert.equal(ok.ok, true);
+  assert.equal(ok.value[0].cd, 4.5);
+
+  /* 次数仍是整数 */
+  const badUses = validateValue('items', [{ action: 'update', name: 'Dark Orb', cd: '', uses: '1.5', note: '' }]);
+  assert.equal(badUses.ok, false);
+});
+
+test('投稿校验：神器 / 道具行必须说清改了什么', () => {
+  const ok = validateValue('items', [
+    { action: 'update', name: 'Survivor', cd: '60', uses: '', note: '' },
+  ]);
+  assert.equal(ok.ok, true);
+  assert.deepEqual(ok.value, [{ action: 'update', name: 'Survivor', cd: 60, uses: null, note: '' }]);
+
+  const empty = validateValue('items', [{ action: 'update', name: 'Survivor', cd: '', uses: '', note: '' }]);
+  assert.equal(empty.ok, false);
+  assert.match(empty.error, /什么都没改/);
+
+  const noName = validateValue('items', [{ action: 'add', cd: 30 }]);
+  assert.equal(noName.ok, false);
+  assert.match(noName.error, /缺少道具名/);
+
+  const badAction = validateValue('items', [{ action: '改一下', name: 'X', cd: 30 }]);
+  assert.equal(badAction.ok, false);
+  assert.match(badAction.error, /更正 \/ 新增 \/ 删除/);
+
+  const dup = validateValue('items', [
+    { action: 'add', name: 'X', cd: 30 },
+    { action: 'update', name: 'x', cd: 40 },
+  ]);
+  assert.equal(dup.ok, false);
+  assert.match(dup.error, /写了两行/);
+
+  const pipe = validateValue('items', [{ action: 'add', name: 'A|B', cd: 30 }]);
+  assert.equal(pipe.ok, false);
+
+  const range = validateValue('items', [{ action: 'add', name: 'X', cd: 99999 }]);
+  assert.equal(range.ok, false);
+  assert.match(range.error, /0~3600/);
+});
+
+test('社区文档：items 落到自己的桶里，并记进贡献者名单', () => {
+  const doc = emptyDoc('ze_demo');
+  const change = applySubmission(doc, {
+    id: 7,
+    field: 'items',
+    value: [{ action: 'update', name: 'Survivor', cd: 60, uses: null, note: '改一下' }],
+    submitter: '老王',
+    reviewedAt: Date.parse('2026-09-27T00:00:00Z'),
+  });
+
+  assert.equal(change.field, 'items');
+  assert.equal(doc.items.length, 1);
+  assert.equal(doc.items[0].by, '老王');
+  assert.equal(doc.fields.items, undefined, '神器 / 道具不该进 fields（那是整值覆盖）');
+
+  /* 同名再来一条 = 覆盖那一行，不是追加第二行 */
+  applySubmission(doc, {
+    id: 8,
+    field: 'items',
+    value: [{ action: 'remove', name: 'Survivor', note: '本图没有' }],
+    submitter: '小李',
+    reviewedAt: Date.parse('2026-09-27T01:00:00Z'),
+  });
+  assert.equal(doc.items.length, 1);
+  assert.equal(doc.items[0].action, 'remove');
+  assert.equal(doc.items[0].by, '小李');
+
+  /* 手改坏的文件也要能读：坏行丢掉，好行留下 */
+  const broken = normalizeDoc('ze_demo', { items: [{ name: '' }, { action: 'add', name: 'Good', cd: '30' }, null] });
+  assert.equal(broken.items.length, 1);
+  assert.equal(broken.items[0].name, 'Good');
+  assert.equal(broken.items[0].cd, 30);
 });

@@ -14,6 +14,7 @@
  */
 
 import { DIFFICULTIES } from './difficulty.mjs';
+import { ITEM_ACTIONS, intOrNull, numOrNull } from './items.mjs';
 
 /** 单条投稿的字段上限（跨字段） */
 export const LIMITS = {
@@ -36,6 +37,8 @@ export const LIMITS = {
  *            校验与落盘在 worker/covers.ts；这里只用于表单控件与审核台标签）
  *   longtext 多行正文（**正文类字段不做条目字段覆盖，而是进「社区补充」区块的笔记** ——
  *            见 shared/community-doc.mjs 的 applySubmission 与 isNoteField）
+ *   itemlist 神器 / 道具行（**逐行合并**，不整表替换：见 shared/items.mjs 的 mergeItems；
+ *            落盘进社区文档的 items[]，由生成器合并进条目正文）
  */
 export const FIELD_RULES = {
   difficulty: { kind: 'enum', label: '难度', hint: '必须从这几个里选', values: DIFFICULTIES },
@@ -46,6 +49,20 @@ export const FIELD_RULES = {
   players: { kind: 'text', label: '人数', hint: '如「最多 64 人」', maxLen: 40 },
   duration: { kind: 'text', label: '时长', hint: '如「约 40 分钟」', maxLen: 40 },
   stages: { kind: 'int', label: '关卡数', min: 1, max: 30 },
+  items: {
+    kind: 'itemlist',
+    label: '神器 / 道具',
+    hint:
+      '只填要改的那几件：本站表里已有的选「更正」，表里没有的选「新增」，本站列了但图上其实没有的选「删除」。' +
+      '冷却与次数留空表示这一项不改；名字尽量用本站表里的写法，好在表里对上号。',
+    /* 上限：一次能交的行数、单个字段长度、以及整表文本总量（防巨型投稿） */
+    maxRows: 40,
+    nameMaxLen: 60,
+    noteMaxLen: 200,
+    cdMax: 3600,
+    usesMax: 99,
+    textBudget: 6000,
+  },
   videoUrls: {
     kind: 'urlList',
     label: '攻略视频',
@@ -165,6 +182,69 @@ export function validateValue(field, raw) {
       return { ok: true, value: n };
     }
 
+    case 'itemlist': {
+      const list = Array.isArray(raw) ? raw : [];
+      if (list.length === 0) return { ok: false, error: '至少要填一件道具' };
+      if (list.length > rule.maxRows) return { ok: false, error: `一次最多 ${rule.maxRows} 件道具` };
+
+      const out = [];
+      const seen = new Set();
+      let budget = 0;
+      for (let i = 0; i < list.length; i++) {
+        const at = `第 ${i + 1} 行`;
+        const row = list[i];
+        if (!row || typeof row !== 'object' || Array.isArray(row)) {
+          return { ok: false, error: `${at}格式不对` };
+        }
+        const action = typeof row.action === 'string' ? row.action.trim() : '';
+        if (!Object.prototype.hasOwnProperty.call(ITEM_ACTIONS, action)) {
+          return { ok: false, error: `${at}要选「更正 / 新增 / 删除」` };
+        }
+        const name = String(row.name ?? '')
+          .replace(/\u3000/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (!name) return { ok: false, error: `${at}缺少道具名` };
+        if (name.length > rule.nameMaxLen) return { ok: false, error: `${at}的道具名最多 ${rule.nameMaxLen} 个字` };
+        if (/[<>{}[\]|]/.test(name)) return { ok: false, error: `${at}的道具名里有不支持的字符（< > { } [ ] |）` };
+
+        const cd = numOrNull(row.cd);
+        if (row.cd !== undefined && row.cd !== null && String(row.cd).trim() !== '' && cd === null) {
+          return { ok: false, error: `${at}的冷却要是数字（秒）` };
+        }
+        if (cd !== null && (cd < 0 || cd > rule.cdMax)) {
+          return { ok: false, error: `${at}的冷却要在 0~${rule.cdMax} 秒之间` };
+        }
+        const uses = intOrNull(row.uses);
+        if (row.uses !== undefined && row.uses !== null && String(row.uses).trim() !== '' && uses === null) {
+          return { ok: false, error: `${at}的次数要是整数` };
+        }
+        if (uses !== null && (uses < 0 || uses > rule.usesMax)) {
+          return { ok: false, error: `${at}的次数要在 0~${rule.usesMax} 之间` };
+        }
+        const note = String(row.note ?? '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (note.length > rule.noteMaxLen) return { ok: false, error: `${at}的说明最多 ${rule.noteMaxLen} 个字` };
+        if (/[<>{}|]/.test(note)) return { ok: false, error: `${at}的说明里有不支持的字符（< > { } |）` };
+
+        /* 删除只认名字；其它动作得说清改了什么，否则审核员只能猜 */
+        if (action !== 'remove' && cd === null && uses === null && !note) {
+          return { ok: false, error: `${at}什么都没改：冷却、次数、说明至少填一项` };
+        }
+
+        const key = name.toLowerCase();
+        if (seen.has(key)) return { ok: false, error: `「${name}」写了两行，请合并成一行` };
+        seen.add(key);
+
+        budget += name.length + note.length;
+        if (budget > rule.textBudget) return { ok: false, error: '整表内容太长，请分几次提交' };
+
+        out.push({ action, name, cd, uses, note });
+      }
+      return { ok: true, value: out };
+    }
+
     case 'image':
       /* 图片不走 JSON 投稿：表单会用 multipart 打到 /api/submit-cover，
          服务端在那里做权威校验（种类、体积、尺寸）。走到这里说明调用方搞错了入口。 */
@@ -203,11 +283,25 @@ export function inputKind(field) {
   if (rule.kind === 'longtext') return 'textarea';
   if (rule.kind === 'enum') return 'select';
   if (rule.kind === 'image') return 'file';
+  if (rule.kind === 'itemlist') return 'itemlist';
   return 'text';
 }
 
 /** 把字段值转成给人看的字符串（审核台展示、git 提交信息用） */
 export function displayValue(field, value) {
+  if (FIELD_RULES[field]?.kind === 'itemlist' && Array.isArray(value)) {
+    return value
+      .map((row) => {
+        const bits = [ITEM_ACTIONS[row?.action] ?? '更正', String(row?.name ?? '')];
+        const cd = intOrNull(row?.cd);
+        const uses = intOrNull(row?.uses);
+        if (cd !== null) bits.push(`冷却 ${cd} 秒`);
+        if (uses !== null) bits.push(`${uses} 次`);
+        if (row?.note) bits.push(`（${row.note}）`);
+        return bits.join(' ');
+      })
+      .join('；');
+  }
   if (Array.isArray(value)) return value.join('、');
   return String(value ?? '');
 }

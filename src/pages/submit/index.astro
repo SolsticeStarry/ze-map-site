@@ -127,6 +127,22 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
                   </figure>
                 </div>
               </div>
+            ) : f.kind === 'itemlist' ? (
+              /*
+                神器 / 道具：逐行更正，不做整表替换（表格在条目正文里，
+                合并逻辑在 shared/items.mjs 的 mergeItems）。行编辑器由脚本生成，
+                名称用 datalist 联想本站现有的写法 —— 名字对不上就会被当成「新增一件」。
+              */
+              <div>
+                <datalist id="items-known" />
+                <div id="items-rows" style="display:flex;flex-direction:column;gap:10px" />
+                <button class="btn" type="button" id="items-add" style="margin-top:10px">
+                  + 再加一件
+                </button>
+                <p class="form-hint" style="margin-top:10px">
+                  本站这张图现在的表：<span id="items-current">—</span>
+                </p>
+              </div>
             ) : f.kind === 'longtext' ? (
               <textarea id={`f-in-${f.key}`} data-input={f.key} rows="8" />
             ) : f.kind === 'tags' || f.kind === 'urlList' ? (
@@ -143,9 +159,11 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
                 type={f.kind === 'int' ? 'number' : 'text'}
               />
             )}
-            <p class="form-hint">
-              条目现在的值：<span data-current={f.key}>—</span>
-            </p>
+            {f.kind === 'itemlist' ? null : (
+              <p class="form-hint">
+                条目现在的值：<span data-current={f.key}>—</span>
+              </p>
+            )}
           </div>
         ))
       }
@@ -260,6 +278,130 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     return String(v);
   }
 
+  /* ===== 神器 / 道具行编辑器 =====
+     投稿是**逐行**更正：一行 = 一件道具 + 一个动作（更正 / 新增 / 删除）。
+     名字用 datalist 联想本站现有写法 —— 合并时按名字对上号，对不上就会被当成「新增一件」。 */
+  type ItemRow = { n?: string; c?: string; u?: string; k?: string };
+
+  /** 本站这张图现在的表（来自 /submit/maps.json，构建期由服务器配置 + 社区已通过的更正合成） */
+  function currentItemRows(): ItemRow[] {
+    const list = mapInfo?.items;
+    return Array.isArray(list) ? (list as ItemRow[]) : [];
+  }
+
+  function addItemRow(row: { name?: string; cd?: string; uses?: string; note?: string } = {}): void {
+    const rowsEl = document.getElementById('items-rows');
+    if (!rowsEl) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'item-row';
+
+    const line1 = document.createElement('div');
+    line1.style.cssText = 'display:grid;grid-template-columns:96px minmax(0,1fr) 92px 92px auto;gap:6px';
+
+    const action = document.createElement('select');
+    action.dataset.k = 'action';
+    for (const [value, label] of [
+      ['update', '更正'],
+      ['add', '新增'],
+      ['remove', '删除'],
+    ]) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = label;
+      action.append(opt);
+    }
+
+    const name = document.createElement('input');
+    name.dataset.k = 'name';
+    name.setAttribute('list', 'items-known');
+    name.placeholder = '道具名（如 Survivor）';
+    name.value = row.name ?? '';
+
+    const cd = document.createElement('input');
+    cd.dataset.k = 'cd';
+    cd.type = 'number';
+    cd.min = '0';
+    cd.max = '3600';
+    cd.placeholder = '冷却秒';
+    cd.value = row.cd ?? '';
+
+    const uses = document.createElement('input');
+    uses.dataset.k = 'uses';
+    uses.type = 'number';
+    uses.min = '0';
+    uses.max = '99';
+    uses.placeholder = '次数';
+    uses.value = row.uses ?? '';
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'btn';
+    del.textContent = '✕';
+    del.title = '删掉这一行';
+    del.addEventListener('click', () => wrap.remove());
+
+    line1.append(action, name, cd, uses, del);
+
+    const line2 = document.createElement('div');
+    line2.style.cssText = 'margin-top:6px';
+    const note = document.createElement('input');
+    note.dataset.k = 'note';
+    note.placeholder = '说明（选填）：例如「只在第四关出现」';
+    note.value = row.note ?? '';
+    note.style.width = '100%';
+    line2.append(note);
+
+    wrap.append(line1, line2);
+    rowsEl.append(wrap);
+  }
+
+  /** 读回编辑器里的行；整行全空的行直接丢掉（加了行又不用是常态） */
+  function collectItems(): Array<Record<string, unknown>> {
+    const out: Array<Record<string, unknown>> = [];
+    for (const wrap of document.querySelectorAll<HTMLElement>('#items-rows .item-row')) {
+      const val = (k: string) =>
+        wrap.querySelector<HTMLInputElement | HTMLSelectElement>(`[data-k="${k}"]`)?.value.trim() ?? '';
+      const name = val('name');
+      const cdRaw = val('cd');
+      const usesRaw = val('uses');
+      const note = val('note');
+      if (!name && !cdRaw && !usesRaw && !note) continue;
+      out.push({
+        action: val('action') || 'update',
+        name,
+        cd: cdRaw,
+        uses: usesRaw,
+        note,
+      });
+    }
+    return out;
+  }
+
+  function prefillItems(): void {
+    const rowsEl = document.getElementById('items-rows');
+    const curEl = document.getElementById('items-current');
+    const known = document.getElementById('items-known');
+    const rows = currentItemRows();
+
+    if (rowsEl) rowsEl.textContent = '';
+    if (known) {
+      known.textContent = '';
+      for (const r of rows) {
+        const opt = document.createElement('option');
+        opt.value = r.n ?? '';
+        opt.label = `${r.c ?? ''} / ${r.u ?? ''}${r.k && r.k !== 'server' ? '（已含社区更正）' : ''}`;
+        known.append(opt);
+      }
+    }
+    if (curEl) {
+      curEl.textContent = rows.length
+        ? rows.map((r) => `${r.n}（${r.c} / ${r.u}）`).join('、')
+        : '（本站还没有这张图的神器表 —— 可以直接用「新增」把你知道的填上）';
+    }
+    addItemRow();
+  }
+
   function showField(key: string) {
     for (const el of document.querySelectorAll<HTMLElement>('[data-block]')) {
       el.hidden = el.dataset.block !== key;
@@ -274,6 +416,12 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     const curEl = document.querySelector<HTMLElement>(`[data-current="${key}"]`);
     const cur = mapInfo?.[key];
     if (curEl) curEl.textContent = formatValue(cur);
+
+    /* 神器 / 道具：没有「一个值」可以预填，改成列出现有的表 + 一行空行等投稿人填 */
+    if (rules[key]?.kind === 'itemlist') {
+      prefillItems();
+      return;
+    }
 
     /* 封面：把当前那张显示成缩略图，换的时候好对比 */
     if (key === 'cover') {
@@ -295,6 +443,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
   }
 
   function collect(key: string): unknown {
+    if (rules[key]?.kind === 'itemlist') return collectItems();
     const el = document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
       `[data-input="${key}"]`
     );
@@ -321,6 +470,8 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     errEl.hidden = true;
   });
 
+  document.getElementById('items-add')?.addEventListener('click', () => addItemRow());
+
   /* 载入地图索引（构建期生成的 /submit/maps.json） */
   fetch('/submit/maps.json')
     .then((r) => r.json())
@@ -338,6 +489,11 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
       ctxEl.innerHTML = `正在为 <strong>《${mapInfo.title}》</strong>（${mapInfo.titleEn}）补充资料。`;
       (document.getElementById('f-map') as HTMLInputElement).value =
         `${mapInfo.title}（${mapInfo.titleEn}）`;
+
+      /* ?field=items 可以直接落到某一项（投稿指南、地图页的入口都靠它少点两下） */
+      const want = new URLSearchParams(location.search).get('field') ?? '';
+      if (want && Object.prototype.hasOwnProperty.call(FIELD_RULES, want)) fieldSel.value = want;
+
       form.hidden = false;
       showField(fieldSel.value);
       prefill(fieldSel.value);

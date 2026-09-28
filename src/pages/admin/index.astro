@@ -53,8 +53,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 <script>
   import { FIELD_RULES } from '../../../shared/submission-fields.mjs';
+  import { ITEM_ACTIONS, cdText, usesText } from '../../../shared/items.mjs';
 
-  const rules = FIELD_RULES as Record<string, { label: string }>;
+  const rules = FIELD_RULES as Record<string, { label: string; kind?: string }>;
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
   const tokenEl = $<HTMLInputElement>('a-token');
@@ -152,8 +153,50 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     }
   }
 
-  function renderItem(item: QueueItem): HTMLElement {
-    const box = el('div', 'queue-item');
+  /**
+   * 神器 / 道具行的小表格（投稿行与社区文档里已有的行形状相同：
+   * { action, name, cd, uses, note, by }）。
+   * 审核员要看的是「这次改了什么」+「这张图现在是什么样」，两栏并排。
+   */
+  function itemsTable(rows: Array<Record<string, unknown>>, empty: string): HTMLElement {
+    const table = el('table');
+    table.style.cssText = 'width:100%;border-collapse:collapse;margin:6px 0;font-size:13px';
+    const head = el('tr');
+    for (const label of ['动作', '道具', '冷却', '次数', '说明 / 提交人']) {
+      const th = el('th', undefined, label);
+      th.style.cssText = 'text-align:left;border-bottom:1px solid var(--border);padding:4px 6px';
+      head.append(th);
+    }
+    table.append(head);
+
+    if (!rows.length) {
+      const tr = el('tr');
+      const td = el('td', 'queue-note', empty);
+      td.colSpan = 5;
+      tr.append(td);
+      table.append(tr);
+    }
+
+    for (const row of rows) {
+      const tr = el('tr');
+      const cells = [
+        ITEM_ACTIONS[String(row.action)] ?? '更正',
+        String(row.name ?? ''),
+        cdText(row.cd === null || row.cd === undefined ? null : Number(row.cd)),
+        usesText(row.uses === null || row.uses === undefined ? null : Number(row.uses)),
+        [row.note ? String(row.note) : '', row.by ? `by ${String(row.by)}` : ''].filter(Boolean).join(' · '),
+      ];
+      for (const text of cells) {
+        const td = el('td', undefined, text);
+        td.style.cssText = 'border-bottom:1px solid var(--border);padding:4px 6px;vertical-align:top';
+        tr.append(td);
+      }
+      table.append(tr);
+    }
+    return table;
+  }
+
+  function renderItem(item: QueueItem): HTMLElement {    const box = el('div', 'queue-item');
 
     const head = el('div', 'queue-head');
     head.append(
@@ -191,6 +234,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           )
         );
       }
+    } else if (rules[item.field]?.kind === 'itemlist') {
+      /* 神器 / 道具：逐行合并，所以要看「这次提交的行」与「文档里已有的行」 */
+      const rows = Array.isArray(item.value) ? (item.value as Array<Record<string, unknown>>) : [];
+      const current = Array.isArray(item.current) ? (item.current as Array<Record<string, unknown>>) : [];
+      box.append(el('p', 'queue-note', `本次投稿 ${rows.length} 行（通过后逐行合并，不整表替换）`));
+      box.append(itemsTable(rows, '（这次没有可应用的行）'));
+      box.append(el('p', 'queue-note', `社区文档里已有的行 ${current.length} 条`));
+      box.append(itemsTable(current, '（社区文档里还没有神器 / 道具行）'));
     } else {
       const diff = el('p', 'queue-diff');
       diff.append(
