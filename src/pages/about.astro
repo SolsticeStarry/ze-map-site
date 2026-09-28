@@ -58,6 +58,10 @@ const bakedMaps = catalog.maps.filter((m) => m.source === BAKED_SOURCE).length;
           坐标为 Source 单位；有模型碰撞壳的实体使用真实包围盒，无包围盒的实体使用典型尺寸。
         </li>
         <li><b>工坊信息</b>：Steam Web API（发布时间、更新时间的、订阅数、作者自述正文摘录）。</li>
+        <li>
+          <b>神器 / 道具、BOSS 与曲目</b>：公开的服务器配置（entwatch / bosshud / musicname）解析结果，
+          逐条标注取自哪份配置，可能与其它服务器不一致。
+        </li>
         <li><b>攻略资料</b>：社区检索整理，每篇尽量附来源链接；查不到的字段宁缺勿假。</li>
       </ul>
 
@@ -79,21 +83,10 @@ const bakedMaps = catalog.maps.filter((m) => m.source === BAKED_SOURCE).length;
           本站的实体预览与 3D 地形，靠它从创意工坊地图包里解出实体定义、模型与真实碰撞壳；
           没有这个工具，这两块功能都无从谈起。
         </p>
-        <p>
-          <b>Kxnrl</b>——他在 Source / CS2 服务端技术上长期深耕，
-          账号下公开了 <b>100 个仓库</b>，其中
-          <a href="https://github.com/Kxnrl/modsharp-public" target="_blank" rel="noopener">ModSharp</a>（Source 2 现代模组方案）、
-          <a href="https://github.com/Kxnrl/Store" target="_blank" rel="noopener">Store</a>、
-          <a href="https://github.com/Kxnrl/Mapchooser-Redux" target="_blank" rel="noopener">Mapchooser-Redux</a>、
-          <a href="https://github.com/Kxnrl/entWatch" target="_blank" rel="noopener">entWatch</a>
-          等项目早已是社区里的常用件。本站「神器 / 道具」栏目整理的那些配置，正是在这一层服务端技术之上——
-          我们呈现的每一条神器说明背后，都有他这样的开发者打下的底子。
-          技术过硬，又肯长期无偿投入，这样的人是社区真正的基石。
-        </p>
         <p style="margin-bottom:0;">
           另外，本站建站早期入库过一份第三方公开的服务端实体 dump，这部分历史数据至今原样保留，
-          条目里只写中性的来源说明。再次向 <b>Source2Viewer</b> 与 <b>Kxnrl 本人</b>致以诚挚谢意。
-          本站只是站在他们铺好的路上，做了一点整理工作。
+          条目里只写中性的来源说明。再次向 <b>Source2Viewer</b> 致以诚挚谢意。
+          本站只是站在别人铺好的路上，做了一点整理工作。
         </p>
       </div>
 

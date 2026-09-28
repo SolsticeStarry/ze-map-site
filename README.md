@@ -143,15 +143,7 @@ src/pages/sitemap.xml.ts          静态 sitemap
 - **Source2Viewer（s2v）** —— 开源的 Source 2 资源解析工具。
   本站的实体预览与 3D 地形靠它从创意工坊地图包里解出实体定义、模型与真实碰撞壳；
   没有这个工具，这两块功能都无从谈起。
-- **Kxnrl** —— <https://github.com/Kxnrl>。
-  他在 Source / CS2 服务端技术上长期深耕，账号下公开了 100 个仓库，其中
-  [ModSharp](https://github.com/Kxnrl/modsharp-public)（Source 2 现代模组方案）、
-  [Store](https://github.com/Kxnrl/Store)、
-  [Mapchooser-Redux](https://github.com/Kxnrl/Mapchooser-Redux)、
-  [entWatch](https://github.com/Kxnrl/entWatch) 等项目早已是社区常用件。
-  本站「神器 / 道具」栏目整理的那些配置，正是在这一层服务端技术之上 ——
-  技术过硬，又肯长期无偿投入，这样的人是社区真正的基石。
 
 另外，本站建站早期入库过一份第三方公开的服务端实体 dump，这部分历史数据至今原样保留，
-条目里只写中性的来源说明。再次向 **Source2Viewer** 与 **Kxnrl 本人** 致以诚挚谢意。
-本站只是站在他们铺好的路上，做了一点整理工作。
+条目里只写中性的来源说明。再次向 **Source2Viewer** 致以诚挚谢意。
+本站只是站在别人铺好的路上，做了一点整理工作。
