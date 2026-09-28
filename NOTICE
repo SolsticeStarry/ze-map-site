@@ -8,6 +8,7 @@ NOTICE —— 站点内容与第三方资料的版权说明
 ## 代码贡献者
 
 - 站点源代码：**宇宙机器人（hhjjdsj）**
+- **3D 预览增强与实体 / 地形烘焙管线：SolsticeStarry**
 - **3D 地图查看功能：emmmm**
 
 以上代码都属于本仓库源码，包含在 MIT 许可范围内；此处署名用于致谢。
@@ -18,6 +19,11 @@ NOTICE —— 站点内容与第三方资料的版权说明
 - `data/` —— 工坊抓取结果、线上检索资料、GFL 公开配置的解析结果
 - `public/entity/` —— 实体数据分片与索引（早期部分来自第三方服务端实体 dump，其余由本站从创意工坊地图包烘焙）
 - `public/images/` —— 卡片封面、路线图等渲染图
+
+## 关于本站
+
+本站由社区共同维护，是**非商业的兴趣项目**：不接商业推广、不做付费内容、不卖数据，也没有变现的打算。
+收录与整理这些内容，只为帮玩家——尤其是刚入门的萌新——看懂一张地图。
 
 ## 版权归属
 
@@ -51,10 +57,17 @@ This file covers the parts that are **NOT** covered by it.
 ## Code contributors
 
 - Site source code: **宇宙机器人 (hhjjdsj)**
+- **3D preview enhancements & entity / terrain bake pipeline: SolsticeStarry**
 - **3D map viewing feature: emmmm**
 
 All of the above is part of this repository's source code and is covered by the MIT License;
 the credit here is acknowledgement only.
+
+## About this site
+
+This site is a non-commercial hobby project maintained by the community: no commercial
+promotion, no paid content, no selling of data. It exists only to help players — especially
+newcomers — understand these maps.
 
 - The copyright of each map and its assets belongs to its original author
   (published on Steam Workshop, GameBanana, etc.). This site claims no rights over them.

@@ -2,6 +2,12 @@
 
 僵尸逃跑（Zombie Escape）地图中文资料库 —— https://ze-map.cn
 
+由社区共同维护的兴趣项目，**纯粹为爱发电**：没有任何商业目的，不接商业推广、不做付费内容、不卖数据。
+整理这些内容只为帮玩家（尤其是刚入门的萌新）看懂一张地图。
+
+本站仍在**初期**，不少条目还标注「资料待补充」，欢迎更多人一起完善 —— 补一张图的资料、纠正一处错误、
+加一个功能都算数；不需要 GitHub 账号，见 [投稿指南](https://ze-map.cn/contribute/)。
+
 ## 功能
 
 - **地图库**：CS2 ZE 地图，按难度、游戏、标签筛选，客户端分页
@@ -135,6 +141,16 @@ src/pages/sitemap.xml.ts          静态 sitemap
 代码以 **MIT** 许可开源，详见 [`LICENSE`](LICENSE)；地图条目（`src/content/maps/*.mdx`）、`data/`、`public/entity/`、`public/images/` 等**站点内容不适用 MIT** —— 地图版权归各原作者所有，工坊自述与社区引用内容归原出处，本站仅作整理与索引，详见 [`NOTICE`](NOTICE)。
 
 3D 地图查看功能由 **emmmm** 完成。
+
+## 贡献者
+
+- **宇宙机器人（hhjjdsj）** —— 站点本身与日常维护
+- **[SolsticeStarry](https://github.com/SolsticeStarry)** —— 3D 预览增强（实体包围盒、环绕视角）、实体 / 地形烘焙管线与内容管线重构（`npm run map:add`）
+- **[trrrr-ai](https://github.com/trrrr-ai)**（SiKi）—— 多张地图的背景故事、难度与视频资料
+- **[xianoom](https://github.com/xianoom)** —— 地图难度订正
+- **emmmm** —— 3D 地图查看功能
+
+完整名单见仓库的[贡献者页面](https://github.com/hhjjdsj/ze-map-site/graphs/contributors)。
 
 ## 特别感谢
 
