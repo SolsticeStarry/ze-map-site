@@ -92,13 +92,17 @@ export const FIELD_RULES = {
   story: {
     kind: 'longtext',
     label: '背景故事',
-    hint: '地图的剧情、设定与来历，可以分多段写。支持简单 Markdown，不支持 HTML 与 MDX',
+    hint:
+      '地图的剧情、设定与来历，可以分多段写。支持简单 Markdown，不支持 HTML 与 MDX。' +
+      '通过后会显示在条目的「背景故事（社区投稿）」一节：不会覆盖本站整理的正文，会署你的昵称。',
     maxLen: 4000,
   },
   body: {
     kind: 'longtext',
     label: '补充说明 / 纠错',
-    hint: '纯文本，支持简单 Markdown，不支持 HTML 与 MDX',
+    hint:
+      '纯文本，支持简单 Markdown，不支持 HTML 与 MDX。' +
+      '通过后会显示在条目末尾的「社区补充」一节，同样会署名。',
     maxLen: 4000,
   },
 };

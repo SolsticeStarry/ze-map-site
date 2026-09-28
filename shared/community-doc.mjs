@@ -80,6 +80,9 @@ export function normalizeDoc(slug, raw) {
         by: n.by ?? '匿名',
         at: n.at ?? null,
         submission: n.submission ?? null,
+        /* 投的是哪个字段（story / body / 以后新增的长文本字段）。
+           老文件没有这一项 → null，页面按「社区补充」显示。 */
+        field: typeof n.field === 'string' && n.field ? n.field : null,
       })),
     log: Array.isArray(d.log) ? d.log : [],
     items: (Array.isArray(d.items) ? d.items : [])
@@ -97,7 +100,11 @@ export function applySubmission(doc, sub) {
   const by = sub.submitter || '匿名';
 
   if (isNoteField(sub.field)) {
-    doc.notes.push({ text: sub.value, by, at, submission: sub.id ?? null });
+    /* note 里记下**它原本投的是哪个字段**（story / body）：
+       页面据此分块显示 —— 投「背景故事」的内容如果出现在「社区补充」里，
+       投稿人会以为稿子丢了（2026-09-28 的反馈）。log 里本来也有这个信息，
+       但渲染只读 notes，所以得在 note 上存一份。 */
+    doc.notes.push({ text: sub.value, by, at, submission: sub.id ?? null, field: sub.field });
     doc.log.push({ field: sub.field, from: null, to: null, by, at, submission: sub.id ?? null });
     return { field: sub.field, from: null, to: sub.value };
   }

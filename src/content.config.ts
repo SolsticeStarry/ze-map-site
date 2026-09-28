@@ -72,6 +72,8 @@ const maps = defineCollection({
           text: z.string(),
           by: z.string(),
           at: z.string().nullable().default(null),
+          /** 原本投的是哪个字段（story / body …）；null = 老数据，按「社区补充」显示 */
+          field: z.string().nullable().default(null),
         })
       )
       .default([]),
