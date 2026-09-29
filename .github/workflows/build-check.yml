@@ -10,8 +10,13 @@
 # 这次错误合并进 main 之后，线上构建红叉，站点没能更新。
 # 有了这个 workflow，同样的错误会直接显示在 PR 页面上，合并前就能看到。
 #
-# 地图 MDX 全部由 JSON 和索引生成。构建后核对工作区中的 MDX 与提交的版本完全一致，
-# 既拦住手改生成物，也允许生成器或实体数据更新引起的批量重新生成。
+# 地图 MDX 全部由 JSON 和索引生成，但**不要求贡献者提交生成物**：
+# Cloudflare 构建时会重新生成，所以「只改 data/research/*.json」的 PR 线上结果是对的，
+# 不该被拦。检查只针对一件事 —— **手改生成物**：
+#   本次 PR 动了 src/content/maps/*.mdx，却没同时动 data/research/ 或烘焙产物 → 红。
+# 判定写在 scripts/content/check-mdx-drift.mjs 里（2026-09-28 从「构建后只要 MDX 有变化
+# 就红」改成现在这样：旧的判定会让「只改资料」的 PR 全红，连着卡了贡献者两个 PR，
+# 而烘焙管线批量更新时也会误伤）。
 #
 # 2026-09-24 再补一条「资料文件体检」（npm run content:verify）：
 # 有位贡献者的 data/research/*.json 里漏了逗号、引号没闭合、字段名后面漏冒号，
@@ -67,13 +72,8 @@ jobs:
       - name: 构建站点
         run: npm run build
 
-      - name: 检查地图条目是否与 JSON 和索引一致
-        run: |
-          if [ -n "$(git status --porcelain -- src/content/maps)" ]; then
-            echo "::error::地图 MDX 必须由脚本生成并提交；请修改 data/research/*.json，然后运行 npm run maps:generate。"
-            git status --short -- src/content/maps
-            exit 1
-          fi
+      - name: 检查地图条目（是不是手改了生成物）
+        run: npm run content:mdx
 
       - name: 检查站内死链
         run: npm run content:links

@@ -24,9 +24,28 @@
 | `public/images/covers/custom/<地图英文名>.jpg`（或 `.png` / `.webp`） | ✅ 换地图封面（文件名必须正好是地图英文名） |
 | `src/content/maps/*.mdx` | ❌ **全部由脚本生成**，手改会被 `npm run maps:generate` 整段覆盖 |
 
+> **改 `data/research/*.json` 就够了，不需要提交生成物。**
+> MDX 虽然由脚本产出，但 Cloudflare 构建时会用资料重新生成，**线上内容以资料为准** ——
+> 所以只改 JSON 的 PR 是正确的做法，CI 会放行（只提示一句「仓库里的打印稿落后了」）。
+>
+> 唯一会被拦下的是**手改生成物**：本次 PR 动了 `src/content/maps/*.mdx`，却没同时动
+> `data/research/` 或烘焙产物 —— 那说明你在手工编辑打印稿，它下次构建就会被覆盖。
+>
+> 想让仓库里的打印稿也同步（可选）：`npm run maps:generate`，然后把 `src/content/maps/`
+> 下的改动一起提交。
+>
+> 不想碰仓库的人：投稿页 `/submit/` 写的是 `data/community/<slug>.json`，由审核流程落盘。
+>
+> 判定逻辑在 `scripts/content/check-mdx-drift.mjs`（可在本地跑：`npm run content:mdx`）。
+
 `ze_ffvii_mako_reactor`、`ze_lotr_minas_tirith`、`ze_pirates_port_royal` 的富内容也已迁入对应的 research JSON 的 `document` 字段，不直接编辑 MDX。
 
 「地图英文名」= 地图页标题下面那行小字 = 网址 `/maps/` 后面那一段，**不是** Steam 分片名（`2001-ze_xxx-123456`）。
+
+> 顺带说清 slug：research JSON 里的 `slug` 字段**两种写法都认** —— 地图英文名
+> （`ze_bathroom`）或数据分片名（`2001-ze_bathroom-3450347689`），生成器会从分片名里
+> 反解出地图名（`scripts/content/generate-map-entries.mjs` 顶部的 `mapNameFromSlug`）。
+> 文件名用地图英文名最稳妥，但 slug 写成哪种**都不是**上面那个报错的原因。
 
 ### 图片这类二进制文件（地图封面）
 

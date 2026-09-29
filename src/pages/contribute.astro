@@ -253,6 +253,22 @@ const fieldRows = Object.entries(R).map(([key, r]) => ({
       </p>
       <div class="doc-note warn">
         <p>
+          <b>用这种方式改，只改 JSON 就够了，不用管地图条目文件。</b>
+          条目（<code>src/content/maps/&lt;地图英文名&gt;.mdx</code>）是脚本从资料打印出来的，
+          但线上构建时会用资料<b>重新生成</b> —— 所以你的资料一定生效，检查会放行。
+        </p>
+        <p>
+          <b>别手工编辑条目文件。</b> 检查会用资料重新生成一遍，发现「你动了条目、却没动资料或烘焙数据」
+          就判红 —— 那是手改打印稿，下次构建会被覆盖。
+        </p>
+        <p>
+          想让仓库里的打印稿也同步（可选）：<code>npm run maps:generate</code>，把
+          <code>src/content/maps/</code> 下的改动一起提交。不想碰这些文件的话，用 ① 的表单也一样。
+        </p>
+      </div>
+
+      <div class="doc-note warn">
+        <p>
           <b>JSON 的标点很严格</b>，这是新手最容易翻车的地方：
         </p>
         <ul>

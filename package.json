@@ -26,6 +26,7 @@
     "cover:set": "node scripts/content/set-cover.mjs",
     "cover:verify": "node scripts/content/verify-covers.mjs",
     "content:verify": "node scripts/content/verify-research.mjs",
+    "content:mdx": "node scripts/content/check-mdx-drift.mjs",
     "content:rename-difficulty": "node scripts/content/rename-difficulty.mjs",
     "gfl:parse": "node scripts/content/parse-gfl-configs.mjs",
     "gfl:link": "node scripts/content/link-gfl-configs.mjs",
