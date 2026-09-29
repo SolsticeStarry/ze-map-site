@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "slug": "ze_obj_redemption_v2",
+  "updatedAt": "2026-09-29T16:05:37.283Z",
+  "fields": {
+    "difficulty": {
+      "v": "火星",
+      "by": "白叶",
+      "at": "2026-09-29T16:05:37.283Z",
+      "submission": 39
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "火星",
+      "by": "白叶",
+      "at": "2026-09-29T16:05:37.283Z",
+      "submission": 39
+    }
+  ],
+  "items": []
+}
