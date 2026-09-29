@@ -1,13 +1,19 @@
 {
   "v": 1,
   "slug": "ze_obj_blue_depth",
-  "updatedAt": "2026-09-29T16:05:48.373Z",
+  "updatedAt": "2026-09-29T16:05:56.203Z",
   "fields": {
     "difficulty": {
       "v": "火星",
       "by": "白叶",
       "at": "2026-09-29T16:05:48.373Z",
       "submission": 41
+    },
+    "cover": {
+      "v": "/images/covers/custom/ze_obj_blue_depth.webp",
+      "by": "白叶",
+      "at": "2026-09-29T16:05:56.203Z",
+      "submission": 42
     }
   },
   "notes": [],
@@ -19,6 +25,14 @@
       "by": "白叶",
       "at": "2026-09-29T16:05:48.373Z",
       "submission": 41
+    },
+    {
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_obj_blue_depth.webp",
+      "by": "白叶",
+      "at": "2026-09-29T16:05:56.203Z",
+      "submission": 42
     }
   ],
   "items": []
