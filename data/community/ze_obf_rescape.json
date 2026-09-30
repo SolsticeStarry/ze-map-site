@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "slug": "ze_obf_rescape",
+  "updatedAt": "2026-09-30T11:29:31.818Z",
+  "fields": {
+    "cover": {
+      "v": "/images/covers/custom/ze_obf_rescape.webp",
+      "by": "SiKi",
+      "at": "2026-09-30T11:29:31.818Z",
+      "submission": 44
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_obf_rescape.webp",
+      "by": "SiKi",
+      "at": "2026-09-30T11:29:31.818Z",
+      "submission": 44
+    }
+  ],
+  "items": []
+}
