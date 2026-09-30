@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_obj_redemption_v2",
-  "updatedAt": "2026-09-29T16:05:44.258Z",
+  "updatedAt": "2026-09-30T11:30:35.606Z",
   "fields": {
     "difficulty": {
       "v": "火星",
@@ -11,9 +11,9 @@
     },
     "cover": {
       "v": "/images/covers/custom/ze_obj_redemption_v2.webp",
-      "by": "白叶",
-      "at": "2026-09-29T16:05:44.258Z",
-      "submission": 40
+      "by": "SiKi",
+      "at": "2026-09-30T11:30:35.606Z",
+      "submission": 49
     }
   },
   "notes": [],
@@ -33,6 +33,14 @@
       "by": "白叶",
       "at": "2026-09-29T16:05:44.258Z",
       "submission": 40
+    },
+    {
+      "field": "cover",
+      "from": "/images/covers/custom/ze_obj_redemption_v2.webp",
+      "to": "/images/covers/custom/ze_obj_redemption_v2.webp",
+      "by": "SiKi",
+      "at": "2026-09-30T11:30:35.606Z",
+      "submission": 49
     }
   ],
   "items": []
