@@ -92,23 +92,30 @@ export function hourWindow(now = Date.now()): string {
   return new Date(now).toISOString().slice(0, 13);
 }
 
+/** 按天分桶，如 '2026-09-24'（投稿的每日兜底额度用这个） */
+export function dayWindow(now = Date.now()): string {
+  return new Date(now).toISOString().slice(0, 10);
+}
+
 /**
- * 限流：同一 IP 在同一个桶里每小时最多 limit 次。
- * 投票与投稿用不同的桶名，互不挤占额度。
+ * 限流：同一 IP 在同一个桶里、同一时间窗内最多 limit 次。
+ * 投票与投稿用不同的桶名，互不挤占额度；period 决定窗口是小时还是天。
  * 用 UPSERT + RETURNING 一条语句完成「自增并读回」，避免并发下的竞态。
  */
 export async function allowWrite(
   env: Env,
   ipHash: string,
   bucket: string,
-  limit: number
+  limit: number,
+  period: 'hour' | 'day' = 'hour'
 ): Promise<boolean> {
+  const window = `${bucket}:${period === 'day' ? dayWindow() : hourWindow()}`;
   const row = await env.DB.prepare(
     `INSERT INTO rate_limits (ip_hash, window, count) VALUES (?1, ?2, 1)
      ON CONFLICT(ip_hash, window) DO UPDATE SET count = count + 1
      RETURNING count`
   )
-    .bind(ipHash, `${bucket}:${hourWindow()}`)
+    .bind(ipHash, window)
     .first<{ count: number }>();
   return (row?.count ?? 1) <= limit;
 }

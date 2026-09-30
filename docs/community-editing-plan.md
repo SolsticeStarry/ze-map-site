@@ -206,7 +206,7 @@ CREATE TABLE bans (
 | 手段 | 做法 |
 |---|---|
 | 人机验证 | **Cloudflare Turnstile**（免费），前端挂载 + 服务端 `siteverify` |
-| 限流 | 按 `ip_hash` 每小时计数：投票 20 次、投稿 5 次；超限 429 |
+| 限流 | 按 `ip_hash` 计数：投票每小时 20 次；投稿每小时 300 次 + 每天 2000 次兜底（2026-09-28 由 5 次/小时放宽，见 `shared/submission-fields.mjs` 的 `LIMITS`）；超限 429 |
 | 字段白名单 | 只接受第 4 节列出的字段，其余一律丢弃 |
 | 长度上限 | 备注 ≤500 字、正文 ≤4000 字、昵称 ≤32 字 |
 | 链接白名单 | 只允许 bilibili / youtube / steamcommunity / 已知论坛域名，防钓鱼与广告 |

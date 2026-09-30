@@ -46,6 +46,22 @@ interface SubmissionRow {
 
 /* ===== 小工具 ===== */
 
+/**
+ * 投稿额度：小时桶 + 天桶（文本投稿与封面投稿**共用** `submit` 桶，防止靠两个入口翻倍）。
+ * 为什么不设成「无限」：`TURNSTILE_SECRET` 没配时，这两个桶是唯一的防刷闸门 ——
+ * 脚本灌满待审队列会挤掉正常投稿，也会吃掉 D1 免费额度（每天 10 万行写入）。
+ * 300 条/小时对正常人是天文数字（手打一天也到不了），所以它实际只拦脚本。
+ */
+async function submissionQuota(env: Env, ipHash: string): Promise<Response | null> {
+  if (!(await allowWrite(env, ipHash, 'submit', LIMITS.perHour))) {
+    return fail(`投稿太频繁了（一小时最多 ${LIMITS.perHour} 条），请过一会儿再试`, 429);
+  }
+  if (LIMITS.perDay > 0 && !(await allowWrite(env, ipHash, 'submit', LIMITS.perDay, 'day'))) {
+    return fail(`这个网络出口今天投得太多了（上限 ${LIMITS.perDay} 条），请明天再试`, 429);
+  }
+  return null;
+}
+
 function optString(
   v: unknown,
   max: number,
@@ -140,9 +156,8 @@ export async function handleSubmit(
     return fail('人机验证没通过，请重试', 400);
   }
 
-  if (!(await allowWrite(env, ipHash, 'submit', LIMITS.perHour))) {
-    return fail(`投稿太频繁了（每小时最多 ${LIMITS.perHour} 条），请过一会儿再试`, 429);
-  }
+  const quota = await submissionQuota(env, ipHash);
+  if (quota) return quota;
 
   const row = await env.DB.prepare(
     `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at)
@@ -242,9 +257,8 @@ export async function handleSubmitCover(
     return fail('人机验证没通过，请重试', 400);
   }
 
-  if (!(await allowWrite(env, ipHash, 'submit', LIMITS.perHour))) {
-    return fail(`投稿太频繁了（每小时最多 ${LIMITS.perHour} 条），请过一会儿再试`, 429);
-  }
+  const quota = await submissionQuota(env, ipHash);
+  if (quota) return quota;
 
   /* 先写 KV 再写 D1：反过来的话 D1 里会留下指向不存在图片的记录 */
   const key = pendingCoverKey(check.format);
