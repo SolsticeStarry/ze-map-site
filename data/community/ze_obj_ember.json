@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "slug": "ze_obj_ember",
+  "updatedAt": "2026-09-30T11:30:57.578Z",
+  "fields": {
+    "cover": {
+      "v": "/images/covers/custom/ze_obj_ember.webp",
+      "by": "SiKi",
+      "at": "2026-09-30T11:30:57.578Z",
+      "submission": 52
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_obj_ember.webp",
+      "by": "SiKi",
+      "at": "2026-09-30T11:30:57.578Z",
+      "submission": 52
+    }
+  ],
+  "items": []
+}
