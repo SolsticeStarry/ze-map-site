@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "slug": "ze_obff_npst_v24",
+  "updatedAt": "2026-09-29T12:38:48.364Z",
+  "fields": {
+    "cover": {
+      "v": "/images/covers/custom/ze_obff_npst_v24.webp",
+      "by": "白叶",
+      "at": "2026-09-29T12:38:48.364Z",
+      "submission": 31
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_obff_npst_v24.webp",
+      "by": "白叶",
+      "at": "2026-09-29T12:38:48.364Z",
+      "submission": 31
+    }
+  ],
+  "items": []
+}

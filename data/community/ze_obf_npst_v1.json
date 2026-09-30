@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "slug": "ze_obf_npst_v1",
+  "updatedAt": "2026-09-29T15:42:45.020Z",
+  "fields": {
+    "cover": {
+      "v": "/images/covers/custom/ze_obf_npst_v1.webp",
+      "by": "SiKi",
+      "at": "2026-09-29T15:42:45.020Z",
+      "submission": 33
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_obf_npst_v1.webp",
+      "by": "SiKi",
+      "at": "2026-09-29T15:42:45.020Z",
+      "submission": 33
+    }
+  ],
+  "items": []
+}

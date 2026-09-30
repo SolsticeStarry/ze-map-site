@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_lotr_minas_tirith",
-  "updatedAt": "2026-09-24T08:48:13.509Z",
+  "updatedAt": "2026-09-29T15:40:45.978Z",
   "fields": {
     "videoUrls": {
       "v": [
@@ -10,6 +10,12 @@
       "by": "Liyuu~",
       "at": "2026-09-24T08:48:13.509Z",
       "submission": 5
+    },
+    "cover": {
+      "v": "/images/covers/custom/ze_lotr_minas_tirith.webp",
+      "by": "SiKi",
+      "at": "2026-09-29T15:40:45.978Z",
+      "submission": 34
     }
   },
   "notes": [],
@@ -23,6 +29,15 @@
       "by": "Liyuu~",
       "at": "2026-09-24T08:48:13.509Z",
       "submission": 5
+    },
+    {
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_lotr_minas_tirith.webp",
+      "by": "SiKi",
+      "at": "2026-09-29T15:40:45.978Z",
+      "submission": 34
     }
-  ]
+  ],
+  "items": []
 }
