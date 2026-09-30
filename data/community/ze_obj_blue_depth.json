@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_obj_blue_depth",
-  "updatedAt": "2026-09-30T11:30:51.592Z",
+  "updatedAt": "2026-09-30T16:21:02.642Z",
   "fields": {
     "difficulty": {
       "v": "火星",
@@ -12,8 +12,8 @@
     "cover": {
       "v": "/images/covers/custom/ze_obj_blue_depth.webp",
       "by": "SiKi",
-      "at": "2026-09-30T11:30:51.592Z",
-      "submission": 51
+      "at": "2026-09-30T16:21:02.642Z",
+      "submission": 54
     }
   },
   "notes": [],
@@ -41,6 +41,14 @@
       "by": "SiKi",
       "at": "2026-09-30T11:30:51.592Z",
       "submission": 51
+    },
+    {
+      "field": "cover",
+      "from": "/images/covers/custom/ze_obj_blue_depth.webp",
+      "to": "/images/covers/custom/ze_obj_blue_depth.webp",
+      "by": "SiKi",
+      "at": "2026-09-30T16:21:02.642Z",
+      "submission": 54
     }
   ],
   "items": []
