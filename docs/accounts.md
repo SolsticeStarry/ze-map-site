@@ -20,7 +20,10 @@
 ## 数据在哪
 
 - 账号只在 **D1**（`ze-map-community`）的 `users` 表；仓库里**没有任何用户数据**。
-- 口令只存 `pbkdf2$150000$盐$派生值`（PBKDF2-SHA256 / 15 万次迭代 / 每用户 16 字节随机盐）。
+- 口令只存 `pbkdf2$100000$盐$派生值`（PBKDF2-SHA256 / **10 万次**迭代 / 每用户 16 字节随机盐）。
+  ⚠️ 10 万是 Cloudflare Workers WebCrypto 的**硬上限**，写 15 万线上会直接
+  `NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not supported`
+  —— 本地 Node 没这个限制，所以只有 `worker/auth.test.mjs` 里那条断言能提前拦住它（2026-10-11 踩过）。
   不存明文、不存可逆哈希、不存邮箱 —— 找回口令走 QQ 群找站长（和现有运营方式一致）。
 - 投稿与账号的关联是 `submissions.user_id`（匿名投稿是 `NULL`）。
 - `migrations/0003_users.sql` 是**给人看的记录**：线上不靠它建表，见下面「懒建表」。

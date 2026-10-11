@@ -209,7 +209,12 @@ test('注册与登录：口令只存派生值，会话是无状态签名 Cookie'
   const { setCookies } = await register(call, '测试员', 'pass12345', 'QQ 123');
 
   const user = one(`SELECT * FROM users`);
-  assert.match(user.pass_hash, /^pbkdf2\$150000\$/, '口令必须是 PBKDF2-SHA256 / 15 万次迭代派生值');
+  /* ⚠️ 迭代次数不能超过 10 万：Workers 的 WebCrypto 硬限制，超了注册接口直接 500
+     （2026-10-11 线上真踩过：本地 Node 没这个限制，所以只有这条断言能拦住它）。
+     数字写在哈希串里，改大改小都不会让老口令失效。 */
+  const iter = Number(/^pbkdf2\$(\d+)\$/.exec(user.pass_hash)?.[1]);
+  assert.ok(Number.isFinite(iter) && iter >= 100_000, '迭代次数不该低于 10 万：' + iter);
+  assert.ok(iter <= 100_000, 'Cloudflare 的 PBKDF2 上限是 10 万，超了线上会 NotSupportedError：' + iter);
   assert.ok(!JSON.stringify(user).includes('pass12345'), '库里不该出现明文口令');
   assert.equal(
     one(`SELECT COUNT(*) AS n FROM pragma_table_info('submissions') WHERE name='user_id'`).n,

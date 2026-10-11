@@ -7,8 +7,8 @@
  *   2. **会话是无状态的签名 Cookie**：不建 sessions 表、不查 KV（KV 免费版每天只让写 1000 次，
  *      前面已经踩过坑）。Cookie 里放 `{u:用户id, v:口令版本, t:签发时间}` + HMAC 签名。
  *   3. **不在仓库里存任何用户数据**：账号只在 D1；头像（如果以后要做）只进 R2。
- *   4. **口令只存派生值**：PBKDF2-SHA256 / 15 万次迭代 / 每用户随机盐。Workers 的 WebCrypto
- *      没有 bcrypt/argon2，PBKDF2 是这里能拿到的最稳妥选择。
+ *   4. **口令只存派生值**：PBKDF2-SHA256 / 10 万次迭代 / 每用户随机盐（10 万是 Cloudflare
+ *      的硬上限，见下面 PBKDF2_ITER 的说明）。
  *
  * 登录状态怎么用：`getSessionUser()` 在投稿接口里读一次，把投稿的 `user_id` 写上、
  * 并用**账号昵称**覆盖手填昵称（防止冒名）。等级与免审权益由已通过/被驳回条数算出来。
@@ -22,8 +22,16 @@ import { allowWrite, fail, isLocalHost, json, readJsonBody, safeEqual, type Env 
 const COOKIE = 'zc_sess';
 /** 会话有效期 90 天 */
 const SESSION_TTL = 90 * 24 * 60 * 60;
-/** PBKDF2 迭代次数：Workers 每次请求的 CPU 预算有限，15 万能兼顾安全与速度（约 10~20ms） */
-const PBKDF2_ITER = 150_000;
+/**
+ * PBKDF2 迭代次数。
+ *
+ * ⚠️ **不能超过 10 万** —— Cloudflare Workers 的 WebCrypto 有硬上限，超了直接抛：
+ *   `NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not supported`
+ * 这个坑 2026-10-11 在线上踩到了：本地 Node 的 WebCrypto 没有这个限制，
+ * 所以单测全绿、线上注册接口 100% 500（`?lite=1` 与「登录不存在的昵称」都不哈希，看不出来）。
+ * 改这个数字前先看 `worker/auth.test.mjs` 里那条断言 —— 它专门拦这件事。
+ */
+const PBKDF2_ITER = 100_000;
 /** 昵称长度 */
 const NAME_MIN = 2;
 const NAME_MAX = 20;
@@ -94,6 +102,12 @@ export async function verifyPassword(password: string, stored: string): Promise<
   if (!m) return false;
   const iter = Number(m[1]);
   if (!Number.isFinite(iter) || iter < 1000) return false;
+  /*
+   * 迭代次数写在哈希串里，所以以后调这个数字**不会让老口令失效**。
+   * 运行时上限（10 万）由 crypto 自己把关：万一存了一个超限的值，这里会抛，
+   * 但那种记录只可能来自「本地测试库」或更早的版本，线上从来没有过
+   * （register 在写入之前就失败了，见 PBKDF2_ITER 上面的说明）。
+   */
   const hash = await pbkdf2(password, unb64(m[2]), iter);
   return safeEqual(b64(hash), m[3]);
 }

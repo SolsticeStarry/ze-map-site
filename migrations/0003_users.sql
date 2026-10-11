@@ -8,7 +8,8 @@
 --   · 账号只用于「署名 / 我的投稿记录 / 等级权益」，**不登录也能投稿**（匿名通道完全保留）；
 --   · 不存邮箱，只存选填的联系方式（QQ），找回口令走 QQ 群找站长 —— 与现有运营方式一致；
 --   · 会话用**签名 Cookie**（无状态，每次请求不查库、不查 KV）；
---   · 口令只存 PBKDF2-SHA256 派生值（15 万次迭代 + 每用户随机盐），不存明文、不存可逆哈希。
+--   · 口令只存 PBKDF2-SHA256 派生值（**10 万次**迭代 —— Cloudflare 的硬上限，超了线上抛
+--     NotSupportedError；每用户随机盐），不存明文、不存可逆哈希。
 
 CREATE TABLE IF NOT EXISTS users (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
