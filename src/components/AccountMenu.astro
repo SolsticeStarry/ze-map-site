@@ -96,6 +96,8 @@ import { PERSON_ICON } from '../lib/account-client';
 <script>
   import { ACCOUNT_EVENT, PERSON_ICON, meOrThrow, notifyChanged, type AccountMe } from '../lib/account-client';
   import { mountTurnstile, resetTurnstile, takeTurnstileToken, turnstileHint, turnstileToken } from '../lib/turnstile';
+  /* 昵称规则的**通用**部分：本地先拦一道给出即时反馈；政治类词表只在服务端（不入库） */
+  import { checkNicknameContent, nicknameRejectMessage } from '../../shared/nickname-rules.mjs';
 
   const btn = document.getElementById('am-btn');
   const panel = document.getElementById('am-panel');
@@ -276,6 +278,10 @@ import { PERSON_ICON } from '../lib/account-client';
     const p1 = ($('am-reg-pass') as HTMLInputElement).value;
     const p2 = ($('am-reg-pass2') as HTMLInputElement).value;
     if (p1 !== p2) return say('两次输入的口令不一样');
+    /* 昵称先本地查一遍（即时反馈）；服务端还会再查一遍并以它为准 */
+    const nick = ($('am-reg-name') as HTMLInputElement).value.trim();
+    const content = checkNicknameContent(nick, []);
+    if (!content.ok) return say(nicknameRejectMessage(content.reason));
     const { token, blocked } = await takeTurnstileToken(tsReg);
     if (blocked) return say(turnstileHint());
     try {

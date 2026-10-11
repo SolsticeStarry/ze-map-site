@@ -611,7 +611,89 @@ test('等级最高档：79 条停在「百科元老」，80 条才进「资料�
   assert.equal(me.data.user.trusted, true, '到这一档当然也免审');
 });
 
-/* ===== 7. 人机验证（Turnstile）=====
+/* ===== 8. 昵称审核（2026-10-11 站长要求：别让人注册违法/广告名） ===== */
+
+test('昵称审核：广告 / 违法 / 联系方式 / 乱码一律拒，正常名字照收', async (t) => {
+  await t.test('通用词库与联系方式：直接拒绝，且理由分得清', async () => {
+    const { call } = await setup();
+    const cases = [
+      ['代练上分加微信', /不被允许的内容|联系方式/],
+      ['出售低价账号', /不被允许的内容/],
+      ['澳门博彩开户', /不被允许的内容/],
+      ['123456789', /联系方式/],            /* 连续 9 位数字 = QQ/手机号 */
+      ['看我的 www.abc.com', /联系方式/],
+      ['vx:abc12345', /联系方式/],
+      ['aaaaaaaaaa', /乱码|不被允许/],       /* 同字符连 6 个以上 */
+      ['★★★★★★', /乱码/],
+    ];
+    let ip = 30;
+    for (const [name, expect] of cases) {
+      const r = await call('/api/register', { method: 'POST', body: { name, password: 'pass12345' }, ip: `198.51.100.${ip++}` });
+      assert.equal(r.status, 400, `「${name}」应该被拒：` + JSON.stringify(r.data));
+      assert.match(r.data.error, expect, `「${name}」的提示不对：` + r.data.error);
+    }
+    /* 关键：提示里**不能回显命中的词**（否则等于把词库送给想绕过的人） */
+    const echo = await call('/api/register', { method: 'POST', body: { name: '代练上分', password: 'pass12345' }, ip: '198.51.100.60' });
+    assert.ok(!echo.data.error.includes('代练'), '不该回显命中的词：' + echo.data.error);
+  });
+
+  await t.test('变体绕过也拦得住（归一化之后再查）', async () => {
+    const { call } = await setup();
+    const variants = ['管 理 员', '管·理·员', '４ｄｍｉｎ', '4dmin', 'ADMIN'];
+    let ip = 70;
+    for (const name of variants) {
+      const r = await call('/api/register', { method: 'POST', body: { name, password: 'pass12345' }, ip: `198.51.100.${ip++}` });
+      assert.equal(r.status, 400, `「${name}」应该被拒：` + JSON.stringify(r.data));
+    }
+  });
+
+  await t.test('政治类词表走 Worker 变量（不进仓库），配了就生效', async () => {
+    const { call, env } = await setup();
+    /* 用两个无害的假词模拟「额外词表」，验证链路：变量 → 解析 → 拦截 */
+    env.NICKNAME_EXTRA = '某个测试词, 另一个# 这行是注释';
+    const hit = await call('/api/register', { method: 'POST', body: { name: '我叫某个测试词', password: 'pass12345' }, ip: '198.51.100.80' });
+    assert.equal(hit.status, 400, JSON.stringify(hit.data));
+    assert.match(hit.data.error, /不被允许的内容/);
+    const ok = await call('/api/register', { method: 'POST', body: { name: '某个正常玩家', password: 'pass12345' }, ip: '198.51.100.81' });
+    assert.equal(ok.status, 200, '不含敏感词的名字要能注册：' + JSON.stringify(ok.data));
+  });
+
+  await t.test('正常昵称全部放行（别误伤真玩家）', async () => {
+    const { call } = await setup();
+    let ip = 90;
+    for (const name of ['老玩家阿伟', 'SiKi', '白叶', 'Liyuu~', '夜行者', 'ZE-老六', '肝帝本帝', '阿伟1024']) {
+      const r = await call('/api/register', { method: 'POST', body: { name, password: 'pass12345' }, ip: `198.51.100.${ip++}` });
+      assert.equal(r.status, 200, `「${name}」不该被拦：` + JSON.stringify(r.data));
+    }
+  });
+
+  await t.test('审核台能一键改名（违规昵称的兜底处理）', async () => {
+    const { call, env, one } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    await register(call, '正常名字');
+    const id = one(`SELECT id FROM users WHERE name = '正常名字'`).id;
+    /* 先投一稿（状态 pending），验证改名会顺手改掉未写回的署名 */
+    await call('/api/submit', { method: 'POST', body: submitBody({ map: 'ze_flowering' }) });
+
+    const bad = await call('/api/admin/accounts', {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-admin-token' },
+      body: { id, action: 'rename', name: '代练加微信' },
+    });
+    assert.equal(bad.status, 400, '改名也要过昵称规则');
+
+    const ok = await call('/api/admin/accounts', {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-admin-token' },
+      body: { id, action: 'rename', name: `用户#${id}` },
+    });
+    assert.equal(ok.status, 200, JSON.stringify(ok.data));
+    assert.equal(one(`SELECT name FROM users WHERE id = ?1`, id).name, `用户#${id}`);
+    assert.equal(one(`SELECT submitter FROM submissions WHERE user_id = ?1`, id).submitter, `用户#${id}`, '未写回的署名要跟着改');
+  });
+});
+
+/* ===== 9. 人机验证（Turnstile）=====
  *
  * 本地不联网，所以把 globalThis.fetch 换成一个假的 siteverify ——
  * 这正好是「配了 secret 之后会发生什么」的确定性验证（真实调用在线上另有冒烟）。

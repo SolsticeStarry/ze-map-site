@@ -221,6 +221,8 @@ import QqGroup from '../components/QqGroup.astro';
     import { ACCOUNT_EVENT, meFull, notifyChanged } from '../lib/account-client';
     import type { AccountCounts, AccountSubmission, AccountUser } from '../lib/account-client';
     import { mountTurnstile, resetTurnstile, takeTurnstileToken, turnstileHint, turnstileToken } from '../lib/turnstile';
+    /* 昵称规则的**通用**部分：本地先拦一道给出即时反馈；政治类词表只在服务端（不入库） */
+    import { checkNicknameContent, nicknameRejectMessage } from '../../shared/nickname-rules.mjs';
 
     type Me = AccountUser;
     type Sub = AccountSubmission;
@@ -483,6 +485,9 @@ import QqGroup from '../components/QqGroup.astro';
       const p1 = ($('reg-pass') as HTMLInputElement).value;
       const p2 = ($('reg-pass2') as HTMLInputElement).value;
       if (p1 !== p2) return showErr('两次输入的口令不一样');
+      /* 昵称先在本地查一遍（即时反馈）；服务端还会再查一遍，并以它为准 */
+      const content = checkNicknameContent(name, []);
+      if (!content.ok) return showErr(nicknameRejectMessage(content.reason));
       /* 先等验证（最多 3 秒）：手快的人点得比自动通过还早 */
       const { token, blocked } = await takeTurnstileToken(tsReg);
       if (blocked) return showErr(turnstileHint());

@@ -660,13 +660,28 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       accountAction(acc.id, 'reset');
     };
     actions.append(reset);
+    /* 昵称违规时改名：新名字照样过昵称规则；还没写回的投稿署名会一起改 */
+    const rename = el('button', 'btn', '改昵称') as HTMLButtonElement;
+    rename.type = 'button';
+    rename.onclick = () => {
+      const next = prompt(`把「${acc.name}」改成什么？`, `用户#${acc.id}`);
+      if (next === null) return;
+      const name = next.trim();
+      if (!name) return setStatus('新昵称不能为空', true);
+      accountAction(acc.id, 'rename', { name });
+    };
+    actions.append(rename);
     box.append(actions);
     return box;
   }
 
-  async function accountAction(id: number, action: 'ban' | 'unban' | 'unlock' | 'reset') {
+  async function accountAction(
+    id: number,
+    action: 'ban' | 'unban' | 'unlock' | 'reset' | 'rename',
+    extra: Record<string, unknown> = {}
+  ) {
     setStatus('处理中…');
-    const { status, data } = await api('/api/admin/accounts', { method: 'POST', body: { id, action } });
+    const { status, data } = await api('/api/admin/accounts', { method: 'POST', body: { id, action, ...extra } });
     if (status !== 200) {
       setStatus(`${data?.error ?? '操作失败'}（HTTP ${status}）`, true);
       return;

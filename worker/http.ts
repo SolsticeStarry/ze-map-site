@@ -78,6 +78,13 @@ export interface Env {
    * 本机 token 没权限跑 `wrangler secret put`，而 IP_SALT 本来就是只存在于 Worker 的高熵密钥。
    */
   SESSION_SECRET?: string;
+  /**
+   * 昵称审核的**额外**词表（选填，逗号/顿号/换行分隔）：政治等敏感词放这里，
+   * **故意不进仓库** —— 线上是 Cloudflare 从仓库构建的，本地文件到不了线上；
+   * 而且没必要把「我们过滤哪些词」公示出去给想绕过的人抄作业。
+   * 设置：`wrangler secret put NICKNAME_EXTRA`；改完按 isolate 缓存 5 分钟自然生效，不用重新部署。
+   */
+  NICKNAME_EXTRA?: string;
   /** 以下三项可选，默认值见 worker/community.ts */
   GITHUB_REPO?: string;
   GITHUB_BRANCH?: string;

@@ -16,6 +16,7 @@
 
 import { allowWrite, fail, isBanned, isLocalHost, json, readJsonBody, safeEqual, type Env } from './http';
 import { turnstileMessage, verifyTurnstile } from './turnstile';
+import { checkNicknameContent, nicknameRejectMessage, normalizeName, parseExtraBlocklist } from '../shared/nickname-rules.mjs';
 
 /* ===== 常量 ===== */
 
@@ -358,11 +359,32 @@ export async function accountForSubmit(
   return { id: user.id, name: user.name, trusted };
 }
 
+/*
+ * 昵称里不许有的内容（广告 / 违法 / 联系方式 / 乱码）：见 shared/nickname-rules.mjs。
+ *
+ * 额外词表（政治等敏感词）**不进仓库**，放在 Worker 变量 `NICKNAME_EXTRA` 里 ——
+ * 线上是 Cloudflare 从仓库构建的，本地文件到不了线上；而且没必要把「过滤哪些词」公示出去。
+ * 按 isolate 缓存 5 分钟：词表改完不用重新部署，等几分钟自然生效。
+ */
+let extraCache: { raw: string; at: number; list: string[] } | null = null;
+function extraBlocklist(env: Env): string[] {
+  const raw = env.NICKNAME_EXTRA ?? '';
+  const now = Date.now();
+  if (extraCache && extraCache.raw === raw && now - extraCache.at < 5 * 60 * 1000) return extraCache.list;
+  const list = parseExtraBlocklist(raw);
+  extraCache = { raw, at: now, list };
+  return list;
+}
+
 function nameKey(name: string): string {
   return name.trim().toLowerCase();
 }
 
-function checkName(raw: unknown): { ok: true; value: string } | { ok: false; error: string } {
+/**
+ * 昵称校验：格式（长度/字符）→ 保留名（防冒充）→ 内容（广告/违法/联系方式/乱码）。
+ * 内容那一层**归一化之后再查**，所以「管 理 员」「4dmin」「ＡＤＭＩＮ」都拦得住。
+ */
+function checkName(raw: unknown, env?: Env): { ok: true; value: string } | { ok: false; error: string } {
   const v = String(raw ?? '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -370,8 +392,13 @@ function checkName(raw: unknown): { ok: true; value: string } | { ok: false; err
   if (v.length > NAME_MAX) return { ok: false, error: `昵称最多 ${NAME_MAX} 个字` };
   if (/[<>{}[\]|*?/\\"']/.test(v)) return { ok: false, error: '昵称里有不支持的字符（< > { } [ ] | * ? / \\ " \'）' };
   /* 冒充站方的名字不许注册：署名里出现「站长」会让投稿人身份失真 */
-  if (RESERVED_NAMES.has(nameKey(v))) {
+  const norm = normalizeName(v);
+  if (RESERVED_NAMES.has(nameKey(v)) || RESERVED_NAMES.has(norm)) {
     return { ok: false, error: '这个昵称是保留的（避免冒充站方），换一个吧' };
+  }
+  if (env) {
+    const content = checkNicknameContent(v, extraBlocklist(env));
+    if (!content.ok) return { ok: false, error: nicknameRejectMessage(content.reason) };
   }
   return { ok: true, value: v };
 }
@@ -450,7 +477,7 @@ export async function handleRegister(request: Request, env: Env, url: URL, ipHas
     );
   }
 
-  const name = checkName(b.name);
+  const name = checkName(b.name, env);
   if (!name.ok) return fail(name.error);
   const pass = checkPassword(b.password);
   if (!pass.ok) return fail(pass.error);
@@ -634,7 +661,7 @@ export async function handleProfile(request: Request, env: Env): Promise<Respons
     values.push(String(parsed.body.contact ?? '').trim().slice(0, 80) || null);
   }
   if (parsed.body.name !== undefined) {
-    const name = checkName(parsed.body.name);
+    const name = checkName(parsed.body.name, env);
     if (!name.ok) return fail(name.error);
     const key = nameKey(name.value);
     const clash = await env.DB.prepare(`SELECT id FROM users WHERE name_key = ?1 AND id <> ?2`).bind(key, user.id).first<{ id: number }>();
@@ -718,11 +745,14 @@ export async function handleAdminAccounts(request: Request, env: Env, url: URL):
   });
 }
 
-/** POST /api/admin/accounts —— { id, action: 'ban' | 'unban' | 'unlock' | 'reset' }
+/** POST /api/admin/accounts —— { id, action: 'ban' | 'unban' | 'unlock' | 'reset' | 'rename', name? }
  *
  * `reset` = 给账号换一个**临时口令**并把新口令回给站长（页面会显示出来，站长转告本人）。
  * 为什么需要：本站不收邮箱，「忘了口令」只能人工 —— 没有这个按钮就只能手改数据库。
  * 顺带把 pass_ver +1：重置之后，**旧设备上的登录立刻失效**（口令本来就是这么作废的）。
+ *
+ * `rename` = 给账号改名（昵称审核发现违规名时用）。新名字照样过一遍昵称规则；
+ * 顺手把**还没写回仓库**的投稿署名一起改掉；已经进 git 的那些署名改不动（那要改历史提交）。
  */
 export async function handleAdminAccountAction(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') return fail('只支持 POST', 405);
@@ -732,11 +762,35 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
   const id = Number(parsed.body.id);
   const action = String(parsed.body.action ?? '');
   if (!Number.isInteger(id) || id <= 0) return fail('id 不合法');
-  if (!['ban', 'unban', 'unlock', 'reset'].includes(action)) return fail('action 只能是 ban / unban / unlock / reset');
+  if (!['ban', 'unban', 'unlock', 'reset', 'rename'].includes(action)) {
+    return fail('action 只能是 ban / unban / unlock / reset / rename');
+  }
 
   await ensureSchema(env);
   const before = await env.DB.prepare(`SELECT id, name FROM users WHERE id = ?1`).bind(id).first<{ id: number; name: string }>();
   if (!before) return fail('没有这个账号', 404);
+
+  if (action === 'rename') {
+    const next = checkName(parsed.body.name, env);
+    if (!next.ok) return fail(next.error);
+    const key = nameKey(next.value);
+    const clash = await env.DB.prepare(`SELECT id FROM users WHERE name_key = ?1 AND id <> ?2`)
+      .bind(key, id)
+      .first<{ id: number }>();
+    if (clash) return fail('这个昵称已经被别人用了', 409);
+
+    await env.DB.prepare(`UPDATE users SET name = ?1, name_key = ?2 WHERE id = ?3`).bind(next.value, key, id).run();
+    /* 顺手改掉「还没写回仓库」的署名（pending / approved）；已 applied 的在 git 里，改不动 */
+    await env.DB.prepare(`UPDATE submissions SET submitter = ?1 WHERE user_id = ?2 AND status IN ('pending','approved')`)
+      .bind(next.value, id)
+      .run();
+    return json({
+      ok: true,
+      id,
+      action,
+      message: `已把「${before.name}」改名为「${next.value}」—— 还没写回的投稿署名一起改了；已经进仓库的那些署名要改得另开一次提交`,
+    });
+  }
 
   if (action === 'ban') {
     /* 停用 + 顺手清掉失败计数：解封后不会带着旧锁定 */
