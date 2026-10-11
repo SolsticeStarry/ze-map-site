@@ -12,10 +12,7 @@
   "CSGO移植"
  ],
  "videoUrls": [
-  "https://www.bilibili.com/video/BV1CqDDY7E9X/",
-  "https://www.bilibili.com/video/BV1zGs5etE9K/",
-  "https://www.bilibili.com/video/BV1Sb411z7ZX/",
-  "https://www.bilibili.com/video/BV1tT4y1w7SR/"
+  "https://www.bilibili.com/video/BV1zGs5etE9K/"
  ],
  "sources": [
   "https://steamcommunity.com/sharedfiles/filedetails/?id=3077381254",
@@ -24,9 +21,7 @@
   "https://github.com/koi5hi/MapTextLang/blob/master/mappool/ze_mario_tower_v4_p2.cfg",
   "https://github.com/koi5hi/MapTextLang/blob/master/mappool2/mappool.json",
   "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=355",
-  "https://www.bilibili.com/video/BV1Sb411z7ZX/",
-  "https://www.bilibili.com/video/BV1zGs5etE9K/",
-  "https://www.bilibili.com/video/BV1tT4y1w7SR/"
+  "https://www.bilibili.com/video/BV1zGs5etE9K/"
  ],
  "confidence": "medium",
  "verified": true

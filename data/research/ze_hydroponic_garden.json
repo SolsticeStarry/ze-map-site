@@ -14,9 +14,7 @@
   "CSGO移植"
  ],
  "videoUrls": [
-  "https://www.bilibili.com/video/BV13b421H7Bv/",
-  "https://www.bilibili.com/video/BV1NT411578W/",
-  "https://www.bilibili.com/video/BV1Qv4y1b74L/"
+  "https://www.bilibili.com/video/BV1TaFuzpE38/"
  ],
  "sources": [
   "https://steamcommunity.com/sharedfiles/filedetails/?id=3265261614",
@@ -25,10 +23,7 @@
   "https://raw.githubusercontent.com/gflze/CS2-ZE-Configs/HEAD/entwatch/ze_hydroponic_garden.jsonc",
   "https://raw.githubusercontent.com/gflze/CS2-ZE-Configs/HEAD/bosshud/ze_hydroponic_garden.jsonc",
   "https://bbs.moeub.cn/thread-9026-1-1.html",
-  "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=10928",
-  "https://www.bilibili.com/video/BV1NT411578W/",
-  "https://www.bilibili.com/video/BV1Qv4y1b74L/",
-  "https://www.bilibili.com/video/BV13b421H7Bv/"
+  "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=10928"
  ],
  "confidence": "high",
  "verified": true

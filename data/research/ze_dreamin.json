@@ -15,16 +15,13 @@
   "videoUrls": [
     "https://www.bilibili.com/video/BV1T9dnYXEi6",
     "https://www.bilibili.com/video/BV1rA6FYGEwe",
-    "https://www.bilibili.com/video/BV177411B7C8",
-    "https://www.bilibili.com/video/BV1LgLw6TEWw",
-    "https://www.bilibili.com/video/BV1h64y1e7j4"
+    "https://www.bilibili.com/video/BV1LgLw6TEWw"
   ],
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3375301835",
     "https://gamebanana.com/mods/79669",
     "https://www.bilibili.com/video/BV1T9dnYXEi6",
     "https://www.bilibili.com/video/BV1rA6FYGEwe",
-    "https://www.bilibili.com/video/BV1h64y1e7j4",
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3164817189"
   ],
   "confidence": "high",
