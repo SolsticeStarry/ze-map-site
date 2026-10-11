@@ -36,6 +36,8 @@ import { PERSON_ICON } from '../lib/account-client';
           <label for="am-log-pass">口令</label>
           <input id="am-log-pass" type="password" maxlength="72" autocomplete="current-password" />
         </div>
+        {/* 人机验证：没配 site key 时这一块保持 hidden（本地/未配置都不显示） */}
+        <div class="am-ts" id="am-log-ts" hidden></div>
         <button class="acc-btn acc-btn-primary acc-btn-block" type="submit" id="am-log-go">登录</button>
         <p class="am-switch">没有账号？<button class="am-link" type="button" id="am-to-reg">注册一个</button></p>
       </form>
@@ -57,6 +59,7 @@ import { PERSON_ICON } from '../lib/account-client';
           <label for="am-reg-contact">联系方式（选填）</label>
           <input id="am-reg-contact" maxlength="80" placeholder="QQ / 邮箱，只站长看得到" />
         </div>
+        <div class="am-ts" id="am-reg-ts" hidden></div>
         <button class="acc-btn acc-btn-primary acc-btn-block" type="submit" id="am-reg-go">注册并登录</button>
         <p class="am-switch">已经有账号？<button class="am-link" type="button" id="am-to-log">去登录</button></p>
       </form>
@@ -92,6 +95,7 @@ import { PERSON_ICON } from '../lib/account-client';
 
 <script>
   import { ACCOUNT_EVENT, PERSON_ICON, meOrThrow, notifyChanged, type AccountMe } from '../lib/account-client';
+  import { mountTurnstile, resetTurnstile, turnstileEnabled, turnstileHint, turnstileToken } from '../lib/turnstile';
 
   const btn = document.getElementById('am-btn');
   const panel = document.getElementById('am-panel');
@@ -159,15 +163,27 @@ import { PERSON_ICON } from '../lib/account-client';
     loaded = true;
   }
 
+  /* ---- 人机验证（Turnstile）：登录 / 注册各挂一块 ---- */
+  const tsLog = document.getElementById('am-log-ts');
+  const tsReg = document.getElementById('am-reg-ts');
+  async function mountTurnstileWidgets() {
+    for (const box of [tsLog, tsReg]) {
+      if (!box || !box.hidden) continue;
+      if (await mountTurnstile(box)) box.hidden = false;
+    }
+  }
+
   const openPanel = (open: boolean) => {
     panel!.hidden = !open;
     btn!.setAttribute('aria-expanded', String(open));
     btn!.classList.toggle('is-open', open);
-    if (open) {
-      const pane = guest!.hidden ? null : ($('am-log-name') as HTMLInputElement | null);
-      /* 打开时聚焦「昵称」，但别把已经填过的内容清掉 */
-      if (pane && !pane.value) setTimeout(() => pane.focus(), 60);
-    }
+    if (!open) return;
+    /* 人机验证的 widget：**打开面板之后**才渲染 —— 面板隐藏时 widget 算不出宽度，
+       会缩成一个窄条。挂过一次就记住了，重复打开不会重复渲染。 */
+    void mountTurnstileWidgets();
+    const pane = guest!.hidden ? null : ($('am-log-name') as HTMLInputElement | null);
+    /* 打开时聚焦「昵称」，但别把已经填过的内容清掉 */
+    if (pane && !pane.value) setTimeout(() => pane.focus(), 60);
   };
 
   /* 打开之前先问一次登录状态；之后一直用缓存，除非状态变了 */
@@ -196,6 +212,8 @@ import { PERSON_ICON } from '../lib/account-client';
     say('');
     if (loginForm) loginForm.hidden = which !== 'log';
     if (regForm) regForm.hidden = which !== 'reg';
+    /* 切过去再把那一页的 widget 挂上（同样是隐藏容器不能渲染的问题） */
+    void mountTurnstileWidgets();
     $('am-title')!.textContent = which === 'log' ? '登录' : '注册';
     $('am-sub')!.textContent =
       which === 'log' ? '登录后署名固定用账号昵称，投稿记进个人主页' : '只要昵称 + 口令，不收邮箱';
@@ -224,16 +242,20 @@ import { PERSON_ICON } from '../lib/account-client';
   loginForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     say('');
+    if (turnstileEnabled() && tsLog && !turnstileToken(tsLog)) return say(turnstileHint(tsLog));
     try {
       await post('/api/login', {
         name: ($('am-log-name') as HTMLInputElement).value.trim(),
         password: ($('am-log-pass') as HTMLInputElement).value,
+        turnstileToken: turnstileToken(tsLog),
       });
       notifyChanged();
       await load();
       /* 面板留着，让人看到「已经登录成了谁」 */
       ($('am-log-pass') as HTMLInputElement).value = '';
     } catch (err) {
+      /* token 一次性：失败后必须换新的，否则改完再点会被判「验证没通过」 */
+      resetTurnstile(tsLog);
       say(err instanceof Error ? err.message : '登录失败');
     }
   });
@@ -244,17 +266,20 @@ import { PERSON_ICON } from '../lib/account-client';
     const p1 = ($('am-reg-pass') as HTMLInputElement).value;
     const p2 = ($('am-reg-pass2') as HTMLInputElement).value;
     if (p1 !== p2) return say('两次输入的口令不一样');
+    if (turnstileEnabled() && tsReg && !turnstileToken(tsReg)) return say(turnstileHint(tsReg));
     try {
       await post('/api/register', {
         name: ($('am-reg-name') as HTMLInputElement).value.trim(),
         password: p1,
         contact: ($('am-reg-contact') as HTMLInputElement).value,
+        turnstileToken: turnstileToken(tsReg),
       });
       notifyChanged();
       await load();
       ($('am-reg-pass') as HTMLInputElement).value = '';
       ($('am-reg-pass2') as HTMLInputElement).value = '';
     } catch (err) {
+      resetTurnstile(tsReg);
       say(err instanceof Error ? err.message : '注册失败');
     }
   });

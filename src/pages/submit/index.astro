@@ -298,6 +298,9 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
         </div>
       </section>
 
+      {/* 人机验证（没配 site key 时这块保持 hidden）：放在提交按钮上方 */}
+      <div class="s-ts" id="s-ts" hidden></div>
+
       <div class="s-actions">
         <button class="btn btn-primary btn-lg" type="submit" id="f-submit">提交审核</button>
         <span class="s-actions-note">提交后进入人工审核队列 —— 通过才会写进条目，不通过会告诉你原因。</span>
@@ -380,6 +383,13 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
   import { FIELD_RULES, validateValue } from '../../../shared/submission-fields.mjs';
   /* 登录状态：与页头那个账号按钮共用一次请求（见 lib/account-client.ts） */
   import { ACCOUNT_EVENT, meOrThrow } from '../../lib/account-client';
+  /* 人机验证（Turnstile）：放提交按钮上方；没配 site key 时不渲染 */
+  import { mountTurnstile, resetTurnstile, turnstileHint, turnstileToken } from '../../lib/turnstile';
+
+  const tsBox = document.getElementById('s-ts');
+  void mountTurnstile(tsBox).then((ok) => {
+    if (ok && tsBox) tsBox.hidden = false;
+  });
 
   const slug = new URLSearchParams(location.search).get('map') ?? '';
   const ctxEl = document.getElementById('ctx') as HTMLElement;
@@ -1508,6 +1518,10 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
       `站长审核通过后会随下一批一起写回仓库并自动重建，通常几分钟内就会出现在 ` +
       `<a href="/maps/${slug}/">《${mapInfo?.title}》的条目</a> 里。`;
 
+    /* 人机验证：token 是**一次性**的，所以每次提交前取一次；失败后 reset（见 finally） */
+    const tsToken = turnstileToken(tsBox);
+    if (tsBox && tsBox.hidden === false && !tsToken) return showError(turnstileHint(tsBox));
+
     /* 封面走 multipart 上传接口 —— 值是一张压好的图，不是文本 */
     if (field === 'cover') {
       if (!coverBlob) return showError('先选一张图片，等它压好之后再提交。');
@@ -1520,11 +1534,13 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
         fd.append('note', note);
         fd.append('submitter', submitter);
         fd.append('contact', contact);
+        if (tsToken) fd.append('turnstileToken', tsToken);
         const res = await fetch('/api/submit-cover', { method: 'POST', body: fd });
         const data = (await res.json()) as { ok?: boolean; id?: number; error?: string };
         if (!data.ok) throw new Error(data.error || '上传失败');
         showSuccess(Number(data.id), `审核通过后封面会替换成这张。${backLink}`);
       } catch (err) {
+        resetTurnstile(tsBox);
         showError(err instanceof Error && err.message ? err.message : '上传失败，请稍后再试');
       } finally {
         submitBtn.disabled = false;
@@ -1551,6 +1567,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
           fd.append('note', note);
           fd.append('submitter', submitter);
           fd.append('contact', contact);
+          if (tsToken) fd.append('turnstileToken', tsToken);
           const res = await fetch('/api/submit-gallery', { method: 'POST', body: fd });
           const data = (await res.json()) as { ok?: boolean; id?: number; error?: string };
           if (!data.ok) throw new Error(`第 ${i + 1} 张没成功：${data.error || '上传失败'}`);
@@ -1609,6 +1626,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
           note,
           submitter,
           contact,
+          ...(tsToken ? { turnstileToken: tsToken } : {}),
           ...(reviseOf ? { reviseOf } : {}),
         }),
       });
@@ -1627,6 +1645,8 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
           : backLink
       );
     } catch (err) {
+      /* token 一次性：失败后换一个新的，否则用户改完再点会被判「验证没通过」 */
+      resetTurnstile(tsBox);
       showError(err instanceof Error && err.message ? err.message : '提交失败，请稍后再试');
     } finally {
       submitBtn.disabled = false;

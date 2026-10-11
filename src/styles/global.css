@@ -3438,6 +3438,18 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 .acc-set-block h3 { margin: 0 0 8px; font-size: 14px; font-weight: 700; }
 .acc-set-block .form-row { margin-bottom: 12px; }
 
+/* ---------- 人机验证（Turnstile）的容器 ----------
+   三处共用：页头账号面板 / 账号页 / 投稿页。宽度给满，widget 用 size:'flexible' 自适应
+   （页头面板只有 336px 宽，固定 300px 的 widget 会溢出）。
+   脚本被插件挡住时容器保持 hidden、页面照旧能用 —— 服务端那边会拦下并给出明确提示。 */
+.am-ts,
+.acc-ts,
+.s-ts { margin: 0 0 12px; }
+.s-ts { margin: 4px 0 14px; }
+.am-ts iframe,
+.acc-ts iframe,
+.s-ts iframe { max-width: 100%; }
+
 /* ---------- 亮色模式：渐变文字与荧光色在浅底上会糊，单独调 ---------- */
 [data-theme="light"] .acc-profile {
   background:

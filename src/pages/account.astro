@@ -65,6 +65,8 @@ import QqGroup from '../components/QqGroup.astro';
               <label for="reg-contact">联系方式（选填）</label>
               <input id="reg-contact" maxlength="80" placeholder="QQ / 邮箱 —— 只站长看得到，用于找回口令" />
             </div>
+            {/* 人机验证（没配 site key 时这块保持 hidden） */}
+            <div class="acc-ts" id="reg-ts" hidden></div>
             <button class="acc-btn acc-btn-primary acc-btn-block" type="button" id="reg-go">注册并登录</button>
           </div>
 
@@ -78,6 +80,7 @@ import QqGroup from '../components/QqGroup.astro';
               <label for="log-pass">口令</label>
               <input id="log-pass" type="password" maxlength="72" autocomplete="current-password" />
             </div>
+            <div class="acc-ts" id="log-ts" hidden></div>
             <button class="acc-btn acc-btn-primary acc-btn-block" type="button" id="log-go">登录</button>
             <p class="acc-hint" style="margin: 12px 0 0">
               忘了口令？本站不收邮箱，只能人工找回：<QqGroup /> 里找站长，说清昵称即可。
@@ -217,6 +220,7 @@ import QqGroup from '../components/QqGroup.astro';
        这一页要的是完整版（含「我的投稿」与各状态条数）。 */
     import { ACCOUNT_EVENT, meFull, notifyChanged } from '../lib/account-client';
     import type { AccountCounts, AccountSubmission, AccountUser } from '../lib/account-client';
+    import { mountTurnstile, resetTurnstile, turnstileHint, turnstileToken } from '../lib/turnstile';
 
     type Me = AccountUser;
     type Sub = AccountSubmission;
@@ -321,6 +325,16 @@ import QqGroup from '../components/QqGroup.astro';
       if (text !== undefined) n.textContent = text;
       return n;
     };
+
+    /* 人机验证：注册 / 登录各一块，**切到那一页时才渲染**（隐藏容器算不出宽度） */
+    const tsReg = $('reg-ts');
+    const tsLog = $('log-ts');
+    async function mountTs() {
+      for (const box of [tsReg, tsLog]) {
+        if (!box || !box.hidden) continue;
+        if (await mountTurnstile(box)) box.hidden = false;
+      }
+    }
 
     function renderMe(me: Me, subs: Sub[], counts: Counts) {
       if (loading) loading.hidden = true;
@@ -450,6 +464,8 @@ import QqGroup from '../components/QqGroup.astro';
       for (const [key, pane] of Object.entries(panes)) if (pane) pane.hidden = key !== which;
       err($('acc-error'), '');
       err($('acc-ok'), '');
+      /* 切过去再挂人机验证（隐藏容器里 widget 宽度算不出来） */
+      void mountTs();
       /* 切过去就聚焦第一个输入框：少点一下 */
       const first = panes[which]?.querySelector('input');
       if (first instanceof HTMLInputElement) first.focus();
@@ -465,12 +481,20 @@ import QqGroup from '../components/QqGroup.astro';
       const p1 = ($('reg-pass') as HTMLInputElement).value;
       const p2 = ($('reg-pass2') as HTMLInputElement).value;
       if (p1 !== p2) return showErr('两次输入的口令不一样');
+      if (!turnstileToken(tsReg)) return showErr(turnstileHint(tsReg));
       try {
-        const d = await post('/api/register', { name, password: p1, contact: ($('reg-contact') as HTMLInputElement).value });
+        const d = await post('/api/register', {
+          name,
+          password: p1,
+          contact: ($('reg-contact') as HTMLInputElement).value,
+          turnstileToken: turnstileToken(tsReg),
+        });
         showOk(String(d.message ?? '注册成功'));
         notifyChanged();
         await refresh();
       } catch (e) {
+        /* token 一次性：失败后要换新的 */
+        resetTurnstile(tsReg);
         showErr(e instanceof Error ? e.message : '注册失败');
       }
     });
@@ -478,15 +502,18 @@ import QqGroup from '../components/QqGroup.astro';
     const doLogin = async () => {
       showErr('');
       showOk('');
+      if (!turnstileToken(tsLog)) return showErr(turnstileHint(tsLog));
       try {
         const d = await post('/api/login', {
           name: ($('log-name') as HTMLInputElement).value.trim(),
           password: ($('log-pass') as HTMLInputElement).value,
+          turnstileToken: turnstileToken(tsLog),
         });
         showOk(String(d.message ?? '登录成功'));
         notifyChanged();
         await refresh();
       } catch (e) {
+        resetTurnstile(tsLog);
         showErr(e instanceof Error ? e.message : '登录失败');
       }
     };
@@ -538,6 +565,8 @@ import QqGroup from '../components/QqGroup.astro';
     void refresh();
     /* 页头账号面板里登录 / 退出后，这一页跟着变 */
     document.addEventListener(ACCOUNT_EVENT, () => void refresh());
+    /* 进页面先把默认那一页（注册）的验证挂上 */
+    void mountTs();
   </script>
 
   {/*

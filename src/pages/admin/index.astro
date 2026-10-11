@@ -652,18 +652,31 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       un.onclick = () => accountAction(acc.id, 'unlock');
       actions.append(un);
     }
+    /* 忘了口令只能人工找回（本站不收邮箱）——给个一键重置，临时口令显示在状态行里 */
+    const reset = el('button', 'btn', '重置口令') as HTMLButtonElement;
+    reset.type = 'button';
+    reset.onclick = () => {
+      if (!confirm(`给「${acc.name}」换一个临时口令？他自己手上的登录会立刻失效。`)) return;
+      accountAction(acc.id, 'reset');
+    };
+    actions.append(reset);
     box.append(actions);
     return box;
   }
 
-  async function accountAction(id: number, action: 'ban' | 'unban' | 'unlock') {
+  async function accountAction(id: number, action: 'ban' | 'unban' | 'unlock' | 'reset') {
     setStatus('处理中…');
     const { status, data } = await api('/api/admin/accounts', { method: 'POST', body: { id, action } });
     if (status !== 200) {
       setStatus(`${data?.error ?? '操作失败'}（HTTP ${status}）`, true);
       return;
     }
-    setStatus(String(data.message ?? '已完成'));
+    /* 临时口令要让站长看得见、抄得走 —— 状态行是纯文本，不会被当成 HTML */
+    setStatus(
+      data.tempPassword
+        ? `${data.message}　临时口令：${data.tempPassword}（请他登录后自己在账号页改掉）`
+        : String(data.message ?? '已完成')
+    );
     await loadAccounts();
   }
 

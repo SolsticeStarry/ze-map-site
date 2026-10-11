@@ -15,6 +15,7 @@
  */
 
 import { allowWrite, fail, isBanned, isLocalHost, json, readJsonBody, safeEqual, type Env } from './http';
+import { turnstileMessage, verifyTurnstile } from './turnstile';
 
 /* ===== 常量 ===== */
 
@@ -404,15 +405,20 @@ async function timingDecoy(): Promise<string> {
  * POST /api/register —— 昵称 + 口令 + 选填联系方式
  *
  * 防刷四道闸（顺序有讲究：**都放在算哈希之前**，被拦下来的请求不花 CPU、不写库）：
- *   封禁 IP → 单 IP 每小时 → 单 IP 每天 → 全站 24 小时新账号上限。
+ *   人机验证 → 封禁 IP → 单 IP 每小时 → 单 IP 每天 → 全站 24 小时新账号上限。
  */
-export async function handleRegister(request: Request, env: Env, url: URL, ipHash: string): Promise<Response> {
+export async function handleRegister(request: Request, env: Env, url: URL, ipHash: string, rawIp: string): Promise<Response> {
   if (request.method !== 'POST') return fail('只支持 POST', 405);
   const parsed = await readJsonBody(request, 2048);
   if (!parsed.ok) return parsed.response;
   const b = parsed.body;
 
-  /* 道 0：被封禁的来源连注册都不给（以前这里漏了检查，被封的 IP 照样能开号） */
+  /* 道 0：真人验证（配了 TURNSTILE_SECRET 才生效）。
+     放在最前面：刷号脚本连哈希都摸不到。 */
+  const human = await verifyTurnstile(env, b.turnstileToken, rawIp);
+  if (!human.ok) return fail(turnstileMessage(human.reason), 400);
+
+  /* 道 1：被封禁的来源连注册都不给（以前这里漏了检查，被封的 IP 照样能开号） */
   if (await isBanned(env, ipHash)) return fail('该来源已被禁止注册', 403);
 
   if (!(await allowWrite(env, ipHash, 'register', REGISTER_PER_HOUR))) {
@@ -472,11 +478,15 @@ export async function handleRegister(request: Request, env: Env, url: URL, ipHas
  * 除了 IP 限流，还有**账号级锁定**（`MAX_LOGIN_FAILS` 次口令错就锁 `LOCK_MINUTES` 分钟）：
  * 只有 IP 限流的话，攻击者换 IP 就能接着猜同一个账号的口令。
  */
-export async function handleLogin(request: Request, env: Env, url: URL, ipHash: string): Promise<Response> {
+export async function handleLogin(request: Request, env: Env, url: URL, ipHash: string, rawIp: string): Promise<Response> {
   if (request.method !== 'POST') return fail('只支持 POST', 405);
   const parsed = await readJsonBody(request, 2048);
   if (!parsed.ok) return parsed.response;
   const b = parsed.body;
+
+  /* 真人验证（配了 secret 才生效）：注册和登录一起挡，撞库脚本连口令都试不了 */
+  const human = await verifyTurnstile(env, b.turnstileToken, rawIp);
+  if (!human.ok) return fail(turnstileMessage(human.reason), 400);
 
   if (await isBanned(env, ipHash)) return fail('该来源已被禁止登录', 403);
   if (!(await allowWrite(env, ipHash, 'login', LOGIN_PER_HOUR))) {
@@ -700,7 +710,12 @@ export async function handleAdminAccounts(request: Request, env: Env, url: URL):
   });
 }
 
-/** POST /api/admin/accounts —— { id, action: 'ban' | 'unban' | 'unlock' } */
+/** POST /api/admin/accounts —— { id, action: 'ban' | 'unban' | 'unlock' | 'reset' }
+ *
+ * `reset` = 给账号换一个**临时口令**并把新口令回给站长（页面会显示出来，站长转告本人）。
+ * 为什么需要：本站不收邮箱，「忘了口令」只能人工 —— 没有这个按钮就只能手改数据库。
+ * 顺带把 pass_ver +1：重置之后，**旧设备上的登录立刻失效**（口令本来就是这么作废的）。
+ */
 export async function handleAdminAccountAction(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') return fail('只支持 POST', 405);
   const parsed = await readJsonBody(request, 1024);
@@ -709,7 +724,7 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
   const id = Number(parsed.body.id);
   const action = String(parsed.body.action ?? '');
   if (!Number.isInteger(id) || id <= 0) return fail('id 不合法');
-  if (!['ban', 'unban', 'unlock'].includes(action)) return fail('action 只能是 ban / unban / unlock');
+  if (!['ban', 'unban', 'unlock', 'reset'].includes(action)) return fail('action 只能是 ban / unban / unlock / reset');
 
   await ensureSchema(env);
   const before = await env.DB.prepare(`SELECT id, name FROM users WHERE id = ?1`).bind(id).first<{ id: number; name: string }>();
@@ -720,8 +735,25 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
     await env.DB.prepare(`UPDATE users SET banned = 1, fail_count = 0, locked_until = NULL WHERE id = ?1`).bind(id).run();
   } else if (action === 'unban') {
     await env.DB.prepare(`UPDATE users SET banned = 0 WHERE id = ?1`).bind(id).run();
-  } else {
+  } else if (action === 'unlock') {
     await env.DB.prepare(`UPDATE users SET fail_count = 0, locked_until = NULL WHERE id = ?1`).bind(id).run();
+  } else {
+    const temp = tempPassword();
+    const hash = await hashPassword(temp);
+    await env.DB.prepare(
+      `UPDATE users SET pass_hash = ?1, pass_ver = pass_ver + 1, fail_count = 0, locked_until = NULL WHERE id = ?2`
+    )
+      .bind(hash, id)
+      .run();
+    return json({
+      ok: true,
+      id,
+      action,
+      /* 只在这里回明文口令：一次性、且只有拿着 ADMIN_TOKEN 的人看得到。
+         页面上要提示站长「转告本人后让他自己改」。 */
+      tempPassword: temp,
+      message: `已给「${before.name}」换了一个临时口令（见下方），请转告本人；他登录后可以在账号页自己改。`,
+    });
   }
 
   const message =
@@ -731,4 +763,14 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
         ? `已恢复「${before.name}」`
         : `已解锁「${before.name}」（失败计数清零）`;
   return json({ ok: true, id, action, message });
+}
+
+/**
+ * 临时口令：给人工转告用的，所以要好念好打。
+ * 字母表去掉了容易看错的 0/O/1/l/I，长度 10 —— 用户登录后应当自己改掉。
+ */
+function tempPassword(): string {
+  const alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  return [...bytes].map((b) => alphabet[b % alphabet.length]).join('');
 }

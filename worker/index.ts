@@ -153,8 +153,9 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (path === '/api/video-thanks') return handleVideoThanks(request, env);
 
   /* ===== 账号（P4）：登录可选，不登录照样能投稿 ===== */
-  if (path === '/api/register') return handleRegister(request, env, url, ipHash);
-  if (path === '/api/login') return handleLogin(request, env, url, ipHash);
+  /* 注册/登录多要一个真实 IP：Turnstile 的 siteverify 可以带上它做交叉校验 */
+  if (path === '/api/register') return handleRegister(request, env, url, ipHash, clientIp(request));
+  if (path === '/api/login') return handleLogin(request, env, url, ipHash, clientIp(request));
   if (path === '/api/logout') return handleLogout(request, env, url);
   if (path === '/api/me') return handleMe(request, env, url);
   if (path === '/api/password') return handlePassword(request, env, url);

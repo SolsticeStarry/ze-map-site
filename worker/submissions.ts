@@ -63,6 +63,7 @@ import {
   type GalleryManifest,
 } from './gallery';
 import { allowWrite, fail, isBanned, json, readJsonBody, type Env } from './http';
+import { turnstileMessage, verifyTurnstile } from './turnstile';
 import { SLUG_RE } from './votes';
 import { accountForSubmit, recalcUserStats } from './auth';
 
@@ -124,18 +125,8 @@ function parseStoredValue(raw: string): unknown {
   }
 }
 
-/** Turnstile 校验。没配 TURNSTILE_SECRET 就跳过（这时靠限流 + 人工审核兜底）。 */
-async function verifyTurnstile(env: Env, token: unknown, ip: string): Promise<boolean> {
-  if (typeof token !== 'string' || !token) return false;
-  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: token, remoteip: ip }),
-  });
-  if (!res.ok) return false;
-  const data = (await res.json()) as { success?: boolean };
-  return data.success === true;
-}
+/* Turnstile 校验搬到 worker/turnstile.ts 了 —— 注册/登录/投稿三个入口共用同一份，
+   而且它把「token 不对」和「校验服务不可达」分开返回，提示才不会误导用户。 */
 
 /**
  * 写入一条投稿 —— 三个入口（文本 / 封面 / 图片集）共用。
@@ -242,9 +233,8 @@ export async function handleSubmit(
 
   if (await isBanned(env, ipHash)) return fail('该来源已被禁止投稿', 403);
 
-  if (env.TURNSTILE_SECRET && !(await verifyTurnstile(env, b.turnstileToken, rawIp))) {
-    return fail('人机验证没通过，请重试', 400);
-  }
+  const human = await verifyTurnstile(env, b.turnstileToken, rawIp, { required: false });
+  if (!human.ok) return fail(turnstileMessage(human.reason), 400);
 
   const quota = await submissionQuota(env, ipHash);
   if (quota) return quota;
@@ -364,9 +354,8 @@ export async function handleSubmitCover(
 
   if (await isBanned(env, ipHash)) return fail('该来源已被禁止投稿', 403);
 
-  if (env.TURNSTILE_SECRET && !(await verifyTurnstile(env, form.get('turnstileToken'), rawIp))) {
-    return fail('人机验证没通过，请重试', 400);
-  }
+  const human = await verifyTurnstile(env, form.get('turnstileToken'), rawIp, { required: false });
+  if (!human.ok) return fail(turnstileMessage(human.reason), 400);
 
   const quota = await submissionQuota(env, ipHash);
   if (quota) return quota;
@@ -465,9 +454,8 @@ export async function handleSubmitGallery(
 
   if (await isBanned(env, ipHash)) return fail('该来源已被禁止投稿', 403);
 
-  if (env.TURNSTILE_SECRET && !(await verifyTurnstile(env, form.get('turnstileToken'), rawIp))) {
-    return fail('人机验证没通过，请重试', 400);
-  }
+  const human = await verifyTurnstile(env, form.get('turnstileToken'), rawIp, { required: false });
+  if (!human.ok) return fail(turnstileMessage(human.reason), 400);
 
   const quota = await submissionQuota(env, ipHash);
   if (quota) return quota;

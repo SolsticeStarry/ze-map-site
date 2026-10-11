@@ -539,6 +539,34 @@ test('账号锁定与封号：换 IP 也猜不动，站长能一键停用', asyn
     const bad = await call('/api/admin/accounts', { method: 'POST', headers: { authorization: 'Bearer test-admin-token' }, body: { id, action: '删库' } });
     assert.equal(bad.status, 400, 'action 白名单');
   });
+
+  await t.test('忘记口令：站长能一键重置（本站不收邮箱，这是唯一的人工找回入口）', async () => {
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const id = one(`SELECT id FROM users WHERE name = '受害者'`).id;
+    /* 先把他锁上，验证重置会顺手解锁 */
+    db.prepare(`UPDATE users SET fail_count = 3, locked_until = ?1 WHERE id = ?2`).run(Date.now() + 600000, id);
+
+    const r = await call('/api/admin/accounts', {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-admin-token' },
+      body: { id, action: 'reset' },
+    });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    const temp = r.data.tempPassword;
+    assert.equal(typeof temp, 'string');
+    assert.ok(temp.length >= 10, '临时口令要够长：' + temp);
+
+    const row = one(`SELECT pass_ver, fail_count, locked_until FROM users WHERE id = ?1`, id);
+    assert.equal(row.pass_ver, 2, '重置要把 pass_ver +1：旧设备上的登录立刻失效');
+    assert.equal(row.fail_count, 0);
+    assert.equal(row.locked_until, null, '顺手解锁');
+
+    /* 新口令能登进去，老口令不行 */
+    const oldPass = await call('/api/login', { method: 'POST', body: { name: '受害者', password: 'pass12345' }, ip: '198.51.100.100' });
+    assert.equal(oldPass.status, 401, '重置后旧口令必须失效');
+    const newPass = await call('/api/login', { method: 'POST', body: { name: '受害者', password: temp }, ip: '198.51.100.101' });
+    assert.equal(newPass.status, 200, '临时口令要能登录：' + JSON.stringify(newPass.data));
+  });
 });
 
 /* ===== 5. 老库 / 新库都要能跑 ===== */
@@ -556,4 +584,98 @@ test('method 不对时回 405 而不是 500', async () => {
   const r = await call('/api/me', { method: 'POST', body: {} });
   assert.equal(r.status, 405);
   assert.equal(r.data.ok, false);
+});
+
+/* ===== 7. 人机验证（Turnstile）=====
+ *
+ * 本地不联网，所以把 globalThis.fetch 换成一个假的 siteverify ——
+ * 这正好是「配了 secret 之后会发生什么」的确定性验证（真实调用在线上另有冒烟）。
+ */
+test('人机验证：配了 secret 就必过，token 不对与服务不可达给不同提示', async (t) => {
+  const realFetch = globalThis.fetch;
+  const stub = (reply) => {
+    globalThis.fetch = (async (url, init) => {
+      if (String(url).includes('/turnstile/v0/siteverify')) return reply();
+      return realFetch(url, init);
+    });
+  };
+  t.after(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  const pass = () => new Response(JSON.stringify({ success: true }), { headers: { 'content-type': 'application/json' } });
+  const turnstileFail = () =>
+    new Response(JSON.stringify({ success: false, 'error-codes': ['invalid-input-response'] }), { headers: { 'content-type': 'application/json' } });
+
+  await t.test('没配 secret：完全跳过（现有部署不受影响）', async () => {
+    const { call } = await setup();
+    stub(turnstileFail);
+    const r = await call('/api/register', { method: 'POST', body: { name: '没配密钥', password: 'pass12345' } });
+    assert.equal(r.status, 200, '没配 secret 时不该要求验证：' + JSON.stringify(r.data));
+  });
+
+  await t.test('配了 secret：不带 token → 注册/登录 400（投稿是宽松的，见下一条）', async () => {
+    const { call, env } = await setup();
+    env.TURNSTILE_SECRET = 'test-secret';
+    stub(pass);
+    const reg = await call('/api/register', { method: 'POST', body: { name: '没带token', password: 'pass12345' } });
+    assert.equal(reg.status, 400);
+    assert.match(reg.data.error, /小方框/);
+    const login = await call('/api/login', { method: 'POST', body: { name: '没带token', password: 'pass12345' } });
+    assert.equal(login.status, 400, '登录同样要验证');
+  });
+
+  await t.test('token 通过 → 注册与投稿都放行', async () => {
+    const { call, env } = await setup();
+    env.TURNSTILE_SECRET = 'test-secret';
+    stub(pass);
+    const reg = await call('/api/register', { method: 'POST', body: { name: '真人', password: 'pass12345', turnstileToken: 'tok' } });
+    assert.equal(reg.status, 200, JSON.stringify(reg.data));
+    const submit = await call('/api/submit', { method: 'POST', body: submitBody({ turnstileToken: 'tok' }) });
+    assert.equal(submit.status, 200, JSON.stringify(submit.data));
+  });
+
+  await t.test('投稿是**宽松**的：没带 token 也收（保住「谁都能投稿」）', async () => {
+    const { call, env } = await setup();
+    env.TURNSTILE_SECRET = 'test-secret';
+    /* siteverify 全判失败：如果投稿还要 token，这里就会 400 */
+    stub(turnstileFail);
+    const anon = await call('/api/submit', { method: 'POST', body: submitBody() });
+    assert.equal(anon.status, 200, '匿名投稿不该被验证挡住：' + JSON.stringify(anon.data));
+    /* 但**带了** token 就要认真验 —— 假 token 照样拒 */
+    const bad = await call('/api/submit', { method: 'POST', body: submitBody({ turnstileToken: 'forged' }) });
+    assert.equal(bad.status, 400);
+    assert.match(bad.data.error, /没通过/);
+  });
+
+  await t.test('siteverify 说 token 无效 → 400（"没通过"），不是服务故障', async () => {
+    const { call, env } = await setup();
+    env.TURNSTILE_SECRET = 'test-secret';
+    stub(turnstileFail);
+    const r = await call('/api/register', { method: 'POST', body: { name: '假token', password: 'pass12345', turnstileToken: 'bad' } });
+    assert.equal(r.status, 400);
+    assert.match(r.data.error, /没通过/);
+  });
+
+  await t.test('siteverify 连不上 → "服务暂时不可用"，别把锅甩给用户', async () => {
+    const { call, env } = await setup();
+    env.TURNSTILE_SECRET = 'test-secret';
+    globalThis.fetch = (async (url, init) => {
+      if (String(url).includes('/turnstile/v0/siteverify')) throw new Error('network down');
+      return realFetch(url, init);
+    });
+    const r = await call('/api/register', { method: 'POST', body: { name: '服务挂了', password: 'pass12345', turnstileToken: 'tok' } });
+    assert.equal(r.status, 400);
+    assert.match(r.data.error, /暂时不可用/);
+    assert.match(r.data.error, /不是你的问题/);
+  });
+
+  await t.test('siteverify 返回 500 → 也归到"服务不可用"', async () => {
+    const { call, env } = await setup();
+    env.TURNSTILE_SECRET = 'test-secret';
+    stub(() => new Response('boom', { status: 500 }));
+    const r = await call('/api/login', { method: 'POST', body: { name: '谁', password: 'pass12345', turnstileToken: 'tok' } });
+    assert.equal(r.status, 400);
+    assert.match(r.data.error, /暂时不可用/);
+  });
 });
