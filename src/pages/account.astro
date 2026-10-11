@@ -220,7 +220,7 @@ import QqGroup from '../components/QqGroup.astro';
        这一页要的是完整版（含「我的投稿」与各状态条数）。 */
     import { ACCOUNT_EVENT, meFull, notifyChanged } from '../lib/account-client';
     import type { AccountCounts, AccountSubmission, AccountUser } from '../lib/account-client';
-    import { mountTurnstile, resetTurnstile, turnstileHint, turnstileToken } from '../lib/turnstile';
+    import { mountTurnstile, resetTurnstile, takeTurnstileToken, turnstileHint, turnstileToken } from '../lib/turnstile';
 
     type Me = AccountUser;
     type Sub = AccountSubmission;
@@ -294,6 +294,7 @@ import QqGroup from '../components/QqGroup.astro';
       资深编辑: 3,
       荣誉编辑: 4,
       百科元老: 5,
+      资料奠基人: 6,
     };
 
     /* 日期按**访问者本机时区**算：站点是静态的，服务端时间戳直接切 UTC 会让夜里投的稿差一天 */
@@ -355,7 +356,8 @@ import QqGroup from '../components/QqGroup.astro';
       $('me-progress-fill')!.style.width = `${Math.max(me.approved > 0 ? 4 : 0, pct)}%`;
       $('me-progress-text')!.textContent = me.next
         ? `还差 ${me.next.need} 条升到「${me.next.level}」（已通过 ${me.approved} / ${target}）`
-        : `已是最高等级 —— 这条线的资料多半是你铺的`;
+        /* 已满级：用这一档自己的说明，别写死文案（2026-10-11 加新档时踩过） */
+        : `已是最高等级 —— ${me.hint}`;
 
       $('st-approved')!.textContent = String(me.approved);
       $('st-approved-wait')!.textContent = String(counts.approved ?? 0);
@@ -481,13 +483,15 @@ import QqGroup from '../components/QqGroup.astro';
       const p1 = ($('reg-pass') as HTMLInputElement).value;
       const p2 = ($('reg-pass2') as HTMLInputElement).value;
       if (p1 !== p2) return showErr('两次输入的口令不一样');
-      if (!turnstileToken(tsReg)) return showErr(turnstileHint(tsReg));
+      /* 先等验证（最多 3 秒）：手快的人点得比自动通过还早 */
+      const { token, blocked } = await takeTurnstileToken(tsReg);
+      if (blocked) return showErr(turnstileHint());
       try {
         const d = await post('/api/register', {
           name,
           password: p1,
           contact: ($('reg-contact') as HTMLInputElement).value,
-          turnstileToken: turnstileToken(tsReg),
+          turnstileToken: token,
         });
         showOk(String(d.message ?? '注册成功'));
         notifyChanged();
@@ -502,12 +506,13 @@ import QqGroup from '../components/QqGroup.astro';
     const doLogin = async () => {
       showErr('');
       showOk('');
-      if (!turnstileToken(tsLog)) return showErr(turnstileHint(tsLog));
+      const { token, blocked } = await takeTurnstileToken(tsLog);
+      if (blocked) return showErr(turnstileHint());
       try {
         const d = await post('/api/login', {
           name: ($('log-name') as HTMLInputElement).value.trim(),
           password: ($('log-pass') as HTMLInputElement).value,
-          turnstileToken: turnstileToken(tsLog),
+          turnstileToken: token,
         });
         showOk(String(d.message ?? '登录成功'));
         notifyChanged();

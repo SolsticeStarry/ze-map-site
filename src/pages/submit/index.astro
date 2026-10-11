@@ -384,7 +384,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
   /* 登录状态：与页头那个账号按钮共用一次请求（见 lib/account-client.ts） */
   import { ACCOUNT_EVENT, meOrThrow } from '../../lib/account-client';
   /* 人机验证（Turnstile）：放提交按钮上方；没配 site key 时不渲染 */
-  import { mountTurnstile, resetTurnstile, turnstileHint, turnstileToken } from '../../lib/turnstile';
+  import { mountTurnstile, resetTurnstile, takeTurnstileToken, turnstileHint, turnstileToken } from '../../lib/turnstile';
 
   const tsBox = document.getElementById('s-ts');
   void mountTurnstile(tsBox).then((ok) => {
@@ -1518,9 +1518,10 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
       `站长审核通过后会随下一批一起写回仓库并自动重建，通常几分钟内就会出现在 ` +
       `<a href="/maps/${slug}/">《${mapInfo?.title}》的条目</a> 里。`;
 
-    /* 人机验证：token 是**一次性**的，所以每次提交前取一次；失败后 reset（见 finally） */
-    const tsToken = turnstileToken(tsBox);
-    if (tsBox && tsBox.hidden === false && !tsToken) return showError(turnstileHint(tsBox));
+    /* 人机验证：先等最多 3 秒（自动通过通常 <1 秒，别让手快的人白跑一趟），
+       token 是一次性的，失败后 reset（见各分支的 catch） */
+    const { token: tsToken, blocked: tsBlocked } = await takeTurnstileToken(tsBox);
+    if (tsBlocked) return showError(turnstileHint());
 
     /* 封面走 multipart 上传接口 —— 值是一张压好的图，不是文本 */
     if (field === 'cover') {

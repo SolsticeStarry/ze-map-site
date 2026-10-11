@@ -108,8 +108,16 @@ export interface UserRow {
   locked_until?: number | null;
 }
 
-/** 等级：按**已通过**的投稿条数算（同图同字段只算一次，见 recalcUserStats 的去重口径） */
+/**
+ * 等级：按**已通过**的投稿条数算（同图同字段只算一次，见 recalcUserStats 的去重口径）。
+ *
+ * 最上面那一档（资料奠基人，80 条）是站长 2026-10-11 特意加的：SiKi 一个人铺了 82 处资料
+ * （全站 123 条投稿里的大头），当时的最高档「百科元老」50 条对他来说太容易 ——
+ * 加一档让"把整站资料从零铺起来"这件事有个够得着但极难到的位置。
+ * 想再加档就往这个数组里插一行（**必须按 min 从大到小**，levelOf 是按顺序 find 的）。
+ */
 const LEVELS: Array<{ min: number; name: string; hint: string }> = [
+  { min: 80, name: '资料奠基人', hint: '站里最早那一大批资料，是你一条条铺出来的' },
   { min: 50, name: '百科元老', hint: '这条线的内容多半是你铺的' },
   { min: 25, name: '荣誉编辑', hint: '长期稳定地补资料的几位之一' },
   { min: 10, name: '资深编辑', hint: '已经能独立补完一张图的资料' },

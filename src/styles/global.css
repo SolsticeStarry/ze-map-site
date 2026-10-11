@@ -3273,6 +3273,16 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 .acc-level-name[data-lv="4"] { color: #fdba74; border-color: rgba(249, 115, 22, 0.55); background: rgba(249, 115, 22, 0.1); box-shadow: 0 0 24px -8px rgba(249, 115, 22, 0.8); }
 .acc-level[data-lv="5"] .acc-level-name,
 .acc-level-name[data-lv="5"] { color: #1a0a06; border-color: transparent; background: linear-gradient(135deg, #ffd166, #ff8a3d); box-shadow: 0 0 28px -8px rgba(255, 196, 0, 0.85); }
+/* 最高档（资料奠基人）：红→紫→青的三色带，正好是全站那三个强调色 —— 一眼看出是"顶上那一档" */
+.acc-level[data-lv="6"] .acc-level-name,
+.acc-level-name[data-lv="6"] {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(120deg, var(--accent), var(--accent-3) 50%, var(--accent-2));
+  box-shadow: 0 0 34px -8px rgba(168, 85, 247, 0.95);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
 
 .acc-progress { margin: 18px 0 0; }
 .acc-progress-bar {

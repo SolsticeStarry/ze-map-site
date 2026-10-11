@@ -95,7 +95,7 @@ import { PERSON_ICON } from '../lib/account-client';
 
 <script>
   import { ACCOUNT_EVENT, PERSON_ICON, meOrThrow, notifyChanged, type AccountMe } from '../lib/account-client';
-  import { mountTurnstile, resetTurnstile, turnstileEnabled, turnstileHint, turnstileToken } from '../lib/turnstile';
+  import { mountTurnstile, resetTurnstile, takeTurnstileToken, turnstileHint, turnstileToken } from '../lib/turnstile';
 
   const btn = document.getElementById('am-btn');
   const panel = document.getElementById('am-panel');
@@ -119,7 +119,15 @@ import { PERSON_ICON } from '../lib/account-client';
   };
 
   /** 等级 → 徽章配色档位（与 global.css 的 .acc-level-name[data-lv] 同一套） */
-  const LV: Record<string, number> = { 路人: 0, 入门贡献者: 1, 资料整理者: 2, 资深编辑: 3, 荣誉编辑: 4, 百科元老: 5 };
+  const LV: Record<string, number> = {
+    路人: 0,
+    入门贡献者: 1,
+    资料整理者: 2,
+    资深编辑: 3,
+    荣誉编辑: 4,
+    百科元老: 5,
+    资料奠基人: 6,
+  };
   let state: AccountMe | null = null;
   let loaded = false;
 
@@ -242,12 +250,14 @@ import { PERSON_ICON } from '../lib/account-client';
   loginForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     say('');
-    if (turnstileEnabled() && tsLog && !turnstileToken(tsLog)) return say(turnstileHint(tsLog));
+    /* 先等验证（最多 3 秒）：手快的人点得比自动通过还早，不能因此报错 */
+    const { token, blocked } = await takeTurnstileToken(tsLog);
+    if (blocked) return say(turnstileHint());
     try {
       await post('/api/login', {
         name: ($('am-log-name') as HTMLInputElement).value.trim(),
         password: ($('am-log-pass') as HTMLInputElement).value,
-        turnstileToken: turnstileToken(tsLog),
+        turnstileToken: token,
       });
       notifyChanged();
       await load();
@@ -266,13 +276,14 @@ import { PERSON_ICON } from '../lib/account-client';
     const p1 = ($('am-reg-pass') as HTMLInputElement).value;
     const p2 = ($('am-reg-pass2') as HTMLInputElement).value;
     if (p1 !== p2) return say('两次输入的口令不一样');
-    if (turnstileEnabled() && tsReg && !turnstileToken(tsReg)) return say(turnstileHint(tsReg));
+    const { token, blocked } = await takeTurnstileToken(tsReg);
+    if (blocked) return say(turnstileHint());
     try {
       await post('/api/register', {
         name: ($('am-reg-name') as HTMLInputElement).value.trim(),
         password: p1,
         contact: ($('am-reg-contact') as HTMLInputElement).value,
-        turnstileToken: turnstileToken(tsReg),
+        turnstileToken: token,
       });
       notifyChanged();
       await load();

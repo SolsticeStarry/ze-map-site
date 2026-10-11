@@ -331,8 +331,7 @@ test('登录后投稿：署名用账号昵称、记进个人主页，等级按�
     assert.deepEqual(after.data.counts, { pending: 0, approved: 1, applied: 10, rejected: 0 });
   });
 
-  await t.test('统计口径：待写回不算通过数；同图同字段只算一次', async () => {
-    /* 上一条免审直发的还停在 approved（待写回），所以通过数没变 */
+  await t.test('统计口径：待写回不算通过数；同图同字段只算一次', async () => {    /* 上一条免审直发的还停在 approved（待写回），所以通过数没变 */
     assert.equal((await call('/api/me')).data.user.approved, 10);
 
     db.prepare(`UPDATE submissions SET status='rejected', reject_note='测试' WHERE map_slug='ze_only_up'`).run();
@@ -584,6 +583,32 @@ test('method 不对时回 405 而不是 500', async () => {
   const r = await call('/api/me', { method: 'POST', body: {} });
   assert.equal(r.status, 405);
   assert.equal(r.data.ok, false);
+});
+
+/* ===== 6. 等级最高档（2026-10-11 站长加的「资料奠基人」） ===== */
+
+test('等级最高档：79 条停在「百科元老」，80 条才进「资料奠基人」', async () => {
+  const { call, one, db } = await setup();
+  await register(call, '冲榜的人');
+  const uid = one(`SELECT id FROM users WHERE name = '冲榜的人'`).id;
+
+  const ins = db.prepare(
+    `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, user_id) VALUES (?,?,?,?, 'applied', ?, ?)`
+  );
+  for (let i = 0; i < 79; i++) ins.run(`ze_tier_${i}`, 'difficulty', '"困难"', 'h', Date.now(), uid);
+
+  let me = await call('/api/me');
+  assert.equal(me.data.user.approved, 79);
+  assert.equal(me.data.user.level, '百科元老', '79 条还差一条，别提前给最高档');
+  assert.deepEqual(me.data.user.next, { level: '资料奠基人', need: 1 });
+
+  ins.run('ze_tier_79', 'difficulty', '"困难"', 'h', Date.now(), uid);
+  me = await call('/api/me');
+  assert.equal(me.data.user.approved, 80);
+  assert.equal(me.data.user.level, '资料奠基人');
+  assert.equal(me.data.user.next, null, '最高档不该再有下一级');
+  assert.match(me.data.user.hint, /铺出来/);
+  assert.equal(me.data.user.trusted, true, '到这一档当然也免审');
 });
 
 /* ===== 7. 人机验证（Turnstile）=====

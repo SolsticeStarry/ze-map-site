@@ -66,6 +66,11 @@ CREATE INDEX  IF NOT EXISTS idx_sub_user ...
 | 资深编辑 | 10 |
 | 荣誉编辑 | 25 |
 | 百科元老 | 50 |
+| **资料奠基人** | **80**（2026-10-11 站长加的：SiKi 一个人铺了 82 处资料，原来的顶档 50 对他来说太容易 —— 加一档让「把整站资料从零铺起来」有个够得着但极难到的位置） |
+
+加档位只需往 `worker/auth.ts` 的 `LEVELS` 里插一行（**必须按 `min` 从大到小**，
+`levelOf` 是按顺序 `find` 的），再在 `account.astro` / `AccountMenu.astro` 的 `LV` 映射里
+补一个配色档位、在 `global.css` 的 `.acc-level-name[data-lv="n"]` 加一条颜色。
 
 - 统计口径在 `recalcUserStats()`：**每张图的每个字段只算一次**（`COUNT(DISTINCT map_slug||'|'||field)`），
   否则把一次改动拆成三条提交就能刷等级。

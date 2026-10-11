@@ -109,18 +109,36 @@ export function resetTurnstile(el: HTMLElement | null): void {
 }
 
 /**
- * 给「提交」这类动作用的一句话检查：拿不到 token 就返回该给用户看的提示。
- * 页面自己决定怎么显示（有的用 form-error，有的用状态行）。
+ * 提交前取 token：**先等一会儿**，再决定拦不拦。
  *
- * 这里刻意分两种情况：**脚本/验证框根本没出来**（多半是浏览器隐私设置或插件挡了
- * challenges.cloudflare.com —— 2026-10-11 在 Edge 的跟踪防护下实测过）与
- * **框出来了但用户没点**。混成一句话会让被挡的人一直去找"那个方框"，而页面上根本没有框。
+ * 为什么不是「没 token 就立刻拦」：
+ *   · widget 是异步渲染的，自动通过（Managed 模式）通常 < 1 秒 —— 手快的人先点了提交，
+ *     立刻拦下就会看到「请先完成验证」这种莫名其妙的提示（2026-10-11 实测踩到）；
+ *   · 而 widget **压根没渲染出来**时（脚本被浏览器隐私设置/插件挡了），这里**不拦**，
+ *     把请求交给服务端判断：没配 secret 就放行（不能因为浏览器设置把正常用户锁在门外），
+ *     配了 secret 就由服务端回一句带解决办法的提示。
+ *
+ * @returns `{ token, blocked }`：blocked=true 表示「框在页面上、但一直没通过」，本地提示即可
  */
-export function turnstileHint(el: HTMLElement | null): string {
-  if (!TURNSTILE_SITE_KEY) return '';
-  const hasWidget = Boolean(el?.querySelector('iframe, input[name="cf-turnstile-response"]'));
-  if (!el || !mounted.has(el) || !hasWidget) {
-    return '人机验证框没加载出来 —— 多半是浏览器的隐私设置或插件挡住了 challenges.cloudflare.com。可以换 Chrome 试试、或把本站加入例外；一直不行就在 QQ 群里找站长，我们手动收你的稿子';
+export async function takeTurnstileToken(
+  el: HTMLElement | null,
+  ms = 3000
+): Promise<{ token: string; blocked: boolean }> {
+  if (!TURNSTILE_SITE_KEY) return { token: '', blocked: false };
+  /* 没挂上、或者挂上了但 Cloudflare 什么都没渲染出来 → 交给服务端 */
+  if (!el || !mounted.has(el) || !el.querySelector('iframe, input[name="cf-turnstile-response"]')) {
+    return { token: '', blocked: false };
   }
-  return '请先完成上面的人机验证（点一下那个小方框）';
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    const token = turnstileToken(el);
+    if (token) return { token, blocked: false };
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  return { token: turnstileToken(el), blocked: !turnstileToken(el) };
+}
+
+/** 框在、但没验证完时给用户看的话（框都没出来时不会走到这里，见上） */
+export function turnstileHint(): string {
+  return '请先完成上面的人机验证（点一下那个小方框）再提交';
 }
