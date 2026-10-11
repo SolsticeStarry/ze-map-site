@@ -54,6 +54,8 @@ import { handleStats, handleVote } from './votes';
 import { handleTerr } from './terr';
 import { handleVideoMeta, handleVideoThanks } from './videos';
 import {
+  handleAdminAccountAction,
+  handleAdminAccounts,
   handleLogin,
   handleLogout,
   handleMe,
@@ -114,6 +116,10 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (path === '/api/admin/flush') return handleAdminFlush(request, env);
     if (path === '/api/admin/unstage') return handleAdminUnstage(request, env);
     if (path === '/api/admin/ban') return handleAdminBan(request, env);
+    /* 账号管理（P4）：看账号列表 / 停用 / 恢复 / 解锁连续输错被锁的账号 */
+    if (path === '/api/admin/accounts') {
+      return request.method === 'POST' ? handleAdminAccountAction(request, env) : handleAdminAccounts(request, env, url);
+    }
     /* 待审图片的缩略图（封面 / 图片集）：<img> 带不了自定义头，所以审核台用 fetch + Bearer 取 blob，
        这样密钥不会出现在 URL 里（也就不进任何日志）。 */
     if (path.startsWith('/api/admin/cover/') || path.startsWith('/api/admin/gallery/')) {

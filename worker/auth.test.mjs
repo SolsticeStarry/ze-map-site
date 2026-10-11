@@ -14,6 +14,7 @@
  * 两个都是上线前在本地抓到的，不该有机会再回来。
  */
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -103,15 +104,18 @@ async function setup(opts = {}) {
   const env = { DB, IP_SALT: 'test-salt', ASSETS: { fetch: async () => new Response('asset') } };
   const jar = { cookie: '' };
 
-  const call = async (pathname, { method = 'GET', body, cookie } = {}) => {
+  const call = async (pathname, { method = 'GET', body, cookie, ip, headers = {} } = {}) => {
     const useCookie = cookie !== undefined ? cookie : jar.cookie;
     const res = await worker.fetch(
       new Request(HOST + pathname, {
         method,
         headers: {
           origin: HOST,
+          /* 默认同一个出口 IP；测限流时用 ip 换成别的，走的就是另一套桶 */
+          'cf-connecting-ip': ip ?? '203.0.113.7',
           ...(body ? { 'content-type': 'application/json' } : {}),
           ...(useCookie ? { cookie: useCookie } : {}),
+          ...headers,
         },
         ...(body ? { body: JSON.stringify(body) } : {}),
       }),
@@ -230,10 +234,12 @@ test('注册与登录：口令只存派生值，会话是无状态签名 Cookie'
   });
 
   await t.test('重名 → 409；昵称太短 / 带尖括号 / 口令太短 → 400', async () => {
-    assert.equal((await call('/api/register', { method: 'POST', body: { name: '测试员', password: 'pass12345' } })).status, 409);
-    assert.equal((await call('/api/register', { method: 'POST', body: { name: '测', password: 'pass12345' } })).status, 400);
-    assert.equal((await call('/api/register', { method: 'POST', body: { name: '<img src=x>', password: 'pass12345' } })).status, 400);
-    assert.equal((await call('/api/register', { method: 'POST', body: { name: '短口令', password: '123' } })).status, 400);
+    /* 每次都换个出口 IP：注册限流是「单 IP 3 个」，这些用例要测的是**校验**，
+       不能被限流抢先拦掉（429 会把真正的失败原因盖住）。 */
+    assert.equal((await call('/api/register', { method: 'POST', body: { name: '测试员', password: 'pass12345' }, ip: '198.51.100.11' })).status, 409);
+    assert.equal((await call('/api/register', { method: 'POST', body: { name: '测', password: 'pass12345' }, ip: '198.51.100.12' })).status, 400);
+    assert.equal((await call('/api/register', { method: 'POST', body: { name: '<img src=x>', password: 'pass12345' }, ip: '198.51.100.13' })).status, 400);
+    assert.equal((await call('/api/register', { method: 'POST', body: { name: '短口令', password: '123' }, ip: '198.51.100.14' })).status, 400);
   });
 
   await t.test('带 Cookie 认得出；改签名 / 伪造载荷 / 别人的 id 都认不出来', async () => {
@@ -395,10 +401,143 @@ test('账号设置：改口令让旧 Cookie 失效，改昵称不动历史署名
     assert.equal((await call('/api/profile', { method: 'POST', body: { name: '另一个人' } })).status, 409);
   });
 
-  await t.test('注册 / 登录共用一个限流桶（同一 IP 每小时 30 次）', async () => {
+  await t.test('登录限流：同一 IP 每小时 30 次（注册另有更严的桶）', async () => {
     for (let i = 0; i < 30; i++) await call('/api/login', { method: 'POST', body: { name: 'x', password: 'bad' } });
     const blocked = await call('/api/login', { method: 'POST', body: { name: 'x', password: 'bad' } });
     assert.equal(blocked.status, 429);
+  });
+});
+
+/* ===== 5. 防「大量注册」（站长最担心的那条） ===== */
+
+test('防大量注册：四道闸逐层收紧，且都不在算哈希之前', async (t) => {
+  await t.test('保留昵称不许注册（防冒充站方），已知贡献者的名字**不**在保留名单里', async () => {
+    const { call } = await setup();
+    let n = 20;
+    for (const bad of ['站长', 'Admin', 'ADMINISTRATOR', '官方']) {
+      /* 每个名字换个 IP：单 IP 一天只能注册 3 个，别让限流把「保留昵称」的结论盖住 */
+      const r = await call('/api/register', { method: 'POST', body: { name: bad, password: 'pass12345' }, ip: `198.51.100.${n++}` });
+      assert.equal(r.status, 400, bad + ' 应该被拒：' + JSON.stringify(r.data));
+      assert.match(r.data.error, /保留/);
+    }
+    /* 这四个是历史贡献者，将来要按名字回填功劳 —— 不能用保留名单把他们自己挡住 */
+    for (const ok of ['SiKi', '白叶', 'Liyuu~', '路人甲']) {
+      const r = await call('/api/register', { method: 'POST', body: { name: ok, password: 'pass12345' }, ip: `198.51.100.${n++}` });
+      assert.equal(r.status, 200, ok + ' 应该能注册：' + JSON.stringify(r.data));
+    }
+  });
+
+  await t.test('同一 IP 一小时最多 3 个（第 4 个 429），而且两个桶都记了数', async () => {
+    const { call, rows } = await setup();
+    for (let i = 0; i < 3; i++) {
+      const r = await call('/api/register', { method: 'POST', body: { name: '刷号测试' + i, password: 'pass12345' } });
+      assert.equal(r.status, 200, `第 ${i + 1} 个应该成功：` + JSON.stringify(r.data));
+    }
+    const fourth = await call('/api/register', { method: 'POST', body: { name: '刷号测试3', password: 'pass12345' } });
+    assert.equal(fourth.status, 429);
+    assert.match(fourth.data.error, /一小时最多 3 个/);
+
+    /* 小时桶与天桶用的是同一个 'register' 前缀、不同窗口 —— 两条记录都要在。
+       注意计数：第 4 次是**先记数再拒绝**（allowWrite 的语义），所以小时桶 4、天桶 3
+       （天桶在小时闸就返回了，没走到）。 */
+    const wins = rows(`SELECT window, count FROM rate_limits WHERE window LIKE 'register:%'`);
+    assert.equal(wins.length, 2, '应该同时占掉「小时」和「天」两个桶：' + JSON.stringify(wins));
+    const hour = wins.find((w) => /^register:\d{4}-\d{2}-\d{2}T\d{2}$/.test(w.window));
+    const day = wins.find((w) => /^register:\d{4}-\d{2}-\d{2}$/.test(w.window));
+    assert.ok(hour, '缺小时桶：' + JSON.stringify(wins));
+    assert.ok(day, '缺天桶：' + JSON.stringify(wins));
+    assert.equal(Number(hour.count), 4, '小时桶应记到 4（含被拒的那次）');
+    assert.equal(Number(day.count), 3, '天桶只记走到那一步的 3 次');
+  });
+
+  await t.test('全站 24 小时新账号到顶就停（挡住机器人批量占昵称）', async () => {
+    const { call, db } = await setup();
+    /* 先让懒建表把表建出来（这一步同时验证「没登录时 /api/me 也会补结构」） */
+    await call('/api/me?lite=1');
+    /* 直接塞 200 个「最近 24 小时建的」账号，省掉 200 次 PBKDF2；然后第一发注册就该被拦 */
+    const ins = db.prepare(`INSERT INTO users (name, name_key, pass_hash, created_at) VALUES (?,?,?,?)`);
+    for (let i = 0; i < 200; i++) ins.run('配额占位' + i, '配额占位' + i, 'pbkdf2$100000$x$y', Date.now() - 60_000);
+    const r = await call('/api/register', { method: 'POST', body: { name: '还想注册', password: 'pass12345' }, ip: '203.0.113.99' });
+    assert.equal(r.status, 429);
+    assert.match(r.data.error, /名额已经用完/);
+    assert.equal(r.data.error.includes('不登录也能投'), true, '被限流时要说清「不影响投稿」');
+  });
+
+  await t.test('被封禁的 IP 连注册和登录都不给（以前这里漏了检查）', async () => {
+    const { call, db } = await setup();
+    db.prepare(`INSERT INTO bans (ip_hash, reason, banned_at) VALUES (?,?,?)`).run(
+      /* 与 Worker 里 ipHash 的算法一致：sha256(IP_SALT:IP)，见 worker/http.ts 的 sha256Hex */
+      createHash('sha256').update('test-salt:203.0.113.7').digest('hex'),
+      '测试封禁',
+      Date.now()
+    );
+    const reg = await call('/api/register', { method: 'POST', body: { name: '被封的人', password: 'pass12345' } });
+    assert.equal(reg.status, 403);
+    const login = await call('/api/login', { method: 'POST', body: { name: '被封的人', password: 'pass12345' } });
+    assert.equal(login.status, 403);
+  });
+});
+
+test('账号锁定与封号：换 IP 也猜不动，站长能一键停用', async (t) => {
+  const { call, one, env, db } = await setup();
+  await register(call, '受害者');
+
+  await t.test('连续 5 次口令错 → 账号被锁 15 分钟，连正确口令也进不去', async () => {
+    for (let i = 0; i < 5; i++) {
+      /* 每次都换 IP：证明挡的是**账号**，不是出口 */
+      const r = await call('/api/login', { method: 'POST', body: { name: '受害者', password: 'wrong-pass' }, ip: `198.51.100.${10 + i}` });
+      assert.equal(r.status, 401, `第 ${i + 1} 次错口令应该 401`);
+    }
+    assert.equal(one(`SELECT fail_count FROM users WHERE name = '受害者'`).fail_count, 0, '锁定时计数清零，解锁后从头算');
+    assert.ok(Number(one(`SELECT locked_until FROM users WHERE name = '受害者'`).locked_until) > Date.now(), '应该写入了锁定时间');
+
+    const right = await call('/api/login', { method: 'POST', body: { name: '受害者', password: 'pass12345' }, ip: '198.51.100.77' });
+    assert.equal(right.status, 429);
+    assert.match(right.data.error, /连续输错/);
+
+    /* 模拟 15 分钟过去：锁定解除后正确口令能进 */
+    db.prepare(`UPDATE users SET locked_until = ?1 WHERE name = '受害者'`).run(Date.now() - 1000);
+    const again = await call('/api/login', { method: 'POST', body: { name: '受害者', password: 'pass12345' }, ip: '198.51.100.78' });
+    assert.equal(again.status, 200, JSON.stringify(again.data));
+  });
+
+  await t.test('审核台能看账号列表、停用、恢复（以前只能手改数据库）', async () => {
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const noAuth = await call('/api/admin/accounts');
+    assert.equal(noAuth.status, 401, '没有密钥不给看');
+
+    const list = await call('/api/admin/accounts', { headers: { authorization: 'Bearer test-admin-token' } });
+    assert.equal(list.status, 200, JSON.stringify(list.data));
+    assert.equal(list.data.totals.all, 1);
+    assert.equal(list.data.limits.newAccountsPerDay, 200);
+    assert.equal(list.data.limits.registerPerDay, 3);
+    assert.equal(list.data.items[0].name, '受害者');
+    const id = list.data.items[0].id;
+
+    const banned = await call('/api/admin/accounts', {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-admin-token' },
+      body: { id, action: 'ban' },
+    });
+    assert.equal(banned.status, 200, JSON.stringify(banned.data));
+
+    /* 他手上的登录立刻失效，也登不进来了 */
+    assert.equal((await call('/api/me')).data.user, null);
+    const relogin = await call('/api/login', { method: 'POST', body: { name: '受害者', password: 'pass12345' }, ip: '198.51.100.90' });
+    assert.equal(relogin.status, 403);
+    assert.match(relogin.data.error, /已被停用/);
+
+    const unbanned = await call('/api/admin/accounts', {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-admin-token' },
+      body: { id, action: 'unban' },
+    });
+    assert.equal(unbanned.status, 200);
+    const ok = await call('/api/login', { method: 'POST', body: { name: '受害者', password: 'pass12345' }, ip: '198.51.100.91' });
+    assert.equal(ok.status, 200, '解封后应该能登录');
+
+    const bad = await call('/api/admin/accounts', { method: 'POST', headers: { authorization: 'Bearer test-admin-token' }, body: { id, action: '删库' } });
+    assert.equal(bad.status, 400, 'action 白名单');
   });
 });
 

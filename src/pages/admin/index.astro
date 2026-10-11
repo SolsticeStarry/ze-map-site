@@ -46,6 +46,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         <button class="btn" type="button" data-status="approved">待写回</button>
         <button class="btn" type="button" data-status="applied">已上线</button>
         <button class="btn" type="button" data-status="rejected">已驳回</button>
+        {/*
+          「账号」标签：看账号列表 + 停用/恢复/解锁。
+          做它的直接原因：`users.banned` 这一列和检查一直都在，但**以前没有任何入口能改它**，
+          想停用一个刷号的账号只能手改数据库。顺带把「最近 24 小时新增几个」摆出来，
+          因为防刷的四道闸有三道是按这个数算的（见 docs/accounts.md 的「防滥用」一节）。
+        */}
+        <button class="btn" type="button" data-status="accounts">账号</button>
         <button class="btn" type="button" id="a-reload">刷新</button>
       </div>
       <p class="queue-counts" id="a-counts"></p>
@@ -498,6 +505,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
   async function load() {
     listEl.replaceChildren(el('p', 'form-hint', '加载中…'));
+    /* 账号标签走另一套接口：它跟投稿队列没关系，别去拉队列 */
+    if (currentStatus === 'accounts') return loadAccounts();
     /* 先拿全站标签词表：审核标签投稿时要标出「全站首次出现的新词」。
        加载失败不影响审核 —— tagsBlock 会退化成「自己确认一遍」。 */
     await loadTagVocabulary();
@@ -552,6 +561,110 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       return;
     }
     for (const item of items) listEl.append(renderItem(item));
+  }
+
+  /* ===== 账号标签 ===== */
+
+  interface AccountItem {
+    id: number;
+    name: string;
+    contact: string | null;
+    created_at: number;
+    last_login: number | null;
+    banned: number;
+    approved: number;
+    rejected: number;
+    fail_count: number | null;
+    locked: boolean;
+  }
+
+  const fmtTime = (ts: number | null) => (ts ? new Date(ts).toLocaleString('zh-CN', { hour12: false }) : '—');
+
+  async function loadAccounts() {
+    $<HTMLElement>('a-flush').hidden = true;
+    $<HTMLElement>('a-pending-tip').hidden = true;
+    const { status, data } = await api('/api/admin/accounts?limit=200');
+    if (status !== 200) {
+      listEl.replaceChildren();
+      setStatus(data?.error ?? `加载失败（HTTP ${status}）`, true);
+      if (status === 401) panel.hidden = true;
+      return;
+    }
+    setStatus('');
+    panel.hidden = false;
+
+    const t = data.totals ?? {};
+    const lim = data.limits ?? {};
+    countsEl.textContent =
+      `账号 ${t.all ?? 0} 个 · 最近 24 小时新增 ${t.last24h ?? 0} / ${lim.newAccountsPerDay ?? '—'}` +
+      ` · 已停用 ${t.banned ?? 0} · 锁定中 ${t.locked ?? 0}` +
+      `　（限流：单 IP ${lim.registerPerHour ?? '—'}/小时、${lim.registerPerDay ?? '—'}/天）`;
+
+    listEl.replaceChildren();
+    const items: AccountItem[] = data.items ?? [];
+    if (!items.length) {
+      listEl.append(el('p', 'form-hint', '还没有人注册。'));
+      return;
+    }
+    for (const acc of items) listEl.append(renderAccount(acc));
+  }
+
+  function renderAccount(acc: AccountItem) {
+    const box = el('div', 'queue-item');
+    box.style.cssText = 'border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:10px';
+
+    const head = el('p', 'queue-title');
+    const name = el('strong', undefined, acc.name);
+    head.append(name, document.createTextNode(`　#${acc.id}`));
+    if (acc.banned) head.append(el('span', 'sbox-badge', '已停用'));
+    if (acc.locked) head.append(el('span', 'sbox-badge', '锁定中'));
+    box.append(head);
+
+    box.append(
+      el(
+        'p',
+        'queue-note',
+        `注册：${fmtTime(acc.created_at)}　最近登录：${fmtTime(acc.last_login)}　` +
+          `通过 ${acc.approved} · 驳回 ${acc.rejected}` +
+          (Number(acc.fail_count ?? 0) ? `　连续输错 ${acc.fail_count} 次` : '')
+      )
+    );
+    if (acc.contact) box.append(el('p', 'queue-note', `联系方式：${acc.contact}`));
+
+    const actions = el('div', 'queue-actions');
+    if (acc.banned) {
+      const un = el('button', 'btn', '恢复账号') as HTMLButtonElement;
+      un.type = 'button';
+      un.onclick = () => accountAction(acc.id, 'unban');
+      actions.append(un);
+    } else {
+      const ban = el('button', 'btn', '停用账号') as HTMLButtonElement;
+      ban.type = 'button';
+      ban.onclick = () => {
+        if (!confirm(`停用「${acc.name}」？他手上的登录会立刻失效，之后也登不进来。`)) return;
+        accountAction(acc.id, 'ban');
+      };
+      actions.append(ban);
+    }
+    if (acc.locked) {
+      const un = el('button', 'btn', '解除锁定') as HTMLButtonElement;
+      un.type = 'button';
+      un.onclick = () => accountAction(acc.id, 'unlock');
+      actions.append(un);
+    }
+    box.append(actions);
+    return box;
+  }
+
+  async function accountAction(id: number, action: 'ban' | 'unban' | 'unlock') {
+    setStatus('处理中…');
+    const { status, data } = await api('/api/admin/accounts', { method: 'POST', body: { id, action } });
+    if (status !== 200) {
+      setStatus(`${data?.error ?? '操作失败'}（HTTP ${status}）`, true);
+      return;
+    }
+    setStatus(String(data.message ?? '已完成'));
+    await loadAccounts();
   }
 
   /** 审核：approve = 攒进待写回（不写仓库），reject = 驳回。ids 支持批量。 */

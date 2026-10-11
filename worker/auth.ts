@@ -14,7 +14,7 @@
  * 并用**账号昵称**覆盖手填昵称（防止冒名）。等级与免审权益由已通过/被驳回条数算出来。
  */
 
-import { allowWrite, fail, isLocalHost, json, readJsonBody, safeEqual, type Env } from './http';
+import { allowWrite, fail, isBanned, isLocalHost, json, readJsonBody, safeEqual, type Env } from './http';
 
 /* ===== 常量 ===== */
 
@@ -39,8 +39,56 @@ const NAME_MAX = 20;
 const PASS_MIN = 8;
 const PASS_MAX = 72;
 
-/** 令牌桶：同一个 IP 每小时最多注册/登录多少次 */
-const AUTH_LIMIT_PER_HOUR = 30;
+/** 令牌桶：登录用的桶（同一 IP 每小时最多几次） */
+const LOGIN_PER_HOUR = 30;
+
+/*
+ * ===== 防「大量注册」（2026-10-11 加的一层）=====
+ *
+ * 站长问「这种简单的注册方式会不会被人恶意刷」。答案不是「登录会被打穿」（口令是
+ * PBKDF2 派生的、会话是签名的），而是**额度**：D1 免费版每天只有 10 万行写，
+ * 一次注册要写 2~3 行；分布式刷号能把这个额度吃光，**连累投票和投稿一起写不进去**
+ * —— 那是唯一会让正常用户受影响的路径。所以这里按「四道闸」递减：
+ *
+ *   1. 单 IP 每小时 3 个 —— 拦脚本（正常人一小时注册不了 3 个号）；
+ *   2. 单 IP 每天 3 个   —— 站长定的硬线：**一个出口最多贡献 3 个账号**；
+ *   3. 全站 24 小时 200 个 —— 兜底，同时也是「昵称被抢注」的上限
+ *      （200 × 3 行 ≈ 600 行写入，才占 D1 每日 10 万行额度的 0.6%，所以这条
+ *      不再是"省额度"，而是"别让机器人一天占掉几百个昵称"）；
+ *   4. 保留昵称 + 审核台封号 —— 拦住冒充与已发现的滥用者。
+ *
+ * 注意第 2 条的副作用：**同一个网络出口（宿舍 / 公司 / 学校）一天只能注册 3 个账号**。
+ * 超了的人会在 QQ 群里找站长 —— 这也是为啥保留昵称名单里没放已知贡献者的名字。
+ * 另外不登录本来就能投稿，所以就算注册被限流，也没有人被挡在贡献之外。
+ */
+const REGISTER_PER_HOUR = 3;
+const REGISTER_PER_DAY = 3;
+const NEW_ACCOUNTS_PER_DAY = 200;
+
+/** 连续口令错几次就锁账号（挡「换 IP 接着猜同一个账号」） */
+const MAX_LOGIN_FAILS = 5;
+/** 锁多久（分钟） */
+const LOCK_MINUTES = 15;
+
+/**
+ * 保留昵称：这些名字只会被用来冒充站方（署名里出现「站长」很吓人），一律不许注册。
+ * 已知贡献者的昵称（SiKi / 白叶 …）**故意不在这里** —— 占了他们的名字由人工处理
+ * （回填历史功劳之前会先确认人是谁），比在这里一刀切更稳。
+ */
+const RESERVED_NAMES = new Set([
+  '站长',
+  '管理员',
+  '管理',
+  'admin',
+  'administrator',
+  'official',
+  '官方',
+  '客服',
+  '版主',
+  'ze-map',
+  'zemap',
+  '地图资料站',
+]);
 
 export interface UserRow {
   id: number;
@@ -53,6 +101,10 @@ export interface UserRow {
   banned: number;
   approved: number;
   rejected: number;
+  /** 连续口令错误次数（成功登录清零） */
+  fail_count?: number;
+  /** 锁定到什么时候（毫秒时间戳；null = 没锁） */
+  locked_until?: number | null;
 }
 
 /** 等级：按**已通过**的投稿条数算（同图同字段只算一次，见 recalcUserStats 的去重口径） */
@@ -224,11 +276,29 @@ export async function ensureSchema(env: Env): Promise<void> {
          last_login INTEGER,
          banned INTEGER NOT NULL DEFAULT 0,
          approved INTEGER NOT NULL DEFAULT 0,
-         rejected INTEGER NOT NULL DEFAULT 0
+         rejected INTEGER NOT NULL DEFAULT 0,
+         fail_count INTEGER NOT NULL DEFAULT 0,
+         locked_until INTEGER
        )`
     ).run();
     await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_users_name_key ON users(name_key)`).run();
-    /* submissions.user_id：老的库没有这一列，补上（SQLite 没有 ADD COLUMN IF NOT EXISTS） */
+    /* 「过去 24 小时新增了几个账号」这个兜底闸要扫 created_at，给它建个索引 */
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_users_created ON users(created_at)`).run();
+
+    /*
+     * 老库补列。SQLite 没有 ADD COLUMN IF NOT EXISTS，只能先问 PRAGMA。
+     * （这份 DDL 是幂等的：每个 isolate 只跑一次，失败只记日志不抛。）
+     */
+    const ucols = await env.DB.prepare(`PRAGMA table_info(users)`).all<{ name: string }>();
+    const hasUserCol = (n: string) => (ucols.results ?? []).some((c) => c.name === n);
+    if (!hasUserCol('fail_count')) {
+      await env.DB.prepare(`ALTER TABLE users ADD COLUMN fail_count INTEGER NOT NULL DEFAULT 0`).run();
+    }
+    if (!hasUserCol('locked_until')) {
+      await env.DB.prepare(`ALTER TABLE users ADD COLUMN locked_until INTEGER`).run();
+    }
+
+    /* submissions.user_id：老的库没有这一列，补上 */
     const cols = await env.DB.prepare(`PRAGMA table_info(submissions)`).all<{ name: string }>();
     if (!(cols.results ?? []).some((c) => c.name === 'user_id')) {
       await env.DB.prepare(`ALTER TABLE submissions ADD COLUMN user_id INTEGER`).run();
@@ -290,6 +360,10 @@ function checkName(raw: unknown): { ok: true; value: string } | { ok: false; err
   if (v.length < NAME_MIN) return { ok: false, error: `昵称至少 ${NAME_MIN} 个字` };
   if (v.length > NAME_MAX) return { ok: false, error: `昵称最多 ${NAME_MAX} 个字` };
   if (/[<>{}[\]|*?/\\"']/.test(v)) return { ok: false, error: '昵称里有不支持的字符（< > { } [ ] | * ? / \\ " \'）' };
+  /* 冒充站方的名字不许注册：署名里出现「站长」会让投稿人身份失真 */
+  if (RESERVED_NAMES.has(nameKey(v))) {
+    return { ok: false, error: '这个昵称是保留的（避免冒充站方），换一个吧' };
+  }
   return { ok: true, value: v };
 }
 
@@ -313,17 +387,54 @@ function publicUser(user: UserRow) {
 
 /* ===== 接口 ===== */
 
-/** POST /api/register —— 昵称 + 口令 + 选填联系方式 */
+/*
+ * 不存在的昵称也要算一次哈希。
+ *
+ * 为什么：口令错误的路径要跑 10 万次 PBKDF2（实测线上 ~27ms CPU），而「昵称不存在」
+ * 以前是直接返回的（~1ms）。这点时间差能被用来**枚举哪些昵称已被注册**。
+ * 拿一个假哈希照样算一次，两边就一样慢了。每个 isolate 只生成一次。
+ */
+let dummyHash: string | null = null;
+async function timingDecoy(): Promise<string> {
+  dummyHash ??= await hashPassword('a-password-that-nobody-has');
+  return dummyHash;
+}
+
+/**
+ * POST /api/register —— 昵称 + 口令 + 选填联系方式
+ *
+ * 防刷四道闸（顺序有讲究：**都放在算哈希之前**，被拦下来的请求不花 CPU、不写库）：
+ *   封禁 IP → 单 IP 每小时 → 单 IP 每天 → 全站 24 小时新账号上限。
+ */
 export async function handleRegister(request: Request, env: Env, url: URL, ipHash: string): Promise<Response> {
   if (request.method !== 'POST') return fail('只支持 POST', 405);
   const parsed = await readJsonBody(request, 2048);
   if (!parsed.ok) return parsed.response;
   const b = parsed.body;
 
-  if (!(await allowWrite(env, ipHash, 'auth', AUTH_LIMIT_PER_HOUR))) {
-    return fail(`注册/登录太频繁了（一小时最多 ${AUTH_LIMIT_PER_HOUR} 次），请过一会儿再试`, 429);
+  /* 道 0：被封禁的来源连注册都不给（以前这里漏了检查，被封的 IP 照样能开号） */
+  if (await isBanned(env, ipHash)) return fail('该来源已被禁止注册', 403);
+
+  if (!(await allowWrite(env, ipHash, 'register', REGISTER_PER_HOUR))) {
+    return fail(`注册太频繁了（同一网络一小时最多 ${REGISTER_PER_HOUR} 个），请过一会儿再试`, 429);
   }
+  if (!(await allowWrite(env, ipHash, 'register', REGISTER_PER_DAY, 'day'))) {
+    return fail(`同一个网络出口今天已经注册过 ${REGISTER_PER_DAY} 个账号了，请明天再试；急用可以在 QQ 群里找站长`, 429);
+  }
+
   await ensureSchema(env);
+
+  /* 道 3：全站兜底。到顶就停 —— 最坏只损失几十行 D1 写入额度，不波及投票与投稿 */
+  const recent = await env.DB.prepare(`SELECT COUNT(*) AS n FROM users WHERE created_at >= ?1`)
+    .bind(Date.now() - 24 * 60 * 60 * 1000)
+    .first<{ n: number }>();
+  if (Number(recent?.n ?? 0) >= NEW_ACCOUNTS_PER_DAY) {
+    return fail(
+      `今天的新账号名额已经用完（上限 ${NEW_ACCOUNTS_PER_DAY} 个/天）。` +
+        '不影响投稿 —— 不登录也能投；急用可以在 QQ 群里找站长',
+      429
+    );
+  }
 
   const name = checkName(b.name);
   if (!name.ok) return fail(name.error);
@@ -355,15 +466,21 @@ export async function handleRegister(request: Request, env: Env, url: URL, ipHas
   return setSessionCookie(env, url, { ok: true, user: publicUser(row), message: '注册成功，已登录' }, token);
 }
 
-/** POST /api/login */
+/**
+ * POST /api/login
+ *
+ * 除了 IP 限流，还有**账号级锁定**（`MAX_LOGIN_FAILS` 次口令错就锁 `LOCK_MINUTES` 分钟）：
+ * 只有 IP 限流的话，攻击者换 IP 就能接着猜同一个账号的口令。
+ */
 export async function handleLogin(request: Request, env: Env, url: URL, ipHash: string): Promise<Response> {
   if (request.method !== 'POST') return fail('只支持 POST', 405);
   const parsed = await readJsonBody(request, 2048);
   if (!parsed.ok) return parsed.response;
   const b = parsed.body;
 
-  if (!(await allowWrite(env, ipHash, 'auth', AUTH_LIMIT_PER_HOUR))) {
-    return fail(`注册/登录太频繁了（一小时最多 ${AUTH_LIMIT_PER_HOUR} 次），请过一会儿再试`, 429);
+  if (await isBanned(env, ipHash)) return fail('该来源已被禁止登录', 403);
+  if (!(await allowWrite(env, ipHash, 'login', LOGIN_PER_HOUR))) {
+    return fail(`登录尝试太频繁了（一小时最多 ${LOGIN_PER_HOUR} 次），请过一会儿再试`, 429);
   }
   await ensureSchema(env);
 
@@ -372,12 +489,31 @@ export async function handleLogin(request: Request, env: Env, url: URL, ipHash: 
   if (!name || !pass) return fail('请填写昵称与口令');
 
   const row = await env.DB.prepare(`SELECT * FROM users WHERE name_key = ?1`).bind(nameKey(name)).first<UserRow>();
-  /* 昵称不存在与口令错给同一句话：不给撞库的人区分依据 */
-  const okPass = row ? await verifyPassword(pass, row.pass_hash) : false;
-  if (!row || !okPass) return fail('昵称或口令不对', 401);
+
+  /* 锁定期内直接回绝（连哈希都不算） */
+  const lockedUntil = Number(row?.locked_until ?? 0);
+  if (row && lockedUntil > Date.now()) {
+    const mins = Math.max(1, Math.ceil((lockedUntil - Date.now()) / 60000));
+    return fail(`这个账号连续输错太多次，请 ${mins} 分钟后再试（或让站长帮你解）`, 429);
+  }
+
+  /* 昵称不存在与口令错给同一句话：不给撞库的人区分依据（耗时也拉平了） */
+  const okPass = await verifyPassword(pass, row ? row.pass_hash : await timingDecoy());
+  if (!row || !okPass) {
+    if (row) {
+      const fails = Number(row.fail_count ?? 0) + 1;
+      const lockAt = fails >= MAX_LOGIN_FAILS ? Date.now() + LOCK_MINUTES * 60 * 1000 : null;
+      await env.DB.prepare(`UPDATE users SET fail_count = ?1, locked_until = ?2 WHERE id = ?3`)
+        .bind(lockAt ? 0 : fails, lockAt, row.id)
+        .run();
+    }
+    return fail('昵称或口令不对', 401);
+  }
   if (row.banned) return fail('这个账号已被停用，有疑问请在 QQ 群里找站长', 403);
 
-  await env.DB.prepare(`UPDATE users SET last_login = ?1 WHERE id = ?2`).bind(Date.now(), row.id).run();
+  await env.DB.prepare(`UPDATE users SET last_login = ?1${Number(row.fail_count ?? 0) ? ', fail_count = 0, locked_until = NULL' : ''} WHERE id = ?2`)
+    .bind(Date.now(), row.id)
+    .run();
   await recalcUserStats(env, row.id);
   const fresh = await env.DB.prepare(`SELECT * FROM users WHERE id = ?1`).bind(row.id).first<UserRow>();
   const token = await makeToken(env, fresh ?? row);
@@ -496,4 +632,103 @@ export async function handleProfile(request: Request, env: Env): Promise<Respons
     .run();
   const fresh = await env.DB.prepare(`SELECT * FROM users WHERE id = ?1`).bind(user.id).first<UserRow>();
   return json({ ok: true, user: publicUser(fresh ?? user), message: '已保存' });
+}
+
+/* ===== 审核台：账号管理（只有站长，走 ADMIN_TOKEN） =====
+ *
+ * 为什么需要：`users.banned` 这一列和检查一直都在（登录、读会话都认），
+ * 但**以前没有任何地方能把它设成 1** —— 想停用一个账号只能手改数据库。
+ * 顺带把「最近 24 小时新增了几个」摆出来，因为防刷的四道闸里有三道是按这个数算的。
+ */
+
+export interface AdminAccountRow {
+  id: number;
+  name: string;
+  contact: string | null;
+  created_at: number;
+  last_login: number | null;
+  banned: number;
+  approved: number;
+  rejected: number;
+  fail_count: number | null;
+  locked_until: number | null;
+}
+
+/** GET /api/admin/accounts —— 账号总览：全站统计 + 最近 N 个账号 */
+export async function handleAdminAccounts(request: Request, env: Env, url: URL): Promise<Response> {
+  if (request.method !== 'GET') return fail('只支持 GET', 405);
+  await ensureSchema(env);
+
+  const limitRaw = Number(url.searchParams.get('limit') ?? 100);
+  const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 500) : 100;
+
+  const totals = await env.DB.prepare(
+    `SELECT COUNT(*) AS all_users,
+            SUM(CASE WHEN created_at >= ?1 THEN 1 ELSE 0 END) AS last24h,
+            SUM(CASE WHEN banned = 1 THEN 1 ELSE 0 END) AS banned_users,
+            SUM(CASE WHEN locked_until > ?2 THEN 1 ELSE 0 END) AS locked_users
+       FROM users`
+  )
+    .bind(Date.now() - 24 * 60 * 60 * 1000, Date.now())
+    .first<{ all_users: number; last24h: number; banned_users: number; locked_users: number }>();
+
+  const { results } = await env.DB.prepare(
+    `SELECT id, name, contact, created_at, last_login, banned, approved, rejected, fail_count, locked_until
+       FROM users ORDER BY created_at DESC LIMIT ?1`
+  )
+    .bind(limit)
+    .all<AdminAccountRow>();
+
+  return json({
+    ok: true,
+    items: (results ?? []).map((r) => ({
+      ...r,
+      /* 联系方式只有站长看得到 —— 这个接口本来就在 ADMIN_TOKEN 后面 */
+      locked: Number(r.locked_until ?? 0) > Date.now(),
+    })),
+    totals: {
+      all: Number(totals?.all_users ?? 0),
+      last24h: Number(totals?.last24h ?? 0),
+      banned: Number(totals?.banned_users ?? 0),
+      locked: Number(totals?.locked_users ?? 0),
+    },
+    limits: {
+      registerPerHour: REGISTER_PER_HOUR,
+      registerPerDay: REGISTER_PER_DAY,
+      newAccountsPerDay: NEW_ACCOUNTS_PER_DAY,
+    },
+  });
+}
+
+/** POST /api/admin/accounts —— { id, action: 'ban' | 'unban' | 'unlock' } */
+export async function handleAdminAccountAction(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') return fail('只支持 POST', 405);
+  const parsed = await readJsonBody(request, 1024);
+  if (!parsed.ok) return parsed.response;
+
+  const id = Number(parsed.body.id);
+  const action = String(parsed.body.action ?? '');
+  if (!Number.isInteger(id) || id <= 0) return fail('id 不合法');
+  if (!['ban', 'unban', 'unlock'].includes(action)) return fail('action 只能是 ban / unban / unlock');
+
+  await ensureSchema(env);
+  const before = await env.DB.prepare(`SELECT id, name FROM users WHERE id = ?1`).bind(id).first<{ id: number; name: string }>();
+  if (!before) return fail('没有这个账号', 404);
+
+  if (action === 'ban') {
+    /* 停用 + 顺手清掉失败计数：解封后不会带着旧锁定 */
+    await env.DB.prepare(`UPDATE users SET banned = 1, fail_count = 0, locked_until = NULL WHERE id = ?1`).bind(id).run();
+  } else if (action === 'unban') {
+    await env.DB.prepare(`UPDATE users SET banned = 0 WHERE id = ?1`).bind(id).run();
+  } else {
+    await env.DB.prepare(`UPDATE users SET fail_count = 0, locked_until = NULL WHERE id = ?1`).bind(id).run();
+  }
+
+  const message =
+    action === 'ban'
+      ? `已停用「${before.name}」—— 他手上的登录会立刻失效，投稿署名也不再挂到这个账号`
+      : action === 'unban'
+        ? `已恢复「${before.name}」`
+        : `已解锁「${before.name}」（失败计数清零）`;
+  return json({ ok: true, id, action, message });
 }
