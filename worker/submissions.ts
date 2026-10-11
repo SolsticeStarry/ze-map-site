@@ -64,6 +64,7 @@ import {
 } from './gallery';
 import { allowWrite, fail, isBanned, json, readJsonBody, type Env } from './http';
 import { SLUG_RE } from './votes';
+import { accountForSubmit, recalcUserStats } from './auth';
 
 interface SubmissionRow {
   id: number;
@@ -80,6 +81,8 @@ interface SubmissionRow {
   reject_note: string | null;
   commit_sha: string | null;
   error: string | null;
+  /** 账号 id（P4）：登录后投稿才有；匿名投稿为 null */
+  user_id: number | null;
 }
 
 /* ===== 小工具 ===== */
@@ -134,6 +137,68 @@ async function verifyTurnstile(env: Env, token: unknown, ip: string): Promise<bo
   return data.success === true;
 }
 
+/**
+ * 写入一条投稿 —— 三个入口（文本 / 封面 / 图片集）共用。
+ *
+ * 为什么要包一层（这是踩过的坑）：
+ * `user_id` 这一列是账号系统上线后才有的（worker/auth.ts 的懒建表）。老库的
+ * submissions 表里没有它，如果匿名投稿也把 `user_id` 写进列清单，
+ * 「还没人登录过」时的第一条投稿就会整条报 `no column named user_id` → 500。
+ * 这正好是最不能接受的失败方式：账号系统拖垮投稿。
+ *
+ * 所以：
+ *   · 匿名投稿**压根不提 user_id**（老库、新库都能跑，缺列时默认就是 NULL）；
+ *   · 登录投稿才带上它；万一那一列还是写不进去（懒建表失败），退回匿名待审，
+ *     稿子照收 —— 宁可丢署名与免审，也不能丢稿。
+ *
+ * @returns degraded=true 表示退回了匿名待审（账号信息没写进去）
+ */
+async function insertSubmission(
+  env: Env,
+  v: {
+    slug: string;
+    field: string;
+    value: unknown;
+    note: string;
+    submitter: string;
+    contact: string;
+    ipHash: string;
+    status: string;
+    userId: number | null;
+  }
+): Promise<{ id: number | null; degraded: boolean }> {
+  const base = [v.slug, v.field, JSON.stringify(v.value), v.note, v.submitter, v.contact, v.ipHash];
+
+  const anonymous = (status: string) =>
+    env.DB.prepare(
+      `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at)
+       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9) RETURNING id`
+    )
+      .bind(...base, status, Date.now())
+      .first<{ id: number }>();
+
+  if (v.userId === null) {
+    const row = await anonymous(v.status);
+    return { id: row?.id ?? null, degraded: false };
+  }
+
+  try {
+    const row = await env.DB.prepare(
+      `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at, user_id)
+       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) RETURNING id`
+    )
+      .bind(...base, v.status, Date.now(), v.userId)
+      .first<{ id: number }>();
+    return { id: row?.id ?? null, degraded: false };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/user_id/i.test(msg)) throw err;
+    console.error('user_id 写不进去，这条投稿退回匿名待审：' + msg);
+    const row = await anonymous('pending');
+    return { id: row?.id ?? null, degraded: true };
+  }
+}
+
 /* ===== 公开接口 ===== */
 
 /** POST /api/submit */
@@ -184,17 +249,38 @@ export async function handleSubmit(
   const quota = await submissionQuota(env, ipHash);
   if (quota) return quota;
 
-  const row = await env.DB.prepare(
-    `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at)
-     VALUES (?1,?2,?3,?4,?5,?6,?7,'pending',?8) RETURNING id`
-  )
-    .bind(slug, field, JSON.stringify(stored), note.value, submitter.value, contact.value, ipHash, Date.now())
-    .first<{ id: number }>();
+  /*
+   * 账号（P4）：登录了就挂到账号上 ——
+   *   · `user_id` 记进 submissions，等级统计靠它；
+   *   · 昵称用**账号昵称**覆盖手填值，否则谁都能填别人的昵称投稿，署名与等级都会失真；
+   *   · 高等级（通过 ≥10 条、驳回 ≤20%）免审：直接进「待写回」队列，省掉人工点通过那一步。
+   * 没登录就完全按老路子走（匿名投稿，署名用手填昵称）。
+   */
+  const account = await accountForSubmit(request, env).catch(() => ({ id: null, name: null, trusted: false }));
+  const finalSubmitter = account.name ?? submitter.value;
+  const status = account.trusted ? 'approved' : 'pending';
+
+  const { id, degraded } = await insertSubmission(env, {
+    slug,
+    field,
+    value: stored,
+    note: note.value,
+    submitter: finalSubmitter,
+    contact: contact.value,
+    ipHash,
+    status,
+    userId: account.id,
+  });
+  /* 账号信息没写进去时不能再按「免审直发」处理：那条已经退回待审了 */
+  const autoApproved = account.trusted && !degraded;
 
   return json({
     ok: true,
-    id: row?.id ?? null,
-    message: '已收到，审核通过后会出现在条目里',
+    id,
+    autoApproved,
+    message: autoApproved
+      ? '已收到。你的账号已获免审资格，这条稿子会直接随下一批写回 —— 几分钟后就能在条目里看到'
+      : '已收到，审核通过后会出现在条目里',
   });
 }
 
@@ -303,16 +389,23 @@ export async function handleSubmitCover(
   };
 
   try {
-    const row = await env.DB.prepare(
-      `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at)
-       VALUES (?1,'cover',?2,?3,?4,?5,?6,'pending',?7) RETURNING id`
-    )
-      .bind(slug, JSON.stringify(meta), note.value, submitter.value, contact.value, ipHash, Date.now())
-      .first<{ id: number }>();
+    /* 账号（P4）：登录了的封面投稿也挂到账号上 —— 图片类贡献同样计等级 */
+    const account = await accountForSubmit(request, env).catch(() => ({ id: null, name: null, trusted: false }));
+    const { id } = await insertSubmission(env, {
+      slug,
+      field: 'cover',
+      value: meta,
+      note: note.value,
+      submitter: account.name ?? submitter.value,
+      contact: contact.value,
+      ipHash,
+      status: account.trusted ? 'approved' : 'pending',
+      userId: account.id,
+    });
 
     return json({
       ok: true,
-      id: row?.id ?? null,
+      id,
       width: meta.width,
       height: meta.height,
       bytes: meta.bytes,
@@ -398,16 +491,23 @@ export async function handleSubmitGallery(
   };
 
   try {
-    const row = await env.DB.prepare(
-      `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at)
-       VALUES (?1,'gallery',?2,?3,?4,?5,?6,'pending',?7) RETURNING id`
-    )
-      .bind(slug, JSON.stringify(meta), note.value, submitter.value, contact.value, ipHash, Date.now())
-      .first<{ id: number }>();
+    /* 账号（P4）：登录了的图片集投稿同样挂到账号上（署名也用账号昵称） */
+    const account = await accountForSubmit(request, env).catch(() => ({ id: null, name: null, trusted: false }));
+    const { id } = await insertSubmission(env, {
+      slug,
+      field: 'gallery',
+      value: meta,
+      note: note.value,
+      submitter: account.name ?? submitter.value,
+      contact: contact.value,
+      ipHash,
+      status: account.trusted ? 'approved' : 'pending',
+      userId: account.id,
+    });
 
     return json({
       ok: true,
-      id: row?.id ?? null,
+      id,
       width: meta.width,
       height: meta.height,
       bytes: meta.bytes,
@@ -905,6 +1005,13 @@ export async function handleAdminFlush(request: Request, env: Env): Promise<Resp
       )
         .bind(commitSha, row.id)
         .run();
+    }
+    /*
+     * 这批写回里的账号，顺手把等级统计刷新一遍（`/api/me` 与登录时也会刷）。
+     * 不刷也不会错，只是「免审资格」要等他自己打开一次个人页才算数 —— 顺手做了更顺。
+     */
+    for (const userId of new Set(committedIds.map((r) => r.user_id).filter((x): x is number => Number.isInteger(x)))) {
+      await recalcUserStats(env, userId).catch(() => undefined);
     }
     for (const c of pendingImages) await dropPendingImage(env, c.key);
     await markErrors(env, skipped);

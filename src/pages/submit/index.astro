@@ -38,6 +38,14 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
         <p class="sh-sub">
           发现某张图的资料有错漏？填个表单提交就行 —— 人工审核通过后会写进条目里，并署上你的昵称。
         </p>
+        {/*
+          账号是**可选**的：不登录照样能投（下面这条横幅就说明这一点），
+          登录只是为了署名稳定（别人冒不了名）与累积等级，投稿会记到个人主页。
+        */}
+        <p class="sh-account" id="sh-account">
+          <span class="sa-dot" id="sh-account-dot" aria-hidden="true">·</span>
+          <span id="sh-account-text">正在读取登录状态…</span>
+        </p>
         <ol class="sh-steps">
           <li><b>1</b>选地图</li>
           <li><b>2</b>填内容</li>
@@ -280,6 +288,8 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
           <div class="form-row">
             <label for="f-submitter">你的昵称（选填，会署在条目里）</label>
             <input id="f-submitter" maxlength="32" />
+            {/* 登录后署名以账号为准（防冒名）：这里说明一下，并把输入框锁上 */}
+            <p class="form-hint" id="f-submitter-note" hidden></p>
           </div>
           <div class="form-row">
             <label for="f-contact">联系方式（选填，便于追问）</label>
@@ -350,6 +360,10 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
           <h3>几点说明</h3>
           <ul class="s-list">
             <li>不需要 GitHub 账号</li>
+            <li>
+              <b>不登录也能投</b>；登录只是让署名稳定（别人冒不了名）、投稿记进
+              <a href="/account/">个人主页</a>并累计等级
+            </li>
             <li>署名可以留空</li>
             <li>会人工核对，不保证全采纳</li>
             <li>可以随时回来查编号</li>
@@ -364,6 +378,8 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
   /* 与 Worker 共用同一份字段规则与校验 —— 前端只是「提前告诉你哪里不对」，
      真正的权威校验在服务端（worker/submissions.ts）。 */
   import { FIELD_RULES, validateValue } from '../../../shared/submission-fields.mjs';
+  /* 登录状态：与页头那个账号按钮共用一次请求（见 lib/account-client.ts） */
+  import { ACCOUNT_EVENT, meOrThrow } from '../../lib/account-client';
 
   const slug = new URLSearchParams(location.search).get('map') ?? '';
   const ctxEl = document.getElementById('ctx') as HTMLElement;
@@ -1117,8 +1133,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
   document.getElementById('items-add')?.addEventListener('click', () => addItemRow());
 
   /* 载入地图索引（构建期生成的 /submit/maps.json） */
-  fetch('/submit/maps.json')
-    .then((r) => r.json())
+  fetch('/submit/maps.json')    .then((r) => r.json())
     .then((list: Array<Record<string, unknown>>) => {
       allMaps = list;
       if (!slug) {
@@ -1418,6 +1433,68 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     const qid = document.getElementById('q-id') as HTMLInputElement;
     if (qid) qid.value = String(ids[ids.length - 1] ?? '');
   }
+
+  /*
+   * ===== 登录状态（可选）=====
+   * 站点**不要求登录**：没登录就按老样子匿名投稿，署名用手填昵称。
+   * 登录了则：署名固定为账号昵称（防冒名）、投稿记进 /account/ 个人主页、累计等级；
+   * 通过够多的账号还能免审直发。这一段只是把现状说清楚 + 锁住昵称输入框。
+   */
+  (async () => {
+    const box = document.getElementById('sh-account-text');
+    const banner = document.getElementById('sh-account');
+    const dot = document.getElementById('sh-account-dot');
+    const note = document.getElementById('f-submitter-note');
+    const nameInput = document.getElementById('f-submitter') as HTMLInputElement | null;
+    if (!box) return;
+
+    const paint = (user: { name: string; trusted: boolean; level: string } | null, reachable: boolean) => {
+      banner?.classList.toggle('is-on', Boolean(user));
+      banner?.classList.toggle('is-off', !reachable);
+      if (dot) dot.textContent = user ? '✓' : reachable ? '?' : '!';
+      if (user) {
+        box.innerHTML =
+          `已登录：<b>${user.name}</b>（${user.level}）—— 投稿会记进` +
+          `<a href="/account/">你的个人主页</a>，署名固定用账号昵称` +
+          (user.trusted ? '，而且你已有免审资格（直接随下一批写回）' : '') +
+          '。';
+      } else if (reachable) {
+        box.innerHTML =
+          '<b>不登录也能投</b> —— 现在以匿名方式投稿，署名用你下面填的昵称。' +
+          '想要稳定署名（别人冒不了名）、把投稿记进个人主页、攒等级与免审资格，可以' +
+          '<a class="sa-cta" href="/account/">注册账号 →</a>';
+      } else {
+        box.textContent = '登录状态没读到（接口没通）—— 不影响投稿，直接填就行。';
+      }
+      if (nameInput) {
+        if (user) {
+          nameInput.value = user.name;
+          nameInput.readOnly = true;
+        } else if (nameInput.readOnly) {
+          /* 在页头面板里退出登录后，这里要放开手填 */
+          nameInput.readOnly = false;
+          nameInput.value = '';
+        }
+      }
+      if (note) {
+        note.textContent = '署名以账号为准（想改名到个人主页改，这里不能手填）。';
+        note.hidden = !user;
+      }
+    };
+
+    const refresh = async () => {
+      try {
+        const data = await meOrThrow();
+        paint(data.user, true);
+      } catch {
+        paint(null, false);
+      }
+    };
+
+    await refresh();
+    /* 页头账号面板里登录 / 退出后，这条横幅立刻跟着变（不用刷页） */
+    document.addEventListener(ACCOUNT_EVENT, () => void refresh());
+  })();
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

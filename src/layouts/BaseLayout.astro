@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import SearchBox from '../components/SearchBox.astro';
 import QqGroup from '../components/QqGroup.astro';
+import AccountMenu from '../components/AccountMenu.astro';
 
 interface Props {
   title?: string;
@@ -98,6 +99,11 @@ const ogImage = image ? new URL(image, site).href : new URL('/images/hero-bg.jpg
           */}
           <a href="/tags/">标签</a>
           <a href="/contribute/">投稿</a>
+          {/*
+            「账号」原来在这里当第 5 个导航项 —— 2026-10-11 改成页头最右上角的图标入口
+            （components/AccountMenu.astro）：点开先是登录、没有账号再注册，
+            这也更接近大家对「正常网站」的预期。导航回到 5 项。
+          */}
           <a href="/about/">关于</a>
         </nav>
 
@@ -105,6 +111,9 @@ const ogImage = image ? new URL(image, site).href : new URL('/images/hero-bg.jpg
           <span class="theme-icon-dark">🌙</span>
           <span class="theme-icon-light">☀️</span>
         </button>
+
+        {/* 最右上方：账号（登录 / 注册 / 迷你个人卡） */}
+        <AccountMenu />
       </div>
     </header>
 
@@ -115,6 +124,13 @@ const ogImage = image ? new URL(image, site).href : new URL('/images/hero-bg.jpg
     <footer class="site-footer" data-pagefind-ignore>
       <div class="container">
         <p>ZE 地图资料站 · 由社区维护 · 地图版权归原作者所有</p>
+        <p>
+          <a href="/thanks/">特别感谢</a>
+          <span class="footer-sep">·</span>
+          <a href="/about/">关于本站</a>
+          <span class="footer-sep">·</span>
+          <a href="/contribute/">投稿与纠错</a>
+        </p>
         <p class="footer-qq"><QqGroup /></p>
       </div>
     </footer>

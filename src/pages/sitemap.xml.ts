@@ -1,7 +1,13 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 
-/** 静态 sitemap：首页 / 地图库 / 实体预览 / 标签页 + 全部地图详情页 */
+/**
+ * 静态 sitemap：首页 / 地图库 / 实体预览 / 标签页 / 投稿指南 / 特别感谢 + 全部地图详情页
+ *
+ * 「特别感谢」（/thanks/）是 2026-10-11 加进来的：那页列着已同意收录视频的 UP 主，
+ * 被收录的人多半会去搜自己的名字 —— 让搜索引擎早点拿到它。
+ * 账号页（/account/）**故意不进**：对爬虫来说那是一张空壳（内容要登录才有）。
+ */
 export const GET: APIRoute = async ({ site }) => {
   const base = (site?.href ?? 'https://ze-map.cn/').replace(/\/+$/, '');
   const maps = await getCollection('maps');
@@ -12,6 +18,7 @@ export const GET: APIRoute = async ({ site }) => {
     { loc: '/preview/', priority: '0.8' },
     { loc: '/tags/', priority: '0.6' },
     { loc: '/contribute/', priority: '0.4' },
+    { loc: '/thanks/', priority: '0.4' },
     { loc: '/about/', priority: '0.3' },
   ];
 

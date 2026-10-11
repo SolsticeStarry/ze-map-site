@@ -73,6 +73,11 @@ export interface Env {
   TURNSTILE_SECRET?: string;
   /** 写回 git 用的细粒度 PAT，`wrangler secret put GITHUB_TOKEN` */
   GITHUB_TOKEN?: string;
+  /**
+   * 会话签名密钥（选填）。没配就用 IP_SALT 派生 ——
+   * 本机 token 没权限跑 `wrangler secret put`，而 IP_SALT 本来就是只存在于 Worker 的高熵密钥。
+   */
+  SESSION_SECRET?: string;
   /** 以下三项可选，默认值见 worker/community.ts */
   GITHUB_REPO?: string;
   GITHUB_BRANCH?: string;

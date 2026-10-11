@@ -30,6 +30,8 @@ const AV_RE = /^av\d{1,12}$/i;
 const YT_RE = /^[A-Za-z0-9_-]{11}$/;
 
 const INDEX_KEY = 'video-meta/index.json';
+/** 已明确同意收录的 UP 主名单（tools/video-meta-push.mjs 一并推到 R2） */
+const AGREED_KEY = 'video-meta/agreed.json';
 const MAX_IDS = 24;
 /** 索引在内存里放多久（每个 isolate 自己算） */
 const INDEX_TTL_MS = 10 * 60 * 1000;
@@ -46,10 +48,25 @@ export interface VideoMeta {
   u: string;
   /** B 站 UID：页面上把 UP 主名做成回他主页的链接（署名也把流量还给他） */
   m?: string;
+  /** true = 这位 UP 主已明确同意收录（页面显示「已获授权」） */
+  ok?: boolean;
+}
+
+/** 一位已同意的 UP 主（/api/video-thanks 的返回） */
+export interface AgreedUp {
+  /** 昵称 */
+  u: string;
+  /** B 站 UID */
+  m: string;
+  /** 本站收录了他几条视频 */
+  videos: number;
+  /** 这些视频挂在哪几张图的页面上（slug） */
+  maps: string[];
 }
 
 /* ---------- R2 索引（每个 isolate 缓存一份） ---------- */
 let indexCache: { at: number; data: Record<string, VideoMeta> } | null = null;
+let agreedCache: { at: number; data: { updatedAt: string; ups: AgreedUp[] } } | null = null;
 
 async function loadIndex(r2: R2Like | undefined, force = false): Promise<Record<string, VideoMeta>> {
   if (!force && indexCache && Date.now() - indexCache.at < INDEX_TTL_MS) return indexCache.data;
@@ -64,6 +81,23 @@ async function loadIndex(r2: R2Like | undefined, force = false): Promise<Record<
   } catch {
     /* 读不到就当索引为空：走回源，最坏是与以前一样没有署名 */
     return {};
+  }
+}
+
+/** 同意名单（R2）。读不到就返回空 —— 页面就当没有这回事，不影响视频署名本身 */
+async function loadAgreed(r2: R2Like | undefined): Promise<{ updatedAt: string; ups: AgreedUp[] }> {
+  if (agreedCache && Date.now() - agreedCache.at < INDEX_TTL_MS) return agreedCache.data;
+  const empty = { updatedAt: '', ups: [] as AgreedUp[] };
+  if (!r2) return empty;
+  try {
+    const obj = await r2.get(AGREED_KEY);
+    if (!obj) return empty;
+    const data = JSON.parse(await new Response(obj.body).text()) as { updatedAt?: string; ups?: AgreedUp[] };
+    const out = { updatedAt: String(data.updatedAt ?? ''), ups: Array.isArray(data.ups) ? data.ups : [] };
+    agreedCache = { at: Date.now(), data: out };
+    return out;
+  } catch {
+    return empty;
   }
 }
 
@@ -130,13 +164,15 @@ export async function handleVideoMeta(request: Request, env: Env, url: URL): Pro
   if (bad) return fail(`不认识的视频编号：${bad.slice(0, 24)}`);
 
   const debug = url.searchParams.get('debug') === '1';
-  const index = await loadIndex(env.TERR);
+  const [index, agreed] = await Promise.all([loadIndex(env.TERR), loadAgreed(env.TERR)]);
+  /* 已同意的 UP 主集合：给视频条目挂 `ok: true`，页面据此显示「已获授权」 */
+  const agreedSet = new Set(agreed.ups.map((x) => String(x.u).trim()));
 
   const items: Record<string, VideoMeta> = {};
   const misses: string[] = [];
   for (const id of ids) {
     const hit = index[id];
-    if (hit && (hit.t || hit.u)) items[id] = hit;
+    if (hit && (hit.t || hit.u)) items[id] = { ...hit, ...(agreedSet.has(hit.u) ? { ok: true } : {}) };
     else misses.push(id);
   }
 
@@ -145,7 +181,7 @@ export async function handleVideoMeta(request: Request, env: Env, url: URL): Pro
     const got = await mapLimit(misses, CONCURRENCY, fetchMeta);
     for (const [id, r] of got) {
       if (r.meta) {
-        items[id] = r.meta;
+        items[id] = { ...r.meta, ...(agreedSet.has(r.meta.u) ? { ok: true } : {}) };
         /* 回源成功就顺手补进内存索引（不写回 R2：本地那份才是权威，避免线上悄悄分叉） */
         if (indexCache) indexCache.data[id] = r.meta;
       } else if (r.note) {
@@ -159,6 +195,7 @@ export async function handleVideoMeta(request: Request, env: Env, url: URL): Pro
     body.diag = {
       indexed: Object.keys(index).length,
       miss: misses.length,
+      agreed: agreedSet.size,
       ...(Object.keys(diag).length ? { upstream: diag } : {}),
     };
   }
@@ -167,6 +204,23 @@ export async function handleVideoMeta(request: Request, env: Env, url: URL): Pro
       'content-type': 'application/json; charset=utf-8',
       /* 浏览器侧也缓存一小时：同一页来回翻不用反复问 */
       'cache-control': 'public, max-age=3600',
+    },
+  });
+}
+
+/**
+ * GET /api/video-thanks —— 「特别感谢」名单：已明确同意本站收录其视频的 UP 主。
+ *
+ * 数据来自 R2 的 `video-meta/agreed.json`（本地 tools/video-agreed.json + 推送脚本生成），
+ * 同样不进仓库。名字在站点上是**公开署名**，但名单本身按站长要求只放 R2。
+ */
+export async function handleVideoThanks(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'GET') return fail('只支持 GET', 405);
+  const agreed = await loadAgreed(env.TERR);
+  return new Response(JSON.stringify({ ok: true, updatedAt: agreed.updatedAt, ups: agreed.ups }), {
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'public, max-age=600',
     },
   });
 }

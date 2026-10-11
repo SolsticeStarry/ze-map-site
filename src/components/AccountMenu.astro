@@ -1,0 +1,277 @@
+---
+/**
+ * 页头右上角的账号入口（2026-10-11）。
+ *
+ * 交互按「正常网站」的样子来：右上角一个人像图标，点开是**登录**表单；
+ * 没账号的走「没有账号？注册一个」在同一张面板里切到注册，不用跳页。
+ * 登录后图标变成渐变头像（昵称首字），点开是迷你个人卡：等级 + 统计 + 进个人主页 / 去投稿 / 退出。
+ *
+ * 三条约束（和整个账号系统一致）：
+ *   1. **不登录也能用整站**：这个按钮纯粹是入口，不挡任何东西；
+ *   2. **页面照旧是静态的**：这里只是「静态 HTML + 打开面板时问一次 /api/me」；
+ *   3. 面板里的表单与 /account/ 页共用同一套接口与会话，逻辑不重复实现第二份。
+ */
+import { PERSON_ICON } from '../lib/account-client';
+---
+
+<div class="am" id="am">
+  <button class="am-btn" id="am-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="账号">
+    <span class="am-avatar" id="am-avatar" set:html={PERSON_ICON} />
+  </button>
+
+  <div class="am-panel" id="am-panel" role="dialog" aria-label="账号" hidden>
+    {/* ===== 未登录：先登录，没有账号再注册 ===== */}
+    <div id="am-guest">
+      <div class="am-head">
+        <b id="am-title">登录</b>
+        <span id="am-sub">登录后署名固定用账号昵称，投稿记进个人主页</span>
+      </div>
+
+      <form class="am-pane" id="am-login-form">
+        <div class="form-row">
+          <label for="am-log-name">昵称</label>
+          <input id="am-log-name" maxlength="20" autocomplete="username" />
+        </div>
+        <div class="form-row">
+          <label for="am-log-pass">口令</label>
+          <input id="am-log-pass" type="password" maxlength="72" autocomplete="current-password" />
+        </div>
+        <button class="acc-btn acc-btn-primary acc-btn-block" type="submit" id="am-log-go">登录</button>
+        <p class="am-switch">没有账号？<button class="am-link" type="button" id="am-to-reg">注册一个</button></p>
+      </form>
+
+      <form class="am-pane" id="am-reg-form" hidden>
+        <div class="form-row">
+          <label for="am-reg-name">昵称（条目里的署名，2~20 字）</label>
+          <input id="am-reg-name" maxlength="20" autocomplete="username" />
+        </div>
+        <div class="form-row">
+          <label for="am-reg-pass">口令（至少 8 位）</label>
+          <input id="am-reg-pass" type="password" maxlength="72" autocomplete="new-password" />
+        </div>
+        <div class="form-row">
+          <label for="am-reg-pass2">再输一遍</label>
+          <input id="am-reg-pass2" type="password" maxlength="72" autocomplete="new-password" />
+        </div>
+        <div class="form-row">
+          <label for="am-reg-contact">联系方式（选填）</label>
+          <input id="am-reg-contact" maxlength="80" placeholder="QQ / 邮箱，只站长看得到" />
+        </div>
+        <button class="acc-btn acc-btn-primary acc-btn-block" type="submit" id="am-reg-go">注册并登录</button>
+        <p class="am-switch">已经有账号？<button class="am-link" type="button" id="am-to-log">去登录</button></p>
+      </form>
+
+      <p class="form-error" id="am-error" hidden></p>
+      <p class="form-ok" id="am-ok" hidden></p>
+
+      <div class="am-foot">
+        <a href="/account/">我的投稿与等级 →</a>
+        <span class="am-sep">·</span>
+        <a href="/submit/">不登录也能投稿</a>
+      </div>
+    </div>
+
+    {/* ===== 已登录：迷你个人卡 ===== */}
+    <div id="am-me" hidden>
+      <div class="am-me-top">
+        <span class="am-avatar is-on" id="am-me-avatar">·</span>
+        <div class="am-me-id">
+          <b id="am-me-name">—</b>
+          <span class="acc-level-name" id="am-me-level" data-lv="0">—</span>
+        </div>
+      </div>
+      <p class="am-me-stats" id="am-me-stats"></p>
+      <div class="am-links">
+        <a class="acc-btn" href="/account/">个人主页</a>
+        <a class="acc-btn" href="/submit/">去投稿</a>
+        <button class="acc-btn" type="button" id="am-logout">退出登录</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { ACCOUNT_EVENT, PERSON_ICON, meOrThrow, notifyChanged, type AccountMe } from '../lib/account-client';
+
+  const btn = document.getElementById('am-btn');
+  const panel = document.getElementById('am-panel');
+  const avatar = document.getElementById('am-avatar');
+  const guest = document.getElementById('am-guest');
+  const meBox = document.getElementById('am-me');
+  if (!btn || !panel || !avatar || !guest || !meBox) throw new Error('账号面板缺节点');
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+  const errBox = $('am-error');
+  const okBox = $('am-ok');
+  const say = (msg: string, ok = false) => {
+    if (errBox) {
+      errBox.textContent = ok ? '' : msg;
+      errBox.hidden = ok || !msg;
+    }
+    if (okBox) {
+      okBox.textContent = ok ? msg : '';
+      okBox.hidden = !ok || !msg;
+    }
+  };
+
+  /** 等级 → 徽章配色档位（与 global.css 的 .acc-level-name[data-lv] 同一套） */
+  const LV: Record<string, number> = { 路人: 0, 入门贡献者: 1, 资料整理者: 2, 资深编辑: 3, 荣誉编辑: 4, 百科元老: 5 };
+  let state: AccountMe | null = null;
+  let loaded = false;
+
+  function paint(data: AccountMe | null, reachable: boolean) {
+    state = data;
+    const user = data?.user ?? null;
+    btn!.classList.toggle('is-on', Boolean(user));
+    /* 登录了：按钮本身就是头像（昵称首字）；没登录：人像图标 */
+    if (user) {
+      avatar!.innerHTML = '';
+      avatar!.textContent = [...user.name.trim()][0] ?? '·';
+    } else {
+      avatar!.innerHTML = PERSON_ICON;
+    }
+    /* 接口没通：鼠标悬停能看出是「没读到」而不是「没登录」 */
+    btn!.title = !reachable ? '账号（登录状态没读到）' : user ? `${user.name} · ${user.level}` : '登录 / 注册';
+
+    guest!.hidden = Boolean(user);
+    meBox!.hidden = !user;
+    if (!reachable) say('登录状态没读到（接口没通）—— 不影响投稿，稍后重试即可');
+    if (!user) return;
+
+    const initial = [...user.name.trim()][0] ?? '·';
+    const meAvatar = $('am-me-avatar');
+    if (meAvatar) meAvatar.textContent = initial;
+    $('am-me-name')!.textContent = user.name;
+    const lv = $('am-me-level')!;
+    lv.textContent = user.level;
+    lv.dataset.lv = String(LV[user.level] ?? 0);
+    $('am-me-stats')!.textContent = user.next
+      ? `已通过 ${user.approved} 条 · 再通过 ${user.next.need} 条升到「${user.next.level}」`
+      : `已通过 ${user.approved} 条 · 已是最高等级`;
+  }
+
+  async function load() {
+    try {
+      paint(await meOrThrow(), true);
+    } catch {
+      paint(null, false);
+    }
+    loaded = true;
+  }
+
+  const openPanel = (open: boolean) => {
+    panel!.hidden = !open;
+    btn!.setAttribute('aria-expanded', String(open));
+    btn!.classList.toggle('is-open', open);
+    if (open) {
+      const pane = guest!.hidden ? null : ($('am-log-name') as HTMLInputElement | null);
+      /* 打开时聚焦「昵称」，但别把已经填过的内容清掉 */
+      if (pane && !pane.value) setTimeout(() => pane.focus(), 60);
+    }
+  };
+
+  /* 打开之前先问一次登录状态；之后一直用缓存，除非状态变了 */
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const willOpen = panel.hidden;
+    if (willOpen && !loaded) await load();
+    openPanel(willOpen);
+  });
+
+  /* 点面板外面 / 按 Esc 关掉 */
+  document.addEventListener('click', (e) => {
+    if (panel.hidden) return;
+    const t = e.target instanceof Node ? e.target : null;
+    if (!t || panel.contains(t) || btn.contains(t)) return;
+    openPanel(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) openPanel(false);
+  });
+
+  /* 登录 / 注册 两页切换（默认登录：没有账号再点「注册一个」） */
+  const loginForm = $('am-login-form') as HTMLFormElement | null;
+  const regForm = $('am-reg-form') as HTMLFormElement | null;
+  const showPane = (which: 'log' | 'reg') => {
+    say('');
+    if (loginForm) loginForm.hidden = which !== 'log';
+    if (regForm) regForm.hidden = which !== 'reg';
+    $('am-title')!.textContent = which === 'log' ? '登录' : '注册';
+    $('am-sub')!.textContent =
+      which === 'log' ? '登录后署名固定用账号昵称，投稿记进个人主页' : '只要昵称 + 口令，不收邮箱';
+    const first = (which === 'log' ? $('am-log-name') : $('am-reg-name')) as HTMLInputElement | null;
+    first?.focus();
+  };
+  $('am-to-reg')?.addEventListener('click', () => showPane('reg'));
+  $('am-to-log')?.addEventListener('click', () => showPane('log'));
+
+  const post = async (path: string, body: unknown) => {
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    let data: { ok?: boolean; error?: string; message?: string } = {};
+    try {
+      data = await res.json();
+    } catch {
+      /* 非 JSON（502 之类） */
+    }
+    if (!res.ok || !data.ok) throw new Error(data.error || `请求失败（HTTP ${res.status}）`);
+    return data;
+  };
+
+  loginForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    say('');
+    try {
+      await post('/api/login', {
+        name: ($('am-log-name') as HTMLInputElement).value.trim(),
+        password: ($('am-log-pass') as HTMLInputElement).value,
+      });
+      notifyChanged();
+      await load();
+      /* 面板留着，让人看到「已经登录成了谁」 */
+      ($('am-log-pass') as HTMLInputElement).value = '';
+    } catch (err) {
+      say(err instanceof Error ? err.message : '登录失败');
+    }
+  });
+
+  regForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    say('');
+    const p1 = ($('am-reg-pass') as HTMLInputElement).value;
+    const p2 = ($('am-reg-pass2') as HTMLInputElement).value;
+    if (p1 !== p2) return say('两次输入的口令不一样');
+    try {
+      await post('/api/register', {
+        name: ($('am-reg-name') as HTMLInputElement).value.trim(),
+        password: p1,
+        contact: ($('am-reg-contact') as HTMLInputElement).value,
+      });
+      notifyChanged();
+      await load();
+      ($('am-reg-pass') as HTMLInputElement).value = '';
+      ($('am-reg-pass2') as HTMLInputElement).value = '';
+    } catch (err) {
+      say(err instanceof Error ? err.message : '注册失败');
+    }
+  });
+
+  $('am-logout')?.addEventListener('click', async () => {
+    await post('/api/logout', {}).catch(() => undefined);
+    notifyChanged();
+    await load();
+    showPane('log');
+  });
+
+  /* 别的地方（账号页 / 投稿页）改了登录状态，这里跟着变 */
+  document.addEventListener(ACCOUNT_EVENT, () => {
+    loaded = false;
+    if (!panel.hidden) void load();
+  });
+
+  /* 进页面就先问一次：登录过的人一进来就该看到自己的头像（未登录时这一步几乎无成本） */
+  void load();
+</script>

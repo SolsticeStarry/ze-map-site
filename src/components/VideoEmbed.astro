@@ -88,9 +88,15 @@ const vid = (() => {
       </div>
       {/* 手写资料给了标题就直接显示；没给的等接口回来填（填不上就空着） */}
       <figcaption data-vp-title hidden={!title}>{title}</figcaption>
-      <a class="video-source" href={url} target="_blank" rel="noopener">
-        在原站打开 ↗
-      </a>
+      <div class="video-foot">
+        <a class="video-source" href={url} target="_blank" rel="noopener">
+          在原站打开 ↗
+        </a>
+        {/* 该 UP 主已明确同意收录时才显示（名单见 /thanks/）—— 由接口的 ok 标记决定 */}
+        <a class="video-ok" data-vp-ok href="/thanks/" hidden title="这位 UP 主已同意本站收录，点开看完整名单">
+          ✓ 已获授权
+        </a>
+      </div>
     </figure>
   ) : (
     <p class="video-plain">
@@ -192,6 +198,9 @@ const vid = (() => {
               }
               upEl.hidden = false;
             }
+            /* 这位 UP 主已同意收录 → 显示「已获授权」（名单在 /thanks/，服务端从 R2 读） */
+            const okEl = fig.querySelector<HTMLElement>('[data-vp-ok]');
+            if (okEl && meta.ok) okEl.hidden = false;
           }
         })
         .catch(() => {
@@ -336,6 +345,31 @@ const vid = (() => {
 
   .video-source:hover {
     color: var(--accent-2);
+  }
+
+  /* 卡片底部一行：左边「在原站打开」，右边「已获授权」 */
+  .video-foot {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-right: 16px;
+  }
+
+  .video-ok {
+    margin-left: auto;
+    padding: 1px 8px;
+    border: 1px solid var(--accent-2);
+    border-radius: 999px;
+    color: var(--accent-2);
+    font-size: 11.5px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .video-ok:hover {
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   /* 不能嵌入时的链接卡 */

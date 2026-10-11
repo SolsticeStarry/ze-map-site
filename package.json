@@ -16,6 +16,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "data:verify": "node scripts/entity-data/verify-entity-data.mjs --all",
+    "test:worker": "node --test worker/auth.test.mjs",
     "data:select": "node scripts/terr-bake/select-bake.mjs",
     "map:add": "node scripts/content/add-map.mjs",
     "data:image": "node scripts/entity-data/render-map-image.mjs",

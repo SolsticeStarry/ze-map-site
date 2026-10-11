@@ -1,0 +1,198 @@
+---
+/**
+ * 「特别感谢」板块 —— 明确同意本站收录其视频的 UP 主名单。
+ *
+ * 名单从 `/api/video-thanks` 读（Worker → R2 的 `video-meta/agreed.json`），
+ * **名单本身不进仓库**（站长要求 UP 主信息不入 GitHub），所以这里是客户端渲染；
+ * 没 JS 的读者也能看到说明文字与「去 B 站看他们的视频」的入口。
+ *
+ * 为什么值得单独一页：署名不只是把我们这边的义务做完，也让愿意分享的作者被看见 ——
+ * 有人照着他们的视频打通了图，点一下就能回到原作者那儿。
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getMaps } from '../lib/maps';
+
+const maps = await getMaps();
+/** slug → 页面标题：名单接口只回 slug，标题在站里查（免得 R2 那份也存一份标题） */
+const titles: Record<string, string> = Object.fromEntries(maps.map((m) => [m.id, m.data.title]));
+---
+
+<BaseLayout
+  title="特别感谢 | ZE 地图资料站"
+  description="明确同意本站收录其视频的 UP 主名单 —— 本站只嵌入 B 站官方播放器、署名并回链，作者说撤就撤。"
+>
+  <section class="hero" style="padding: 70px 0 24px;">
+    <div class="container">
+      <h1 class="hero-title" style="font-size: clamp(32px, 5vw, 52px);">
+        特别<span class="gradient-text">感谢</span>
+      </h1>
+      <p class="hero-sub">
+        下面这些 UP 主<strong>明确同意</strong>本站收录他们的视频。条目页的「攻略视频」用的是
+        B 站官方播放器嵌入 —— 视频始终在 B 站播放，播放量与收益都归作者；
+        我们只做署名和回链，不下载、不转存、不剪辑。
+      </p>
+    </div>
+  </section>
+
+  <div class="container" style="padding-bottom: 70px;">
+    <p class="thanks-count" id="thanks-count">正在读取名单…</p>
+
+    <div class="thanks-grid" id="thanks-list" data-pagefind-ignore></div>
+
+    <div class="thanks-fallback" id="thanks-fallback" hidden>
+      <p>
+        <b>名单没能加载出来</b>（接口超时或被网络挡了）。这不影响条目页的视频正常播放 ——
+        想看是谁授权了，可以直接在任意条目页的视频卡上看「已获授权」标记。
+      </p>
+    </div>
+
+    <div class="sidebar-card" style="max-width: 860px; margin-top: 28px;">
+      <h3>我们和作者之间的约定</h3>
+      <ul class="sidebar-hint" style="list-style: none; padding: 0">
+        <li>· 只用 B 站官方播放器嵌入，点击才加载；视频文件始终在 B 站</li>
+        <li>· 不下载、不转存、不二次剪辑、不去水印、不加自己的贴片</li>
+        <li>· 页面上标出 UP 主名并链回他的 B 站主页</li>
+        <li>· 作者说不想被收录 → <b>立刻撤下，不需要理由</b>（流程见下）</li>
+        <li>· 本站没有广告、也没有任何商业内容</li>
+      </ul>
+      <p class="sidebar-hint" style="margin: 10px 0 0">
+        撤下流程写在仓库的 <code>docs/takedowns.md</code> 里：删链接 → 重新生成条目 → 在
+        <a href="/about/">关于页</a>的下架记录里留一条说明，不需要下架整张地图。
+      </p>
+    </div>
+  </div>
+
+  <script>
+    /*
+     * 名单是运行时读的（名单本身不进仓库），所以这一段必须留着。
+     * 结构简单到不值得上框架：一个 <a> 一张卡。
+     */
+    const list = document.getElementById('thanks-list');
+    const count = document.getElementById('thanks-count');
+    const fallback = document.getElementById('thanks-fallback');
+    /* slug → 中文标题：由下面那段 is:inline define:vars 注入（构建期就有，不进接口） */
+    const TITLES: Record<string, string> = (window as unknown as { __MAP_TITLES__?: Record<string, string> }).__MAP_TITLES__ ?? {};
+
+    (async () => {
+      try {
+        const res = await fetch('/api/video-thanks');
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as {
+          ups?: Array<{ u?: string; m?: string; videos?: number; maps?: string[] }>;
+          updatedAt?: string;
+        };
+        const ups = (data.ups ?? []).filter((x) => x?.u);
+        if (!ups.length) throw new Error('empty');
+        if (count) {
+          count.textContent =
+            `共 ${ups.length} 位 UP 主授权本站收录（名单更新于 ${data.updatedAt || '—'}）；` +
+            `合计 ${ups.reduce((n, x) => n + (x.videos ?? 0), 0)} 条视频、` +
+            `${new Set(ups.flatMap((x) => x.maps ?? [])).size} 张地图的页面。`;
+        }
+        if (list) {
+          list.textContent = '';
+          for (const up of ups) {
+            const card = document.createElement('div');
+            card.className = 'thanks-card';
+
+            const name = document.createElement('a');
+            name.className = 'thanks-name';
+            name.href = up.m ? `https://space.bilibili.com/${up.m}` : '#';
+            name.target = '_blank';
+            name.rel = 'noopener';
+            name.textContent = String(up.u ?? '');
+            card.append(name);
+
+            const meta = document.createElement('p');
+            meta.className = 'thanks-meta';
+            meta.textContent = `${up.videos ?? 0} 条视频 · ${(up.maps ?? []).length} 张图的页面`;
+            card.append(meta);
+
+            const maps = (up.maps ?? []).slice(0, 4);
+            const box = document.createElement('p');
+            box.className = 'thanks-maps';
+            for (const [i, slug] of maps.entries()) {
+              const a = document.createElement('a');
+              a.href = `/maps/${slug}/`;
+              a.textContent = TITLES[slug] ?? slug;
+              box.append(a);
+              if (i < maps.length - 1) box.append(document.createTextNode('、'));
+            }
+            if ((up.maps ?? []).length > maps.length) {
+              box.append(document.createTextNode(` 等 ${(up.maps ?? []).length} 张`));
+            }
+            card.append(box);
+            list.append(card);
+          }
+        }
+      } catch {
+        if (count) count.textContent = '';
+        if (list) list.hidden = true;
+        if (fallback) fallback.hidden = false;
+      }
+    })();
+  </script>
+
+  <script is:inline define:vars={{ titles }}>
+    /* 把 slug → 标题 的映射交给上面那段脚本用（数据来自构建期，不进接口） */
+    window.__MAP_TITLES__ = titles;
+  </script>
+</BaseLayout>
+
+<style>
+  .thanks-count {
+    margin: 0 0 16px;
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+  .thanks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+  .thanks-card {
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+  }
+  .thanks-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .thanks-name:hover {
+    color: var(--accent-2);
+  }
+  .thanks-meta {
+    margin: 6px 0 4px;
+    padding: 1px 8px;
+    display: inline-block;
+    border: 1px solid var(--accent-2);
+    border-radius: 999px;
+    color: var(--accent-2);
+    font-size: 11.5px;
+  }
+  .thanks-maps {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+  }
+  .thanks-maps a {
+    color: var(--accent-2);
+    text-decoration: none;
+  }
+  .thanks-maps a:hover {
+    text-decoration: underline;
+  }
+  .thanks-fallback {
+    padding: 14px 16px;
+    border: 1px dashed var(--border-2);
+    border-radius: 12px;
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+</style>

@@ -1,0 +1,548 @@
+---
+/**
+ * 账号页 —— 注册 / 登录 / 我的投稿记录 / 等级。
+ *
+ * 三条设计原则（和 worker/auth.ts 对应）：
+ *   1. **登录是可选的**：不登录照样在 /submit/ 投稿，这一页只是「想留名、想攒等级」的人才来；
+ *   2. **页面保持静态**：这里是纯静态 HTML + 一段脚本向 /api/me 拿状态，
+ *      所以站点速度、缓存、最坏情况（接口挂了）都与以前一致；
+ *   3. **不存邮箱**：找回口令走 QQ 群找站长（页面里写明）；口令只存 PBKDF2 派生值。
+ *
+ * 视觉（2026-10-11 重做）：注册 / 登录合并成一张带滑块的卡（省掉并排两张卡的拥挤），
+ * 登录后是一张「个人卡片」：渐变头像 + 等级徽章 + 升级进度条 + 四个数字块，
+ * 投稿记录带封面缩略图与状态色条。样式全在 src/styles/global.css 的「账号」一节 ——
+ * 本页一半节点是脚本动态建的，动态节点拿不到 Astro 的作用域 class，写页面里会静默失效。
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import QqGroup from '../components/QqGroup.astro';
+---
+
+<BaseLayout
+  title="我的账号 | ZE 地图资料站"
+  description="注册一个账号，投稿自动署名、可查看自己的投稿记录与等级；不登录也能投稿。"
+>
+  <section class="acc-hero">
+    <div class="container">
+      <span class="acc-hero-badge">Community · 可选</span>
+      <h1 class="acc-hero-title">我的<span class="gradient-text">账号</span></h1>
+      <p class="acc-hero-sub">
+        账号只做三件事：让投稿「稳定署名」、记住你投过什么、按贡献给等级与免审资格。
+        <b>不注册也能投稿</b> —— 这一页是可选的。
+      </p>
+    </div>
+  </section>
+
+  <div class="container acc-wrap">
+    <p class="acc-loading" id="acc-loading">
+      <span class="acc-spin" aria-hidden="true"></span>正在读取登录状态…
+    </p>
+
+    {/* ===== 未登录：中间一张卡（注册 / 登录切换），下面三条「值不值得注册」 ===== */}
+    <div id="acc-guest" hidden>
+      <div class="acc-auth-wrap">
+        <section class="acc-auth">
+          <div class="acc-tabs" id="acc-tabs" data-on="reg">
+            <span class="acc-tabs-ink" aria-hidden="true"></span>
+            <button class="acc-tab" type="button" id="tab-reg" data-pane="reg">注册</button>
+            <button class="acc-tab" type="button" id="tab-log" data-pane="log">登录</button>
+          </div>
+
+          <div class="acc-pane" id="pane-reg">
+            <p class="acc-hint">昵称就是条目里的署名（2~20 字），注册后可以改。</p>
+            <div class="form-row">
+              <label for="reg-name">昵称</label>
+              <input id="reg-name" maxlength="20" autocomplete="username" placeholder="比如：老玩家阿伟" />
+            </div>
+            <div class="form-row">
+              <label for="reg-pass">口令（至少 8 位）</label>
+              <input id="reg-pass" type="password" maxlength="72" autocomplete="new-password" placeholder="长一点比复杂好记" />
+            </div>
+            <div class="form-row">
+              <label for="reg-pass2">再输一遍</label>
+              <input id="reg-pass2" type="password" maxlength="72" autocomplete="new-password" />
+            </div>
+            <div class="form-row">
+              <label for="reg-contact">联系方式（选填）</label>
+              <input id="reg-contact" maxlength="80" placeholder="QQ / 邮箱 —— 只站长看得到，用于找回口令" />
+            </div>
+            <button class="acc-btn acc-btn-primary acc-btn-block" type="button" id="reg-go">注册并登录</button>
+          </div>
+
+          <div class="acc-pane" id="pane-log" hidden>
+            <p class="acc-hint">登录后投稿会自动挂到这个账号上，并累计等级。</p>
+            <div class="form-row">
+              <label for="log-name">昵称</label>
+              <input id="log-name" maxlength="20" autocomplete="username" />
+            </div>
+            <div class="form-row">
+              <label for="log-pass">口令</label>
+              <input id="log-pass" type="password" maxlength="72" autocomplete="current-password" />
+            </div>
+            <button class="acc-btn acc-btn-primary acc-btn-block" type="button" id="log-go">登录</button>
+            <p class="acc-hint" style="margin: 12px 0 0">
+              忘了口令？本站不收邮箱，只能人工找回：<QqGroup /> 里找站长，说清昵称即可。
+            </p>
+          </div>
+
+          <p class="form-error" id="acc-error" hidden></p>
+          <p class="form-ok" id="acc-ok" hidden></p>
+
+          <div class="acc-auth-foot">
+            <span>不想注册？</span>
+            <a href="/submit/">直接去投稿 →</a>
+            <span class="acc-auth-foot-note">署名用你当时填的昵称</span>
+          </div>
+        </section>
+
+        <ul class="acc-perks">
+          <li class="acc-perk">
+            <span class="acc-perk-icon">🖊️</span>
+            <b>署名不被人冒用</b>
+            <span class="acc-perk-text">登录后署名固定用账号昵称；手填别人的名字不算数。</span>
+          </li>
+          <li class="acc-perk">
+            <span class="acc-perk-icon">📚</span>
+            <b>投稿有记录</b>
+            <span class="acc-perk-text">投过哪张图的哪一项、待审还是已上线、被驳回的理由，都在这页。</span>
+          </li>
+          <li class="acc-perk">
+            <span class="acc-perk-icon">🏅</span>
+            <b>等级与免审</b>
+            <span class="acc-perk-text">按已写回的条数升级；到 10 条且驳回不多，投稿直接随下一批写回。</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    {/* ===== 已登录：个人卡片 + 投稿记录 + 设置 ===== */}
+    <div id="acc-user" hidden>
+      <section class="acc-card acc-profile">
+        <div class="acc-profile-top">
+          <div class="acc-avatar" id="me-avatar">·</div>
+          <div class="acc-id">
+            <h2 id="me-name">—</h2>
+            <p class="acc-id-meta">
+              <span id="me-since"></span>
+              <span class="acc-sep">·</span>
+              <span id="me-no"></span>
+            </p>
+          </div>
+          <div class="acc-level" id="me-level-box" data-lv="0">
+            <span class="acc-level-name" id="me-level">—</span>
+            <span class="acc-level-hint" id="me-level-hint"></span>
+          </div>
+        </div>
+
+        <div class="acc-progress">
+          <div class="acc-progress-bar"><i id="me-progress-fill" style="width: 0%"></i></div>
+          <p class="acc-progress-text" id="me-progress-text">—</p>
+        </div>
+
+        <div class="acc-stats">
+          <div class="acc-stat is-ok">
+            <b id="st-approved">0</b><span>已通过</span>
+            <em>按图 + 字段去重</em>
+          </div>
+          <div class="acc-stat is-wait">
+            <b id="st-approved-wait">0</b><span>待写回</span>
+            <em>已过审，等下一批</em>
+          </div>
+          <div class="acc-stat is-pending">
+            <b id="st-pending">0</b><span>待审核</span>
+            <em>站长还没看</em>
+          </div>
+          <div class="acc-stat is-bad">
+            <b id="st-rejected">0</b><span>被驳回</span>
+            <em>同样的稿子只算一次</em>
+          </div>
+        </div>
+
+        <p class="acc-trust" id="me-trusted"></p>
+
+        <div class="acc-actions">
+          <a class="acc-btn acc-btn-primary" href="/submit/">去投稿</a>
+          <button class="acc-btn" type="button" id="me-logout">退出登录</button>
+        </div>
+      </section>
+
+      <section class="acc-card">
+        <div class="acc-head">
+          <h2 class="acc-h2">我的投稿</h2>
+          <span class="acc-head-note">最近的在前 · 最多 50 条</span>
+        </div>
+        <ul class="acc-list" id="me-list"></ul>
+      </section>
+
+      <section class="acc-card">
+        <div class="acc-head">
+          <h2 class="acc-h2">账号设置</h2>
+          <span class="acc-head-note">改完立刻生效</span>
+        </div>
+        <div class="acc-settings">
+          <div class="acc-set-block">
+            <h3>资料</h3>
+            <p class="acc-hint">昵称只影响「以后」的署名，已经发布的历史投稿不会跟着改。</p>
+            <div class="form-row">
+              <label for="set-name">昵称</label>
+              <input id="set-name" maxlength="20" />
+            </div>
+            <div class="form-row">
+              <label for="set-contact">联系方式（选填）</label>
+              <input id="set-contact" maxlength="80" placeholder="QQ / 邮箱" />
+            </div>
+            <button class="acc-btn" type="button" id="set-go">保存资料</button>
+          </div>
+          <div class="acc-set-block">
+            <h3>口令</h3>
+            <p class="acc-hint">改完口令后，其它设备上的登录会立刻失效（当前这台会自动续上）。</p>
+            <div class="form-row">
+              <label for="pw-old">原口令</label>
+              <input id="pw-old" type="password" maxlength="72" autocomplete="current-password" />
+            </div>
+            <div class="form-row">
+              <label for="pw-new">新口令（至少 8 位）</label>
+              <input id="pw-new" type="password" maxlength="72" autocomplete="new-password" />
+            </div>
+            <button class="acc-btn" type="button" id="pw-go">改口令</button>
+          </div>
+        </div>
+        <p class="form-error" id="acc-error2" hidden></p>
+        <p class="form-ok" id="acc-ok2" hidden></p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    /* 登录状态与页头那个账号按钮共用一次请求（见 lib/account-client.ts）：
+       这一页要的是完整版（含「我的投稿」与各状态条数）。 */
+    import { ACCOUNT_EVENT, meFull, notifyChanged } from '../lib/account-client';
+    import type { AccountCounts, AccountSubmission, AccountUser } from '../lib/account-client';
+
+    type Me = AccountUser;
+    type Sub = AccountSubmission;
+    type Counts = AccountCounts;
+
+    const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+    const loading = $('acc-loading');
+    const guest = $('acc-guest');
+    const meBox = $('acc-user');
+
+    const err = (el: HTMLElement | null, msg: string) => {
+      if (!el) return;
+      el.textContent = msg;
+      el.hidden = !msg;
+    };
+    const showErr = (msg: string) => {
+      const box = meBox?.hidden === false ? $('acc-error2') : $('acc-error');
+      err(box, msg);
+    };
+    const showOk = (msg: string) => {
+      const box = meBox?.hidden === false ? $('acc-ok2') : $('acc-ok');
+      err(box, msg);
+    };
+
+    const post = async (path: string, body: unknown) => {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      let data: { ok?: boolean; error?: string; message?: string } & Record<string, unknown> = {};
+      try {
+        data = await res.json();
+      } catch {
+        /* 非 JSON（例如 502） */
+      }
+      if (!res.ok || !data.ok) throw new Error(data.error || `请求失败（HTTP ${res.status}）`);
+      return data;
+    };
+
+    const FIELD_LABEL: Record<string, string> = {
+      difficulty: '难度',
+      tags: '标签',
+      author: '作者',
+      authorNote: '署名详情',
+      version: '版本',
+      players: '人数',
+      duration: '时长',
+      stages: '关卡数',
+      items: '神器 / 道具',
+      videoUrls: '攻略视频',
+      sources: '资料来源',
+      cover: '封面',
+      gallery: '图片集',
+      summary: '地图简介',
+      story: '背景故事',
+      guide: '攻略 / 讲解',
+      body: '补充说明',
+    };
+    const STATUS: Record<string, { label: string; note: string }> = {
+      pending: { label: '待审核', note: '' },
+      approved: { label: '待写回', note: '已过审，等下一批一起写回仓库' },
+      applied: { label: '已通过', note: '' },
+      rejected: { label: '已驳回', note: '' },
+    };
+    /** 等级 → 配色档位（CSS 里 .acc-level[data-lv="n"]） */
+    const LV: Record<string, number> = {
+      路人: 0,
+      入门贡献者: 1,
+      资料整理者: 2,
+      资深编辑: 3,
+      荣誉编辑: 4,
+      百科元老: 5,
+    };
+
+    /* 日期按**访问者本机时区**算：站点是静态的，服务端时间戳直接切 UTC 会让夜里投的稿差一天 */
+    const fmtDate = (ts: number) => {
+      const d = new Date(ts);
+      const p = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    };
+    const initialOf = (name: string) => [...name.trim()][0] ?? '·';
+
+    /* 地图名 / 封面索引：只登录后拉一次；拿不到就退回显示 slug（见 titleOf） */
+    let titles: Record<string, [string] | [string, string]> = {};
+    let titlesLoading: Promise<void> | null = null;
+    const loadTitles = () => {
+      titlesLoading ??= fetch('/account/map-titles.json')
+        .then((r) => (r.ok ? r.json() : {}))
+        .then((d) => {
+          titles = d ?? {};
+        })
+        .catch(() => undefined);
+      return titlesLoading;
+    };
+    const titleOf = (slug: string) => titles[slug]?.[0] ?? slug;
+    const coverOf = (slug: string) => titles[slug]?.[1] ?? '';
+
+    const el = (tag: string, cls: string, text?: string) => {
+      const n = document.createElement(tag);
+      n.className = cls;
+      if (text !== undefined) n.textContent = text;
+      return n;
+    };
+
+    function renderMe(me: Me, subs: Sub[], counts: Counts) {
+      if (loading) loading.hidden = true;
+      if (guest) guest.hidden = true;
+      if (meBox) meBox.hidden = false;
+
+      $('me-avatar')!.textContent = initialOf(me.name);
+      $('me-name')!.textContent = me.name;
+      $('me-since')!.textContent = `注册于 ${fmtDate(me.createdAt)}`;
+      $('me-no')!.textContent = `#${me.id}`;
+      $('me-level')!.textContent = me.level;
+      $('me-level-hint')!.textContent = me.hint;
+      $('me-level-box')!.dataset.lv = String(LV[me.level] ?? 0);
+
+      /* 进度条：approved / (approved + 还差几条) —— 已满级就整条点亮 */
+      const target = me.next ? me.approved + me.next.need : me.approved;
+      const pct = me.next && target > 0 ? Math.round((me.approved / target) * 100) : 100;
+      $('me-progress-fill')!.style.width = `${Math.max(me.approved > 0 ? 4 : 0, pct)}%`;
+      $('me-progress-text')!.textContent = me.next
+        ? `还差 ${me.next.need} 条升到「${me.next.level}」（已通过 ${me.approved} / ${target}）`
+        : `已是最高等级 —— 这条线的资料多半是你铺的`;
+
+      $('st-approved')!.textContent = String(me.approved);
+      $('st-approved-wait')!.textContent = String(counts.approved ?? 0);
+      $('st-pending')!.textContent = String(counts.pending ?? 0);
+      $('st-rejected')!.textContent = String(me.rejected);
+      $('me-trusted')!.textContent = me.trusted
+        ? '✅ 你已获得免审资格：以后投稿直接随下一批写回，不用等人工点通过。'
+        : '免审资格：通过 ≥10 条、且驳回不多（≤ 通过的五分之一）后自动获得。';
+      $('me-trusted')!.classList.toggle('is-on', me.trusted);
+
+      ($('set-name') as HTMLInputElement).value = me.name;
+      ($('set-contact') as HTMLInputElement).value = me.contact ?? '';
+
+      const list = $('me-list');
+      if (!list) return;
+      list.textContent = '';
+
+      if (!subs.length) {
+        const li = el('li', 'acc-empty');
+        const cta = document.createElement('a');
+        cta.className = 'acc-btn acc-btn-primary';
+        cta.href = '/submit/';
+        cta.textContent = '去投稿';
+        li.append(
+          el('span', 'acc-empty-emoji', '🌱'),
+          el('b', '', '还没有投稿记录'),
+          el('span', '', '发现某张图的难度、标签、神器或正文有问题？补第一笔就有了。'),
+          cta
+        );
+        list.append(li);
+        return;
+      }
+
+      for (const s of subs) {
+        const st = STATUS[s.status] ?? { label: s.status, note: '' };
+        const li = el('li', `acc-row is-${s.status}`);
+
+        const thumbWrap = el('a', 'acc-row-thumb');
+        thumbWrap.href = `/maps/${s.map_slug}/`;
+        const cover = coverOf(s.map_slug);
+        if (cover) {
+          const img = document.createElement('img');
+          img.src = cover;
+          img.alt = '';
+          img.loading = 'lazy';
+          thumbWrap.append(img);
+        } else {
+          thumbWrap.append(el('span', 'acc-row-thumb-fallback', initialOf(titleOf(s.map_slug))));
+        }
+
+        const body = el('div', 'acc-row-body');
+        const line1 = el('div', 'acc-row-line');
+        const mapLink = el('a', 'acc-row-title', titleOf(s.map_slug));
+        mapLink.href = `/maps/${s.map_slug}/`;
+        line1.append(mapLink, el('span', 'acc-pill', st.label));
+
+        const line2 = el('div', 'acc-row-line is-sub');
+        line2.append(
+          el('span', 'acc-chip', FIELD_LABEL[s.field] ?? s.field),
+          el('span', 'acc-row-date', fmtDate(s.created_at)),
+          el('span', 'acc-chip is-quiet', `编号 ${s.id}`)
+        );
+
+        body.append(line1, line2);
+
+        const note = s.reject_note
+          ? `驳回理由：${s.reject_note}`
+          : s.status === 'applied' && s.commit_sha
+            ? `已写回提交 ${s.commit_sha.slice(0, 8)}`
+            : st.note;
+        if (note) body.append(el('p', 'acc-row-note', note));
+
+        li.append(thumbWrap, body);
+        list.append(li);
+      }
+    }
+
+    async function refresh() {
+      try {
+        const data = await meFull();
+        if (!data.user) {
+          if (loading) loading.hidden = true;
+          if (guest) guest.hidden = false;
+          if (meBox) meBox.hidden = true;
+          return;
+        }
+        /* 先把骨架画出来（用户能立刻看到自己是谁），地图名随后补上 */
+        renderMe(data.user, data.submissions, data.counts);
+        if (data.submissions.length) {
+          await loadTitles();
+          renderMe(data.user, data.submissions, data.counts);
+        }
+      } catch {
+        if (loading) {
+          loading.textContent = '读取登录状态失败（接口没通）。不影响浏览与投稿 —— 刷新重试即可。';
+        }
+      }
+    }
+
+    /* ---- 注册 / 登录两页切换（滑块） ---- */
+    const tabs = $('acc-tabs');
+    const panes: Record<string, HTMLElement | null> = { reg: $('pane-reg'), log: $('pane-log') };
+    const pick = (which: 'reg' | 'log') => {
+      if (!tabs) return;
+      tabs.dataset.on = which;
+      for (const [key, pane] of Object.entries(panes)) if (pane) pane.hidden = key !== which;
+      err($('acc-error'), '');
+      err($('acc-ok'), '');
+      /* 切过去就聚焦第一个输入框：少点一下 */
+      const first = panes[which]?.querySelector('input');
+      if (first instanceof HTMLInputElement) first.focus();
+    };
+    $('tab-reg')?.addEventListener('click', () => pick('reg'));
+    $('tab-log')?.addEventListener('click', () => pick('log'));
+
+    /* ---- 注册 / 登录 ---- */
+    $('reg-go')?.addEventListener('click', async () => {
+      showErr('');
+      showOk('');
+      const name = ($('reg-name') as HTMLInputElement).value.trim();
+      const p1 = ($('reg-pass') as HTMLInputElement).value;
+      const p2 = ($('reg-pass2') as HTMLInputElement).value;
+      if (p1 !== p2) return showErr('两次输入的口令不一样');
+      try {
+        const d = await post('/api/register', { name, password: p1, contact: ($('reg-contact') as HTMLInputElement).value });
+        showOk(String(d.message ?? '注册成功'));
+        notifyChanged();
+        await refresh();
+      } catch (e) {
+        showErr(e instanceof Error ? e.message : '注册失败');
+      }
+    });
+
+    const doLogin = async () => {
+      showErr('');
+      showOk('');
+      try {
+        const d = await post('/api/login', {
+          name: ($('log-name') as HTMLInputElement).value.trim(),
+          password: ($('log-pass') as HTMLInputElement).value,
+        });
+        showOk(String(d.message ?? '登录成功'));
+        notifyChanged();
+        await refresh();
+      } catch (e) {
+        showErr(e instanceof Error ? e.message : '登录失败');
+      }
+    };
+    $('log-go')?.addEventListener('click', doLogin);
+    /* 回车即登录：口令框里按回车是最顺手的动作 */
+    for (const id of ['log-name', 'log-pass']) {
+      $(id)?.addEventListener('keydown', (e) => {
+        if ((e as KeyboardEvent).key === 'Enter') void doLogin();
+      });
+    }
+
+    $('me-logout')?.addEventListener('click', async () => {
+      await post('/api/logout', {}).catch(() => undefined);
+      notifyChanged();
+      await refresh();
+    });
+
+    $('set-go')?.addEventListener('click', async () => {
+      showErr('');
+      showOk('');
+      try {
+        await post('/api/profile', {
+          name: ($('set-name') as HTMLInputElement).value.trim(),
+          contact: ($('set-contact') as HTMLInputElement).value,
+        });
+        showOk('已保存');
+        await refresh();
+      } catch (e) {
+        showErr(e instanceof Error ? e.message : '保存失败');
+      }
+    });
+
+    $('pw-go')?.addEventListener('click', async () => {
+      showErr('');
+      showOk('');
+      try {
+        const d = await post('/api/password', {
+          oldPassword: ($('pw-old') as HTMLInputElement).value,
+          newPassword: ($('pw-new') as HTMLInputElement).value,
+        });
+        ($('pw-old') as HTMLInputElement).value = '';
+        ($('pw-new') as HTMLInputElement).value = '';
+        showOk(String(d.message ?? '口令已更新'));
+      } catch (e) {
+        showErr(e instanceof Error ? e.message : '改口令失败');
+      }
+    });
+
+    void refresh();
+    /* 页头账号面板里登录 / 退出后，这一页跟着变 */
+    document.addEventListener(ACCOUNT_EVENT, () => void refresh());
+  </script>
+
+  {/*
+    样式全在 src/styles/global.css 的「账号」一节里 —— 本页有一半节点
+    （投稿记录 .acc-row 那些）是下面这段脚本动态建出来的，动态节点拿不到
+    Astro 给模板元素加的作用域 class，写在这里会静默失效。
+  */}
+</BaseLayout>
