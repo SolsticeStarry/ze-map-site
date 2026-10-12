@@ -15,14 +15,12 @@
  ],
  "videoUrls": [
   "https://www.bilibili.com/video/BV1bf4BzrEY9/",
-  "https://www.bilibili.com/video/BV1L7WKeFEYS/",
   "https://www.bilibili.com/video/BV1ahuN6fEGU/"
  ],
  "sources": [
   "https://steamcommunity.com/sharedfiles/filedetails/?id=3293436009",
   "https://github.com/gflze/CS2-ZE-Configs/blob/main/entwatch/ze_surf_hp.jsonc",
   "https://github.com/gflze/CS2-ZE-Configs/blob/main/bosshud/ze_surf_hp.jsonc",
-  "https://www.bilibili.com/video/BV1L7WKeFEYS/",
   "https://www.bilibili.com/video/BV1bf4BzrEY9/",
   "https://www.bilibili.com/video/BV1ahuN6fEGU/"
  ],

@@ -12,15 +12,13 @@
     "冷门图"
   ],
   "videoUrls": [
-    "https://www.bilibili.com/video/BV1RtYk6fEvw",
-    "https://www.bilibili.com/video/BV1bb411a7FR"
+    "https://www.bilibili.com/video/BV1RtYk6fEvw"
   ],
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3075635324",
     "https://raw.githubusercontent.com/Source2ZE/Port-Vmaps/main/maps/ze_omega_p/ze_omega_p.vmap",
     "https://bbs.moeub.cn/forum.php?mod=viewthread&action=printable&tid=355",
     "https://www.bilibili.com/video/BV1RtYk6fEvw",
-    "https://www.bilibili.com/video/BV1bb411a7FR",
     "https://cdn.jsdelivr.net/gh/gflze/CS2-ZE-Configs@main/musicname/ze_omega_p.jsonc"
   ],
   "confidence": "high",

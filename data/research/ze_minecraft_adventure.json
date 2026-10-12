@@ -16,9 +16,7 @@
   "videoUrls": [
     "https://www.bilibili.com/video/BV1t3XgBgEjx/",
     "https://www.bilibili.com/video/BV1w6XuBaErq/",
-    "https://www.bilibili.com/video/BV1q441157Cv/",
-    "https://www.bilibili.com/video/BV1ho4y1i7ML/",
-    "https://www.bilibili.com/video/BV1Kx411i7ue/"
+    "https://www.bilibili.com/video/BV1ho4y1i7ML/"
   ],
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3492345434",
@@ -28,9 +26,7 @@
     "https://raw.githubusercontent.com/gflze/CS2-ZE-Configs/HEAD/bosshud/ze_minecraft_adventure.jsonc",
     "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=355",
     "https://www.bilibili.com/video/BV1t3XgBgEjx/",
-    "https://www.bilibili.com/video/BV1w6XuBaErq/",
-    "https://www.bilibili.com/video/BV1q441157Cv/",
-    "https://www.bilibili.com/video/BV1Kx411i7ue/"
+    "https://www.bilibili.com/video/BV1w6XuBaErq/"
   ],
   "confidence": "high",
   "verified": true

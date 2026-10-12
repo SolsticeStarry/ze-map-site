@@ -6,12 +6,10 @@
   "duration": "约 6 分钟",
   "tags": ["滑翔", "竞速", "新手友好", "随机关卡", "多关卡"],
   "videoUrls": [
-    "https://www.bilibili.com/video/BV1Du4y1i7wD/"
   ],
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3557375758",
-    "https://bbs.moeub.cn/thread-9003-1-62.html",
-    "https://www.bilibili.com/video/BV1Du4y1i7wD/"
+    "https://bbs.moeub.cn/thread-9003-1-62.html"
   ],
   "confidence": "high",
   "verified": true

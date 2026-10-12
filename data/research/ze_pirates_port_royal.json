@@ -23,10 +23,6 @@
   "featured": true,
   "sections": [
     {
-      "title": "视频攻略",
-      "body": "\n<VideoEmbed\n  url=\"https://www.bilibili.com/video/BV1mDkVYeEoJ/?p=1\"\n  title=\"cs2僵尸逃跑 ze_Pirates_Port_Royal 通关全流程\"\n/>\n\n> **选集**（点击跳转到 B站对应 P）：\n>\n> - [P1 第一关](https://www.bilibili.com/video/BV1mDkVYeEoJ/?p=1)\n> - [P2 第二关](https://www.bilibili.com/video/BV1mDkVYeEoJ/?p=2)\n> - [P3 骷髅海盗](https://www.bilibili.com/video/BV1mDkVYeEoJ/?p=3)\n> - [P4 黑珍珠号](https://www.bilibili.com/video/BV1mDkVYeEoJ/?p=4)\n> - [P5 克拉肯](https://www.bilibili.com/video/BV1mDkVYeEoJ/?p=5)\n>\n> 原视频：[BV1mDkVYeEoJ](https://www.bilibili.com/video/BV1mDkVYeEoJ/)"
-    },
-    {
       "title": "背景故事",
       "body": "\n> 本段基于《加勒比海盗》系列电影改编，地图含作者原创关卡设计。\n\n皇家港，海盗的避风港。黑珍珠号的诅咒尚未解除，深海中的克拉肯正在逼近。人类小队必须穿过港口、登上黑珍珠号，在克拉肯吞噬一切之前找到出路。\n\n僵尸阵营的巴博萨船长，正带着他的骷髅海盗，从阴影中围堵而来。"
     },
@@ -68,7 +64,7 @@
     },
     {
       "title": "来源",
-      "body": "\n- [Zombie Escape Wiki - Ze Pirates Port Royal](https://zombieescape.fandom.com/wiki/Ze_Pirates_Port_Royal)\n- [B站 - cs2僵尸逃跑 ze_Pirates_Port_Royal BV1mDkVYeEoJ](https://www.bilibili.com/video/BV1mDkVYeEoJ/)\n\n> 本页资料以 CS:GO v5_6 为主，部分内容可能随版本变化。"
+      "body": "\n- [Zombie Escape Wiki - Ze Pirates Port Royal](https://zombieescape.fandom.com/wiki/Ze_Pirates_Port_Royal)\n\n> 本页资料以 CS:GO v5_6 为主，部分内容可能随版本变化。"
     },
     {
       "title": "实体分布图",

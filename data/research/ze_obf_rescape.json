@@ -14,19 +14,13 @@
   "长征图"
  ],
  "videoUrls": [
-  "https://www.bilibili.com/video/BV1cg411i7jR/",
-  "https://www.bilibili.com/video/BV14v4y127fd/",
-  "https://www.bilibili.com/video/BV1cSaxeEEs3/",
   "https://www.bilibili.com/video/BV1LdGb6rEiJ/",
   "https://www.bilibili.com/video/BV17TYp6kE3R/"
  ],
  "sources": [
   "https://steamcommunity.com/sharedfiles/filedetails/?id=3283167200",
   "https://hellsgamers.com/forums/topic/117858-zs-obj-rescape/",
-  "https://www.bilibili.com/video/BV1cg411i7jR/",
-  "https://www.bilibili.com/video/BV14v4y127fd/",
-  "https://www.bilibili.com/video/BV1LdGb6rEiJ/",
-  "https://www.bilibili.com/video/BV1cSaxeEEs3/"
+  "https://www.bilibili.com/video/BV1LdGb6rEiJ/"
  ],
  "confidence": "high",
  "verified": true
