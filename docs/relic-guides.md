@@ -51,7 +51,6 @@ Markdown 照常（**粗体**、`代码`、列表、链接都行）。
 - 校验由 `npm run content:verify` 把关：`guides` 只能有 `title` / `body` 两个字段，都不能为空。
 
 ## 一句话说明（每张图的「全神器总览」）
-
 除了长文讲解，每件神器还能写**一句话说明**：填进同一份原稿的 `relicIntros` 对象。
 
 ```json

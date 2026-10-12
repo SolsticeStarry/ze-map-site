@@ -11,13 +11,11 @@
     "逃生"
   ],
   "videoUrls": [
-    "https://www.bilibili.com/video/BV16UmgBjEt5/",
-    "https://www.bilibili.com/video/BV1N1u563EmK/"
+    "https://www.bilibili.com/video/BV16UmgBjEt5/"
   ],
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3104693607",
     "https://www.bilibili.com/video/BV16UmgBjEt5/",
-    "https://www.bilibili.com/video/BV1N1u563EmK/",
     "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=355&page=1&authorid=229"
   ],
   "confidence": "medium",

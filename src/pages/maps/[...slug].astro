@@ -55,6 +55,7 @@ const {
   size,
   sources,
   videoUrls,
+  videoKinds,
   stub,
   communityFields,
   communityNotes,
@@ -63,6 +64,15 @@ const {
 } = entry.data;
 
 const hasCommunity = communityPeople.length > 0 || communityNotes.length > 0;
+/*
+ * 视频类型标签：原稿里写了 videoKinds（{ "BVxxxx": "地图档案" }）就取出来挂到对应视频上。
+ * 现在只有「地图档案」这类解说向视频会标；没写这个字段的图，页面输出完全不变。
+ */
+const kindOfVideo = (url: string): string => {
+  if (!videoKinds) return '';
+  const bv = /BV[0-9A-Za-z]+/.exec(url)?.[0];
+  return (bv && videoKinds[bv]) || '';
+};
 /*
  * 体积（MB → 人话）：数值来自 data/map-sizes.json（s2ze/Ruby Bot 的公开地图数据，
  * 见 docs/data-sources.md），带「~」是因为那是工坊分包的体积、和实际下载量可能略有出入。
@@ -266,7 +276,9 @@ const related = all
       {!bodyHasVideo && (videoUrls ?? []).length > 0 && (
         <section class="video-block">
           <h2>攻略视频{(videoUrls ?? []).length > 1 ? `（${(videoUrls ?? []).length}）` : ''}</h2>
-          {(videoUrls ?? []).slice(0, VIDEOS_SHOWN).map((url: string) => <VideoEmbed url={url} />)}
+          {(videoUrls ?? []).slice(0, VIDEOS_SHOWN).map((url: string) => (
+            <VideoEmbed url={url} kind={kindOfVideo(url)} />
+          ))}
           {(videoUrls ?? []).length > VIDEOS_SHOWN && (
             /*
               40 张图的视频超过 3 个（最多 9 个）。全铺在最前面会把「关卡 / 神器」又挤下去，
@@ -274,7 +286,9 @@ const related = all
             */
             <details class="video-more">
               <summary>展开另外 {(videoUrls ?? []).length - VIDEOS_SHOWN} 个视频</summary>
-              {(videoUrls ?? []).slice(VIDEOS_SHOWN).map((url: string) => <VideoEmbed url={url} />)}
+              {(videoUrls ?? []).slice(VIDEOS_SHOWN).map((url: string) => (
+                <VideoEmbed url={url} kind={kindOfVideo(url)} />
+              ))}
             </details>
           )}
         </section>

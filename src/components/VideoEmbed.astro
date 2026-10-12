@@ -23,9 +23,11 @@
 interface Props {
   url: string;
   title?: string;
+  /** 视频类型标签（可选）：例如「地图档案」。空字符串 = 不显示 */
+  kind?: string;
 }
 
-const { url, title = '' } = Astro.props;
+const { url, title = '', kind = '' } = Astro.props;
 
 let embedUrl: string | null = null;
 let platform = 'other';
@@ -72,9 +74,11 @@ const vid = (() => {
       data-embed={embedUrl}
       data-title={label}
       data-vid={vid || undefined}
+      data-kind={kind || undefined}
     >
       <div class="video-frame">
         <a class="video-play" href={url} target="_blank" rel="noopener" aria-label={`点击播放：${label}`}>
+          {kind && <span class="vp-kind">{kind}</span>}
           <span class="vp-btn" aria-hidden="true">
             ▶
           </span>
@@ -92,6 +96,7 @@ const vid = (() => {
         <a class="video-source" href={url} target="_blank" rel="noopener">
           在原站打开 ↗
         </a>
+        {kind && <span class="video-kind">{kind}</span>}
         {/* 该 UP 主已明确同意收录时才显示（名单见 /thanks/）—— 由接口的 ok 标记决定 */}
         <a class="video-ok" data-vp-ok href="/thanks/" hidden title="这位 UP 主已同意本站收录，点开看完整名单">
           ✓ 已获授权
@@ -301,9 +306,38 @@ const vid = (() => {
     letter-spacing: 0.04em;
   }
 
+  /*
+   * 视频类型标签（现在只有「地图档案」这类解说向视频会带）：
+   * 门面上角挂一个，卡片底部再挂一个 —— 让人一眼分清「这是解说」而不是实况录像。
+   */
+  .vp-kind,
+  .video-kind {
+    display: inline-block;
+    padding: 2px 9px;
+    border: 1px solid var(--border-2);
+    border-radius: 999px;
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    color: #cfd6e6;
+    background: rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
+  }
+
+  .vp-kind {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    z-index: 2;
+    backdrop-filter: blur(2px);
+  }
+
+  .video-kind {
+    padding: 1px 8px;
+    font-size: 11.5px;
+  }
+
   /* 「UP 主：xxx」：接口回来才有（拿不到就不显示，不留空行） */
-  .vp-up {
-    padding: 2px 10px;
+  .vp-up {    padding: 2px 10px;
     border: 1px solid var(--border-2);
     border-radius: 999px;
     font-size: 12px;

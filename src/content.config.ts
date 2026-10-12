@@ -34,6 +34,9 @@ const maps = defineCollection({
     workshopUrl: z.string().url().optional(),
     downloadUrl: z.string().url().optional(),
     videoUrls: z.array(z.string()).optional(),
+    /* 视频类型标注：{ "BVxxxx": "地图档案" } —— 页面据此给对应的视频挂小标签（可选）。
+       原稿写在 data/research/<slug>.json 的 videoKinds 里，由生成脚本带进 frontmatter。 */
+    videoKinds: z.record(z.string(), z.string()).optional(),
     releaseDate: z.coerce.string().optional(),
     lastUpdated: z.coerce.string().optional(),
     featured: z.boolean().default(false),

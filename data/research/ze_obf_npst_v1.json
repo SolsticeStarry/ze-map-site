@@ -18,8 +18,12 @@
     "https://www.bilibili.com/video/BV17mYo6VEpk",
     "https://www.bilibili.com/video/BV1RE42137Gf",
     "https://www.bilibili.com/video/BV1QUag6wEyo/",
-    "https://www.bilibili.com/video/BV1mANzzHEHK/"
+    "https://www.bilibili.com/video/BV1mANzzHEHK/",
+    "https://www.bilibili.com/video/BV1aRYF63EfA/"
   ],
+  "videoKinds": {
+    "BV1aRYF63EfA": "地图档案"
+  },
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3229383490",
     "https://bbs.moeub.cn/forum.php?mod=viewthread&action=printable&tid=640",

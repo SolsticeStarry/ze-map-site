@@ -10,8 +10,12 @@
     "https://www.bilibili.com/video/BV1Wz2fB9EWX/",
     "https://www.bilibili.com/video/BV1jRHxemEhy/",
     "https://www.bilibili.com/video/BV1zrhiezEvf/",
-    "https://www.bilibili.com/video/BV1EFX7YHEmj/"
+    "https://www.bilibili.com/video/BV1EFX7YHEmj/",
+    "https://www.bilibili.com/video/BV1SHTT6dEzg/"
   ],
+  "videoKinds": {
+    "BV1SHTT6dEzg": "地图档案"
+  },
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3160547491",
     "https://www.bilibili.com/video/BV1XY2yBhE8g/",

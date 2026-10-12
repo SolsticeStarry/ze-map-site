@@ -564,6 +564,14 @@ function renderEntry(rec, research, wsRec, gfl) {
     released ? `releaseDate: ${JSON.stringify(released)}` : null,
     updated ? `lastUpdated: ${JSON.stringify(updated)}` : null,
     research?.videoUrls?.length ? `videoUrls: [${research.videoUrls.map((x) => JSON.stringify(x)).join(', ')}]` : null,
+    /*
+     * 视频类型标注（可选）：{ "BVxxxx": "地图档案" } —— 页面据此在对应视频上挂个小标签。
+     * 现在只有「地图档案」这类**解说向**的视频会标；普通实况/攻略录像不写这个字段，
+     * 页面就是一个字节都不变（和 hasSummary 同样的思路）。
+     */
+    research?.videoKinds && Object.keys(research.videoKinds).length
+      ? `videoKinds: ${JSON.stringify(research.videoKinds)}`
+      : null,
     research?.sources?.length ? `sources: [${research.sources.map((x) => JSON.stringify(x)).join(', ')}]` : null,
     `stub: ${hasEditorial ? 'false' : 'true'}`,
     /*
