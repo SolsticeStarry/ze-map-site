@@ -3,6 +3,9 @@
   "difficulty": "普通",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV13uSNBxEVo/",
+    "https://www.bilibili.com/video/BV1fYSABcEAe/"
+  ],
   "confidence": "low"
 }

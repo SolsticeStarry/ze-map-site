@@ -3,6 +3,10 @@
   "difficulty": "火星",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1GyJozEE6Y/",
+    "https://www.bilibili.com/video/BV1aeH46nEen/",
+    "https://www.bilibili.com/video/BV1CSigBxEhZ/"
+  ],
   "confidence": "low"
 }

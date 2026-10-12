@@ -3,7 +3,10 @@
   "difficulty": "普通",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1tqHL6UEfC/",
+    "https://www.bilibili.com/video/BV16veB6aEyr/"
+  ],
   "confidence": "low",
   "author": "BlackRock, @Seth."
 }

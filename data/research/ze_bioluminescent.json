@@ -3,7 +3,9 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV19KNmzHEFq/"
+  ],
   "confidence": "low",
   "author": "Kuroki, nutwoomy, Smurf"
 }

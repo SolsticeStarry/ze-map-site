@@ -3,7 +3,9 @@
   "difficulty": "火星",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1w55bzqEaw/"
+  ],
   "confidence": "low",
   "author": "kagel"
 }

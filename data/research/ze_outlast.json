@@ -3,7 +3,9 @@
   "difficulty": "普通",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1V4ES6CE2R/"
+  ],
   "confidence": "low",
   "author": "aizhai"
 }

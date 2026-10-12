@@ -3,7 +3,11 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1Wmckz5ENz/",
+    "https://www.bilibili.com/video/BV16s9xB6EXg/",
+    "https://www.bilibili.com/video/BV19T93BRERo/"
+  ],
   "confidence": "low",
   "author": "皮皮猫233, 花泽爱吃香菜"
 }

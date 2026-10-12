@@ -3,7 +3,10 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV18apJ6aEPZ/",
+    "https://www.bilibili.com/video/BV1Qche6bEBj/"
+  ],
   "confidence": "low",
   "author": "nutwoomy, Smurf"
 }

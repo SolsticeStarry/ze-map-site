@@ -3,7 +3,11 @@
   "difficulty": "火星",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1PoYq6vE2B/",
+    "https://www.bilibili.com/video/BV1r4dnY3EKq/",
+    "https://www.bilibili.com/video/BV1uQaY6bEEU/"
+  ],
   "confidence": "low",
   "author": "Altima, Ayano, 早坂あかね"
 }

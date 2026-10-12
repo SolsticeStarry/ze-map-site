@@ -3,6 +3,10 @@
   "difficulty": "入门",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1VNag6aEwb/",
+    "https://www.bilibili.com/video/BV12TMy6RE85/",
+    "https://www.bilibili.com/video/BV1oPieB5ESH/"
+  ],
   "confidence": "low"
 }

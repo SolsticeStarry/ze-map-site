@@ -71,6 +71,11 @@
       "body": "\n下图由 CS2 版（`ze_pirates_port_royal`）的服务端实体数据生成：底色是地图结构轮廓，彩色点是各类玩法点位。\n\n<RouteMap\n  src=\"/images/maps/ze_pirates_port_royal/overview.png\"\n  alt=\"皇家港实体分布图\"\n  hotspots={[\n    { x: 3.6, y: 4, label: '出生点', desc: '66 个出生点，开局港口区' },\n    { x: 49.8, y: 40.9, label: '传送门密集区', desc: '78 个传送 / 落点' },\n    { x: 44.9, y: 42.9, label: '机关 / 门密集区', desc: '154 个门与机关' },\n    { x: 46.6, y: 50, label: '危险区', desc: '20 个伤害 / 火焰区' },\n    { x: 30.3, y: 58.9, label: '路径点', desc: '211 个路径点，全图最长的一段' }\n  ]}\n/>\n\n> 热点坐标取自实体真实位置。可交互版本见\n> [实体预览](/preview/?map=2001-ze_pirates_port_royal-3381572627)。"
     }
   ],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1Gy6dYQEzp/",
+    "https://www.bilibili.com/video/BV1UQKV6iEsx/",
+    "https://www.bilibili.com/video/BV1yfpD65ED8/"
+  ],
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3381572627"
   ],

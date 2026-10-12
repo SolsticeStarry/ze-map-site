@@ -3,7 +3,10 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1QtmZBKESA/",
+    "https://www.bilibili.com/video/BV1yhSXB1EYL/"
+  ],
   "confidence": "low",
   "author": "Shana❀, 离殇"
 }

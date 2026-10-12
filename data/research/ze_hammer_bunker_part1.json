@@ -3,7 +3,9 @@
   "difficulty": "简单",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1QcQ2YJEEx/"
+  ],
   "confidence": "low",
   "author": "我是初音未来"
 }

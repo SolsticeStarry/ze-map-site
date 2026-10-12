@@ -3,7 +3,11 @@
   "difficulty": "普通",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1RKEE6dESR/",
+    "https://www.bilibili.com/video/BV1w6YmzTETg/",
+    "https://www.bilibili.com/video/BV1pE8j6FEMc/"
+  ],
   "confidence": "low",
   "author": "koyo, BlackRock"
 }

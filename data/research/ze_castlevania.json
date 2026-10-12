@@ -3,7 +3,11 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1oL5o6bEop/",
+    "https://www.bilibili.com/video/BV1DUbW6ZEbc/",
+    "https://www.bilibili.com/video/BV1fseX6vE2a/"
+  ],
   "confidence": "low",
   "author": "Waffel, Luffaren, NiceShot"
 }

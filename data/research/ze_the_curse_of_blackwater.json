@@ -14,7 +14,9 @@
   "CS·GO移植",
   "冷门"
  ],
- "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1tUts69EBz/"
+  ],
  "sources": [
   "https://steamcommunity.com/sharedfiles/filedetails/?id=3385381348",
   "https://gamebanana.com/mods/79898",

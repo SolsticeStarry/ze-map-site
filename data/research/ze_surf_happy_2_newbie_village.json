@@ -3,7 +3,11 @@
   "difficulty": "简单",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1dSZDY9Eo1/",
+    "https://www.bilibili.com/video/BV15FYTzGEte/",
+    "https://www.bilibili.com/video/BV1ctsyzgEms/"
+  ],
   "confidence": "low",
   "author": "咸自矜持"
 }

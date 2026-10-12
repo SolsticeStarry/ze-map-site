@@ -3,7 +3,11 @@
   "difficulty": "火星",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1wUF1z7E7N/",
+    "https://www.bilibili.com/video/BV1mRGX6bEgv/",
+    "https://www.bilibili.com/video/BV1voaX6oEoX/"
+  ],
   "confidence": "low",
   "author": "骇人鲸, 飞翔丶也是翔"
 }

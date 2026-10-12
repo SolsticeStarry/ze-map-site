@@ -3,7 +3,11 @@
   "difficulty": "火星",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV15bPFeZENU/",
+    "https://www.bilibili.com/video/BV1puuDzQEkS/",
+    "https://www.bilibili.com/video/BV1uVGVzNEUt/"
+  ],
   "confidence": "low",
   "author": "oVo捏~, Nishiki Asumi"
 }

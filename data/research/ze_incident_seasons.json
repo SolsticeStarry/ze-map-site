@@ -3,7 +3,11 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1hAVKzQEgF/",
+    "https://www.bilibili.com/video/BV1NpLu6VEpQ/",
+    "https://www.bilibili.com/video/BV1joTR6MEXv/"
+  ],
   "confidence": "low",
   "author": "こねこ大あほたれ, Misakaaaaa, 气流"
 }

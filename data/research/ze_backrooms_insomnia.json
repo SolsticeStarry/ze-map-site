@@ -14,7 +14,10 @@
     "恐怖",
     "长流程"
   ],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1QhmUBGEhf/",
+    "https://www.bilibili.com/video/BV1Sx3R6PELC/"
+  ],
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3559330245",
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3174524746",

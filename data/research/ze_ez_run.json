@@ -3,6 +3,10 @@
   "difficulty": "简单",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1Qh6vBJEsM/",
+    "https://www.bilibili.com/video/BV1keNs69Etr/",
+    "https://www.bilibili.com/video/BV1rfcvzXEPy/"
+  ],
   "confidence": "low"
 }

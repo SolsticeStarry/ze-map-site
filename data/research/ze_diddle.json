@@ -3,7 +3,11 @@
   "difficulty": "火星",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1eKtH6dETK/",
+    "https://www.bilibili.com/video/BV1f4eX6PEhz/",
+    "https://www.bilibili.com/video/BV19PHW6VEca/"
+  ],
   "confidence": "low",
   "author": "Ayano"
 }

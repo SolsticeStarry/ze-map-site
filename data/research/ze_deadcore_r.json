@@ -3,7 +3,9 @@
   "difficulty": "火星",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1kzmgBpE1Y/"
+  ],
   "confidence": "low",
   "author": "兎RB, SIRloin"
 }

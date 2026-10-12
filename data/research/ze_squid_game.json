@@ -11,7 +11,10 @@
     "新手友好",
     "CSGO移植"
   ],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1btibBWE11/",
+    "https://www.bilibili.com/video/BV1iuaz6HEMq/"
+  ],
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3390192395",
     "https://bbs.moeub.cn/thread-5323-1-1.html"

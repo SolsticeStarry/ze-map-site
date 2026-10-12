@@ -10,7 +10,11 @@
     "解谜",
     "自定义选关"
   ],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1Wo2ZBpEpH/",
+    "https://www.bilibili.com/video/BV1JGe26nEc5/",
+    "https://www.bilibili.com/video/BV1tabp6DE9F/"
+  ],
   "sources": [
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3493176131",
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3553979630",

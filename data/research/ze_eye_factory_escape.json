@@ -3,7 +3,9 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1hSYt6EEHF/"
+  ],
   "confidence": "low",
   "author": "零度君就是我, 淦"
 }

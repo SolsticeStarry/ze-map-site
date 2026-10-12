@@ -3,7 +3,10 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1kUuA6zEE5/",
+    "https://www.bilibili.com/video/BV1aQSDBWEvt/"
+  ],
   "confidence": "low",
   "author": "骇人鲸"
 }

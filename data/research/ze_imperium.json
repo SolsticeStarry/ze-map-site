@@ -3,7 +3,12 @@
   "difficulty": "入土",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV18rNU6TEan/",
+    "https://www.bilibili.com/video/BV1W5Hh6SEVc/",
+    "https://www.bilibili.com/video/BV1MKen6bEmb/",
+    "https://www.bilibili.com/video/BV11N4U67EVe/"
+  ],
   "confidence": "low",
   "author": "Raphi, Hichatu"
 }

@@ -3,7 +3,12 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1aAe16qEan/",
+    "https://www.bilibili.com/video/BV1xehv6REeZ/",
+    "https://www.bilibili.com/video/BV1p1pJ6XENK/",
+    "https://www.bilibili.com/video/BV1rNp76VEoi/"
+  ],
   "confidence": "low",
   "author": "Luffy, Nyafi"
 }

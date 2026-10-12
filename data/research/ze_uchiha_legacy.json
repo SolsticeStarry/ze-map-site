@@ -3,7 +3,11 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV15ofZBiEnE/",
+    "https://www.bilibili.com/video/BV1PH4o6zEnu/",
+    "https://www.bilibili.com/video/BV1mobW6pEJV/"
+  ],
   "confidence": "low",
   "author": "m4dara, @Seth."
 }

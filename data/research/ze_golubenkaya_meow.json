@@ -3,7 +3,10 @@
   "difficulty": "普通",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV17ztJ6xEYK/",
+    "https://www.bilibili.com/video/BV1s9HJ6WEPy/"
+  ],
   "confidence": "low",
   "author": "Stepanof, Lolop"
 }

@@ -3,7 +3,11 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV11u3h6oEag/",
+    "https://www.bilibili.com/video/BV1Vgeb6ZEVF/",
+    "https://www.bilibili.com/video/BV1Mwet6LEv7/"
+  ],
   "confidence": "low",
   "author": "Raphi"
 }

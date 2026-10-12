@@ -3,7 +3,10 @@
   "difficulty": "普通",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1cvGLzZERQ/",
+    "https://www.bilibili.com/video/BV1ikRLB3Esg/"
+  ],
   "confidence": "low",
   "author": "Pohmian, stellaaa"
 }

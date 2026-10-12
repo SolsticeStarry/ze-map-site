@@ -71,6 +71,10 @@
       "body": "\n下图由 CS2 版（`ze_lotr_minas_tirith_cs2`）的服务端实体数据生成：底色是地图结构轮廓，彩色点是各类玩法点位。\n\n<RouteMap\n  src=\"/images/maps/ze_lotr_minas_tirith/overview.png\"\n  alt=\"米那斯提力斯实体分布图\"\n  hotspots={[\n    { x: 84, y: 54.7, label: '出生点', desc: '58 个出生点' },\n    { x: 67.5, y: 58.5, label: '传送门密集区', desc: '97 个传送 / 落点，多路线分叉集中在这里' },\n    { x: 59.4, y: 59.3, label: '机关 / 门密集区', desc: '116 个门与机关' },\n    { x: 63.5, y: 62.7, label: '危险区', desc: '14 个伤害 / 火焰区' },\n    { x: 31.6, y: 48.7, label: '路径点', desc: '41 个路径点，通往城外的推进线' }\n  ]}\n/>\n\n> 热点坐标取自实体真实位置。可交互版本见\n> [实体预览](/preview/?map=2001-ze_lotr_minas_tirith_cs2-3353505696)。"
     }
   ],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1TAb76KENa/",
+    "https://www.bilibili.com/video/BV19q7Q6SEQD/"
+  ],
   "sources": [
     "https://gamebanana.com/maps/157492"
   ],

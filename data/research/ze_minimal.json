@@ -3,7 +3,9 @@
   "difficulty": "火星",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1kh5TzLECY/"
+  ],
   "confidence": "low",
   "author": "m4dara, @Seth."
 }

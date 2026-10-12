@@ -3,7 +3,9 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1hPPmenEfn/"
+  ],
   "confidence": "low",
   "author": "气流, 路过人王小明"
 }

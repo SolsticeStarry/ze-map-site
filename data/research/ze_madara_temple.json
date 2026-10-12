@@ -3,7 +3,10 @@
   "difficulty": "困难",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1gXgczAEuR/",
+    "https://www.bilibili.com/video/BV1pFFuz5Ee5/"
+  ],
   "confidence": "low",
   "author": "Smurf, m4dara"
 }

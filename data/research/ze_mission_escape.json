@@ -3,7 +3,10 @@
   "difficulty": "简单",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV14p8o6UE2b/",
+    "https://www.bilibili.com/video/BV1Uytm6REQV/"
+  ],
   "confidence": "low",
   "author": "Charlie"
 }

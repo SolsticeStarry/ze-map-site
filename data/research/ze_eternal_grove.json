@@ -3,7 +3,11 @@
   "difficulty": "火星",
   "summary": null,
   "tags": [],
-  "videoUrls": [],
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV17TR9BSEzm/",
+    "https://www.bilibili.com/video/BV1eCHv6jEu4/",
+    "https://www.bilibili.com/video/BV1U3tB64Ehi/"
+  ],
   "confidence": "low",
   "author": "Waffel, Luffaren"
 }
