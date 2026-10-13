@@ -39,6 +39,15 @@ export interface AccountUser extends AccountLevel {
     /** 这些视频分布在几张图的页面上 */
     maps: number;
   };
+  /**
+   * 「仓库贡献者」称号（2026-10-13 加）：账号被人挂上 GitHub 用户名时才有。
+   * 一个人可能有多个号（SiKi = trrrr-ai + MiKU），所以是列表；url 是 GitHub 主页
+   * （多个号时指向仓库的贡献者页）。同样**只由管理台人工发放**。
+   */
+  gh?: {
+    logins: string[];
+    url: string;
+  };
 }
 
 export interface AccountSubmission {

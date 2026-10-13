@@ -31,6 +31,28 @@ const apiBase = (env: Env) => (env.GITHUB_API_BASE || DEFAULT_API).replace(/\/+$
 
 export const communityPath = (slug: string) => `data/community/${slug}.json`;
 
+/**
+ * 仓库的贡献者名单（GitHub 用户名 → 提交数）。
+ * 「仓库贡献者」称号发放前拿它核对 —— 和「授权 UP 主」要核对 R2 同意名单是一个道理：
+ * 不能凭一句话发称号。见 worker/auth.ts 的 linkgh 与 docs/admin-guide.md。
+ */
+export async function listContributors(env: Env): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const res = await gh(
+    env,
+    `/repos/${repo(env)}/contributors?per_page=100`,
+    {},
+  );
+  if (!res.ok) {
+    throw new GitError(`读取贡献者名单失败：HTTP ${res.status}`, res.status);
+  }
+  const json = (await res.json()) as Array<{ login?: string; contributions?: number }>;
+  for (const c of Array.isArray(json) ? json : []) {
+    if (c?.login) out.set(c.login.toLowerCase(), Number(c.contributions ?? 0));
+  }
+  return out;
+}
+
 /* ===== base64（Workers 的 btoa 只吃 latin1，中文必须自己转） ===== */
 
 function toBase64Utf8(str: string): string {

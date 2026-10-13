@@ -18,6 +18,7 @@ import { allowWrite, fail, isBanned, isLocalHost, json, readJsonBody, safeEqual,
 import { turnstileMessage, verifyTurnstile } from './turnstile';
 import { checkNicknameContent, nicknameRejectMessage, normalizeName, parseExtraBlocklist } from '../shared/nickname-rules.mjs';
 import { loadAgreed, type AgreedUp } from './videos';
+import { listContributors } from './community';
 
 /* ===== 常量 ===== */
 
@@ -110,6 +111,8 @@ export interface UserRow {
   locked_until?: number | null;
   /** 对应哪位 B 站 UP 主（授权 UP 主称号；见 ensureSchema 里的说明） */
   up_name?: string | null;
+  /** 对应哪些 GitHub 用户名（逗号分隔；仓库贡献者称号） */
+  gh_names?: string | null;
 }
 
 /**
@@ -319,6 +322,15 @@ export async function ensureSchema(env: Env): Promise<void> {
     if (!hasUserCol('up_name')) {
       await env.DB.prepare(`ALTER TABLE users ADD COLUMN up_name TEXT`).run();
     }
+    /*
+     * gh_names：这个账号对应哪些 GitHub 用户名（逗号分隔），用于「仓库贡献者」称号（2026-10-13 加）。
+     * 为什么是一列多个：同一个人可能有两个 GitHub 号（SiKi = trrrr-ai + MiKU，白叶 = xianoom + BaiYe），
+     * 而站点上只有一个账号 —— 存一行、显示时拆开。
+     * 发放同样**只人工**：管理台点「挂 GitHub 贡献者」，服务端拿仓库贡献者名单核对。
+     */
+    if (!hasUserCol('gh_names')) {
+      await env.DB.prepare(`ALTER TABLE users ADD COLUMN gh_names TEXT`).run();
+    }
 
     /* submissions.user_id：老的库没有这一列，补上 */
     const cols = await env.DB.prepare(`PRAGMA table_info(submissions)`).all<{ name: string }>();
@@ -440,7 +452,31 @@ function publicUser(user: UserRow, up?: AgreedUp | null) {
      * 只看 up_name，不看昵称是否重名 —— 理由见 agreedUpFor 的注释。
      */
     ...(up ? { up: { name: up.u, mid: up.m, videos: up.videos, maps: up.maps.length } } : {}),
+    /*
+     * 「仓库贡献者」称号（2026-10-13 加）：账号被人挂上 GitHub 用户名时带这个字段。
+     * 显示成名字旁边的小徽章，点开是他在 GitHub 的主页（多个号就给仓库贡献者列表）。
+     */
+    ...(ghLogins(user).length
+      ? {
+          gh: {
+            logins: ghLogins(user),
+            url:
+              ghLogins(user).length === 1
+                ? `https://github.com/${encodeURIComponent(ghLogins(user)[0])}`
+                : 'https://github.com/hhjjdsj/ze-map-site/graphs/contributors',
+          },
+        }
+      : {}),
   };
+}
+
+/** 这个账号挂着的 GitHub 用户名（去空白、去重、最多 4 个） */
+function ghLogins(user: UserRow): string[] {
+  const raw = String(user.gh_names ?? '')
+    .split(/[,\s，、]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return [...new Set(raw)].slice(0, 4);
 }
 
 /**
@@ -807,15 +843,64 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
   const id = Number(parsed.body.id);
   const action = String(parsed.body.action ?? '');
   if (!Number.isInteger(id) || id <= 0) return fail('id 不合法');
-  if (!['ban', 'unban', 'unlock', 'reset', 'rename', 'linkup', 'unlinkup'].includes(action)) {
-    return fail('action 只能是 ban / unban / unlock / reset / rename / linkup / unlinkup');
+  if (!['ban', 'unban', 'unlock', 'reset', 'rename', 'linkup', 'unlinkup', 'linkgh', 'unlinkgh'].includes(action)) {
+    return fail('action 只能是 ban / unban / unlock / reset / rename / linkup / unlinkup / linkgh / unlinkgh');
   }
 
   await ensureSchema(env);
-  const before = await env.DB.prepare(`SELECT id, name, up_name FROM users WHERE id = ?1`)
+  const before = await env.DB.prepare(`SELECT id, name, up_name, gh_names FROM users WHERE id = ?1`)
     .bind(id)
-    .first<{ id: number; name: string; up_name: string | null }>();
+    .first<{ id: number; name: string; up_name: string | null; gh_names: string | null }>();
   if (!before) return fail('没有这个账号', 404);
+
+  /*
+   * linkgh：把这个账号挂到 GitHub 贡献者上（2026-10-13 加）—— 「仓库贡献者」称号。
+   * 规则和「授权 UP 主」一样：**只人工发**，而且发之前要核对 —— 用户名必须在仓库的贡献者名单里
+   * （GitHub API 读，见 community.ts 的 listContributors）。
+   * 一个人可能有多个 GitHub 号（SiKi = trrrr-ai + MiKU），所以收一个列表；**至少一个**要对得上，
+   * 对不上的那些照样存下来但会在返回里点名（提交被 squash 过、或走的是 PR 分支，名单里就可能没有）。
+   */
+  if (action === 'linkgh' || action === 'unlinkgh') {
+    if (action === 'unlinkgh') {
+      await env.DB.prepare(`UPDATE users SET gh_names = NULL WHERE id = ?1`).bind(id).run();
+      return json({ ok: true, id, action, message: `已摘掉「${before.name}」的仓库贡献者称号` });
+    }
+    const raw = String(parsed.body.name ?? '').trim();
+    if (!raw) return fail('要写 GitHub 用户名（多个用逗号隔开）');
+    const logins = [...new Set(raw.split(/[,\s，、]+/).map((s) => s.trim()).filter(Boolean))].slice(0, 4);
+    const bad = logins.find((x) => !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(x));
+    if (bad) return fail(`不像 GitHub 用户名：${bad}`);
+
+    let known: Map<string, number>;
+    try {
+      known = await listContributors(env);
+    } catch (err) {
+      return fail(
+        `核对贡献者名单失败（${err instanceof Error ? err.message : String(err)}）—— ` +
+          '没有名单就不发称号，检查 GITHUB_TOKEN 与网络后重试',
+        502,
+      );
+    }
+    const hits = logins.filter((x) => known.has(x.toLowerCase()));
+    if (!hits.length) {
+      return fail(
+        `这几个用户名都不在仓库贡献者名单里（${logins.join('、')}）—— ` +
+          `名单里现在是：${[...known.keys()].slice(0, 10).join('、')}。` +
+          '确认一下是不是提交被 squash 过、或者用的是别的账号',
+      );
+    }
+    await env.DB.prepare(`UPDATE users SET gh_names = ?1 WHERE id = ?2`).bind(logins.join(','), id).run();
+    const missed = logins.filter((x) => !known.has(x.toLowerCase()));
+    return json({
+      ok: true,
+      id,
+      action,
+      logins,
+      message:
+        `已把「${before.name}」记为仓库贡献者：${hits.map((x) => `${x}（${known.get(x.toLowerCase())} 次提交）`).join('、')}` +
+        (missed.length ? `；另 ${missed.join('、')} 不在贡献者名单里，也一并记下了（可能提交被 squash）` : ''),
+    });
+  }
 
   /*
    * linkup：把这个账号挂到某位「已授权 UP 主」上（2026-10-13 加）。

@@ -712,13 +712,32 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     unlink.type = 'button';
     unlink.onclick = () => accountAction(acc.id, 'unlinkup');
     actions.append(unlink);
+    /*
+     * 仓库贡献者称号（2026-10-13）：填 GitHub 用户名（多个用逗号隔开）。
+     * 服务端拿仓库贡献者名单核对，一个都对不上会拒绝 —— 一个人有两个号是常事
+     * （SiKi = trrrr-ai + MiKU，白叶 = xianoom + BaiYe），所以支持一次填多个。
+     */
+    const gh = el('button', 'btn', '挂 GitHub 贡献者') as HTMLButtonElement;
+    gh.type = 'button';
+    gh.onclick = () => {
+      const next = prompt(`把「${acc.name}」记为仓库贡献者：填 GitHub 用户名（多个用逗号隔开）`, '');
+      if (next === null) return;
+      const name = next.trim();
+      if (!name) return setStatus('GitHub 用户名不能为空', true);
+      accountAction(acc.id, 'linkgh', { name });
+    };
+    actions.append(gh);
+    const ungh = el('button', 'btn', '摘 GitHub 称号') as HTMLButtonElement;
+    ungh.type = 'button';
+    ungh.onclick = () => accountAction(acc.id, 'unlinkgh');
+    actions.append(ungh);
     box.append(actions);
     return box;
   }
 
   async function accountAction(
     id: number,
-    action: 'ban' | 'unban' | 'unlock' | 'reset' | 'rename' | 'linkup' | 'unlinkup',
+    action: 'ban' | 'unban' | 'unlock' | 'reset' | 'rename' | 'linkup' | 'unlinkup' | 'linkgh' | 'unlinkgh',
     extra: Record<string, unknown> = {}
   ) {
     setStatus('处理中…');

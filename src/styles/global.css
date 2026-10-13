@@ -3432,6 +3432,38 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .acc-up-text { color: var(--muted); }
+
+/*
+ * 「仓库贡献者」称号（2026-10-13 加）：和「授权 UP 主」并排，但用冷色（青蓝）区分 ——
+ * 两个称号性质不同：一个是 B 站 UP 授权，一个是在 GitHub 仓库里提交过整理。
+ */
+.acc-gh-badge {
+  padding: 2px 9px;
+  border: 1px solid #6fa8dc;
+  border-radius: 999px;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: #9dc7ea;
+  background: rgba(111, 168, 220, 0.12);
+  white-space: nowrap;
+}
+
+.am-gh-badge {
+  padding: 1px 8px;
+  border: 1px solid #6fa8dc;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #9dc7ea;
+  background: rgba(111, 168, 220, 0.12);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.am-gh-badge:hover { border-color: #9dc7ea; color: #c3ddf3; }
+
+[data-theme="light"] .acc-gh-badge,
+[data-theme="light"] .am-gh-badge { color: #1f5c8b; border-color: #4a86b8; background: rgba(74, 134, 184, 0.12); }
 .acc-up-text a { color: #e8c884; text-decoration: none; border-bottom: 1px dotted rgba(232, 200, 132, 0.5); }
 .acc-up-text a:hover { color: #f3d79a; border-bottom-color: #f3d79a; }
 

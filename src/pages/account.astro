@@ -132,6 +132,11 @@ import QqGroup from '../components/QqGroup.astro';
               <span class="acc-up-badge">授权 UP 主</span>
               <span class="acc-up-text" id="me-up-text"></span>
             </p>
+            {/* 仓库贡献者称号（2026-10-13）：挂了 GitHub 用户名时显示 */}
+            <p class="acc-up" id="me-gh" hidden>
+              <span class="acc-gh-badge">仓库贡献者</span>
+              <span class="acc-up-text" id="me-gh-text"></span>
+            </p>
             <p class="acc-id-meta">
               <span id="me-since"></span>
               <span class="acc-sep">·</span>
@@ -377,6 +382,23 @@ import QqGroup from '../components/QqGroup.astro';
           upBox.hidden = false;
         } else {
           upBox.hidden = true;
+        }
+      }
+      /* 仓库贡献者称号：账号挂了 GitHub 用户名时才有（管理台人工发放，见 docs/admin-guide.md） */
+      const ghBox = $('me-gh');
+      const ghText = $('me-gh-text');
+      if (ghBox && ghText) {
+        if (me.gh?.logins?.length) {
+          ghText.textContent = 'GitHub「';
+          const a = document.createElement('a');
+          a.href = me.gh.url;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.textContent = me.gh.logins.join(' + ');
+          ghText.append(a, document.createTextNode('」—— 在本仓库提交过资料整理'));
+          ghBox.hidden = false;
+        } else {
+          ghBox.hidden = true;
         }
       }
       $('me-since')!.textContent = `注册于 ${fmtDate(me.createdAt)}`;

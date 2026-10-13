@@ -826,6 +826,64 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
     assert.match(tooMany.data.error, /最多提交 10 项/);
   });
 
+  await t.test('仓库贡献者称号：没有名单就不发（宁可不发，也不凭一句话发称号）', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    await call('/api/register', { method: 'POST', body: { name: '贡献者', password: 'pass12345' } });
+    /* 没配 GITHUB_TOKEN → 读不到贡献者名单 → 必须拒绝，而不是照发 */
+    const r = await call('/api/admin/accounts', {
+      method: 'POST',
+      body: { id: 1, action: 'linkgh', name: 'somebody' },
+      headers: { authorization: 'Bearer test-admin-token' },
+    });
+    assert.equal(r.status, 502, JSON.stringify(r.data));
+    assert.match(r.data.error, /核对贡献者名单失败|没有名单就不发称号/);
+    assert.equal((await call('/api/me')).data.user.gh, undefined, '没发成就不该有徽章');
+  });
+
+  await t.test('仓库贡献者称号：核对通过才发；支持一人多个 GitHub 号', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    env.GITHUB_TOKEN = 'test-gh';
+    env.GITHUB_API_BASE = 'https://api.github.test';
+    /* 假 GitHub：贡献者名单里只有 trrrr-ai 与 xianoom */
+    globalThis.fetch = (async (url, init) => {
+      if (String(url).includes('/contributors')) {
+        return new Response(JSON.stringify([{ login: 'trrrr-ai', contributions: 17 }, { login: 'xianoom', contributions: 3 }]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return realFetch(url, init);
+    });
+    await call('/api/register', { method: 'POST', body: { name: '贡献者', password: 'pass12345' } });
+    const auth = { authorization: 'Bearer test-admin-token' };
+
+    const none = await call('/api/admin/accounts', {
+      method: 'POST',
+      body: { id: 1, action: 'linkgh', name: 'nobody-here' },
+      headers: auth,
+    });
+    assert.equal(none.status, 400, JSON.stringify(none.data));
+    assert.match(none.data.error, /都不在仓库贡献者名单里/);
+
+    const ok = await call('/api/admin/accounts', {
+      method: 'POST',
+      body: { id: 1, action: 'linkgh', name: 'trrrr-ai, MiKU' },
+      headers: auth,
+    });
+    assert.equal(ok.status, 200, JSON.stringify(ok.data));
+    assert.match(ok.data.message, /trrrr-ai（17 次提交）/);
+    assert.match(ok.data.message, /MiKU 不在贡献者名单里/);
+
+    const me = await call('/api/me');
+    assert.deepEqual(me.data.user.gh.logins, ['trrrr-ai', 'MiKU']);
+    assert.match(me.data.user.gh.url, /graphs\/contributors$/, '多个号时指向仓库贡献者页');
+
+    await call('/api/admin/accounts', { method: 'POST', body: { id: 1, action: 'unlinkgh' }, headers: auth });
+    assert.equal((await call('/api/me')).data.user.gh, undefined, '摘掉后立刻没有徽章');
+  });
+
   /* ===== 整篇草稿 + 采纳（2026-10-13：大面积修改的入口） ===== */
 
   await t.test('整篇草稿必须登录：匿名投被拒，登录后收下', async () => {

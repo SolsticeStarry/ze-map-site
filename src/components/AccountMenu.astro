@@ -82,6 +82,8 @@ import { PERSON_ICON } from '../lib/account-client';
           <b id="am-me-name">—</b>
           {/* 授权 UP 主称号（2026-10-13）：见 worker/auth.ts 的 agreedUpFor；点开是他在 B 站的主页 */}
           <a class="am-up-badge" id="am-me-up" hidden>授权 UP 主</a>
+          {/* 仓库贡献者称号：挂了 GitHub 用户名时才有，点开是他的 GitHub 主页 */}
+          <a class="am-gh-badge" id="am-me-gh" hidden>仓库贡献者</a>
           <span class="acc-level-name" id="am-me-level" data-lv="0">—</span>
         </div>
       </div>
@@ -169,6 +171,18 @@ import { PERSON_ICON } from '../lib/account-client';
       } else {
         upBadge.hidden = true;
         upBadge.removeAttribute('href');
+      }
+    }
+    /* 仓库贡献者称号：同 /api/me 的 gh 字段，点开去他的 GitHub 主页 */
+    const ghBadge = $('am-me-gh') as HTMLAnchorElement | null;
+    if (ghBadge) {
+      if (user.gh?.logins?.length) {
+        ghBadge.hidden = false;
+        ghBadge.href = user.gh.url;
+        ghBadge.title = `GitHub「${user.gh.logins.join(' + ')}」—— 在本仓库提交过资料整理`;
+      } else {
+        ghBadge.hidden = true;
+        ghBadge.removeAttribute('href');
       }
     }
     const lv = $('am-me-level')!;
