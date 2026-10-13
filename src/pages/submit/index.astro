@@ -468,6 +468,28 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       <p class="form-error" id="f-error" hidden></p>
     </form>
 
+    {/*
+      提交前确认（2026-10-13 站长要求）：点「提交审核」不是直接发，先把这次要投的
+      摊开给人看一眼（哪几项、内容是什么、署谁的名、是不是修订稿），确认了才发请求。
+      用原生 <dialog>（和图片灯箱同一套）：Escape 关闭、焦点锁在框里、背景变暗都是浏览器给的。
+      内容由脚本按当前表单填（见 openConfirm / buildConfirmBody）。
+    */}
+    <dialog class="s-confirm" id="submit-confirm" aria-labelledby="sc-title">
+      <h2 class="sc-title" id="sc-title">确认提交</h2>
+      <p class="sc-sub">
+        核对一下这次要投的内容 —— 提交后就进人工审核队列，写错字段只能等审核台退回来。
+      </p>
+      <div class="sc-body" id="sc-body"></div>
+      <p class="sc-warn" id="sc-warn" hidden></p>
+      <p class="sc-tip">
+        提交后会给你一个编号，可以随时用「查审核状态」看进度；审核通过才写进条目。
+      </p>
+      <div class="sc-actions">
+        <button class="btn btn-ghost" type="button" id="sc-cancel">返回修改</button>
+        <button class="btn btn-primary" type="button" id="sc-go" autofocus>确认提交</button>
+      </div>
+    </dialog>
+
     <div class="form-card s-card s-result" id="result" hidden></div>
 
     <div class="form-card s-card" id="status-card">
@@ -559,6 +581,11 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 
   let mapInfo: Record<string, unknown> | null = null;
   let allMaps: Array<Record<string, unknown>> = [];
+  /**
+   * 登录状态（页头账号横幅那段脚本会写它）：true 已登录 / false 确定没登录 / null 还不知道（接口没通）。
+   * 整篇草稿要求登录，这里拿来在提交**之前**就拦住，别让人写完一整篇才被服务端拒。
+   */
+  let meLoggedIn: boolean | null = null;
 
   /*
    * 没带 ?map= 时的选图入口。
@@ -1226,7 +1253,8 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     const box = document.getElementById('batch-list');
     const wrap = document.getElementById('batch-box');
     if (!box || !wrap) return;
-    wrap.hidden = batchQueue.length === 0;
+    /* 大面积整理档里不显示批量块（队列本身留着，切回单项档还在） */
+    wrap.hidden = batchQueue.length === 0 || mode === 'draft';
     box.textContent = '';
     batchQueue.forEach((item, i) => {
       const row = document.createElement('div');
@@ -1253,6 +1281,10 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 
   function addToBatch(): void {
     errEl.hidden = true;
+    /* 大面积整理档没有「加进本次提交」这回事（按钮也收起来了，这里再兜一道） */
+    if (mode === 'draft') {
+      return showError('大面积整理是一整篇，直接点「提交审核」就行 —— 不用加入批量。');
+    }
     const key = fieldSel.value;
     const kind = rules[key]?.kind;
     /* 封面 / 图片集是图片上传，跟文本投稿不是一条路；草稿本身已经是一整篇，也不用攒 */
@@ -1297,6 +1329,13 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     if (pick) pick.hidden = isDraft;
     document.getElementById('draft-cta')!.hidden = !isDraft;
     const draftField = document.querySelector<HTMLElement>('[data-block="draft"]');
+    /*
+     * 「攒几项一起投」只在单项档有意义 —— 大面积整理本身就是一整篇，
+     * 这一档把批量那一块收起来（队列留着，切回单项档还在）。
+     */
+    const batchActions = document.getElementById('batch-add')?.closest<HTMLElement>('.s-actions');
+    if (batchActions) batchActions.hidden = isDraft;
+    renderBatchQueue();
     if (isDraft) {
       for (const el of document.querySelectorAll<HTMLElement>('[data-block]')) {
         el.hidden = el.dataset.block !== 'draft';
@@ -2426,6 +2465,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     if (!box) return;
 
     const paint = (user: { name: string; trusted: boolean; level: string } | null, reachable: boolean) => {
+      meLoggedIn = user ? true : reachable ? false : null;
       banner?.classList.toggle('is-on', Boolean(user));
       banner?.classList.toggle('is-off', !reachable);
       if (dot) dot.textContent = user ? '✓' : reachable ? '?' : '!';
@@ -2473,20 +2513,282 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     document.addEventListener(ACCOUNT_EVENT, () => void refresh());
   })();
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    errEl.hidden = true;
+  /* ===== 提交前确认（2026-10-13 站长要求） =====
+     以前点「提交审核」直接发请求：字段选错、备注漏写、手滑连点投两遍，都只能等审核台退回来。
+     现在先把这次要投的东西摊开看一眼（哪几项、内容是什么、署谁的名、是不是修订稿），
+     确认了才发。分两步：prepareSubmission() 只做**本地校验**（不联网、不取 token），
+     runSubmit() 才是原来那段发请求的逻辑。
+     用原生 <dialog>：Escape 关闭、焦点锁在框里、背景变暗都是浏览器给的，不用自己写。 */
+  type SubmissionPlan = {
+    field: string;
+    /** 非批量时提交的那个值（封面 / 图片集没有值，走各自的上传接口） */
+    value?: unknown;
+    /** 这一批要投的项：队列里的 + 当前这一项 */
+    batchItems: Array<{ field: string; value: unknown }>;
+    /** 队列里本来就攒了东西 → 按 items[] 批量提交（服务端打同一个 batch 号） */
+    batched: boolean;
+    /** 修订某条已通过的投稿时带上它的 id */
+    reviseOf: string;
+    note: string;
+    submitter: string;
+    contact: string;
+    /** 图片集这一批几张图 */
+    galleryCount?: number;
+    /** 封面的压缩结果文案（确认框里显示） */
+    coverInfo?: string;
+    /** 整理档里被暂时忽略的批量队列条数（确认框里说清楚，免得以为投出去了） */
+    queuedIgnored?: number;
+  };
+  let plan: SubmissionPlan | null = null;
+  /** 确认框是什么时候弹出来的 —— 用来挡掉「按住回车」的连击（见 sc-go 的处理） */
+  let openedAt = 0;
 
-    const field = fieldSel.value;
+  const confirmDlg = document.getElementById('submit-confirm') as HTMLDialogElement | null;
+
+  /** 确认框里的一行：左边是名目，右边是内容（内容可能不止一段，所以右列用 div） */
+  function scRow(label: string, content: Node | string): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'sc-row';
+    const k = document.createElement('span');
+    k.className = 'sc-k';
+    k.textContent = label;
+    const v = document.createElement('div');
+    v.className = 'sc-v';
+    if (typeof content === 'string') v.textContent = content;
+    else v.append(content);
+    row.append(k, v);
+    return row;
+  }
+
+  /** 草稿在确认框里的摘要：多少字、哪几个小节 —— 一整篇贴出来没法看 */
+  function docPlanSummary(text: string): string {
+    const sections = String(text ?? '')
+      .split(/^##\s+/m)
+      .slice(1)
+      .map((chunk) => (chunk.split('\n')[0] ?? '').trim())
+      .filter(Boolean);
+    const len = [...String(text ?? '').trim()].length;
+    return (
+      `共 ${len} 字 · ${sections.length} 个小节` +
+      (sections.length ? `（${sections.slice(0, 6).join('、')}${sections.length > 6 ? ' …' : ''}）` : '')
+    );
+  }
+
+  function buildConfirmBody(p: SubmissionPlan): void {
+    const body = document.getElementById('sc-body');
+    const warn = document.getElementById('sc-warn');
+    if (!body) return;
+    body.textContent = '';
+    body.append(scRow('地图', `${mapInfo?.title ?? slug}（${slug}）`));
+
+    /* 这一批要投的项：一项一项列清楚「投的是哪个字段、内容长什么样」 */
+    const list = document.createElement('ul');
+    list.className = 'sc-list';
+    for (const item of p.batchItems) {
+      const li = document.createElement('li');
+      const name = document.createElement('b');
+      name.textContent = rules[item.field]?.label ?? item.field;
+      const val = document.createElement('span');
+      if (rules[item.field]?.kind === 'doc') val.textContent = docPlanSummary(String(item.value ?? ''));
+      else if (rules[item.field]?.kind === 'gallery') val.textContent = `共 ${p.galleryCount ?? 0} 张图`;
+      else if (rules[item.field]?.kind === 'image') val.textContent = p.coverInfo || '一张新封面';
+      else val.textContent = shortPreview(item.value);
+      li.append(name, document.createTextNode('：'), val);
+      list.append(li);
+    }
+    body.append(scRow(p.batchItems.length > 1 ? `要提交的 ${p.batchItems.length} 项` : '要提交的项', list));
+
+    body.append(scRow('署名', p.submitter.trim() || '（没填，会显示为匿名）'));
+    if (p.contact.trim()) body.append(scRow('联系方式', p.contact.trim()));
+    if (p.note.trim()) body.append(scRow('给站长的话', p.note.trim()));
+
+    /* 提醒那几条「这次提交的特殊之处」——修订稿 / 整篇整理 / 一批多张图 */
+    const tips: string[] = [];
+    if (p.reviseOf) {
+      tips.push(
+        `这是<b>修订</b>稿：审核通过后会替换原来那一条（编号 ${p.reviseOf}），署名仍归原作者。`
+      );
+    }
+    /* 注意字段名是 draft、它的 kind 才是 doc —— 别写成 p.field === 'doc'（踩过） */
+    if (rules[p.field]?.kind === 'doc') {
+      tips.push(
+        '大面积整理：投稿先以「社区整理版（未采纳）」显示在条目页，站长在审核台点「采纳为原稿」后' +
+          '才按小节合并进正文（同名小节替换、没写到的小节原样保留）。'
+      );
+    }
+    if (p.field === 'gallery') {
+      tips.push(`图片集是<b>一张一条投稿</b>：这一批 ${p.galleryCount ?? 0} 张会分别进队列，都要过审。`);
+    }
+    if (p.field === 'cover') {
+      tips.push('审核通过后封面会替换成这一张。');
+    }
+    if (p.batched) {
+      tips.push('这一批会打同一个批次号，审核台能看到它们属于同一次整理。');
+    }
+    if (p.queuedIgnored) {
+      tips.push(
+        `注意：这次<b>只提交整篇草稿</b>。你攒在「本次一起提交」里的 ${p.queuedIgnored} 项` +
+          '留在队列里没动，切回「单项补充」再投。'
+      );
+    }
+    if (warn) {
+      warn.innerHTML = tips.join('<br>');
+      warn.hidden = tips.length === 0;
+    }
+  }
+
+  function openConfirm(p: SubmissionPlan): void {
+    plan = p;
+    openedAt = Date.now();
+    buildConfirmBody(p);
+    if (confirmDlg && typeof confirmDlg.showModal === 'function') {
+      if (!confirmDlg.open) confirmDlg.showModal();
+      return;
+    }
+    /* 极老的浏览器没有 <dialog>：退回原生 confirm，总比没有确认好 */
+    if (window.confirm('确认提交这次投稿？')) {
+      plan = null;
+      void runSubmit(p);
+    } else {
+      plan = null;
+    }
+  }
+
+  function closeConfirm(): void {
+    if (confirmDlg?.open) confirmDlg.close();
+    plan = null;
+  }
+
+  document.getElementById('sc-cancel')?.addEventListener('click', () => {
+    closeConfirm();
+    /* 回到「提交审核」，接着改 —— 表单里的东西一个字都没动 */
+    submitBtn.focus();
+  });
+
+  document.getElementById('sc-go')?.addEventListener('click', () => {
+    /* 刚弹出来 400ms 内的这一下不算：「确认提交」带着 autofocus，
+       在输入框里按住回车的人会连着触发它 —— 那正好是我们要防的「没看清就提交」 */
+    if (Date.now() - openedAt < 400) return;
+    const p = plan;
+    closeConfirm();
+    if (p) void runSubmit(p);
+  });
+
+  /* Escape 关闭（原生行为）后把 plan 清掉 */
+  confirmDlg?.addEventListener('close', () => {
+    plan = null;
+  });
+
+  /* 点背景也能关（原生 dialog 不管这个） */
+  confirmDlg?.addEventListener('click', (e) => {
+    if (e.target === confirmDlg) closeConfirm();
+  });
+
+  /**
+   * 只做本地校验：不联网、不取人机验证 token，所以可以放心地先跑一遍再弹确认框。
+   * 校验不过就 showError 并返回 null（此时**不该**弹确认框）。
+   */
+  function prepareSubmission(): SubmissionPlan | null {
+    /*
+     * ⚠️ 大面积整理档里**不能**读「要提交哪一项」那个下拉框：draft 是 hidden 字段，
+     * 压根不在下拉的选项里 —— 之前这里直接把 fieldSel.value 当成了要投的字段，
+     * 于是整篇整理会被当成「当前选中的那一项」（比如难度）投出去，草稿根本没提交。
+     * 谁在台上，就以谁为准。
+     */
+    const inDraft = mode === 'draft';
+    const field = inDraft ? 'draft' : fieldSel.value;
     const note = (document.getElementById('f-note') as HTMLTextAreaElement).value;
     const submitter = (document.getElementById('f-submitter') as HTMLInputElement).value;
     const contact = (document.getElementById('f-contact') as HTMLInputElement).value;
+    const base = {
+      field,
+      batchItems: [] as Array<{ field: string; value: unknown }>,
+      /* 整篇草稿不跟别的项拼批：它自己就是一整篇（队列留着，切回单项档还能投） */
+      batched: !inDraft && batchQueue.length >= 1,
+      reviseOf: '',
+      note,
+      submitter,
+      contact,
+      queuedIgnored: inDraft ? batchQueue.length : 0,
+    };
+
+    /* 整篇草稿要求登录（服务端也拦，见 FIELD_RULES.draft.requireLogin）——
+       已经知道没登录就直接说清楚，别让人写完一整篇、点了确认才被退回来。
+       meLoggedIn === null 表示登录接口没通，那种情况交给服务端判断。 */
+    if (inDraft && meLoggedIn === false) {
+      showError(
+        '整篇草稿需要登录后才能提交（大面积改写要能追到人）—— 右上角登录即可，' +
+          '没账号 10 秒能注册；不登录也照样能投其它字段。'
+      );
+      return null;
+    }
+
+    /* 封面：值是一张压好的图，不参与 collect / validateValue */
+    if (field === 'cover') {      if (!coverBlob) {
+        showError('先选一张图片，等它压好之后再提交。');
+        return null;
+      }
+      return {
+        ...base,
+        batchItems: [{ field, value: '' }],
+        coverInfo: coverStatus?.textContent?.trim() ?? '',
+      };
+    }
+
+    /* 图片集：multipart、一张一条投稿，值也不在表单里 */
+    if (field === 'gallery') {
+      if (!galleryItems.length) {
+        showError('先选图片，等它们压好之后再提交。');
+        return null;
+      }
+      return {
+        ...base,
+        batchItems: [{ field, value: '' }],
+        galleryCount: galleryItems.length,
+      };
+    }
+
+    const value = collect(field);
+    /*
+     * 简介：本站已经有简介的图**不接受**社区简介（页面上根本不会渲染，投了等于白投）。
+     * 本地拦一道并指路到能投的字段 —— 服务端拦不了（Worker 读不到仓库里的原稿），
+     * 但审核台照样能看到这类稿子，站长可以驳回。
+     */
+    if (field === 'summary' && String(mapInfo?.summary ?? '').trim()) {
+      showError('这张图已经有本站整理的简介，简介不支持覆盖 —— 想补充内容请改投「背景故事」或「补充说明 / 纠错」。');
+      return null;
+    }
+    const checked = validateValue(field, value);
+    if (!checked.ok) {
+      showError(checked.error);
+      return null;
+    }
+
+    /* 批量（2026-10-13）：队列里攒着的几项 + 当前这一项，一起交上去。
+       一张图补资料常要同时改难度、标签、视频、正文 —— 一次一条地投十遍太折腾，
+       而且审核台看到的是一堆散条目。服务端会为这一批打同一个 batch 号。 */
+    const batchItems = [
+      ...batchQueue.map((b) => ({ field: b.field, value: b.value })),
+      { field, value: checked.value },
+    ];
+
+    /* 正在修订某一条已通过的社区投稿（点过「修订这条」）：带上它的 id，
+       审核通过后是替换那一条的正文，而不是再加一条。 */
+    const reviseOf = reviseTarget && reviseTarget.field === field ? reviseTarget.id : '';
+
+    return { ...base, value: checked.value, batchItems, reviseOf };
+  }
+
+  /** 真正提交（原来那段逻辑）：人机验证 → 发请求 → 成功页 */
+  async function runSubmit(p: SubmissionPlan): Promise<void> {
+    const { field, note, submitter, contact } = p;
     const backLink =
       `站长审核通过后会随下一批一起写回仓库并自动重建，通常几分钟内就会出现在 ` +
       `<a href="/maps/${slug}/">《${mapInfo?.title}》的条目</a> 里。`;
 
     /* 人机验证：先等最多 3 秒（自动通过通常 <1 秒，别让手快的人白跑一趟），
-       token 是一次性的，失败后 reset（见各分支的 catch） */
+       token 是一次性的，失败后 reset（见各分支的 catch）。
+       放在确认之后取 —— 让人看确认框的时候 token 不会白白过期。 */
     const { token: tsToken, blocked: tsBlocked } = await takeTurnstileToken(tsBox);
     if (tsBlocked) return showError(turnstileHint());
 
@@ -2564,32 +2866,6 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       return;
     }
 
-    const value = collect(field);
-    /*
-     * 简介：本站已经有简介的图**不接受**社区简介（页面上根本不会渲染，投了等于白投）。
-     * 本地拦一道并指路到能投的字段 —— 服务端拦不了（Worker 读不到仓库里的原稿），
-     * 但审核台照样能看到这类稿子，站长可以驳回。
-     */
-    if (field === 'summary' && String(mapInfo?.summary ?? '').trim()) {
-      return showError(
-        '这张图已经有本站整理的简介，简介不支持覆盖 —— 想补充内容请改投「背景故事」或「补充说明 / 纠错」。'
-      );
-    }
-    const checked = validateValue(field, value);
-    if (!checked.ok) return showError(checked.error);
-
-    /* 批量（2026-10-13）：队列里攒着的几项 + 当前这一项，一起交上去。
-       一张图补资料常要同时改难度、标签、视频、正文 —— 一次一条地投十遍太折腾，
-       而且审核台看到的是一堆散条目。服务端会为这一批打同一个 batch 号。 */
-    const batchItems = [
-      ...batchQueue.map((b) => ({ field: b.field, value: b.value })),
-      { field, value: checked.value },
-    ];
-
-    /* 正在修订某一条已通过的社区投稿（点过「修订这条」）：带上它的 id，
-       审核通过后是替换那一条的正文，而不是再加一条。 */
-    const reviseOf = reviseTarget && reviseTarget.field === field ? reviseTarget.id : '';
-
     submitBtn.disabled = true;
     submitBtn.textContent = '提交中…';
     try {
@@ -2600,21 +2876,21 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
           map: slug,
           /* 队列为空时就是一条普通投稿（老格式，审核台照旧）；
              有队列就发 items[]，服务端为这一批写同一个 batch 号 */
-          ...(batchQueue.length >= 1 ? { items: batchItems } : { field, value: checked.value }),
+          ...(p.batched ? { items: p.batchItems } : { field, value: p.value }),
           note,
           submitter,
           contact,
           ...(tsToken ? { turnstileToken: tsToken } : {}),
-          ...(reviseOf && !batchQueue.length ? { reviseOf } : {}),
+          ...(p.reviseOf && !p.batched ? { reviseOf: p.reviseOf } : {}),
         }),
       });
       const data = (await res.json()) as { ok?: boolean; id?: number; ids?: number[]; error?: string };
       if (!data.ok) throw new Error(data.error || '提交失败');
-      if (batchQueue.length) {
+      if (p.batched) {
         batchQueue = [];
         renderBatchQueue();
       }
-      if (reviseOf) {
+      if (p.reviseOf) {
         /* 修订稿也进了队列，但面板上的正文要等审核通过、重建后才变 ——
            这里先退出修订状态，免得投稿人接着改同一条又投一遍。 */
         reviseTarget = null;
@@ -2622,7 +2898,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       }
       showSuccess(
         Number(data.id),
-        reviseOf
+        p.reviseOf
           ? `这是一条<b>修订</b>稿：审核通过后会替换原来的那一条（署名不变）。${backLink}`
           : backLink,
         field
@@ -2635,6 +2911,15 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       submitBtn.disabled = false;
       submitBtn.textContent = '提交';
     }
+  }
+
+  /* 点「提交审核」= 先本地校验，过了就弹确认框；确认框里点「确认提交」才真的发 */
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    errEl.hidden = true;
+    const p = prepareSubmission();
+    if (!p) return;
+    openConfirm(p);
   });
 
   /* 审核状态查询 */

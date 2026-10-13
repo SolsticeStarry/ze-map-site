@@ -3622,6 +3622,88 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
   margin: 16px 0 4px;
 }
 
+/* ---------- 提交前确认框（2026-10-13 站长要求） ----------
+   原生 <dialog>：Escape 关闭、焦点锁在框里、::backdrop 变暗都是浏览器给的。 */
+.s-confirm {
+  width: min(560px, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  padding: 20px 22px 18px;
+  border: 1px solid var(--border-2, var(--border));
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.9);
+  /* 明确居中：别只依赖 UA 样式（不同浏览器表现不一致） */
+  margin: auto;
+}
+
+.s-confirm::backdrop { background: rgba(4, 5, 10, 0.72); }
+
+.sc-title { margin: 0 0 6px; font-size: 18px; font-weight: 800; }
+.sc-sub { margin: 0 0 14px; color: var(--muted); font-size: 12.5px; line-height: 1.75; }
+
+.sc-body { display: grid; gap: 10px; }
+
+.sc-row { display: flex; gap: 10px; align-items: baseline; font-size: 13px; line-height: 1.75; }
+
+.sc-k {
+  flex: 0 0 78px;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: right;
+}
+
+.sc-v { flex: 1; min-width: 0; overflow-wrap: anywhere; color: #dde2ee; }
+
+/* 要投的项：一项一行，字段名加粗 */
+.sc-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.sc-list li {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.sc-list b { color: #e8c884; font-weight: 700; }
+.sc-list span { color: var(--muted); }
+
+/* 这次提交的特殊之处（修订稿 / 整篇整理 / 一批多张图） */
+.sc-warn {
+  margin: 14px 0 0;
+  padding: 9px 12px;
+  border-left: 3px solid #d8b46a;
+  border-radius: 8px;
+  background: rgba(216, 180, 106, 0.1);
+  color: #e6d3a6;
+  font-size: 12.5px;
+  line-height: 1.8;
+}
+.sc-warn b { color: #f3d79a; }
+
+.sc-tip { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+
+.sc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .s-confirm { padding: 16px 14px 14px; width: 94vw; }
+  /* 窄屏名目压到内容上面，别把内容挤成一条窄柱 */
+  .sc-row { display: block; }
+  .sc-k { display: block; text-align: left; margin-bottom: 2px; }
+  .sc-actions { flex-direction: column-reverse; }
+  .sc-actions .btn { width: 100%; }
+}
+
+[data-theme="light"] .s-confirm { background: #fff; }
+[data-theme="light"] .sc-v { color: var(--text); }
+[data-theme="light"] .sc-list b { color: #8a6516; }
+[data-theme="light"] .sc-warn { color: #6b4d0c; background: rgba(195, 154, 58, 0.12); }
+[data-theme="light"] .sc-warn b { color: #6b4d0c; }
+
 /* 从成功页回到表单时那条绿色提示（和红色错误提示对称） */
 .s-ok-note {
   margin: 0 0 16px;
