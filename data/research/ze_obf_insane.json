@@ -2,12 +2,16 @@
   "difficulty": "火星",
   "slug": "2001-ze_obf_insane-3310660027",
   "title": "龙门行动: 烈火雄心",
-  "summary": "\"行动代号\"系列地图图，中文副标题\"烈火雄心\"(也叫\"半条命:疯魔计划\").\n\nCS:GO 原版名为 ze_obj_insane_v1，全图流程 35 分钟以上，流程为一关制，有全新的 BOSS 战，新增了丰富的僵尸对抗场景。\n\n insane 烈火雄心在后半程还会有泰坦BOSS战的机制，萌新需要及时掌握好技巧例如如何躲避导弹和火刀的技巧。地图存在简单路与困难路双路机制",
+  "summary": "\"行动代号\"系列的 Objective 图，中文副标题\"烈火雄心\"（社区里也常写作\"行动代号:烈火雄心\"，EXG 那边的叫法是\"疯魔计划\"）。创意工坊署名：地图作者 Nino，CS2 移植 @Seth；全图 1 个关卡。\n\nCS:GO 原版名为 ze_obj_insane_v1，全图流程 35 分钟以上：一关制，有全新的 BOSS 战，新增了丰富的 NPC 元素与僵尸对抗场景。制作分工是地图作者 Nino、脚本作者 7ychu5、音乐 Trazix；配乐是类似 NPST_v2 的 Darksynth 暗黑合成器，14 首曲目来自 Perturbator 与 Turboslash。\n\n中文服实况对这张图的定位说得很直接：OBJ 图一直都是\"高执行力、高火力、高专注力、高强度\"的难图，而 insane 烈火雄心在后半程还有泰坦（Titan）BOSS 战机制，萌新需要及时掌握技巧（例如如何躲导弹与火刀）。地图存在简单路与困难路双路分支，也有玩家用\"手枪 obj\"（只用手枪）挑战。这张图主要在 風雲社 与 EXG 社区等中文服游玩。",
   "author": "Nino（原图）；Seth（CS2 移植）",
   "duration": "约 35 分钟以上",
-  "tags": ["行动代号系列", "OBJ", "Boss战","长征图"],
+  "tags": ["行动代号系列", "OBJ", "Boss战", "长征图"],
+  "aliases": [
+    "社区：行动代号:烈火雄心",
+    "EXG 社区叫法：疯魔计划（见视频 BV19WQDB8EkN）"
+  ],
   "videoUrls": [
-    "https://www.bilibili.com/video/BV1XZpTedEF4/",              
+    "https://www.bilibili.com/video/BV1XZpTedEF4/",
     "https://www.bilibili.com/video/BV19WQDB8EkN/",
     "https://www.bilibili.com/video/BV1v2vxBSEjC/"
   ],
