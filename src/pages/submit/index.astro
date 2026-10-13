@@ -87,6 +87,28 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
 
     <form class="form-card s-card s-form" id="sub-form" hidden>
 
+      {/*
+        大面积整理（2026-10-13）：站长要求**单独成块**，不要埋在「要提交哪一项」那排按钮里。
+        它和普通投稿不是一回事 —— 普通投稿是补一格，这个是**替这张图整理一整篇**，
+        所以给它一块独立入口（说的是「整篇改写、按小节合并」），点一下直接落到草稿编辑器。
+      */}
+      <section class="draft-cta" id="draft-cta">
+        <div class="dc-main">
+          <span class="dc-badge">大面积整理</span>
+          <h2 class="dc-title">给这张图写一整篇（整篇条目草稿）</h2>
+          <p class="dc-sub" id="draft-cta-sub">
+            用 <code>## 小节标题</code> 分节写（简介 / 背景故事 / 关卡流程 / 神器道具 / 常见问题…）。
+            采纳时<strong>按小节合并</strong>：写到的节替换、没写到的小节原样保留 —— 不会因为一篇草稿把整张图推平。
+            需要登录，最多 2 万字，站长采纳后才算本站正文。
+          </p>
+          <p class="dc-state" id="draft-cta-state"></p>
+        </div>
+        <div class="dc-actions">
+          <button class="btn btn-primary btn-lg" type="button" id="draft-start">开始整篇整理</button>
+          <span class="dc-note" id="draft-cta-note"></span>
+        </div>
+      </section>
+
       <section class="s-step">
         <h2 class="s-step-title"><span class="s-num">1</span>选地图与要补充的项目</h2>
         <div class="form-grid">
@@ -251,7 +273,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
                 */
                 <div class="doc-wrap">
                   <p class="doc-login" id="doc-login-hint" hidden>
-                    整篇草稿需要**登录**后才能提交（大面积改写要能追到人）—— 右上角登录即可，
+                    整篇草稿需要<strong>登录</strong>后才能提交（大面积改写要能追到人）—— 右上角登录即可，
                     没有账号 10 秒就能注册，不登录也照样能投其它字段。
                   </p>
                   <textarea
@@ -332,7 +354,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
         <p class="batch-title">本次一起提交（<b id="batch-count">0</b> 项）</p>
         <div id="batch-list" class="batch-list"></div>
         <p class="form-hint">
-          提交时会和上面当前这一项**一起**送审（同一批），审核台会看到它们属于同一次整理。
+          提交时会和上面当前这一项<strong>一起</strong>送审（同一批），审核台会看到它们属于同一次整理。
         </p>
       </div>
 
@@ -1161,6 +1183,47 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
 
   document.getElementById('batch-add')?.addEventListener('click', () => addToBatch());
 
+  /*
+   * 「开始整篇整理」：切到草稿字段 + 滚到编辑器。
+   * 顺便把这张图的现状说清楚（有没有本站正文、有几个小节、有没有别人已经写了草稿）——
+   * 投稿人心里有底，才敢动手写一整篇。
+   */
+  document.getElementById('draft-start')?.addEventListener('click', () => {
+    fieldSel.value = 'draft';
+    showField('draft');
+    prefill('draft');
+    const block = document.querySelector<HTMLElement>('[data-block="draft"]');
+    block?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector<HTMLTextAreaElement>('[data-input="draft"]')?.focus();
+  });
+
+  function renderDraftCta(): void {
+    const state = document.getElementById('draft-cta-state');
+    const note = document.getElementById('draft-cta-note');
+    if (!state || !mapInfo) return;
+    const sections = Array.isArray(mapInfo.sections) ? (mapInfo.sections as Array<{ title: string }>) : [];
+    const hasSummary = String(mapInfo.summary ?? '').trim().length > 0;
+    const draft = String(mapInfo.draft ?? '').trim();
+    if (note) {
+      note.textContent = draft
+        ? '这张图已经有一篇待采纳的草稿 —— 点进来会在它的基础上继续改。'
+        : '写好先以「社区整理版（未采纳）」显示在页面上，站长采纳后才进正文。';
+    }
+    const hasBody = sections.length > 0 || hasSummary;
+    if (!hasBody) {
+      state.textContent =
+        '这张图现在还没有本站整理的正文（页面上只有自动生成的关卡 / 神器 / 数据概况）—— ' +
+        '你写的这一篇就是它的第一版正文。';
+      state.classList.add('is-empty');
+    } else {
+      state.textContent =
+        `这张图现在有 ${sections.length} 个人工小节${hasSummary ? ' + 一段简介' : ''}` +
+        `${sections.length ? `（${sections.map((s) => s.title).slice(0, 6).join(' / ')}${sections.length > 6 ? ' …' : ''}）` : ''}` +
+        '。你只写要改的那几节也行。';
+      state.classList.remove('is-empty');
+    }
+  }
+
   function prefill(key: string) {
     const input = document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
       `[data-input="${key}"]`
@@ -1322,6 +1385,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
       showField(fieldSel.value);
       renderRefPanel();
       prefill(fieldSel.value);
+      renderDraftCta();
     })
     .catch(() => {
       ctxEl.textContent = '读取地图索引失败，请刷新重试。';

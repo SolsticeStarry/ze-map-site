@@ -497,6 +497,15 @@ const related = all
           发现错漏、或者知道更多资料？不用会 git，填个表单就行 —— 审核通过、站长写回仓库后就会出现在本页。
         </p>
         <a class="btn" href={`/submit/?map=${entry.id}`}>✏️ 补充这张图的资料</a>
+        {/*
+          大面积整理的独立入口（2026-10-13）：补一格 vs 整理一整篇是两件事，
+          所以在侧栏里也分开摆 —— 直接落到投稿表单里的「整篇条目草稿」。
+        */}
+        <a class="btn btn-draft" href={`/submit/?map=${entry.id}&field=draft`}>📝 大面积整理（整篇改写）</a>
+        <p class="sidebar-hint is-tiny">
+          这张图还没有本站正文、或者你想整篇重写？用这个：按 <code>## 小节</code> 写，
+          采纳时同名小节替换、没写到的小节保留。需要登录。
+        </p>
         {hasCommunity && (
           <p class="community-credit">
             本条目含社区补充，感谢：{communityPeople.join('、')}

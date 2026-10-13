@@ -3338,6 +3338,80 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 [data-theme="light"] .draft-banner { color: #7a5a12; background: rgba(195, 154, 58, 0.12); }
 [data-theme="light"] .draft-banner strong { color: #8a6516; }
 
+/*
+ * 「大面积整理」独立入口（2026-10-13）：站长要求它不能只埋在「要提交哪一项」那排按钮里。
+ * 它是这块表单里唯一「改写整篇」的动作，所以给一整块：金橙渐变描边 + 大按钮 + 现状说明。
+ */
+.draft-cta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 0 0 22px;
+  padding: 18px 20px;
+  border: 1px solid rgba(216, 180, 106, 0.5);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(216, 180, 106, 0.14), transparent 60%),
+    rgba(255, 255, 255, 0.02);
+}
+
+.dc-main { flex: 1 1 420px; min-width: 0; }
+
+.dc-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: #1a1206;
+  background: linear-gradient(135deg, #e8c884, #d8b46a);
+}
+
+.dc-title { margin: 0 0 8px; font-size: 17px; font-weight: 800; color: #f3e7cd; }
+.dc-sub { margin: 0; font-size: 13px; line-height: 1.85; color: var(--muted); }
+.dc-sub code { padding: 1px 5px; border-radius: 5px; background: rgba(255, 255, 255, 0.08); font-size: 12px; }
+.dc-state { margin: 8px 0 0; font-size: 12.5px; line-height: 1.7; color: var(--muted); }
+.dc-state.is-empty { color: #e8c884; }
+
+.dc-actions { display: grid; gap: 8px; justify-items: end; }
+.dc-note { font-size: 11.5px; color: var(--muted); max-width: 240px; text-align: right; line-height: 1.6; }
+
+[data-theme="light"] .draft-cta { background: rgba(195, 154, 58, 0.08); }
+[data-theme="light"] .dc-title { color: #6b4d0c; }
+[data-theme="light"] .dc-state.is-empty { color: #8a6516; }
+
+/* 批量提交那一块 */
+.batch-box {
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border-2, var(--border));
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.batch-title { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.batch-list { display: grid; gap: 6px; }
+.batch-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.batch-text { flex: 1; min-width: 0; overflow-wrap: anywhere; color: #dde2ee; }
+.batch-del { padding: 3px 10px; font-size: 12px; }
+
+/* 侧栏「大面积整理」入口：金色描边，和上面的普通投稿按钮区分开（但别抢过主按钮） */
+.btn-draft {
+  display: block;
+  margin-top: 8px;
+  border-color: rgba(216, 180, 106, 0.55);
+  color: #e8c884;
+}
+
+.btn-draft:hover { border-color: #e8c884; color: #f3d79a; }
+
+.sidebar-hint.is-tiny { margin-top: 6px; font-size: 11.5px; line-height: 1.7; }
+.sidebar-hint.is-tiny code { padding: 1px 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.07); }
+
+[data-theme="light"] .btn-draft { color: #8a6516; border-color: rgba(195, 154, 58, 0.6); }
+
 .acc-id-meta { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
 
 /*
