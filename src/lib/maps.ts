@@ -100,6 +100,12 @@ export function mergeEntry<T extends { id: string; data: Record<string, any> }>(
   data.communityFields = applied;
   data.communityNotes = doc.notes;
   data.communityPeople = contributors(doc);
+  /*
+   * 整篇草稿（2026-10-13 加）：页面据此渲染「社区整理版（未采纳）」那一块。
+   * 它不是覆盖字段 —— 草稿只作展示，**要站长在审核台点「采纳为原稿」**才会真正改进条目正文
+   * （见 worker/submissions.ts 的采纳分支与 docs/admin-guide.md）。
+   */
+  data.communityDraft = doc.draft ?? null;
   /* 社区那一份来源单独留一份：侧栏要标注「社区补充」，不能和研究来源混在一起显示 */
   const onlySources = fieldValue(doc, 'sources');
   data.communitySources = Array.isArray(onlySources) ? onlySources : [];

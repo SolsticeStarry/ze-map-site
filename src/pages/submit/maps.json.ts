@@ -117,6 +117,24 @@ export const GET: APIRoute = async () => {
     const siteSummary = String(research?.summary ?? '').trim();
     if (siteSummary) row.summary = siteSummary;
     /*
+     * 已有的整篇草稿（2026-10-13）：带进投稿表单，让人在别人写的基础上继续改，
+     * 而不是各写一篇、站长无从比较（页面只显示最新一篇，见 shared/community-doc.mjs 的 draft 分支）。
+     */
+    if (community?.draft?.text) {
+      row.draft = String(community.draft.text);
+      row.draftBy = String(community.draft.by ?? '');
+    }
+    /* 现有正文小节（用于草稿编辑时对照）：手写稿 sections[] 的标题 + 各自字数 */
+    if (Array.isArray(research?.sections) && research.sections.length) {
+      row.sections = research.sections
+        .filter((s: { title?: string; body?: string }) => s && typeof s.title === 'string' && s.title.trim())
+        .map((s: { title: string; body?: string }) => ({
+          title: String(s.title).trim(),
+          len: String(s.body ?? '').length,
+          body: String(s.body ?? ''),
+        }));
+    }
+    /*
      * 已通过的社区投稿（data/community/<slug>.json 的 notes）：
      * 带 id / 字段 / 作者，投稿表单据此提供「修订这一条」——
      * 以前只能追加，改不了已经发出去的内容。

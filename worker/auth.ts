@@ -325,6 +325,10 @@ export async function ensureSchema(env: Env): Promise<void> {
     if (!(cols.results ?? []).some((c) => c.name === 'user_id')) {
       await env.DB.prepare(`ALTER TABLE submissions ADD COLUMN user_id INTEGER`).run();
     }
+    /* submissions.batch：批量投稿（2026-10-13）用，同一批共用一个短 id */
+    if (!(cols.results ?? []).some((c) => c.name === 'batch')) {
+      await env.DB.prepare(`ALTER TABLE submissions ADD COLUMN batch TEXT`).run();
+    }
     await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_sub_user ON submissions(user_id, created_at)`).run();
     schemaReady = true;
   } catch (err) {

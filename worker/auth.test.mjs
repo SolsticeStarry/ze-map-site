@@ -786,6 +786,129 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
     assert.match(r.data.error, /暂时不可用/);
   });
 
+  await t.test('批量投稿：一次交 3 项，同一个 batch 号，逐项校验', async () => {
+    const { call, db } = await setup();
+    /* 先让懒建表把表建出来（这也是「batch 列会自动补上」的验证） */
+    await call('/api/me');
+    const r = await call('/api/submit', {
+      method: 'POST',
+      body: {
+        map: 'ze_demo',
+        items: [
+          { field: 'difficulty', value: '困难' },
+          { field: 'tags', value: ['神器', '多关卡'] },
+          { field: 'sources', value: ['https://example.com/a'] },
+        ],
+        submitter: '整理者',
+      },
+    });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.equal(r.data.count, 3);
+    assert.equal(r.data.ids.length, 3);
+    assert.match(r.data.batch, /^b/);
+    const rows = db.prepare(`SELECT id, field, batch FROM submissions ORDER BY id`).all();
+    assert.equal(rows.length, 3);
+    assert.deepEqual(rows.map((x) => x.field), ['difficulty', 'tags', 'sources']);
+    assert.equal(new Set(rows.map((x) => x.batch)).size, 1, '同一批共用一个 batch 号');
+
+    const bad = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_demo', items: [{ field: 'difficulty', value: '中等' }] },
+    });
+    assert.equal(bad.status, 400);
+    assert.match(bad.data.error, /第 1 项/);
+
+    const tooMany = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_demo', items: Array.from({ length: 11 }, () => ({ field: 'tags', value: ['神器'] })) },
+    });
+    assert.equal(tooMany.status, 400);
+    assert.match(tooMany.data.error, /最多提交 10 项/);
+  });
+
+  /* ===== 整篇草稿 + 采纳（2026-10-13：大面积修改的入口） ===== */
+
+  await t.test('整篇草稿必须登录：匿名投被拒，登录后收下', async () => {
+    const { call } = await setup();
+    const draft = '导语一段。\n\n## 简介\n正文…\n';
+
+    const anon = await call('/api/submit', { method: 'POST', body: { map: 'ze_demo', field: 'draft', value: draft } });
+    assert.equal(anon.status, 401, JSON.stringify(anon.data));
+    assert.match(anon.data.error, /需要先登录/);
+
+    await call('/api/register', { method: 'POST', body: { name: '整理者', password: 'pass12345' } });
+    const ok = await call('/api/submit', { method: 'POST', body: { map: 'ze_demo', field: 'draft', value: draft } });
+    assert.equal(ok.status, 200, JSON.stringify(ok.data));
+    assert.equal(ok.data.ok, true);
+  });
+
+  await t.test('草稿必须有 `## 小节`（否则没东西可按节合并）', async () => {
+    const { call } = await setup();
+    await call('/api/register', { method: 'POST', body: { name: '整理者', password: 'pass12345' } });
+    const r = await call('/api/submit', { method: 'POST', body: { map: 'ze_demo', field: 'draft', value: '一大段没有小节的文字' } });
+    assert.equal(r.status, 400);
+    assert.match(r.data.error, /## 小节标题/);
+  });
+
+  await t.test('采纳要有「已写回的草稿」：没有就明确告诉审核员下一步做什么', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const r = await call('/api/admin/adopt', {
+      method: 'POST',
+      body: { slug: 'ze_demo' },
+      headers: { authorization: 'Bearer test-admin-token' },
+    });
+    assert.equal(r.status, 404, JSON.stringify(r.data));
+    assert.match(r.data.error, /先把它通过并写回仓库/);
+  });
+
+  await t.test('没有密钥不能采纳（采纳是审核台的动作）', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const r = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_demo' } });
+    assert.equal(r.status, 401);
+  });
+
+  await t.test('mergeDraft：同名小节替换、新节追加、没写到的小节原样保留', async () => {
+    const { mergeDraft, serializeResearch } = await import('../shared/draft-merge.mjs');
+    const research = {
+      slug: 'ze_demo',
+      summary: '旧简介',
+      sections: [
+        { title: '背景故事', body: '老故事' },
+        { title: '关卡流程', body: '老流程' },
+      ],
+      sources: ['https://example.com/a'],
+      confidence: 'low',
+      verified: true,
+    };
+    const r = mergeDraft(research, '新导语。\n\n## 关卡流程\n新流程\n\n## 神器 / 道具\n新写的表\n');
+    assert.equal(r.summary, '新导语。', '第一个 ## 之前的文字变成简介');
+    assert.deepEqual(r.replaced, ['关卡流程']);
+    assert.deepEqual(r.added, ['神器 / 道具']);
+    assert.deepEqual(r.kept, ['背景故事']);
+    assert.deepEqual(r.next.sections, [
+      { title: '背景故事', body: '老故事' },
+      { title: '关卡流程', body: '新流程' },
+      { title: '神器 / 道具', body: '新写的表' },
+    ]);
+    assert.equal(r.next.confidence, 'medium', '社区整理 + 站长采纳，可信度至少 medium');
+    assert.equal(r.next.verified, true, 'verified 是站长逐条核对过的标记，采纳不该动它');
+    assert.deepEqual(r.next.sources, research.sources, 'sources 必须原样保留');
+
+    /* 只改一节 = 只替换那一节；草稿没写导语就不动简介 */
+    const one = mergeDraft(research, '## 背景故事\n重写的故事');
+    assert.deepEqual(one.next.sections, [
+      { title: '背景故事', body: '重写的故事' },
+      { title: '关卡流程', body: '老流程' },
+    ]);
+    assert.equal(one.next.summary, '旧简介');
+
+    /* 序列化沿用原文件缩进与换行，别把整份原稿重排（审阅时看不出改了什么） */
+    assert.equal(serializeResearch({ a: 1, b: 2 }, '{\n "a": 1,\n "b": 2\n}'), '{\n "a": 1,\n "b": 2\n}\n');
+    assert.equal(serializeResearch({ a: 1 }, '{\r\n  "a": 1\r\n}\r\n'), '{\r\n  "a": 1\r\n}\r\n');
+  });
+
   /* ===== 授权 UP 主称号（2026-10-13 加） =====
      同意名单在 R2（不进仓库），所以这里塞一个假的 TERR：只认 video-meta/agreed.json。 */
   const withAgreed = (env, ups) => {

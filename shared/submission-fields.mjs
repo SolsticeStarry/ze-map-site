@@ -180,6 +180,37 @@ export const FIELD_RULES = {
    * 简介 → 背景故事 → 攻略讲解 → 补充说明。三者的分工必须在提示里写死，
    * 否则一定会收到投错字段的稿子（简介和背景故事尤其容易混，2026-10-10 的反馈）。
    */
+  /*
+   * 整篇条目草稿（2026-10-13 加，站长要的「大面积修改」入口）。
+   *
+   * 为什么需要它：以前的投稿是**一格一格**的字段，一张没有原稿正文的图（全站 954 张里有 844 张）
+   * 根本没法「整理成一整篇」；已有正文的图也只能在旁边另起一块社区投稿，改不动本站正文。
+   *
+   * 它和长文本字段（summary / story / guide / body）的区别：
+   *   · 那些进 notes[]，页面上是「另起一块」，永远压不过本站正文；
+   *   · 草稿是**一整篇**（用 `## 小节标题` 分节），进 doc.draft，页面上以
+   *     「社区整理版（未采纳）」整块展示，站长在审核台点「采纳为原稿」后
+   *     **按小节合并进 data/research/<slug>.json**（同名小节替换、新小节追加、没提到的小节保留）。
+   *
+   * 硬要求（护栏，见 docs/admin-guide.md）：**必须登录**才能投草稿（大面积改写要留名）；
+   * 上限 2 万字；仍禁 `< > { }`（防工坊正文把构建搞挂的那类坑）；必须给来源。
+   */
+  draft: {
+    kind: 'doc',
+    label: '整篇条目草稿（大面积整理）',
+    hint:
+      '给这张图写一整篇：用一行 `## 小节标题` 分节，例如 `## 简介`、`## 背景故事`、`## 关卡流程`、' +
+      '`## 神器 / 道具`、`## 常见问题`。**没写到的小节不会被删**，写到的小节会替换掉同名的那一节。' +
+      '投稿后先以「社区整理版（未采纳）」显示在页面上（会标注未经本站采纳），' +
+      '站长在审核台点「采纳为原稿」后才真正改进条目正文。' +
+      '想插图片集里的图：单独一行写 `:::figure 2`（引用第 2 张，图在左）或 `:::figure 2 right`（图在右），' +
+      '文字写在下面、最后用单独一行 `:::` 结束。' +
+      '支持简单 Markdown（分段、列表、表格、引用），**不支持 HTML / MDX**；最多 2 万字。' +
+      '请只写自己整理的内容与可核实的事实，别整段搬运别人的攻略。',
+    maxLen: 20000,
+    /* 必须登录：大面积改写要能追到人（匿名仍可投其它字段） */
+    requireLogin: true,
+  },
   summary: {
     kind: 'longtext',
     label: '地图简介',
@@ -236,6 +267,35 @@ export function isField(key) {
 
 /* ===== 校验 ===== */
 
+/**
+ * 把整篇草稿拆成小节：`## 标题` 之前的内容算「导语」（会变成条目的 `summary`）。
+ * 生成器、投稿页预览、审核台采纳三处共用这一份，别各写一遍。
+ *
+ * @returns {{intro: string, sections: Array<{title: string, body: string}>}}
+ */
+export function parseDoc(text) {
+  const lines = String(text ?? '').split(/\r?\n/);
+  const intro = [];
+  const sections = [];
+  let cur = null;
+  for (const line of lines) {
+    const m = /^##\s+(.+?)\s*$/.exec(line);
+    if (m && !/^###/.test(line)) {
+      cur = { title: m[1].trim(), body: [] };
+      sections.push(cur);
+      continue;
+    }
+    (cur ? cur.body : intro).push(line);
+  }
+  return {
+    intro: intro.join('\n').trim(),
+    sections: sections.map((s) => ({ title: s.title, body: s.body.join('\n').trim() })),
+  };
+}
+
+/** 草稿里有哪几个小节（校验与提示用） */
+export const docSections = (text) => parseDoc(text).sections;
+
 function checkUrl(raw) {
   let url;
   try {
@@ -282,6 +342,23 @@ export function validateValue(field, raw) {
        * 社区入口必须从格式上堵死：尖括号与花括号直接拒绝。
        */
       if (/[<>{}]/.test(v)) return { ok: false, error: '正文里不能出现 < > { } 这几个字符' };
+      return { ok: true, value: v };
+    }
+
+    case 'doc': {
+      /*
+       * 整篇草稿：正文本身按 longtext 的规矩校验（禁尖括号花括号、长度上限），
+       * 另外**必须至少有一个 `## 小节标题`** —— 没有分节的整篇没法「按小节合并」，
+       * 采纳时会退化成「整篇替换」，那正是我们想避免的粗活。
+       */
+      const v = typeof raw === 'string' ? raw.trim() : '';
+      if (!v) return { ok: false, error: '不能为空' };
+      if (v.length > rule.maxLen) return { ok: false, error: `最多 ${rule.maxLen} 个字（现在 ${v.length}）` };
+      if (/[<>{}]/.test(v)) return { ok: false, error: '正文里不能出现 < > { } 这几个字符' };
+      const sections = docSections(v);
+      if (!sections.length) {
+        return { ok: false, error: '至少要有一行 `## 小节标题`（例如 `## 简介`），否则没法按小节合并进条目' };
+      }
       return { ok: true, value: v };
     }
 
@@ -467,6 +544,7 @@ export function inputKind(field) {
   const rule = FIELD_RULES[field];
   if (!rule) return null;
   if (rule.kind === 'tags' || rule.kind === 'urlList' || rule.kind === 'textlist') return 'lines';
+  if (rule.kind === 'doc') return 'textarea';
   if (rule.kind === 'longtext') return 'textarea';
   if (rule.kind === 'enum') return 'select';
   if (rule.kind === 'image') return 'file';

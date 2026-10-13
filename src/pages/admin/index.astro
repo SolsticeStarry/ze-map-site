@@ -444,6 +444,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     if (item.error) box.append(el('p', 'form-error', `上次写回失败：${item.error}`));
     if (item.commit_sha) box.append(el('p', 'queue-note', `提交：${item.commit_sha.slice(0, 8)}`));
     if (item.reject_note) box.append(el('p', 'queue-note', `驳回理由：${item.reject_note}`));
+    /* 批量投稿（2026-10-13）：同一次整理交上来的几条要一起判，别只通过一半 */
+    if (item.batchCount && item.batchCount > 1) {
+      box.append(el('p', 'queue-note', `同一批提交：这一批共 ${item.batchCount} 项（${item.batch}）—— 一次整理的几项，建议一起处理`));
+    }
 
     const actions = el('div', 'queue-actions');
 
@@ -471,6 +475,24 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       undo.type = 'button';
       undo.onclick = () => unstage(item.id);
       actions.append(undo);
+    }
+
+    /*
+     * 整篇草稿（2026-10-13）：只有**已写回**的草稿才谈得上采纳 ——
+     * 那时页面上正显示着「社区整理版（未采纳）」，点这个按钮就按小节合并进原稿
+     * （同名替换、新节追加、没提到的不动，见 shared/draft-merge.mjs 与 docs/admin-guide.md）。
+     * 采纳是单独一次提交（不进攒批），所以不依赖「写回仓库」那一键。
+     */
+    if (item.field === 'draft' && item.status === 'applied') {
+      const adopt = el('button', 'btn btn-primary', '采纳为原稿') as HTMLButtonElement;
+      adopt.type = 'button';
+      adopt.onclick = () => {
+        if (!confirm(`把「${item.map_slug}」的整篇草稿合并进人工原稿？\n（同名小节替换、新小节追加，没写到的小节保留；会立刻提交一次）`)) return;
+        adoptDraft(item.map_slug);
+      };
+      actions.append(adopt);
+    } else if (item.field === 'draft' && item.status === 'pending') {
+      actions.append(el('span', 'queue-note', '整篇草稿：通过并写回后，页面上会以「社区整理版（未采纳）」显示'));
     }
 
     if (item.status === 'pending' || item.status === 'approved') {
@@ -747,6 +769,21 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
    * 所以这里循环：一批成功后如果还有剩下的，自动再发一次 —— 每批一个 commit，
    * 页面上把每批的结果累积显示出来。
    */
+  /**
+   * 采纳整篇草稿（2026-10-13）：把某张图的「社区整理版」按小节合并进人工原稿。
+   * 单独一次提交（不走攒批），服务端会回替换/新增/保留了几节，照着念给审核员听。
+   */
+  async function adoptDraft(slug: string) {
+    setStatus('采纳中…');
+    const { status, data } = await api('/api/admin/adopt', { method: 'POST', body: { slug } });
+    if (status !== 200) {
+      setStatus(`${data?.error ?? '采纳失败'}（HTTP ${status}）`, true);
+      return;
+    }
+    setStatus(String(data.message ?? '已采纳'));
+    await loadQueue();
+  }
+
   async function flush() {
     const btn = $<HTMLButtonElement>('a-flush-go');
     const out = $<HTMLElement>('a-flush-out');

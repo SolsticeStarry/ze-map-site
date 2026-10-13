@@ -3296,6 +3296,48 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 }
 .acc-id { flex: 1 1 200px; min-width: 0; }
 .acc-id h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+/*
+ * 「社区整理版（未采纳）」那一块（2026-10-13 加）：整篇草稿在页面上的样子。
+ * 视觉上刻意「弱一点 + 明确标注」：虚线边框 + 淡背景 + 横幅写死未采纳，
+ * 让读者一眼分清这不是本站正文，同时也能看清内容（不然白写一篇没人看）。
+ */
+.draft-block {
+  margin-top: 28px;
+  padding: 18px 20px 20px;
+  border: 1px dashed var(--border-2, var(--border));
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.draft-block > h2 { margin: 0 0 10px; }
+
+.draft-banner {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-left: 3px solid #d8b46a;
+  border-radius: 8px;
+  background: rgba(216, 180, 106, 0.1);
+  color: #e8d3a4;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.draft-banner strong { color: #f3d79a; }
+
+.draft-section { margin-top: 18px; }
+
+.draft-section h3 {
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+[data-theme="light"] .draft-block { background: rgba(0, 0, 0, 0.015); }
+[data-theme="light"] .draft-banner { color: #7a5a12; background: rgba(195, 154, 58, 0.12); }
+[data-theme="light"] .draft-banner strong { color: #8a6516; }
+
 .acc-id-meta { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
 
 /*

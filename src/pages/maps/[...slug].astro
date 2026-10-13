@@ -11,6 +11,7 @@ import VideoEmbed from '../../components/VideoEmbed.astro';
 import RouteMap from '../../components/RouteMap.astro';
 import StageAccordion from '../../components/StageAccordion.astro';
 import { DIFFICULTY_CLASS } from '../../../shared/difficulty.mjs';
+import { parseDoc } from '../../../shared/submission-fields.mjs';
 import catalog from '../../../public/entity/catalog.json';
 import terrManifest from '../../../data/terr-manifest.json';
 import entityStatus from '../../../data/entity-status.json';
@@ -62,7 +63,14 @@ const {
   communityNotes,
   communityPeople,
   communitySources,
+  communityDraft,
 } = entry.data;
+
+/*
+ * 整篇草稿（2026-10-13）：按 `## 小节` 拆开渲染，块级结构与条目正文一致（标题 + 段落）。
+ * 未采纳时它只是一块「社区整理版」，本站正文照旧在上方；采纳后由站长合并进原稿，这里就不再显示。
+ */
+const draftParsed = communityDraft?.text ? parseDoc(communityDraft.text) : null;
 
 const hasCommunity = communityPeople.length > 0 || communityNotes.length > 0;
 /*
@@ -370,6 +378,32 @@ const related = all
               <p class="community-note-by">{noteBy(n)}</p>
             </div>
           ))}
+        </section>
+      )}
+
+      {/*
+        整篇草稿（2026-10-13）：社区志愿者给这张图整理的**整篇**版本，未采纳时显示在这里。
+        刻意放在所有本站内容之后、同类地图之前 —— 位置本身就在说「这是备选稿，不是本站正文」；
+        横幅也写死了「未采纳」，免得读者以为这就是本站结论。
+      */}
+      {draftParsed && (
+        <section class="draft-block">
+          <h2>社区整理版（未采纳）</h2>
+          <p class="draft-banner">
+            这是社区志愿者整理的**整篇**草稿，<strong>尚未被本站采纳</strong>：上面的正文仍以本站整理为准。
+            站长审核后才会按小节合并进条目（写到的节替换、没写到的节保留）。
+          </p>
+          {draftParsed.intro && <GuideNote slug={entry.id} text={draftParsed.intro} />}
+          {draftParsed.sections.map((s: { title: string; body: string }) => (
+            <div class="draft-section">
+              <h3>{s.title}</h3>
+              {s.body && <GuideNote slug={entry.id} text={s.body} />}
+            </div>
+          ))}
+          <p class="community-note-by">
+            整理：{communityDraft.by}
+            {communityDraft.at ? ` · ${String(communityDraft.at).slice(0, 10)}` : ''}
+          </p>
         </section>
       )}
 

@@ -11,6 +11,7 @@
 
 import {
   applySubmission,
+  emptyDoc,
   findNoteIndex,
   isItemField,
   isNoteField,
@@ -19,6 +20,7 @@ import {
   touch,
 } from '../shared/community-doc.mjs';
 import { FIELD_RULES, LIMITS, isField, validateValue } from '../shared/submission-fields.mjs';
+import { mergeDraft, serializeResearch } from '../shared/draft-merge.mjs';
 import {
   GitError,
   type CommitFile,
@@ -156,17 +158,32 @@ async function insertSubmission(
     ipHash: string;
     status: string;
     userId: number | null;
+    /** 同一批提交的编号（2026-10-13 批量投稿用；单条投稿为空串） */
+    batch?: string;
   }
 ): Promise<{ id: number | null; degraded: boolean }> {
   const base = [v.slug, v.field, JSON.stringify(v.value), v.note, v.submitter, v.contact, v.ipHash];
+  const batch = v.batch ?? '';
 
+  /* batch 这一列是后加的：老库没有它。写不进去就退回不带 batch 的写法（稿子不能丢） */
   const anonymous = (status: string) =>
     env.DB.prepare(
-      `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at)
-       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9) RETURNING id`
+      `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at, batch)
+       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) RETURNING id`
     )
-      .bind(...base, status, Date.now())
-      .first<{ id: number }>();
+      .bind(...base, status, Date.now(), batch || null)
+      .first<{ id: number }>()
+      .catch(async (err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!/batch/i.test(msg)) throw err;
+        console.error('batch 列不存在，这条投稿按单条写：' + msg);
+        return env.DB.prepare(
+          `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at)
+           VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9) RETURNING id`
+        )
+          .bind(...base, status, Date.now())
+          .first<{ id: number }>();
+      });
 
   if (v.userId === null) {
     const row = await anonymous(v.status);
@@ -175,16 +192,16 @@ async function insertSubmission(
 
   try {
     const row = await env.DB.prepare(
-      `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at, user_id)
-       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) RETURNING id`
+      `INSERT INTO submissions (map_slug, field, value, note, submitter, contact, ip_hash, status, created_at, user_id, batch)
+       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11) RETURNING id`
     )
-      .bind(...base, v.status, Date.now(), v.userId)
+      .bind(...base, v.status, Date.now(), v.userId, batch || null)
       .first<{ id: number }>();
     return { id: row?.id ?? null, degraded: false };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (!/user_id/i.test(msg)) throw err;
-    console.error('user_id 写不进去，这条投稿退回匿名待审：' + msg);
+    if (!/user_id|batch/i.test(msg)) throw err;
+    console.error('user_id / batch 写不进去，这条投稿退回匿名待审：' + msg);
     const row = await anonymous('pending');
     return { id: row?.id ?? null, degraded: true };
   }
@@ -210,10 +227,34 @@ export async function handleSubmit(
   const slug = typeof b.map === 'string' ? b.map.trim() : '';
   const field = typeof b.field === 'string' ? b.field.trim() : '';
   if (!SLUG_RE.test(slug)) return fail('地图参数不合法');
-  if (!isField(field)) return fail('不认识的字段');
 
-  const checked = validateValue(field, b.value);
-  if (!checked.ok) return fail(checked.error);
+  /*
+   * 批量投稿（2026-10-13）：一次整理常常同时改好几项（难度 + 标签 + 视频 + 正文…）。
+   * 收到 `items[]` 就逐项校验、逐项入库，共用同一个 batch 号 —— 审核台据此把它们标成同一批。
+   * 上限 10 项：再多就该拆开投（也顺便挡住「一次性灌一堆」的脚本）。
+   */
+  const rawItems = Array.isArray(b.items) ? (b.items as Array<{ field?: unknown; value?: unknown }>) : null;
+  const items: Array<{ field: string; value: unknown }> = [];
+  if (rawItems) {
+    if (!rawItems.length) return fail('items 是空的');
+    if (rawItems.length > 10) return fail('一次最多提交 10 项，请分两次');
+    for (const [i, it] of rawItems.entries()) {
+      const f = typeof it?.field === 'string' ? it.field.trim() : '';
+      if (!isField(f)) return fail(`第 ${i + 1} 项：不认识的字段`);
+      const checked = validateValue(f, it?.value);
+      if (!checked.ok) return fail(`第 ${i + 1} 项（${FIELD_RULES[f]?.label ?? f}）：${checked.error}`);
+      items.push({ field: f, value: checked.value });
+    }
+  } else {
+    if (!isField(field)) return fail('不认识的字段');
+    const checked = validateValue(field, b.value);
+    if (!checked.ok) return fail(checked.error);
+    items.push({ field, value: checked.value });
+  }
+  /* 单条投稿沿用老变量，后面「修订」「草稿」这些分支读的是它 */
+  const single = items.length === 1 ? items[0] : null;
+  const singleField = single?.field ?? '';
+  const singleValue = single?.value ?? '';
 
   const submitter = optString(b.submitter, LIMITS.submitter, '昵称');
   if (!submitter.ok) return fail(submitter.error);
@@ -229,7 +270,7 @@ export async function handleSubmit(
    * 非 note 字段带上 reviseOf 直接忽略：那些字段是覆盖式的，本来就等于修订。
    */
   const reviseOf = isReviseId(b.reviseOf) ? String(b.reviseOf).trim() : '';
-  const stored = isNoteField(field) && reviseOf ? { text: checked.value, reviseOf } : checked.value;
+  const stored = isNoteField(singleField) && reviseOf ? { text: singleValue, reviseOf } : singleValue;
 
   if (await isBanned(env, ipHash)) return fail('该来源已被禁止投稿', 403);
 
@@ -247,30 +288,56 @@ export async function handleSubmit(
    * 没登录就完全按老路子走（匿名投稿，署名用手填昵称）。
    */
   const account = await accountForSubmit(request, env).catch(() => ({ id: null, name: null, trusted: false }));
+
+  /*
+   * 整篇草稿（2026-10-13）：**必须登录**。
+   * 它是「大面积改写」的入口 —— 一篇草稿会顶掉整张图的正文（采纳后），必须能追到人；
+   * 匿名通道一行没动，其它字段照旧谁都能投（站长定的底线）。
+   */
+  const needsLogin = items.some((it) => FIELD_RULES[it.field]?.requireLogin);
+  if (needsLogin && !account.id) {
+    return fail('整篇条目草稿需要先登录再提交（大面积改写要能追到人）；其它字段不登录也能投', 401);
+  }
+
   const finalSubmitter = account.name ?? submitter.value;
   const status = account.trusted ? 'approved' : 'pending';
+  /* 一批多于一項才打 batch 号：单条投稿还是老样子（队列里不受影响） */
+  const batch = items.length > 1 ? `b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}` : '';
 
-  const { id, degraded } = await insertSubmission(env, {
-    slug,
-    field,
-    value: stored,
-    note: note.value,
-    submitter: finalSubmitter,
-    contact: contact.value,
-    ipHash,
-    status,
-    userId: account.id,
-  });
+  const ids: number[] = [];
+  let degradedAny = false;
+  for (const it of items) {
+    const payload = it === single ? stored : it.value;
+    const { id, degraded } = await insertSubmission(env, {
+      slug,
+      field: it.field,
+      value: payload,
+      note: note.value,
+      submitter: finalSubmitter,
+      contact: contact.value,
+      ipHash,
+      status,
+      userId: account.id,
+      batch,
+    });
+    ids.push(id);
+    if (degraded) degradedAny = true;
+  }
   /* 账号信息没写进去时不能再按「免审直发」处理：那条已经退回待审了 */
-  const autoApproved = account.trusted && !degraded;
+  const autoApproved = account.trusted && !degradedAny;
 
   return json({
     ok: true,
-    id,
+    id: ids[ids.length - 1],
+    ids,
+    count: ids.length,
+    batch,
     autoApproved,
     message: autoApproved
-      ? '已收到。你的账号已获免审资格，这条稿子会直接随下一批写回 —— 几分钟后就能在条目里看到'
-      : '已收到，审核通过后会出现在条目里',
+      ? '已收到。你的账号已获免审资格，这些稿子会直接随下一批写回 —— 几分钟后就能在条目里看到'
+      : items.length > 1
+        ? `已收到 ${items.length} 项（同一批，编号 ${ids.join('、')}），审核通过后会出现在条目里`
+        : '已收到，审核通过后会出现在条目里',
   });
 }
 
@@ -548,6 +615,108 @@ export async function handleAdminImage(request: Request, env: Env, path: string)
 
 /* ===== 审核台接口（全部要 ADMIN_TOKEN） ===== */
 
+/**
+ * POST /api/admin/adopt —— 把某张图的「整篇草稿」采纳为人工原稿（2026-10-13 加）。
+ *
+ * 这是「大面积修改」的最后一步，只有审核台的人能做（`ADMIN_TOKEN` 之后的接口，
+ * 谁拿得到密钥谁就能采纳 —— 分工与守则见 docs/admin-guide.md）。
+ *
+ * 做三件事，一个 commit 装完：
+ *   1. 读 `data/research/<slug>.json`，按小节合并草稿（同名替换、新节追加、没提到的不动）；
+ *   2. 把社区文档里的草稿清掉，并在 `fields.draft` 记一条「已采纳」—— 贡献者继续留在
+ *      「社区参与」名单里（mergeEntry 的 contributors 会读到），不会因为采纳而变成无名氏；
+ *   3. 提交信息写清是谁整理的、谁采纳的，`git log` 就是内容变更史。
+ *
+ * 为什么不在 `handleAdminFlush` 的攒批里做：采纳是**低频、要单独确认**的动作，
+ * 而且它写的是原稿（比社区文档重），单独一次提交的 diff 最干净、回滚最容易。
+ */
+export async function handleAdminAdopt(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') return fail('只支持 POST', 405);
+  const parsed = await readJsonBody(request, 4096);
+  if (!parsed.ok) return parsed.response;
+
+  const slug = typeof parsed.body.slug === 'string' ? parsed.body.slug.trim() : '';
+  if (!SLUG_RE.test(slug)) return fail('地图参数不合法');
+
+  /* 草稿必须是**已经写回仓库**的那一篇（页面上正以「未采纳」显示），否则页面与实际不一致 */
+  const row = await env.DB.prepare(
+    `SELECT id, value, submitter, reviewed_at, commit_sha FROM submissions
+      WHERE map_slug = ?1 AND field = 'draft' AND status = 'applied'
+      ORDER BY id DESC LIMIT 1`
+  )
+    .bind(slug)
+    .first<{ id: number; value: string; submitter: string | null; reviewed_at: number | null; commit_sha: string | null }>();
+  if (!row) {
+    return fail('这张图没有「已写回、待采纳」的草稿：先把它通过并写回仓库，页面上会出现「社区整理版（未采纳）」', 404);
+  }
+
+  const researchPath = `data/research/${slug}.json`;
+  const raw = await readRepoText(env, researchPath);
+  if (!raw) return fail(`仓库里没有 ${researchPath}（这张图还没有人工原稿，需要先建一份）`, 404);
+
+  let research: Record<string, unknown>;
+  try {
+    research = JSON.parse(raw) as Record<string, unknown>;
+  } catch (err) {
+    return fail(`${researchPath} 不是合法 JSON，先修好它再采纳：${err instanceof Error ? err.message : String(err)}`, 500);
+  }
+
+  const merged = mergeDraft(research, String(row.value ?? ''));
+  const researchText = serializeResearch(merged.next, raw);
+
+  /* 社区文档：清草稿 + 记一条「已采纳」，贡献者留在贡献者名单里 */
+  const community = await readCommunityDoc(env, slug).catch(() => null);
+  const doc = community?.doc ?? emptyDoc(slug);
+  const at = new Date().toISOString();
+  const by = row.submitter || '匿名';
+  doc.draft = null;
+  doc.fields.draft = { v: `已采纳 ${at.slice(0, 10)}`, by, at, submission: row.id };
+  doc.log = Array.isArray(doc.log) ? doc.log : [];
+  doc.log.push({ field: 'draft', from: '社区整理版（未采纳）', to: '已采纳为原稿', by, at, submission: row.id });
+  touch(doc, at);
+
+  const files: CommitFile[] = [
+    { path: researchPath, text: researchText },
+    { path: communityPath(slug), text: JSON.stringify(doc, null, 2) + '\n' },
+  ];
+  const message =
+    `社区采纳：${slug} 整篇草稿合并进原稿` +
+    `（替换 ${merged.replaced.length} 节${merged.replaced.length ? `：${merged.replaced.join('、')}` : ''}` +
+    `${merged.added.length ? `，新增 ${merged.added.length} 节：${merged.added.join('、')}` : ''}` +
+    `${merged.kept.length ? `，保留 ${merged.kept.length} 节` : ''}；整理 ${by}，投稿 #${row.id}）`;
+
+  let commitSha = '';
+  try {
+    const res = await commitFiles(env, files, message);
+    commitSha = res.sha;
+  } catch (err) {
+    if (err instanceof GitError) return fail(`写回仓库失败：${err.message}`, err.status ?? 502);
+    return fail(`写回仓库失败：${err instanceof Error ? err.message : String(err)}`, 502);
+  }
+
+  /* 记一笔提交号，方便日后对账（这条投稿本身仍是 applied） */
+  if (commitSha) {
+    await env.DB.prepare(`UPDATE submissions SET commit_sha = ?1 WHERE id = ?2`)
+      .bind(commitSha, row.id)
+      .run()
+      .catch(() => {});
+  }
+
+  return json({
+    ok: true,
+    slug,
+    commit: commitSha,
+    replaced: merged.replaced,
+    added: merged.added,
+    kept: merged.kept,
+    summaryUpdated: Boolean(merged.summary),
+    message:
+      `已采纳：${slug} 的草稿合并进原稿（替换 ${merged.replaced.length} 节、新增 ${merged.added.length} 节、` +
+      `保留 ${merged.kept.length} 节${merged.summary ? '，并更新了简介' : ''}）。` +
+      '等下一次构建完成后生效；页面上的「社区整理版（未采纳）」会同时消失。',
+  });
+}
+
 /** GET /api/admin/queue?status=pending&limit=50 */
 export async function handleAdminQueue(request: Request, env: Env, url: URL): Promise<Response> {
   if (request.method !== 'GET') return fail('只支持 GET', 405);
@@ -560,11 +729,18 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
 
   const { results } = await env.DB.prepare(
     `SELECT id, map_slug, field, value, note, submitter, contact, status, created_at,
-            reviewed_at, reviewer, reject_note, commit_sha, error
+            reviewed_at, reviewer, reject_note, commit_sha, error, batch
      FROM submissions WHERE status = ?1 ORDER BY created_at ASC LIMIT ?2`
   )
     .bind(status, limit)
-    .all<SubmissionRow>();
+    .all<SubmissionRow & { batch?: string | null }>();
+
+  /* 批量投稿的「同批还有几条」：审核台据此知道这几条要一起看（一次整理，别只通过一半） */
+  const batchCounts = new Map<string, number>();
+  for (const row of results ?? []) {
+    const b = (row as { batch?: string | null }).batch;
+    if (b) batchCounts.set(b, (batchCounts.get(b) ?? 0) + 1);
+  }
 
   const counts = await env.DB.prepare(
     `SELECT status, COUNT(*) AS n FROM submissions GROUP BY status`
@@ -613,8 +789,11 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
 
     /* note 字段的修订包拆开：审核台看到的就是「新正文 + 修订目标」两件事 */
     const payload = isNoteField(row.field) ? notePayload(value) : null;
+    const batchId = (row as { batch?: string | null }).batch ?? '';
     items.push({
       ...row,
+      /* 同一批投了几条（批量整理）：审核台据此把这一组当一件事看 */
+      ...(batchId ? { batch: batchId, batchCount: batchCounts.get(batchId) ?? 1 } : {}),
       value: payload ? payload.text : value,
       ...(payload?.reviseOf ? { reviseOf: payload.reviseOf } : {}),
       current,

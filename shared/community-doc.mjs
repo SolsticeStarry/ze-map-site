@@ -49,9 +49,16 @@ export const isNoteField = (field) => FIELD_RULES?.[field]?.kind === 'longtext';
 /** 这个字段是「神器 / 道具行」吗（进 items，由生成器逐行合并） */
 export const isItemField = (field) => FIELD_RULES?.[field]?.kind === 'itemlist';
 
+/**
+ * 这个字段是「整篇草稿」吗（kind=doc，进 doc.draft，页面以「社区整理版（未采纳）」整块渲染，
+ * 站长点「采纳为原稿」后按小节合并进 data/research）。
+ * 和 notes 的区别：notes 是一条条**另起的补充块**，永远压不过本站正文；草稿是**改写整篇**的候选稿。
+ */
+export const isDocField = (field) => FIELD_RULES?.[field]?.kind === 'doc';
+
 /** 新建一个空文档 */
 export function emptyDoc(slug) {
-  return { v: DOC_VERSION, slug, updatedAt: null, fields: {}, notes: [], items: [], log: [] };
+  return { v: DOC_VERSION, slug, updatedAt: null, fields: {}, notes: [], draft: null, items: [], log: [] };
 }
 
 /* ===== 修订（改一条已经通过的社区投稿） =====
@@ -143,6 +150,19 @@ export function normalizeDoc(slug, raw) {
         revision: Number.isInteger(n.revision) && n.revision > 0 ? n.revision : 0,
       })),
     log: Array.isArray(d.log) ? d.log : [],
+    /*
+     * 整篇草稿（2026-10-13 加）：{ text, by, at, submission } 或 null。
+     * 只保留最新一篇；被改坏 / 空文本就当没有，页面照旧只显示本站内容。
+     */
+    draft:
+      d.draft && typeof d.draft === 'object' && typeof d.draft.text === 'string' && d.draft.text.trim()
+        ? {
+            text: d.draft.text,
+            by: d.draft.by ?? '匿名',
+            at: d.draft.at ?? null,
+            submission: d.draft.submission ?? null,
+          }
+        : null,
     items: (Array.isArray(d.items) ? d.items : [])
       .map((row) => normalizeItemRow(row))
       .filter(Boolean),
@@ -221,12 +241,30 @@ export function applySubmission(doc, sub) {
     return { field: sub.field, from: null, to: applied };
   }
 
+  /*
+   * 整篇草稿（kind=doc）：进 doc.draft，**一张图只保留最新一篇**（旧的在 log 里留痕）。
+   * 为什么只留一篇：页面上同时挂两三个「社区整理版」没人看得下去，站长也无从比较；
+   * 谁想改，就在最新那篇上继续（投稿页会把现有草稿带进框里，和「修订这条」一个思路）。
+   */
+  if (isDocField(sub.field)) {
+    const prev = doc.draft ?? null;
+    doc.draft = { text: String(sub.value ?? ''), by, at, submission: sub.id ?? null };
+    doc.log.push({
+      field: sub.field,
+      from: prev ? `${String(prev.text ?? '').length} 字（${prev.by ?? '匿名'}）` : null,
+      to: `${String(sub.value ?? '').length} 字`,
+      by,
+      at,
+      submission: sub.id ?? null,
+    });
+    return { field: sub.field, from: prev?.text ?? null, to: sub.value, draft: true };
+  }
+
   const prev = doc.fields[sub.field]?.v ?? null;
   doc.fields[sub.field] = { v: sub.value, by, at, submission: sub.id ?? null };
   doc.log.push({ field: sub.field, from: prev, to: sub.value, by, at, submission: sub.id ?? null });
   return { field: sub.field, from: prev, to: sub.value };
 }
-
 /** 更新时间戳 */
 export function touch(doc, at = new Date().toISOString()) {
   doc.updatedAt = at;
@@ -244,6 +282,8 @@ export function contributors(doc) {
   for (const row of doc?.items ?? []) {
     if (row?.by && !seen.includes(row.by)) seen.push(row.by);
   }
+  /* 整篇草稿的作者也是贡献者（2026-10-13 加） */
+  if (doc?.draft?.by && !seen.includes(doc.draft.by)) seen.push(doc.draft.by);
   return seen;
 }
 
@@ -263,6 +303,8 @@ export function hasContent(doc) {
     doc &&
       (Object.keys(doc.fields ?? {}).length > 0 ||
         (doc.notes ?? []).length > 0 ||
-        (doc.items ?? []).length > 0)
+        (doc.items ?? []).length > 0 ||
+        /* 整篇草稿也算内容：一张只投了草稿的图，社区那一块（含「社区整理版」）要能渲染出来 */
+        doc.draft?.text)
   );
 }

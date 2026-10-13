@@ -39,6 +39,7 @@ import {
   type Env,
 } from './http';
 import {
+  handleAdminAdopt,
   handleAdminBan,
   handleAdminFlush,
   handleAdminImage,
@@ -114,6 +115,8 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (path === '/api/admin/queue') return handleAdminQueue(request, env, url);
     if (path === '/api/admin/review') return handleAdminReview(request, env);
     if (path === '/api/admin/flush') return handleAdminFlush(request, env);
+    /* 采纳整篇草稿：把社区整理版合并进人工原稿（2026-10-13） */
+    if (path === '/api/admin/adopt') return handleAdminAdopt(request, env);
     if (path === '/api/admin/unstage') return handleAdminUnstage(request, env);
     if (path === '/api/admin/ban') return handleAdminBan(request, env);
     /* 账号管理（P4）：看账号列表 / 停用 / 恢复 / 解锁连续输错被锁的账号 */

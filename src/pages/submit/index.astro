@@ -243,6 +243,24 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
                   rows="3"
                   placeholder="每行一个链接（https:// 开头）"
                 />
+              ) : f.kind === 'doc' ? (
+                /*
+                  整篇条目草稿（2026-10-13）：这个框是「大面积整理」的入口。
+                  右侧对照面板会把本站现有正文列出来，方便照着补/改；
+                  没写到的小节在采纳时不会被删（同节替换、新节追加）。
+                */
+                <div class="doc-wrap">
+                  <p class="doc-login" id="doc-login-hint" hidden>
+                    整篇草稿需要**登录**后才能提交（大面积改写要能追到人）—— 右上角登录即可，
+                    没有账号 10 秒就能注册，不登录也照样能投其它字段。
+                  </p>
+                  <textarea
+                    id={`f-in-${f.key}`}
+                    data-input={f.key}
+                    rows="18"
+                    placeholder={'导语：这张图是什么、大致怎么玩（这一段会变成条目开头的简介）\n\n## 背景故事\n…\n\n## 关卡流程\n…\n\n## 神器 / 道具\n…'}
+                  />
+                </div>
               ) : f.kind === 'textlist' ? (
                 /* 一组短文本（目前只有「其他社区叫法」）：一行一条，写成「社区名：叫法」 */
                 <textarea
@@ -305,6 +323,22 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
           </div>
         </div>
       </section>
+
+      {/*
+        批量提交（2026-10-13）：一张图补资料常要同时改好几项，攒在一起一次交上去。
+        队列为空时这一块完全隐藏，表单跟以前一模一样。
+      */}
+      <div class="batch-box" id="batch-box" hidden>
+        <p class="batch-title">本次一起提交（<b id="batch-count">0</b> 项）</p>
+        <div id="batch-list" class="batch-list"></div>
+        <p class="form-hint">
+          提交时会和上面当前这一项**一起**送审（同一批），审核台会看到它们属于同一次整理。
+        </p>
+      </div>
+
+      <div class="s-actions">
+        <button class="btn" type="button" id="batch-add">＋ 把这一项加入本次提交</button>
+      </div>
 
       {/* 人机验证（没配 site key 时这块保持 hidden）：放在提交按钮上方 */}
       <div class="s-ts" id="s-ts" hidden></div>
@@ -1058,6 +1092,75 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     });
   }
 
+  /* ===== 批量：本次一起提交的项（2026-10-13） =====
+     动机：一张图补资料通常要同时改好几项（难度 + 标签 + 视频 + 正文），
+     以前只能一项一项投，投稿人嫌烦、审核台也散。这里在表单里攒一个队列，
+     提交时一次发上去（服务端写同一个 batch 号）。封面 / 图片集不走这条路 ——
+     它们是 multipart 上传，各自单独投（表单里也说明了）。 */
+  type BatchItem = { field: string; label: string; value: unknown; preview: string };
+  let batchQueue: BatchItem[] = [];
+
+  function shortPreview(v: unknown): string {
+    if (Array.isArray(v)) return v.length ? `共 ${v.length} 项：${v.slice(0, 2).map(String).join('、')}${v.length > 2 ? '…' : ''}` : '（空）';
+    if (v && typeof v === 'object') return `${Object.keys(v as object).length} 个字段`;
+    const s = String(v ?? '').replace(/\s+/g, ' ').trim();
+    return s.length > 60 ? `${s.slice(0, 60)}…` : s || '（空）';
+  }
+
+  function renderBatchQueue(): void {
+    const box = document.getElementById('batch-list');
+    const wrap = document.getElementById('batch-box');
+    if (!box || !wrap) return;
+    wrap.hidden = batchQueue.length === 0;
+    box.textContent = '';
+    batchQueue.forEach((item, i) => {
+      const row = document.createElement('div');
+      row.className = 'batch-row';
+      const text = document.createElement('span');
+      text.className = 'batch-text';
+      text.textContent = `【${item.label}】${item.preview}`;
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn batch-del';
+      del.textContent = '移除';
+      del.addEventListener('click', () => {
+        batchQueue.splice(i, 1);
+        renderBatchQueue();
+      });
+      row.append(text, del);
+      box.append(row);
+    });
+    const submit = document.getElementById('f-submit');
+    if (submit) {
+      submit.textContent = batchQueue.length ? `提交审核（共 ${batchQueue.length + 1} 项）` : '提交审核';
+    }
+  }
+
+  function addToBatch(): void {
+    errEl.hidden = true;
+    const key = fieldSel.value;
+    const kind = rules[key]?.kind;
+    /* 封面 / 图片集是图片上传，跟文本投稿不是一条路；草稿本身已经是一整篇，也不用攒 */
+    if (kind === 'image' || kind === 'gallery' || kind === 'doc') {
+      return showError('这一项要单独提交（图片是上传、草稿是一整篇），不用加入批量。');
+    }
+    const value = collect(key);
+    const checked = validateValue(key, value);
+    if (!checked.ok) return showError(checked.error);
+    batchQueue.push({
+      field: key,
+      label: rules[key]?.label ?? key,
+      value: checked.value,
+      preview: shortPreview(checked.value),
+    });
+    /* 攒进去之后当前这项清空，免得连点两次投重复 */
+    const el = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-input="${key}"]`);
+    if (el && !['tags', 'itemlist'].includes(kind ?? '')) el.value = '';
+    renderBatchQueue();
+  }
+
+  document.getElementById('batch-add')?.addEventListener('click', () => addToBatch());
+
   function prefill(key: string) {
     const input = document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
       `[data-input="${key}"]`
@@ -1085,6 +1188,30 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     /* 神器 / 道具：没有「一个值」可以预填，改成列出现有的表 + 一行空行等投稿人填 */
     if (rules[key]?.kind === 'itemlist') {
       prefillItems();
+      return;
+    }
+
+    /*
+     * 整篇草稿（2026-10-13）：
+     *   · 已经有别人写的草稿 → 带进框里接着改（避免两个人各写一篇、站长没法比）；
+     *   · 没登录 → 显示提示条（服务端也会拦，这里提前说清楚，别让人写完了才发现）。
+     */
+    if (rules[key]?.kind === 'doc') {
+      const hint = document.getElementById('doc-login-hint');
+      const ta = input as HTMLTextAreaElement | null;
+      if (ta && !ta.value.trim() && typeof mapInfo?.draft === 'string' && mapInfo.draft.trim()) {
+        ta.value = mapInfo.draft;
+      }
+      if (hint) {
+        void meOrThrow()
+          .then((r) => {
+            hint.hidden = Boolean(r.user);
+            if (!r.user) hint.textContent = '整篇草稿需要登录后才能提交（大面积改写要能追到人）—— 右上角登录即可，不登录也照样能投其它字段。';
+          })
+          .catch(() => {
+            hint.hidden = false;
+          });
+      }
       return;
     }
 
@@ -1638,6 +1765,14 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     const checked = validateValue(field, value);
     if (!checked.ok) return showError(checked.error);
 
+    /* 批量（2026-10-13）：队列里攒着的几项 + 当前这一项，一起交上去。
+       一张图补资料常要同时改难度、标签、视频、正文 —— 一次一条地投十遍太折腾，
+       而且审核台看到的是一堆散条目。服务端会为这一批打同一个 batch 号。 */
+    const batchItems = [
+      ...batchQueue.map((b) => ({ field: b.field, value: b.value })),
+      { field, value: checked.value },
+    ];
+
     /* 正在修订某一条已通过的社区投稿（点过「修订这条」）：带上它的 id，
        审核通过后是替换那一条的正文，而不是再加一条。 */
     const reviseOf = reviseTarget && reviseTarget.field === field ? reviseTarget.id : '';
@@ -1650,17 +1785,22 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           map: slug,
-          field,
-          value: checked.value,
+          /* 队列为空时就是一条普通投稿（老格式，审核台照旧）；
+             有队列就发 items[]，服务端为这一批写同一个 batch 号 */
+          ...(batchQueue.length >= 1 ? { items: batchItems } : { field, value: checked.value }),
           note,
           submitter,
           contact,
           ...(tsToken ? { turnstileToken: tsToken } : {}),
-          ...(reviseOf ? { reviseOf } : {}),
+          ...(reviseOf && !batchQueue.length ? { reviseOf } : {}),
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; id?: number; error?: string };
+      const data = (await res.json()) as { ok?: boolean; id?: number; ids?: number[]; error?: string };
       if (!data.ok) throw new Error(data.error || '提交失败');
+      if (batchQueue.length) {
+        batchQueue = [];
+        renderBatchQueue();
+      }
       if (reviseOf) {
         /* 修订稿也进了队列，但面板上的正文要等审核通过、重建后才变 ——
            这里先退出修订状态，免得投稿人接着改同一条又投一遍。 */
