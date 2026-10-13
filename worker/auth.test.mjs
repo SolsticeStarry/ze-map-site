@@ -798,23 +798,25 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
     return env;
   };
 
-  await t.test('账号昵称与 UP 名一致 → /api/me 带「授权 UP 主」徽章', async () => {
+  await t.test('称号只人工发：昵称与 UP 一模一样也**不**自动给', async () => {
     const { call, env } = await setup();
     withAgreed(env, [{ u: '雨宫鹿奈', m: '254673567', videos: 6, maps: ['ze_a', 'ze_b'] }]);
     await call('/api/register', { method: 'POST', body: { name: '雨宫鹿奈', password: 'pass12345' } });
     const r = await call('/api/me');
     assert.equal(r.status, 200);
-    assert.equal(r.data.user.up.name, '雨宫鹿奈');
-    assert.equal(r.data.user.up.videos, 6);
-    assert.equal(r.data.user.up.maps, 2, 'maps 回的是张数，不是 slug 列表');
+    assert.equal(
+      r.data.user.up,
+      undefined,
+      '谁先把昵称注册成 UP 的名字谁就白拿称号 —— 那等于冒名零成本，所以一律不给'
+    );
   });
 
-  await t.test('昵称对不上（雨宫鹿奈 ↔ 雨宫鹿奈_shikaNiko）→ 管理台 linkup 之后才有徽章', async () => {
+  await t.test('管理台人工 linkup 之后才有徽章（昵称不一样也能挂）', async () => {
     const { call, env } = await setup();
     env.ADMIN_TOKEN = 'test-admin-token';
     withAgreed(env, [{ u: '雨宫鹿奈_shikaNiko', m: '254673567', videos: 6, maps: ['ze_a'] }]);
     await call('/api/register', { method: 'POST', body: { name: '雨宫鹿奈', password: 'pass12345' } });
-    assert.equal((await call('/api/me')).data.user.up, undefined, '默认不该自动认上');
+    assert.equal((await call('/api/me')).data.user.up, undefined, '默认没有称号');
 
     const auth = { authorization: 'Bearer test-admin-token' };
     const bad = await call('/api/admin/accounts', {

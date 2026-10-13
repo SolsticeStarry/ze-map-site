@@ -359,7 +359,21 @@ import QqGroup from '../components/QqGroup.astro';
       const upText = $('me-up-text');
       if (upBox && upText) {
         if (me.up) {
-          upText.textContent = `B 站「${me.up.name}」—— 本站已收录他 ${me.up.videos} 条视频（${me.up.maps} 张图）`;
+          /*
+           * 称号文案：把 B 站昵称做成回他主页的链接（和视频卡片里「UP 主：xxx」一个道理 ——
+           * 署名不只是写个名字，也把流量还给他）。用 DOM 拼而不是拼字符串，免得名单里
+           * 万一有奇怪字符被当 HTML 解析。
+           */
+          upText.textContent = 'B 站「';
+          const link = document.createElement('a');
+          link.href = `https://space.bilibili.com/${encodeURIComponent(me.up.mid)}`;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          link.textContent = me.up.name;
+          upText.append(
+            link,
+            document.createTextNode(`」—— 本站已收录他 ${me.up.videos} 条视频（${me.up.maps} 张图）`)
+          );
           upBox.hidden = false;
         } else {
           upBox.hidden = true;

@@ -431,8 +431,9 @@ function publicUser(user: UserRow, up?: AgreedUp | null) {
     createdAt: user.created_at,
     ...levelOf(user.approved, user.rejected),
     /*
-     * 「授权 UP 主」称号（2026-10-13 加）：账号挂在 R2 的同意名单上时带这个字段，
-     * 页面据此在昵称旁显示徽章。名单读不到就是 undefined —— 页面什么都不显示。
+     * 「授权 UP 主」称号（2026-10-13 加）：账号**被站长人工挂到**某位已同意的 UP 主上时才带这个字段，
+     * 页面据此在昵称旁显示徽章。名单读不到 / 没挂过 → undefined，页面什么都不显示。
+     * 只看 up_name，不看昵称是否重名 —— 理由见 agreedUpFor 的注释。
      */
     ...(up ? { up: { name: up.u, mid: up.m, videos: up.videos, maps: up.maps.length } } : {}),
   };
@@ -440,19 +441,19 @@ function publicUser(user: UserRow, up?: AgreedUp | null) {
 
 /**
  * 这个账号对应哪位已授权 UP 主？
- * 认法：账号显式挂的 `up_name` 优先，其次「账号昵称 === UP 昵称」（两边都去空白、忽略大小写）。
+ *
+ * ⚠️ **只认管理台人工挂的 `up_name`，不做任何自动推断**（站长 2026-10-13 明确要求）。
+ * 为什么不按「账号昵称 === UP 昵称」自动认：那等于**谁先把昵称注册成 UP 的名字，谁就白拿称号**
+ * —— 冒名成本只是一个注册，而称号本身是「这位 UP 主同意本站收录」的对外承诺，不能这么给。
+ * 所以流程是：UP 本人来（或站长确认身份）→ 管理台点「挂授权UP」→ 写进 up_name → 才有徽章。
  */
 async function agreedUpFor(env: Env, user: UserRow): Promise<AgreedUp | null> {
   try {
+    const link = String(user.up_name ?? '').trim().toLowerCase();
+    if (!link) return null;
     const agreed = await loadAgreed(env.TERR);
     if (!agreed.ups.length) return null;
-    const link = String(user.up_name ?? '').trim().toLowerCase();
-    const self = String(user.name ?? '').trim().toLowerCase();
-    return (
-      agreed.ups.find((x) => link && String(x.u).trim().toLowerCase() === link) ??
-      agreed.ups.find((x) => String(x.u).trim().toLowerCase() === self) ??
-      null
-    );
+    return agreed.ups.find((x) => String(x.u).trim().toLowerCase() === link) ?? null;
   } catch {
     return null;
   }

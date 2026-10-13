@@ -80,8 +80,8 @@ import { PERSON_ICON } from '../lib/account-client';
         <span class="am-avatar is-on" id="am-me-avatar">·</span>
         <div class="am-me-id">
           <b id="am-me-name">—</b>
-          {/* 授权 UP 主称号（2026-10-13）：见 worker/auth.ts 的 agreedUpFor */}
-          <span class="am-up-badge" id="am-me-up" hidden>授权 UP 主</span>
+          {/* 授权 UP 主称号（2026-10-13）：见 worker/auth.ts 的 agreedUpFor；点开是他在 B 站的主页 */}
+          <a class="am-up-badge" id="am-me-up" hidden>授权 UP 主</a>
           <span class="acc-level-name" id="am-me-level" data-lv="0">—</span>
         </div>
       </div>
@@ -158,9 +158,19 @@ import { PERSON_ICON } from '../lib/account-client';
     const meAvatar = $('am-me-avatar');
     if (meAvatar) meAvatar.textContent = initial;
     $('am-me-name')!.textContent = user.name;
-    /* 授权 UP 主称号：和账号页同一份数据（/api/me 的 up 字段），页头也顺带标一下 */
-    const upBadge = $('am-me-up');
-    if (upBadge) upBadge.hidden = !user.up;
+    /* 授权 UP 主称号：和账号页同一份数据（/api/me 的 up 字段），页头也顺带标一下。
+       点它直接去他的 B 站主页（mid 就在 up.mid 里）。 */
+    const upBadge = $('am-me-up') as HTMLAnchorElement | null;
+    if (upBadge) {
+      if (user.up) {
+        upBadge.hidden = false;
+        upBadge.href = `https://space.bilibili.com/${encodeURIComponent(user.up.mid)}`;
+        upBadge.title = `B 站「${user.up.name}」—— 本站已收录他 ${user.up.videos} 条视频（${user.up.maps} 张图）`;
+      } else {
+        upBadge.hidden = true;
+        upBadge.removeAttribute('href');
+      }
+    }
     const lv = $('am-me-level')!;
     lv.textContent = user.level;
     lv.dataset.lv = String(LV[user.level] ?? 0);

@@ -496,7 +496,9 @@ img { max-width: 100%; display: block; }
   color: #e8c884;
   background: rgba(216, 180, 106, 0.12);
   white-space: nowrap;
+  text-decoration: none;
 }
+.am-up-badge:hover { border-color: #e8c884; color: #f3d79a; }
 [data-theme="light"] .am-up-badge { color: #8a6516; border-color: #c39a3a; background: rgba(195, 154, 58, 0.14); }
 .am-me-stats { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
 .am-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
@@ -3314,6 +3316,8 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .acc-up-text { color: var(--muted); }
+.acc-up-text a { color: #e8c884; text-decoration: none; border-bottom: 1px dotted rgba(232, 200, 132, 0.5); }
+.acc-up-text a:hover { color: #f3d79a; border-bottom-color: #f3d79a; }
 
 [data-theme="light"] .acc-up-badge { color: #8a6516; border-color: #c39a3a; background: rgba(195, 154, 58, 0.14); }
 .acc-sep { opacity: 0.5; }
