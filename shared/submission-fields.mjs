@@ -58,6 +58,38 @@ export const LIMITS = {
  */
 export const FIELD_RULES = {
   difficulty: { kind: 'enum', label: '难度', hint: '必须从这几个里选', values: DIFFICULTIES },
+  /*
+   * 地图中文名（2026-10-13 站长要求）：
+   * 站上有 400 多张图**只有地图代码没有中文名**（工坊导入的图，实体数据里也没有中文名），
+   * 标题就显示成一串 ze_xxx。这个字段让玩家自己把叫法补上，不用等站务挨个翻译。
+   * 只有「现在显示的还是地图代码」的图才需要填 —— 表单会据此提示（见 submit 页的提示）。
+   */
+  title: {
+    kind: 'text',
+    label: '地图中文名',
+    hint:
+      '只给「标题还是地图代码」的图用 —— 例如标题写着 ze_grace，社区都叫它「优雅」，就填「优雅」。' +
+      '已经有中文名的图请不要用这个字段改名（那属于译名之争）：想讨论叫法请投「其他叫法」或「补充说明」。' +
+      '中文名不宜超过 20 字，写社区里最通用的那个叫法；不同社区的写法进另一个字段。',
+    maxLen: 40,
+  },
+  /*
+   * 其他社区叫法（2026-10-13 站长要求）：
+   * 同一张图在不同社区的名字不一样（例：爬雪山 / 雪山逃亡v6 / 多模式爬雪山 / 雪山大冒险）。
+   * 一行一条，写成「社区名：叫法」，显示在地图页标题下方的小字里。
+   */
+  aliases: {
+    kind: 'textlist',
+    label: '其他社区叫法',
+    hint:
+      '一行一条，写成「社区名：叫法」，例如「X 社区：爬雪山【娱】」「UB 难度表：雪山逃亡v6」。' +
+      '最多 8 条、每条 48 字以内。只写**确实见过别人这么叫**的（社区名写不清就写「社区」或来源，例如「B站：雪山大冒险」）；' +
+      '写进条目后显示在地图名下方的小字里，便于对不上名字的人找到这张图。',
+    max: 8,
+    maxLen: 48,
+    /* 和视频链接一样是「追加」语义：别人已经写过的不会因为你少写一条就被顶掉 */
+    append: true,
+  },
   tags: {
     kind: 'tags',
     label: '标签',
@@ -253,8 +285,33 @@ export function validateValue(field, raw) {
       return { ok: true, value: v };
     }
 
-    case 'tags': {
-      const list = Array.isArray(raw) ? raw : [];
+    case 'textlist': {
+      /*
+       * 一组短文本（每行一条），例如「其他社区叫法」。
+       * 和 tags 的区别：不做标签词表那套校验（允许「【】」「：」这类字符 ——
+       * 社区叫法里 爬雪山【娱】、雪山逃亡v6 都是常见写法），也不进标签索引，
+       * 所以不需要禁路径敏感字符；只挡住会破坏正文/构建的 < > { } 与竖线。
+       */
+      const list = Array.isArray(raw)
+        ? raw
+        : String(raw ?? '')
+            .split('\n')
+            .map((s) => s.trim())
+            .filter(Boolean);
+      const out = [];
+      for (const item of list) {
+        const t = typeof item === 'string' ? item.trim().replace(/\s+/g, ' ') : '';
+        if (!t) continue;
+        if (t.length > rule.maxLen) return { ok: false, error: `每条最多 ${rule.maxLen} 个字：${t.slice(0, 30)}` };
+        if (/[<>{}|]/.test(t)) return { ok: false, error: `不支持 < > { } | 这几个字符：${t.slice(0, 30)}` };
+        if (!out.includes(t)) out.push(t);
+      }
+      if (out.length === 0) return { ok: false, error: '至少要写一条' };
+      if (out.length > rule.max) return { ok: false, error: `最多 ${rule.max} 条` };
+      return { ok: true, value: out };
+    }
+
+    case 'tags': {      const list = Array.isArray(raw) ? raw : [];
       const out = [];
       for (const item of list) {
         const t = typeof item === 'string' ? item.trim().replace(/\s+/g, ' ') : '';
@@ -409,7 +466,7 @@ export function validateValue(field, raw) {
 export function inputKind(field) {
   const rule = FIELD_RULES[field];
   if (!rule) return null;
-  if (rule.kind === 'tags' || rule.kind === 'urlList') return 'lines';
+  if (rule.kind === 'tags' || rule.kind === 'urlList' || rule.kind === 'textlist') return 'lines';
   if (rule.kind === 'longtext') return 'textarea';
   if (rule.kind === 'enum') return 'select';
   if (rule.kind === 'image') return 'file';

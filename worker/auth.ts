@@ -17,6 +17,7 @@
 import { allowWrite, fail, isBanned, isLocalHost, json, readJsonBody, safeEqual, type Env } from './http';
 import { turnstileMessage, verifyTurnstile } from './turnstile';
 import { checkNicknameContent, nicknameRejectMessage, normalizeName, parseExtraBlocklist } from '../shared/nickname-rules.mjs';
+import { loadAgreed, type AgreedUp } from './videos';
 
 /* ===== 常量 ===== */
 
@@ -107,6 +108,8 @@ export interface UserRow {
   fail_count?: number;
   /** 锁定到什么时候（毫秒时间戳；null = 没锁） */
   locked_until?: number | null;
+  /** 对应哪位 B 站 UP 主（授权 UP 主称号；见 ensureSchema 里的说明） */
+  up_name?: string | null;
 }
 
 /**
@@ -307,6 +310,15 @@ export async function ensureSchema(env: Env): Promise<void> {
     if (!hasUserCol('locked_until')) {
       await env.DB.prepare(`ALTER TABLE users ADD COLUMN locked_until INTEGER`).run();
     }
+    /*
+     * up_name：这个账号对应哪位 B 站 UP 主（2026-10-13 加）。
+     * 用途是「授权 UP 主」称号：名单在 R2 的 video-meta/agreed.json（不在仓库里），
+     * 而账号昵称和 B 站昵称不一定一致（站点账号「雨宫鹿奈」↔ UP「雨宫鹿奈_shikaNiko」），
+     * 所以允许显式挂一个名字；没挂时按「账号昵称 === UP 昵称」自动认。
+     */
+    if (!hasUserCol('up_name')) {
+      await env.DB.prepare(`ALTER TABLE users ADD COLUMN up_name TEXT`).run();
+    }
 
     /* submissions.user_id：老的库没有这一列，补上 */
     const cols = await env.DB.prepare(`PRAGMA table_info(submissions)`).all<{ name: string }>();
@@ -411,14 +423,39 @@ function checkPassword(raw: unknown): { ok: true; value: string } | { ok: false;
 }
 
 /** 对外的用户信息（绝不回传 pass_hash） */
-function publicUser(user: UserRow) {
+function publicUser(user: UserRow, up?: AgreedUp | null) {
   return {
     id: user.id,
     name: user.name,
     contact: user.contact ?? '',
     createdAt: user.created_at,
     ...levelOf(user.approved, user.rejected),
+    /*
+     * 「授权 UP 主」称号（2026-10-13 加）：账号挂在 R2 的同意名单上时带这个字段，
+     * 页面据此在昵称旁显示徽章。名单读不到就是 undefined —— 页面什么都不显示。
+     */
+    ...(up ? { up: { name: up.u, mid: up.m, videos: up.videos, maps: up.maps.length } } : {}),
   };
+}
+
+/**
+ * 这个账号对应哪位已授权 UP 主？
+ * 认法：账号显式挂的 `up_name` 优先，其次「账号昵称 === UP 昵称」（两边都去空白、忽略大小写）。
+ */
+async function agreedUpFor(env: Env, user: UserRow): Promise<AgreedUp | null> {
+  try {
+    const agreed = await loadAgreed(env.TERR);
+    if (!agreed.ups.length) return null;
+    const link = String(user.up_name ?? '').trim().toLowerCase();
+    const self = String(user.name ?? '').trim().toLowerCase();
+    return (
+      agreed.ups.find((x) => link && String(x.u).trim().toLowerCase() === link) ??
+      agreed.ups.find((x) => String(x.u).trim().toLowerCase() === self) ??
+      null
+    );
+  } catch {
+    return null;
+  }
 }
 
 /* ===== 接口 ===== */
@@ -584,8 +621,11 @@ export async function handleMe(request: Request, env: Env, url: URL): Promise<Re
   const user = await getSessionUser(request, env);
   if (!user) return json({ ok: true, user: null });
 
+  /* 授权 UP 主称号：同意名单按 isolate 缓存 10 分钟，正常请求不额外打 R2（见 videos.ts） */
+  const up = await agreedUpFor(env, user);
+
   if (url.searchParams.get('lite') === '1') {
-    return json({ ok: true, user: publicUser(user), lite: true });
+    return json({ ok: true, user: publicUser(user, up), lite: true });
   }
 
   await recalcUserStats(env, user.id);
@@ -621,7 +661,7 @@ export async function handleMe(request: Request, env: Env, url: URL): Promise<Re
     if (row.status in tally) tally[row.status as keyof typeof tally] = Number(row.n) || 0;
   }
 
-  return json({ ok: true, user: publicUser(fresh ?? user), submissions: results ?? [], counts: tally });
+  return json({ ok: true, user: publicUser(fresh ?? user, up), submissions: results ?? [], counts: tally });
 }
 
 /** POST /api/password —— 改口令（旧 Cookie 全部作废，只保留当前这一个） */
@@ -762,13 +802,44 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
   const id = Number(parsed.body.id);
   const action = String(parsed.body.action ?? '');
   if (!Number.isInteger(id) || id <= 0) return fail('id 不合法');
-  if (!['ban', 'unban', 'unlock', 'reset', 'rename'].includes(action)) {
-    return fail('action 只能是 ban / unban / unlock / reset / rename');
+  if (!['ban', 'unban', 'unlock', 'reset', 'rename', 'linkup', 'unlinkup'].includes(action)) {
+    return fail('action 只能是 ban / unban / unlock / reset / rename / linkup / unlinkup');
   }
 
   await ensureSchema(env);
-  const before = await env.DB.prepare(`SELECT id, name FROM users WHERE id = ?1`).bind(id).first<{ id: number; name: string }>();
+  const before = await env.DB.prepare(`SELECT id, name, up_name FROM users WHERE id = ?1`)
+    .bind(id)
+    .first<{ id: number; name: string; up_name: string | null }>();
   if (!before) return fail('没有这个账号', 404);
+
+  /*
+   * linkup：把这个账号挂到某位「已授权 UP 主」上（2026-10-13 加）。
+   * 为什么需要人工挂：站点昵称和 B 站昵称经常不一样（「雨宫鹿奈」↔「雨宫鹿奈_shikaNiko」），
+   * 自动认不出来。挂上之后账号页会显示「授权 UP 主」徽章 + 本站收录了他几条视频。
+   */
+  if (action === 'linkup' || action === 'unlinkup') {
+    if (action === 'unlinkup') {
+      await env.DB.prepare(`UPDATE users SET up_name = NULL WHERE id = ?1`).bind(id).run();
+      return json({ ok: true, id, action, message: `已摘掉「${before.name}」的授权 UP 主称号` });
+    }
+    const want = String(parsed.body.name ?? '').trim();
+    if (!want) return fail('要写 UP 主昵称（与站上视频署名完全一致）');
+    const agreed = await loadAgreed(env.TERR);
+    const hit = agreed.ups.find((x) => String(x.u).trim().toLowerCase() === want.toLowerCase());
+    if (!hit) {
+      return fail(
+        `同意名单里没有「${want}」——名单在 R2 的 video-meta/agreed.json，` +
+          '得先在本地 tools/video-agreed.json 里加名字再推上去（node ../tools/video-meta-push.mjs）'
+      );
+    }
+    await env.DB.prepare(`UPDATE users SET up_name = ?1 WHERE id = ?2`).bind(hit.u, id).run();
+    return json({
+      ok: true,
+      id,
+      action,
+      message: `已把「${before.name}」挂到 UP 主「${hit.u}」上（本站收录 ${hit.videos} 条视频 / ${hit.maps.length} 张图）`,
+    });
+  }
 
   if (action === 'rename') {
     const next = checkName(parsed.body.name, env);

@@ -85,7 +85,7 @@ async function loadIndex(r2: R2Like | undefined, force = false): Promise<Record<
 }
 
 /** 同意名单（R2）。读不到就返回空 —— 页面就当没有这回事，不影响视频署名本身 */
-async function loadAgreed(r2: R2Like | undefined): Promise<{ updatedAt: string; ups: AgreedUp[] }> {
+export async function loadAgreed(r2: R2Like | undefined): Promise<{ updatedAt: string; ups: AgreedUp[] }> {
   if (agreedCache && Date.now() - agreedCache.at < INDEX_TTL_MS) return agreedCache.data;
   const empty = { updatedAt: '', ups: [] as AgreedUp[] };
   if (!r2) return empty;

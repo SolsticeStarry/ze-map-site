@@ -117,6 +117,30 @@ CREATE INDEX  IF NOT EXISTS idx_sub_user ...
 `worker/index.ts` 的 `fetch` 外面包了一层 try/catch：任何没接住的异常现在回 **JSON 500**
 （以前是 Cloudflare 的 HTML 错误页，前端 `.json()` 直接报「请求失败」）。
 
+## CPU 与套餐（2026-10-13 实测记录）
+
+口令哈希是全站**唯一故意烧 CPU** 的路径：PBKDF2-SHA256 / 10 万次迭代，一次注册或登录约
+**22~27 ms CPU**（接口本身是墙钟 ~1 秒，其余时间在等 I/O，不计 CPU）。对应的平台限制是：
+
+| 套餐 | 每次请求 CPU 上限 |
+|---|---|
+| Workers Free | **10 ms** |
+| Workers Paid | 30 秒（可调到 5 分钟） |
+
+超限时 Cloudflare 直接返回 **Error 1102**（`Worker exceeded resource limits`，分析里记成
+`exceededCpu`）—— 请求会被平台杀掉，Worker 里的 try/catch **拦不到**，所以只能事前防。
+
+**实测结论（2026-10-13）**：本站在当前账号下**没有被这条限制拦住** ——
+10-10 ~ 10-13 共 2,058 次调用全部 `success`、0 次 `exceededCpu`；现场实测注册 HTTP 200
+（PBKDF2 照跑）、登录 HTTP 200。也就是说：要么账号本身有 Workers 付费订阅
+（控制台首页那个 "Free" 指的是**网站套餐**，和 Workers 套餐是两条独立的账），
+要么 crypto.subtle 的耗时没有计入这条上限。
+
+⚠️ 这条是**平台侧策略**，不是我们能控制的：如果哪天开始严格执行，最先坏的就是
+`/api/register` 与 `/api/login`（返回 1102），而静态页面照常 —— 这种「半坏」最难发现。
+真要保底，只有两条路：把迭代数降到 3 万上下（约 8 ms，安全性下降），或者上 Workers 付费（$5/月）。
+排查用 `node ../tools/cf-usage.mjs`（含 exceededCpu 计数）。
+
 ## 防滥用（2026-10-11 加的一层）
 
 站长问「这种简单的注册方式会不会被人恶意刷」。真正会被打的**不是登录**（口令是 PBKDF2 派生的、

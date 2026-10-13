@@ -785,4 +785,57 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
     assert.equal(r.status, 400);
     assert.match(r.data.error, /暂时不可用/);
   });
+
+  /* ===== 授权 UP 主称号（2026-10-13 加） =====
+     同意名单在 R2（不进仓库），所以这里塞一个假的 TERR：只认 video-meta/agreed.json。 */
+  const withAgreed = (env, ups) => {
+    env.TERR = {
+      get: async (key) =>
+        key === 'video-meta/agreed.json'
+          ? { body: new Response(JSON.stringify({ updatedAt: '2026-10-13', ups })).body }
+          : null,
+    };
+    return env;
+  };
+
+  await t.test('账号昵称与 UP 名一致 → /api/me 带「授权 UP 主」徽章', async () => {
+    const { call, env } = await setup();
+    withAgreed(env, [{ u: '雨宫鹿奈', m: '254673567', videos: 6, maps: ['ze_a', 'ze_b'] }]);
+    await call('/api/register', { method: 'POST', body: { name: '雨宫鹿奈', password: 'pass12345' } });
+    const r = await call('/api/me');
+    assert.equal(r.status, 200);
+    assert.equal(r.data.user.up.name, '雨宫鹿奈');
+    assert.equal(r.data.user.up.videos, 6);
+    assert.equal(r.data.user.up.maps, 2, 'maps 回的是张数，不是 slug 列表');
+  });
+
+  await t.test('昵称对不上（雨宫鹿奈 ↔ 雨宫鹿奈_shikaNiko）→ 管理台 linkup 之后才有徽章', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    withAgreed(env, [{ u: '雨宫鹿奈_shikaNiko', m: '254673567', videos: 6, maps: ['ze_a'] }]);
+    await call('/api/register', { method: 'POST', body: { name: '雨宫鹿奈', password: 'pass12345' } });
+    assert.equal((await call('/api/me')).data.user.up, undefined, '默认不该自动认上');
+
+    const auth = { authorization: 'Bearer test-admin-token' };
+    const bad = await call('/api/admin/accounts', {
+      method: 'POST',
+      body: { id: 1, action: 'linkup', name: '不在名单里的人' },
+      headers: auth,
+    });
+    assert.equal(bad.status, 400, JSON.stringify(bad.data));
+    assert.match(bad.data.error, /同意名单里没有/);
+
+    const ok = await call('/api/admin/accounts', {
+      method: 'POST',
+      body: { id: 1, action: 'linkup', name: '雨宫鹿奈_shikaNiko' },
+      headers: auth,
+    });
+    assert.equal(ok.status, 200, JSON.stringify(ok.data));
+    const me = await call('/api/me');
+    assert.equal(me.data.user.up.name, '雨宫鹿奈_shikaNiko');
+    assert.equal(me.data.user.up.mid, '254673567', '带上 B 站 UID，页面才好做主页链接');
+
+    await call('/api/admin/accounts', { method: 'POST', body: { id: 1, action: 'unlinkup' }, headers: auth });
+    assert.equal((await call('/api/me')).data.user.up, undefined, '摘掉之后立刻没有徽章');
+  });
 });

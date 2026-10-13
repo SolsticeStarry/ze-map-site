@@ -34,6 +34,7 @@ const { Content } = await render(entry);
 const {
   title,
   titleEn,
+  aliases,
   game,
   cover: heroCover,
   workshopUrl,
@@ -238,6 +239,17 @@ const related = all
     <div class="container">
       <h1>{title}</h1>
       <p class="subtitle">{titleEn}</p>
+      {/*
+        其他社区叫法（2026-10-13 站长要求）：同一张图各社区叫法不一样
+        （爬雪山 / 雪山逃亡v6 / 多模式爬雪山 / 雪山大冒险），对不上名字的人靠这行找到图。
+        数据来自原稿的 aliases 或社区投稿，最多 8 条；没有就完全不渲染这行。
+      */}
+      {(aliases ?? []).length > 0 && (
+        <p class="alias-line">
+          <span class="alias-label">其他叫法</span>
+          {(aliases ?? []).map((a: string) => <span class="alias-chip">{a}</span>)}
+        </p>
+      )}
       <div class="hero-tags">
         <span class={`badge ${diffClass}`} title="难度分档与取值参考 FYS（风云社）的服务器地图列表">{difficulty}</span>
         <span class="badge">{game}</span>

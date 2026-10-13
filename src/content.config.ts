@@ -37,6 +37,10 @@ const maps = defineCollection({
     /* 视频类型标注：{ "BVxxxx": "地图档案" } —— 页面据此给对应的视频挂小标签（可选）。
        原稿写在 data/research/<slug>.json 的 videoKinds 里，由生成脚本带进 frontmatter。 */
     videoKinds: z.record(z.string(), z.string()).optional(),
+    /* 其他社区叫法（可选）：["X 社区：爬雪山【娱】", "UB 难度表：雪山逃亡v6"]
+       —— 页面显示在地图名下方的小字里，帮「对不上名字」的人找到图。
+       原稿（data/research）或社区投稿都能写；社区那份按追加 + 去重合并。 */
+    aliases: z.array(z.string()).optional(),
     releaseDate: z.coerce.string().optional(),
     lastUpdated: z.coerce.string().optional(),
     featured: z.boolean().default(false),

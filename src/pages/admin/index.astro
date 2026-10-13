@@ -671,13 +671,32 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       accountAction(acc.id, 'rename', { name });
     };
     actions.append(rename);
+    /*
+     * 授权 UP 主称号（2026-10-13）：站内昵称和 B 站昵称经常不一样
+     * （站上账号「雨宫鹿奈」↔ 视频署名「雨宫鹿奈_shikaNiko」），自动认不出来，所以留个人工入口。
+     * 名字必须与视频署名**完全一致**，否则服务端会拒（它拿 R2 的同意名单核对）。
+     */
+    const up = el('button', 'btn', '挂授权UP') as HTMLButtonElement;
+    up.type = 'button';
+    up.onclick = () => {
+      const next = prompt(`把「${acc.name}」挂到哪位 UP 主？\n（写 B 站昵称，要和站上视频署名完全一致）`, '');
+      if (next === null) return;
+      const name = next.trim();
+      if (!name) return setStatus('UP 昵称不能为空', true);
+      accountAction(acc.id, 'linkup', { name });
+    };
+    actions.append(up);
+    const unlink = el('button', 'btn', '摘称号') as HTMLButtonElement;
+    unlink.type = 'button';
+    unlink.onclick = () => accountAction(acc.id, 'unlinkup');
+    actions.append(unlink);
     box.append(actions);
     return box;
   }
 
   async function accountAction(
     id: number,
-    action: 'ban' | 'unban' | 'unlock' | 'reset' | 'rename',
+    action: 'ban' | 'unban' | 'unlock' | 'reset' | 'rename' | 'linkup' | 'unlinkup',
     extra: Record<string, unknown> = {}
   ) {
     setStatus('处理中…');

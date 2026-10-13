@@ -243,6 +243,14 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
                   rows="3"
                   placeholder="每行一个链接（https:// 开头）"
                 />
+              ) : f.kind === 'textlist' ? (
+                /* 一组短文本（目前只有「其他社区叫法」）：一行一条，写成「社区名：叫法」 */
+                <textarea
+                  id={`f-in-${f.key}`}
+                  data-input={f.key}
+                  rows="4"
+                  placeholder="每行一条，例如：X 社区：爬雪山【娱】"
+                />
               ) : (
                 <input
                   id={`f-in-${f.key}`}
@@ -654,11 +662,31 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     addItemRow();
   }
 
+  /*
+   * 和「这张图现在长什么样」有关的提示（2026-10-13 加）：
+   * 「地图中文名」只该用在**标题还是地图代码**的图上；已经有中文名的图，
+   * 改名字属于译名之争，应该走「其他社区叫法」——否则 400 多张没名的图还没补完，
+   * 已有的 500 多张先被改乱了。提示只做提醒，最终由审核人把关。
+   */
+  function mapSpecificHint(key: string): string {
+    if (key !== 'title' && key !== 'aliases') return '';
+    if (!mapInfo) return '';
+    const cur = String(mapInfo.title ?? '');
+    const en = String(mapInfo.titleEn ?? '');
+    if (key === 'title') {
+      return /[\u3400-\u9fff]/.test(cur)
+        ? `提醒：这张图现在的标题是「${cur}」，已经有中文名了 —— 如果只是叫法不一样，请改投「其他社区叫法」。`
+        : `这张图现在显示的是地图代码「${en}」，你填的中文名会当成条目标题显示。`;
+    }
+    return `这张图现在的标题是「${cur}」。只写确实见过别人这么叫的，并在前面写明是哪个社区。`;
+  }
+
   function showField(key: string) {
     for (const el of document.querySelectorAll<HTMLElement>('[data-block]')) {
       el.hidden = el.dataset.block !== key;
     }
-    hintEl.textContent = rules[key]?.hint ?? '';
+    const extra = mapSpecificHint(key);
+    hintEl.textContent = extra ? `${rules[key]?.hint ?? ''}　${extra}` : (rules[key]?.hint ?? '');
   }
 
   /* ===== 修订一条已通过的社区投稿 =====
@@ -1120,7 +1148,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     if (!el) return undefined;
     const kind = rules[key]?.kind;
     if (kind === 'int') return el.value === '' ? '' : Number(el.value);
-    if (kind === 'tags' || kind === 'urlList') {
+    if (kind === 'tags' || kind === 'urlList' || kind === 'textlist') {
       return el.value
         .split('\n')
         .map((s) => s.trim())

@@ -572,6 +572,11 @@ function renderEntry(rec, research, wsRec, gfl) {
     research?.videoKinds && Object.keys(research.videoKinds).length
       ? `videoKinds: ${JSON.stringify(research.videoKinds)}`
       : null,
+    /*
+     * 其他社区叫法（可选）：["X 社区：爬雪山【娱】", …] —— 页面在地图名下方排成小标签，
+     * 给「在别的社区听过另一个名字」的人用。不写这一行的图，MDX 输出一个字节都不变。
+     */
+    research?.aliases?.length ? `aliases: [${research.aliases.map((x) => JSON.stringify(x)).join(', ')}]` : null,
     research?.sources?.length ? `sources: [${research.sources.map((x) => JSON.stringify(x)).join(', ')}]` : null,
     `stub: ${hasEditorial ? 'false' : 'true'}`,
     /*

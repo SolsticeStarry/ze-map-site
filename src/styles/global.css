@@ -486,6 +486,18 @@ img { max-width: 100%; display: block; }
 }
 .am-me-id { display: grid; gap: 4px; justify-items: start; min-width: 0; }
 .am-me-id b { font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
+/* 「授权 UP 主」称号（页头账号面板里那条）：和账号页的 .acc-up-badge 同一套金色描边 */
+.am-up-badge {
+  padding: 1px 8px;
+  border: 1px solid #d8b46a;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #e8c884;
+  background: rgba(216, 180, 106, 0.12);
+  white-space: nowrap;
+}
+[data-theme="light"] .am-up-badge { color: #8a6516; border-color: #c39a3a; background: rgba(195, 154, 58, 0.14); }
 .am-me-stats { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
 .am-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .am-links .acc-btn { padding: 8px 10px; font-size: 13px; }
@@ -942,6 +954,41 @@ img { max-width: 100%; display: block; }
 }
 
 .hero-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/*
+ * 「其他社区叫法」那一行（地图名下方的小字）—— 2026-10-13 加。
+ * 各社区对同一张图的叫法不一样，这行专门给「对不上名字」的人看：
+ * 所以放在标题正下方、字号最小、颜色最淡 —— 不抢主标题，但一眼能扫到。
+ */
+.alias-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.alias-label {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.alias-chip {
+  padding: 1px 9px;
+  border: 1px dashed var(--border-2, var(--border));
+  border-radius: 999px;
+  color: #cfd6e6;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="light"] .alias-chip { color: var(--text); }
 
 .hero-tags .badge {
   background: rgba(255,255,255,0.05);
@@ -3248,6 +3295,27 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 .acc-id { flex: 1 1 200px; min-width: 0; }
 .acc-id h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .acc-id-meta { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
+
+/*
+ * 「授权 UP 主」称号（2026-10-13 加）：账号对应到已同意收录其视频的 UP 主时，显示在昵称下方。
+ * 用金色的描边而不是填充 —— 它是**身份标注**，不该盖过等级徽章那套配色。
+ */
+.acc-up { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
+
+.acc-up-badge {
+  padding: 2px 9px;
+  border: 1px solid #d8b46a;
+  border-radius: 999px;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: #e8c884;
+  background: rgba(216, 180, 106, 0.12);
+  white-space: nowrap;
+}
+
+.acc-up-text { color: var(--muted); }
+
+[data-theme="light"] .acc-up-badge { color: #8a6516; border-color: #c39a3a; background: rgba(195, 154, 58, 0.14); }
 .acc-sep { opacity: 0.5; }
 .acc-level { display: grid; gap: 6px; justify-items: end; text-align: right; }
 .acc-level-name {

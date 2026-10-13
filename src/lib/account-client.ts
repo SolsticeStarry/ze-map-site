@@ -24,6 +24,21 @@ export interface AccountUser extends AccountLevel {
   name: string;
   contact: string;
   createdAt: number;
+  /**
+   * 「授权 UP 主」称号（2026-10-13 加）：这个账号对应一位已同意本站收录其视频的 UP 主时才有。
+   * 名单来自 R2 的 video-meta/agreed.json，站点昵称与 B 站昵称不一致的由管理台人工挂上
+   * （worker 的 linkup 动作）。页面据此在昵称旁显示徽章。
+   */
+  up?: {
+    /** B 站昵称（与站上视频署名一致） */
+    name: string;
+    /** B 站 UID */
+    mid: string;
+    /** 本站收录了他几条视频 */
+    videos: number;
+    /** 这些视频分布在几张图的页面上 */
+    maps: number;
+  };
 }
 
 export interface AccountSubmission {

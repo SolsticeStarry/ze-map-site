@@ -124,6 +124,14 @@ import QqGroup from '../components/QqGroup.astro';
           <div class="acc-avatar" id="me-avatar">·</div>
           <div class="acc-id">
             <h2 id="me-name">—</h2>
+            {/*
+              「授权 UP 主」称号（2026-10-13 加）：账号对应到一位已同意本站收录其视频的 UP 主时显示。
+              没有这一层时整块隐藏，账号页与以前完全一样。
+            */}
+            <p class="acc-up" id="me-up" hidden>
+              <span class="acc-up-badge">授权 UP 主</span>
+              <span class="acc-up-text" id="me-up-text"></span>
+            </p>
             <p class="acc-id-meta">
               <span id="me-since"></span>
               <span class="acc-sep">·</span>
@@ -346,6 +354,17 @@ import QqGroup from '../components/QqGroup.astro';
 
       $('me-avatar')!.textContent = initialOf(me.name);
       $('me-name')!.textContent = me.name;
+      /* 授权 UP 主称号：只有这个账号挂在同意名单上时才显示（名单在 R2，见 worker/auth.ts 的 agreedUpFor） */
+      const upBox = $('me-up');
+      const upText = $('me-up-text');
+      if (upBox && upText) {
+        if (me.up) {
+          upText.textContent = `B 站「${me.up.name}」—— 本站已收录他 ${me.up.videos} 条视频（${me.up.maps} 张图）`;
+          upBox.hidden = false;
+        } else {
+          upBox.hidden = true;
+        }
+      }
       $('me-since')!.textContent = `注册于 ${fmtDate(me.createdAt)}`;
       $('me-no')!.textContent = `#${me.id}`;
       $('me-level')!.textContent = me.level;
