@@ -19,6 +19,12 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
   hint: (rule.hint as string) ?? '',
   values: (rule.values as string[]) ?? [],
 }));
+
+/*
+ * 「要提交哪一项」里**不列**整篇草稿（rule.hidden）—— 它是独立模式，有自己的入口与界面
+ * （2026-10-13 站长要求：不要埋在这排按钮里）。编辑器本身仍然照常渲染，只是选择器里看不到。
+ */
+const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any>)[f.key]?.hidden);
 ---
 
 <BaseLayout
@@ -88,28 +94,41 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     <form class="form-card s-card s-form" id="sub-form" hidden>
 
       {/*
-        大面积整理（2026-10-13）：站长要求**单独成块**，不要埋在「要提交哪一项」那排按钮里。
-        它和普通投稿不是一回事 —— 普通投稿是补一格，这个是**替这张图整理一整篇**，
-        所以给它一块独立入口（说的是「整篇改写、按小节合并」），点一下直接落到草稿编辑器。
+        两种模式（2026-10-13 站长要求分成两件事）：
+          · 单项补充 —— 补一格（难度 / 标签 / 视频…），字段选择器在这一档里；
+          · 大面积整理 —— 整篇草稿，独立界面（分节编辑器），**字段选择器里不再出现它**。
+        默认单项；从地图页「📝 大面积整理」进来（?field=draft）直接落在整理档。
       */}
-      <section class="draft-cta" id="draft-cta">
+      <div class="mode-tabs" role="tablist" aria-label="投稿方式">
+        <button class="mode-tab is-on" type="button" id="mode-tab-single" role="tab">单项补充</button>
+        <button class="mode-tab" type="button" id="mode-tab-draft" role="tab">大面积整理</button>
+      </div>
+
+      {/* 提交成功后点「继续补充这张图的其它项」回到表单时显示（文案由脚本填） */}
+      <p class="s-ok-note" id="s-ok-note" hidden />
+
+      {/*
+        大面积整理（2026-10-13）：独立成块 + 独立界面。
+        它不是「补一格」，而是**替这张图整理一整篇**；下面的编辑器按小节生成卡片，
+        提交时拼成 `## 小节` 的草稿文本（服务端校验与采纳逻辑不变）。
+      */}
+      <section class="draft-cta" id="draft-cta" hidden>
         <div class="dc-main">
           <span class="dc-badge">大面积整理</span>
           <h2 class="dc-title">给这张图写一整篇（整篇条目草稿）</h2>
           <p class="dc-sub" id="draft-cta-sub">
-            用 <code>## 小节标题</code> 分节写（简介 / 背景故事 / 关卡流程 / 神器道具 / 常见问题…）。
-            采纳时<strong>按小节合并</strong>：写到的节替换、没写到的小节原样保留 —— 不会因为一篇草稿把整张图推平。
-            需要登录，最多 2 万字，站长采纳后才算本站正文。
+            下面按小节列好了这张图现在的内容：<strong>想改哪节就改哪节</strong>，
+            改动会自动存在本地（写一半刷新也不会丢）。采纳时按小节合并：改过的替换、没动过的原样保留。
           </p>
           <p class="dc-state" id="draft-cta-state"></p>
         </div>
         <div class="dc-actions">
-          <button class="btn btn-primary btn-lg" type="button" id="draft-start">开始整篇整理</button>
+          <button class="btn" type="button" id="draft-back">返回单项补充</button>
           <span class="dc-note" id="draft-cta-note"></span>
         </div>
       </section>
 
-      <section class="s-step">
+      <section class="s-step" id="step-pick">
         <h2 class="s-step-title"><span class="s-num">1</span>选地图与要补充的项目</h2>
         <div class="form-grid">
           <div class="form-row">
@@ -119,7 +138,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
           <div class="form-row">
             <label for="f-field">要提交哪一项</label>
             <select id="f-field">
-              {fields.map((f) => <option value={f.key}>{f.label}</option>)}
+              {pickerFields.map((f) => <option value={f.key}>{f.label}</option>)}
             </select>
             {/* 选项按钮由脚本按 select 生成（见页面底部的「字段快捷按钮」） */}
             <div class="field-chips" id="field-chips" role="group" aria-label="要提交哪一项"></div>
@@ -267,21 +286,95 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
                 />
               ) : f.kind === 'doc' ? (
                 /*
-                  整篇条目草稿（2026-10-13）：这个框是「大面积整理」的入口。
-                  右侧对照面板会把本站现有正文列出来，方便照着补/改；
-                  没写到的小节在采纳时不会被删（同节替换、新节追加）。
+                  整篇条目草稿（2026-10-13）：**分节编辑器**，不再让投稿人对着空白大框写。
+                  页面按这张图现在的小节生成卡片（有正文的带出正文，直接在上面改），
+                  点「＋ 再加一节」也能新开一节；提交时拼成 `## 小节` 的文本交给服务端
+                  （校验与采纳逻辑完全不变，见 shared/draft-merge.mjs）。
+                  底下的 textarea 是「源码模式」，给习惯直接写 Markdown 的人留的后门，两边实时同步。
                 */
                 <div class="doc-wrap">
                   <p class="doc-login" id="doc-login-hint" hidden>
                     整篇草稿需要<strong>登录</strong>后才能提交（大面积改写要能追到人）—— 右上角登录即可，
                     没有账号 10 秒就能注册，不登录也照样能投其它字段。
                   </p>
+
+                  <div class="doc-intro">
+                    <label for={`f-in-${f.key}-intro`}>导语 / 简介（会变成条目开头那段）</label>
+                    <textarea
+                      id={`f-in-${f.key}-intro`}
+                      data-doc-intro
+                      rows="4"
+                      placeholder="一两段说清：这张图是什么题材、大致怎么玩、有什么特别之处。"
+                    />
+                  </div>
+
+                  <div class="doc-sections-head">
+                    <span class="doc-sections-title">小节</span>
+                    <span class="doc-sections-hint">改哪节就动哪节；不改的留空，采纳时原样保留</span>
+                    <button class="btn btn-ghost doc-collapse-all" type="button" id="doc-collapse-all">
+                      全部收起
+                    </button>
+                  </div>
+                  <div class="doc-sections" id="doc-sections" />
+
+                  <div class="doc-add">
+                    <select id="doc-add-title" aria-label="要加哪一节">
+                      <option value="">选择要加的小节…</option>
+                      <option>简介</option>
+                      <option>背景故事</option>
+                      <option>基本信息</option>
+                      <option>版本历史</option>
+                      <option>关卡流程</option>
+                      <option>神器 / 道具</option>
+                      <option>人类策略</option>
+                      <option>僵尸策略</option>
+                      <option>常见问题</option>
+                      <option>社区评价</option>
+                      <option>更新日志</option>
+                      <option>来源</option>
+                      <option value="__custom">自定义标题…</option>
+                    </select>
+                    <button class="btn" type="button" id="doc-add-go">＋ 再加一节</button>
+                    <button class="btn btn-ghost" type="button" id="doc-preview-btn">预览</button>
+                    <button class="btn btn-ghost" type="button" id="doc-src-toggle">源码模式</button>
+                    <button class="btn btn-ghost" type="button" id="doc-history-btn" hidden>🕘 历史版本</button>
+                  </div>
+
+                  <p class="doc-restore" id="doc-restore-note" hidden>
+                    <span id="doc-restore-text" />
+                    <button class="btn btn-ghost" type="button" id="doc-restore-clear">清除本地暂存</button>
+                  </p>
+
+                  <div class="doc-history" id="doc-history" hidden>
+                    <div class="doc-history-head">
+                      <strong>历史版本（这台电脑上的最近 3 版）</strong>
+                      <button class="btn btn-ghost" type="button" id="doc-history-close">收起</button>
+                    </div>
+                    <p class="doc-history-hint">
+                      每次停下来写一会儿会留一个版本点（约 1.5 分钟一个），最多留 3 版。
+                      只存在你自己的浏览器里，换设备 / 清缓存就没了。
+                    </p>
+                    <div class="doc-history-list" id="doc-history-list" />
+                  </div>
+
+                  <div class="doc-preview" id="doc-preview" hidden>
+                    <div class="doc-preview-head">
+                      <strong>预览（页面上的样子）</strong>
+                      <button class="btn btn-ghost" type="button" id="doc-preview-close">关闭预览</button>
+                    </div>
+                    <div class="doc-preview-body" id="doc-preview-body" />
+                  </div>
+
                   <textarea
                     id={`f-in-${f.key}`}
                     data-input={f.key}
                     rows="18"
-                    placeholder={'导语：这张图是什么、大致怎么玩（这一段会变成条目开头的简介）\n\n## 背景故事\n…\n\n## 关卡流程\n…\n\n## 神器 / 道具\n…'}
+                    hidden
+                    placeholder={'导语：这张图是什么、大致怎么玩（这一段会变成条目开头的简介）\n\n## 背景故事\n…\n\n## 关卡流程\n…'}
                   />
+                  <p class="form-hint" id="doc-src-note" hidden>
+                    源码模式：上面写的内容与这里实时同步。用一行 <code>## 小节标题</code> 分节。
+                  </p>
                 </div>
               ) : f.kind === 'textlist' ? (
                 /* 一组短文本（目前只有「其他社区叫法」）：一行一条，写成「社区名：叫法」 */
@@ -1183,18 +1276,600 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
 
   document.getElementById('batch-add')?.addEventListener('click', () => addToBatch());
 
+  /*（原「开始整篇整理」按钮已被模式切换取代 —— 见下面的 applyMode）*/
+
   /*
-   * 「开始整篇整理」：切到草稿字段 + 滚到编辑器。
-   * 顺便把这张图的现状说清楚（有没有本站正文、有几个小节、有没有别人已经写了草稿）——
-   * 投稿人心里有底，才敢动手写一整篇。
+   * ===== 两种模式：单项补充 / 大面积整理（2026-10-13） =====
+   * 「大面积整理」不再只是字段选择器里的一个选项，而是一档独立界面：
+   *   · 单项档：显示第 1 步（选地图 + 选字段）与那一个字段的编辑器；
+   *   · 整理档：隐藏第 1 步与所有单项编辑器，只显示草稿的分节编辑器。
+   * ?field=draft 进来直接落在整理档；点「返回单项补充」切回去。
    */
-  document.getElementById('draft-start')?.addEventListener('click', () => {
-    fieldSel.value = 'draft';
-    showField('draft');
-    prefill('draft');
-    const block = document.querySelector<HTMLElement>('[data-block="draft"]');
-    block?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    document.querySelector<HTMLTextAreaElement>('[data-input="draft"]')?.focus();
+  type Mode = 'single' | 'draft';
+  let mode: Mode = 'single';
+
+  function applyMode(next: Mode): void {
+    mode = next;
+    const isDraft = next === 'draft';
+    document.getElementById('mode-tab-single')?.classList.toggle('is-on', !isDraft);
+    document.getElementById('mode-tab-draft')?.classList.toggle('is-on', isDraft);
+    const pick = document.getElementById('step-pick');
+    if (pick) pick.hidden = isDraft;
+    document.getElementById('draft-cta')!.hidden = !isDraft;
+    const draftField = document.querySelector<HTMLElement>('[data-block="draft"]');
+    if (isDraft) {
+      for (const el of document.querySelectorAll<HTMLElement>('[data-block]')) {
+        el.hidden = el.dataset.block !== 'draft';
+      }
+      if (draftField) draftField.hidden = false;
+      renderDraftEditor();
+      draftField?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      showField(fieldSel.value);
+    }
+  }
+
+  document.getElementById('mode-tab-single')?.addEventListener('click', () => applyMode('single'));
+  document.getElementById('mode-tab-draft')?.addEventListener('click', () => applyMode('draft'));
+  document.getElementById('draft-back')?.addEventListener('click', () => applyMode('single'));
+
+  /* ===== 分节编辑器 =====
+     maps.json 里带着这张图现在的小节（title + body）与简介。进来时按它们生成卡片：
+     有正文的带出正文（直接在上面改），没有的就是空白卡片等着填。
+     提交时再拼回 `## 标题\n正文` 的文本 —— 服务端只看那段文本，所以校验/采纳逻辑一行没动。 */
+  type DocSection = { title: string; body: string; collapsed?: boolean };
+  /** 含组件 / 表格的小节：草稿编辑器改不了（投稿正文禁 < > { }），标出来但**不参与提交** */
+  type LockedSection = { title: string; note: string };
+  let docSections: DocSection[] = [];
+  let docLocked: LockedSection[] = [];
+  /** 刚进来时每一节的原文（标题 → 正文），用来标记「已改动」与「恢复原文」 */
+  let docOriginal = new Map<string, string>();
+  let docReady = false;
+
+  const originalBodyOf = (title: string): string | null => {
+    const key = title.trim();
+    return key && docOriginal.has(key) ? docOriginal.get(key)! : null;
+  };
+
+  /** 这一段是不是「纯文本」—— 含 < > { } 的是 MDX 组件或 HTML 表格，社区草稿不收（构建安全） */
+  const plainTextOk = (s: string) => !/[<>{}]/.test(String(s ?? ''));
+
+  const docIntroEl = () => document.querySelector<HTMLTextAreaElement>('[data-doc-intro]');
+  const docSrcEl = () => document.querySelector<HTMLTextAreaElement>('[data-input="draft"]');
+
+  function renderDraftEditor(): void {
+    if (docReady) return;
+    docReady = true;
+    /* 导语改动也要回写源码（不然只改导语、没动小节时，提交的是旧文本） */
+    docIntroEl()?.addEventListener('input', () => syncDocSource());
+    const existing = String(mapInfo?.draft ?? '').trim();
+    if (existing) {
+      /* 已经有人写了草稿：把那篇拆开带进来（在别人基础上改，别各写一篇） */
+      const parts = existing.split(/^##\s+/m);
+      const intro = parts[0].trim();
+      if (docIntroEl()) docIntroEl()!.value = intro;
+      docSections = parts
+        .slice(1)
+        .map((chunk) => {
+          const nl = chunk.indexOf('\n');
+          return nl < 0
+            ? { title: chunk.trim(), body: '' }
+            : { title: chunk.slice(0, nl).trim(), body: chunk.slice(nl + 1).trim() };
+        })
+        .filter((s) => s.title);
+    } else {
+      const cur = Array.isArray(mapInfo?.sections) ? (mapInfo.sections as Array<{ title: string; body: string }>) : [];
+      const usable = cur.filter((s) => plainTextOk(String(s.body ?? '')));
+      const locked = cur.filter((s) => !plainTextOk(String(s.body ?? '')));
+      const sum = String(mapInfo?.summary ?? '');
+      /* 简介里若含组件/HTML 也不能带进来（同样是禁字符），那种情况留空 = 采纳时不改简介 */
+      if (docIntroEl()) docIntroEl()!.value = plainTextOk(sum) ? sum : '';
+      docSections = usable.map((s) => ({ title: String(s.title ?? ''), body: String(s.body ?? '') }));
+      /* 原文统一 trim 后再比对：卡片里显示/提交的正文本来就会 trim，
+         不归一化的话「从源码切回来」会被误判成每一节都改过（同样的内容也标成已改动）。 */
+      docOriginal = new Map(docSections.map((s) => [s.title.trim(), s.body.trim()]));
+      docLocked = locked.map((s) => ({
+        title: String(s.title ?? ''),
+        note: '这一节含组件或表格（草稿编辑器改不了），采纳时会原样保留',
+      }));
+    }
+    renderDocSections();
+    /* 有本地暂存就恢复（写到一半被刷新 / 关掉的情况），否则就是上面按原稿预填的内容 */
+    restoreLocal();
+  }
+
+  function renderDocSections(): void {
+    const box = document.getElementById('doc-sections');
+    if (!box) return;
+    box.textContent = '';
+    docSections.forEach((sec, i) => {
+      /*
+       * 折叠状态记在小节对象上（不是 DOM 上）：重排 / 恢复原文 / 源码来回都不会丢。
+       * 默认把长小节收起来 —— 一张图动辄七八节，全摊开要滚很久才找得到想改的那节；
+       * 短小节（本来就没几行）留开着更省事。
+       */
+      if (sec.collapsed === undefined) sec.collapsed = sec.body.trim().length > 240;
+      const card = document.createElement('div');
+      const changed = originalBodyOf(sec.title) !== null && originalBodyOf(sec.title) !== sec.body.trim();
+      card.className = `doc-card${changed ? ' is-changed' : ''}${sec.collapsed ? ' is-collapsed' : ''}`;
+
+      const head = document.createElement('div');
+      head.className = 'doc-card-head';
+      const fold = docToolBtn(sec.collapsed ? '▸' : '▾', sec.collapsed ? '展开这一节' : '收起这一节', () => {
+        docSections[i].collapsed = !docSections[i].collapsed;
+        renderDocSections();
+      }, 'doc-fold');
+      const title = document.createElement('input');
+      title.className = 'doc-card-title';
+      title.value = sec.title;
+      title.placeholder = '小节标题（例如「关卡流程」）';
+      title.addEventListener('input', () => {
+        docSections[i].title = title.value;
+        syncDocSource();
+        markDirty();
+      });
+      /* 顺序：长大纲小节顺序靠拖拽太复杂，给两个上下箭头就够用（顺序会影响页面上的排列） */
+      const up = docToolBtn('▲', '上移一节', () => {
+        if (i === 0) return;
+        [docSections[i - 1], docSections[i]] = [docSections[i], docSections[i - 1]];
+        renderDocSections();
+      });
+      const down = docToolBtn('▼', '下移一节', () => {
+        if (i >= docSections.length - 1) return;
+        [docSections[i + 1], docSections[i]] = [docSections[i], docSections[i + 1]];
+        renderDocSections();
+      });
+      const revert = docToolBtn('↺', '恢复这一节的原文', () => {
+        const orig = originalBodyOf(docSections[i].title);
+        if (orig === null) return;
+        docSections[i].body = orig;
+        renderDocSections();
+      });
+      if (originalBodyOf(sec.title) === null) revert.disabled = true;
+      const del = docToolBtn('×', '删掉这一节（采纳时保留本站原有的同名小节）', () => {
+        docSections.splice(i, 1);
+        renderDocSections();
+      });
+      head.append(fold, title, up, down, revert, del);
+
+      /* 收起时看到的那一行：正文摘要 + 字数 / 是否改过（点一下也能展开） */
+      const summary = document.createElement('p');
+      summary.className = 'doc-card-summary';
+      summary.textContent = `${docBodyPreview(sec.body)} · ${cardMetaText(sec.title, sec.body)}`;
+      summary.addEventListener('click', () => {
+        docSections[i].collapsed = false;
+        renderDocSections();
+      });
+
+      const body = document.createElement('textarea');
+      body.className = 'doc-card-body';
+      body.rows = 10;
+      body.value = sec.body;
+      body.placeholder = '这一节的内容（支持简单 Markdown；插图写一行 :::figure 2，图在左）';
+      body.addEventListener('input', () => {
+        docSections[i].body = body.value;
+        syncDocSource();
+        markDirty();
+        /* 只更新本卡片的「已改动」标记与字数，不重建 DOM（重建会丢光标） */
+        card.classList.toggle('is-changed', originalBodyOf(sec.title) !== null && originalBodyOf(sec.title) !== body.value.trim());
+        const meta = card.querySelector<HTMLElement>('.doc-card-meta');
+        if (meta) meta.textContent = cardMetaText(sec.title, body.value);
+      });
+
+      const foot = document.createElement('div');
+      foot.className = 'doc-card-foot';
+      const meta = document.createElement('span');
+      meta.className = 'doc-card-meta';
+      meta.textContent = cardMetaText(sec.title, sec.body);
+      foot.append(meta);
+      /* 插图片块：图片集里有图时才有意义（序号按图片集顺序，页面上的 :::figure 就是这个序号） */
+      const galleryCount = Number(mapInfo?.galleryCount ?? 0);
+      if (galleryCount > 0) {
+        foot.append(
+          docToolBtn(`🖼 插入图片块（${galleryCount} 张可选）`, '把 :::figure 模板插到光标处', () => {
+            const n = prompt(`引用图片集里第几张？（1~${galleryCount}）`, '1');
+            if (n === null) return;
+            const idx = Number(n);
+            if (!Number.isInteger(idx) || idx < 1 || idx > galleryCount) {
+              return showError(`图片序号要在 1~${galleryCount} 之间`);
+            }
+            insertAtCursor(body, `\n:::figure ${idx}\n\n:::\n`);
+            docSections[i].body = body.value;
+            syncDocSource();
+            markDirty();
+          }),
+        );
+      }
+
+      card.append(head, summary, body, foot);
+      box.append(card);
+    });
+
+    /* 含组件/表格的小节：只列出来说明「改不了但会保留」，不给输入框、也不进提交文本 */
+    for (const lock of docLocked) {
+      const card = document.createElement('div');
+      card.className = 'doc-card is-locked';
+      const head = document.createElement('div');
+      head.className = 'doc-card-head';
+      const title = document.createElement('span');
+      title.className = 'doc-card-title is-static';
+      title.textContent = lock.title;
+      head.append(title);
+      const note = document.createElement('p');
+      note.className = 'doc-card-note';
+      note.textContent = lock.note;
+      card.append(head, note);
+      box.append(card);
+    }
+    renderCollapseAllBtn();
+    syncDocSource();
+  }
+
+  /** 收起时那一行摘要：正文压成一行、前 60 字（还没写就说清楚） */
+  function docBodyPreview(body: string): string {
+    const one = String(body ?? '').replace(/\s+/g, ' ').trim();
+    if (!one) return '这一节还空着';
+    const chars = [...one];
+    return chars.length > 60 ? `${chars.slice(0, 60).join('')}…` : one;
+  }
+
+  /** 「全部收起 / 全部展开」按钮：还有一节开着就是「全部收起」，否则「全部展开」 */
+  function renderCollapseAllBtn(): void {
+    const b = document.getElementById('doc-collapse-all') as HTMLButtonElement | null;
+    if (!b) return;
+    b.hidden = docSections.length === 0;
+    b.textContent = docSections.some((s) => !s.collapsed) ? '全部收起' : '全部展开';
+  }
+
+  document.getElementById('doc-collapse-all')?.addEventListener('click', () => {
+    const anyOpen = docSections.some((s) => !s.collapsed);
+    for (const s of docSections) s.collapsed = anyOpen;
+    renderDocSections();
+  });
+
+  /** 小节卡片底部那行：字数 + 已改动提示（对照刚进来时的原文；两边都 trim 过再比） */
+  function cardMetaText(title: string, body: string): string {
+    const len = [...body.trim()].length;
+    const orig = originalBodyOf(title);
+    if (orig === null) return `${len} 字 · 新增的小节`;
+    if (orig !== body.trim()) return `${len} 字 · 已改动（原文 ${[...orig].length} 字）`;
+    return `${len} 字 · 与本站原文一致`;
+  }
+
+  function docToolBtn(label: string, title: string, onClick: () => void, extra = ''): HTMLButtonElement {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `btn btn-ghost doc-tool${extra ? ` ${extra}` : ''}`;
+    b.textContent = label;
+    b.title = title;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  /** 在某段文本的光标处插入一段（图片块模板用） */
+  function insertAtCursor(el: HTMLTextAreaElement, text: string): void {
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? start;
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    el.selectionStart = el.selectionEnd = start + text.length;
+    el.focus();
+  }
+
+  /** 把卡片 + 导语拼成草稿文本，写回那个隐藏的 textarea（提交读的就是它） */
+  function syncDocSource(): void {
+    const el = docSrcEl();
+    if (!el) return;
+    const intro = docIntroEl()?.value.trim() ?? '';
+    const blocks = docSections
+      .filter((s) => s.title.trim())
+      .map((s) => `## ${s.title.trim()}\n${s.body.trim()}`.trimEnd());
+    el.value = [intro, ...blocks].filter(Boolean).join('\n\n');
+  }
+
+  function addDocSection(title: string): void {
+    docSections.push({ title, body: '', collapsed: false });
+    renderDocSections();
+    /* 滚到新卡片并把光标放进正文，省一次点击。
+       只找可编辑的卡片 —— 后面还挂着一串「含组件、改不了」的只读卡片，
+       直接取最后一 .doc-card 会滚到那串上去（新卡片根本不在视野里）。 */
+    const cards = [...document.querySelectorAll<HTMLElement>('#doc-sections .doc-card:not(.is-locked)')];
+    const last = cards[cards.length - 1];
+    last?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    last?.querySelector<HTMLTextAreaElement>('.doc-card-body')?.focus();
+  }
+
+  document.getElementById('doc-add-go')?.addEventListener('click', () => {
+    const sel = document.getElementById('doc-add-title') as HTMLSelectElement | null;
+    if (!sel) return;
+    const picked = sel.value;
+    if (!picked) return;
+    if (picked === '__custom') {
+      const t = prompt('小节标题写什么？（例如「彩蛋与机关」）', '');
+      if (t === null || !t.trim()) return;
+      addDocSection(t.trim());
+    } else {
+      addDocSection(picked);
+    }
+    sel.value = '';
+  });
+
+  document.getElementById('doc-src-toggle')?.addEventListener('click', (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const src = docSrcEl();
+    const note = document.getElementById('doc-src-note');
+    if (!src) return;
+    const showSrc = src.hidden;
+    if (!showSrc) {
+      /* 从源码切回卡片：把源码拆成卡片 */
+      loadDocFromText(src.value);
+    }
+    src.hidden = !showSrc;
+    if (note) note.hidden = !showSrc;
+    btn.textContent = showSrc ? '收起源码' : '源码模式';
+    const sections = document.getElementById('doc-sections');
+    if (sections) sections.hidden = showSrc;
+    if (!showSrc) markDirty();
+  });
+
+  /* ===== 本地暂存 + 版本历史（2026-10-13；版本历史当天稍后补） =====
+     整篇草稿是长文：写一半刷新、误关标签页、被家里人点走 —— 都会白写。这里每次输入
+     防抖存进 localStorage（键按地图分开），下次打开自动恢复，并提示「已恢复上次未提交的内容」。
+     只留最新一版时，改坏了 / 删多了就找不回来（本地没有撤销），所以再留几个版本点：
+       · 隔一会儿（约 1.5 分钟）内容确实变了 → 把「当时那一版」留下来，最多 3 版；
+       · 「历史版本」面板列出每一版的时间 / 字数 / 首行摘要，一键恢复；
+       · 恢复本身也会先把「恢复前的内容」存成一版 —— 恢复不等于删除。
+     全部只在这台电脑的浏览器里，不涉及任何服务端数据，也不上传；随时能清。 */
+  const AUTOSAVE_PREFIX = 'ze-submit-draft:';
+  const HISTORY_MAX = 3;
+  /** 两个版本点之间至少隔这么久，免得每敲一句停一下就留一版 */
+  const SNAP_GAP_MS = 90_000;
+  let autosaveTimer: number | undefined;
+  let dirty = false;
+
+  type LocalSnap = { at: number; text: string };
+  type LocalSave = { at: number; text: string; history: LocalSnap[]; snapAt: number };
+
+  const autosaveKey = () => `${AUTOSAVE_PREFIX}${slug}`;
+
+  /** 读本地暂存（老格式 {at,text} 也认，history 缺省为空） */
+  function readLocal(): LocalSave | null {
+    try {
+      const raw = localStorage.getItem(autosaveKey());
+      if (!raw) return null;
+      const j = JSON.parse(raw) as { at?: number; text?: string; history?: unknown; snapAt?: number };
+      const text = String(j.text ?? '');
+      if (!text.trim()) return null;
+      const history = Array.isArray(j.history)
+        ? (j.history as Array<{ at?: number; text?: string }>)
+            .map((h) => ({ at: Number(h?.at ?? 0), text: String(h?.text ?? '') }))
+            .filter((h) => h.text.trim())
+        : [];
+      return { at: Number(j.at ?? 0), text, history, snapAt: Number(j.snapAt ?? 0) };
+    } catch {
+      return null;
+    }
+  }
+
+  function writeLocal(rec: LocalSave): void {
+    try {
+      localStorage.setItem(autosaveKey(), JSON.stringify(rec));
+    } catch {
+      /* 隐私模式 / 配额满：不打扰用户，只是没有本地暂存 */
+    }
+  }
+
+  /** 存一版。forceSnap = 不管间隔多久，都先给「上一版」留一个版本点（恢复历史版本时用） */
+  /** 存一版：内容变了、且离上一个版本点够久 → 先把「上一版」留成历史，再写当前版 */
+  function commitLocal(text: string): void {
+    const now = Date.now();
+    const prev = readLocal();
+    let history = prev ? prev.history.slice() : [];
+    let snapAt = prev?.snapAt ?? 0;
+    const prevText = prev?.text ?? '';
+    if (prevText && prevText !== text && history[0]?.text !== prevText && now - snapAt > SNAP_GAP_MS) {
+      history = [{ at: prev?.at || now, text: prevText }, ...history];
+      snapAt = now;
+    }
+    /* 和历史里某一版一样的内容不再重复留一条（它本来就是「当前版」了） */
+    history = history.filter((h) => h.text !== text).slice(0, HISTORY_MAX);
+    writeLocal({ at: now, text, history, snapAt: snapAt || now });
+    renderHistoryBtn();
+  }
+
+  function markDirty(): void {
+    dirty = true;
+    window.clearTimeout(autosaveTimer);
+    autosaveTimer = window.setTimeout(saveLocal, 700);
+  }
+
+  function saveLocal(): void {
+    const text = docSrcEl()?.value ?? '';
+    if (!text.trim()) return;
+    try {
+      commitLocal(text);
+    } catch {
+      /* 同上：存不了就算了，别打断写作 */
+    }
+  }
+
+  function clearLocal(): void {
+    try {
+      localStorage.removeItem(autosaveKey());
+    } catch {}
+    renderHistoryBtn();
+  }
+
+  function restoreLocal(): boolean {
+    const saved = readLocal();
+    renderHistoryBtn();
+    if (!saved) return false;
+    const text = saved.text.trim();
+    /* 和刚预填的内容一样就没必要「恢复」 */
+    if (text === (docSrcEl()?.value ?? '').trim()) return false;
+    loadDocFromText(text);
+    setRestoreNote(
+      `已恢复上次未提交的草稿（本地暂存${saved.at ? `，${new Date(saved.at).toLocaleString('zh-CN')}` : ''}）` +
+        '—— 不想要就点右面的「清除本地暂存」。'
+    );
+    dirty = true;
+    return true;
+  }
+
+  /** 蓝色的那条提示（本地暂存 / 历史版本都往这里写文案；按钮不跟着被清掉） */
+  function setRestoreNote(text: string): void {
+    const note = document.getElementById('doc-restore-note');
+    const span = document.getElementById('doc-restore-text');
+    if (span) span.textContent = text;
+    if (note) note.hidden = false;
+  }
+
+  const historyBox = () => document.getElementById('doc-history') as HTMLElement | null;
+
+  /** 「历史版本（N）」按钮的显隐与计数；面板开着时顺带刷新列表 */
+  function renderHistoryBtn(): void {
+    const btn = document.getElementById('doc-history-btn') as HTMLButtonElement | null;
+    const n = readLocal()?.history.length ?? 0;
+    if (btn) {
+      btn.hidden = n === 0;
+      btn.textContent = `🕘 历史版本（${n}）`;
+    }
+    if (n === 0) {
+      const box = historyBox();
+      if (box) box.hidden = true;
+    } else if (historyBox()?.hidden === false) {
+      renderHistoryList();
+    }
+  }
+
+  /** 历史版本列表：时间 + 字数 + 首行摘要 + 「恢复这一版」 */
+  function renderHistoryList(): void {
+    const list = document.getElementById('doc-history-list');
+    if (!list) return;
+    const snaps = readLocal()?.history ?? [];
+    list.textContent = '';
+    if (!snaps.length) {
+      const p = document.createElement('p');
+      p.className = 'doc-history-hint';
+      p.textContent = '还没有更早的版本 —— 再写一会儿就有了（每约 1.5 分钟留一版）。';
+      list.append(p);
+      return;
+    }
+    for (const snap of snaps) {
+      const row = document.createElement('div');
+      row.className = 'dh-row';
+      const meta = document.createElement('div');
+      meta.className = 'dh-meta';
+      const when = document.createElement('b');
+      when.textContent = snap.at ? new Date(snap.at).toLocaleString('zh-CN') : '（时间不明）';
+      const info = document.createElement('span');
+      info.textContent = `${[...snap.text.trim()].length} 字 · ${docBodyPreview(snap.text)}`;
+      meta.append(when, info);
+      const use = document.createElement('button');
+      use.type = 'button';
+      use.className = 'btn btn-ghost dh-use';
+      use.textContent = '恢复这一版';
+      use.addEventListener('click', () => restoreVersion(snap));
+      row.append(meta, use);
+      list.append(row);
+    }
+  }
+
+  /** 恢复到某一版：先把「现在这一版」留成历史，再把恢复的那一版设为当前（恢复 ≠ 删除） */
+  function restoreVersion(snap: LocalSnap): void {
+    const prev = readLocal();
+    /* 编辑器里的内容就是「现在这一版」；本地记的那份同源，取哪边都一样 */
+    const curText = (docSrcEl()?.value ?? '').trim();
+    loadDocFromText(snap.text);
+    const history = [
+      ...(curText && curText !== snap.text.trim()
+        ? [{ at: prev?.at || Date.now(), text: prev?.text?.trim() === curText ? prev.text : curText }]
+        : []),
+      ...(prev?.history ?? []),
+    ]
+      .filter((h) => h.text.trim() && h.text !== snap.text)
+      .slice(0, HISTORY_MAX);
+    writeLocal({ at: Date.now(), text: snap.text, history, snapAt: Date.now() });
+    renderHistoryBtn();
+    dirty = true;
+    const box = historyBox();
+    if (box) box.hidden = true;
+    const when = snap.at ? new Date(snap.at).toLocaleString('zh-CN') : '这一版';
+    setRestoreNote(
+      `已恢复到 ${when} 的内容 —— 恢复前的内容也留成了「历史版本」，点上面的按钮随时能换回去。`
+    );
+  }
+
+  document.getElementById('doc-history-btn')?.addEventListener('click', () => {
+    const box = historyBox();
+    if (!box) return;
+    box.hidden = !box.hidden;
+    if (!box.hidden) renderHistoryList();
+  });
+  document.getElementById('doc-history-close')?.addEventListener('click', () => {
+    const box = historyBox();
+    if (box) box.hidden = true;
+  });
+
+  /** 把一段草稿文本拆回卡片（恢复本地暂存 / 从源码切回来都用它） */
+  function loadDocFromText(text: string): void {
+    const parts = String(text ?? '').split(/^##\s+/m);
+    if (docIntroEl()) docIntroEl()!.value = parts[0].trim();
+    docSections = parts
+      .slice(1)
+      .map((chunk) => {
+        const nl = chunk.indexOf('\n');
+        return nl < 0 ? { title: chunk.trim(), body: '' } : { title: chunk.slice(0, nl).trim(), body: chunk.slice(nl + 1).trim() };
+      })
+      .filter((s) => s.title);
+    renderDocSections();
+  }
+
+  /** 草稿预览：按拼出来的文本渲染成页面上的样子（只读），省得脑补排版 */
+  function renderDocPreview(): void {
+    const box = document.getElementById('doc-preview');
+    const body = document.getElementById('doc-preview-body');
+    if (!box || !body) return;
+    const text = docSrcEl()?.value ?? '';
+    body.textContent = '';
+    const parts = text.split(/^##\s+/m);
+    const intro = parts[0].trim();
+    if (intro) body.append(para(intro));
+    for (const chunk of parts.slice(1)) {
+      const nl = chunk.indexOf('\n');
+      const t = (nl < 0 ? chunk : chunk.slice(0, nl)).trim();
+      const b = nl < 0 ? '' : chunk.slice(nl + 1).trim();
+      const h = document.createElement('h4');
+      h.textContent = t;
+      body.append(h);
+      if (b) body.append(para(b));
+    }
+    box.hidden = false;
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const para = (text: string): HTMLElement => {
+    const p = document.createElement('p');
+    p.className = 'guide-para';
+    p.textContent = text;
+    return p;
+  };
+
+  document.getElementById('doc-preview-btn')?.addEventListener('click', () => renderDocPreview());
+  document.getElementById('doc-preview-close')?.addEventListener('click', () => {
+    const box = document.getElementById('doc-preview');
+    if (box) box.hidden = true;
+  });
+  document.getElementById('doc-restore-clear')?.addEventListener('click', () => {
+    clearLocal();
+    const note = document.getElementById('doc-restore-note');
+    if (note) note.hidden = true;
+  });
+
+  /* 有未提交内容时离开页面给个提醒（浏览器只允许显示固定文案，不能自定义） */
+  window.addEventListener('beforeunload', (e) => {
+    if (!dirty) return;
+    e.preventDefault();
+    e.returnValue = '';
   });
 
   function renderDraftCta(): void {
@@ -1261,10 +1936,8 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
      */
     if (rules[key]?.kind === 'doc') {
       const hint = document.getElementById('doc-login-hint');
-      const ta = input as HTMLTextAreaElement | null;
-      if (ta && !ta.value.trim() && typeof mapInfo?.draft === 'string' && mapInfo.draft.trim()) {
-        ta.value = mapInfo.draft;
-      }
+      /* 分节编辑器负责内容（见 renderDraftEditor）：这里只处理「登录提示」 */
+      void input;
       if (hint) {
         void meOrThrow()
           .then((r) => {
@@ -1356,6 +2029,9 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
     showField(fieldSel.value);
     prefill(fieldSel.value);
     errEl.hidden = true;
+    /* 已经翻篇了：那条「已回到表单…」的提示别一直挂着 */
+    const ok = document.getElementById('s-ok-note');
+    if (ok) ok.hidden = true;
   });
 
   document.getElementById('items-add')?.addEventListener('click', () => addItemRow());
@@ -1377,14 +2053,19 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
       (document.getElementById('f-map') as HTMLInputElement).value =
         `${mapInfo.title}（${mapInfo.titleEn}）`;
 
-      /* ?field=items 可以直接落到某一项（投稿指南、地图页的入口都靠它少点两下） */
+      /* ?field=items 可以直接落到某一项；?field=draft 直接落在「大面积整理」档
+         （投稿指南、地图页侧栏的两个入口都靠它少点两下） */
       const want = new URLSearchParams(location.search).get('field') ?? '';
-      if (want && Object.prototype.hasOwnProperty.call(FIELD_RULES, want)) fieldSel.value = want;
 
       form.hidden = false;
-      showField(fieldSel.value);
+      if (want === 'draft') {
+        applyMode('draft');
+      } else {
+        if (want && Object.prototype.hasOwnProperty.call(FIELD_RULES, want)) fieldSel.value = want;
+        applyMode('single');
+      }
       renderRefPanel();
-      prefill(fieldSel.value);
+      prefill(want === 'draft' ? 'draft' : fieldSel.value);
       renderDraftCta();
     })
     .catch(() => {
@@ -1648,19 +2329,86 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
   });
 
   /** 提交成功后统一的展示（文本 / 封面 / 图片集共用；图片集一次会拿到多个编号） */
-  function showSuccess(idOrIds: number | number[], extra: string) {
+  function showSuccess(idOrIds: number | number[], extra: string, submittedField?: string) {
     const ids = (Array.isArray(idOrIds) ? idOrIds : [idOrIds]).filter((n) => Number.isFinite(n) && n > 0);
     const head = ids.length > 1
       ? `编号 <strong>${ids.join('、')}</strong>（共 ${ids.length} 条）`
       : `编号 <strong>${ids[0] ?? '—'}</strong>`;
     form.hidden = true;
     resultEl.hidden = false;
+    /* 内容已经交上去了，别再拦「确定要离开吗」 */
+    dirty = false;
+    /* 「继续补充这张图的其它项」：补一张图一般要连着投好几项（难度 + 标签 + 视频 + 正文），
+       以前每投一项都要重新选地图、重走一遍表单。这里就地回到表单，地图不动、刚投的那项清空。 */
     resultEl.innerHTML =
       `<h2>提交成功 ✅</h2>` +
       `<p class="form-ok">${head} —— 请记下它，可以回来查审核状态。</p>` +
-      `<p class="form-hint">${extra}</p>`;
+      `<p class="form-hint">${extra}</p>` +
+      `<div class="succ-actions">` +
+      `<button class="btn btn-primary" type="button" id="succ-more">＋ 继续补充这张图的其它项</button>` +
+      `<a class="btn btn-ghost" href="/maps/${slug}/">先回条目页看看</a>` +
+      `</div>` +
+      `<p class="form-hint">难度 / 标签 / 攻略视频 / 背景故事…都能接着投：地图已经选好，` +
+      `刚才那一项已经清空，不会重复投。</p>`;
+    document.getElementById('succ-more')?.addEventListener('click', () => backToForm(submittedField));
     const qid = document.getElementById('q-id') as HTMLInputElement;
     if (qid) qid.value = String(ids[ids.length - 1] ?? '');
+  }
+
+  /** 清掉刚刚投出去的那一项（各字段的形态不一样，逐个来），免得接着投时又投一遍 */
+  function resetSubmittedField(field?: string): void {
+    if (!field) return;
+    const kind = rules[field]?.kind;
+    const el = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-input="${field}"]`);
+    if (el && (el as HTMLInputElement).type !== 'file') el.value = '';
+    if (kind === 'tags') {
+      tagSelected = [];
+      renderTagChips();
+    } else if (kind === 'itemlist') {
+      const rows = document.getElementById('items-rows');
+      if (rows) rows.textContent = '';
+      addItemRow();
+    } else if (kind === 'doc') {
+      /* 草稿：导语 + 各小节 + 锁定节都清掉（提交成功后本地暂存也一并清了） */
+      const intro = docIntroEl();
+      if (intro) intro.value = '';
+      docSections = [];
+      docLocked = [];
+      docOriginal = new Map();
+      renderDocSections();
+    } else if (field === 'cover') {
+      coverBlob = null;
+      if (coverInput) coverInput.value = '';
+      if (coverNewWrap) coverNewWrap.hidden = true;
+      if (coverStatus) coverStatus.textContent = '';
+    } else if (field === 'gallery') {
+      for (const item of galleryItems) URL.revokeObjectURL(item.url);
+      galleryItems.splice(0, galleryItems.length);
+      renderGalleryList();
+      updateGalleryStatus();
+    }
+  }
+
+  /** 从成功页回到表单：留着地图与署名，接着投同一张图的下一项 */
+  function backToForm(submittedField?: string): void {
+    resetSubmittedField(submittedField);
+    const note = document.getElementById('f-note') as HTMLTextAreaElement | null;
+    if (note) note.value = '';
+    reviseTarget = null;
+    renderReviseBar();
+    dirty = false;
+    clearLocal();
+    resultEl.hidden = true;
+    form.hidden = false;
+    applyMode('single');
+    const ok = document.getElementById('s-ok-note');
+    if (ok) {
+      ok.textContent =
+        `已回到表单：地图还是《${mapInfo?.title ?? slug}》—— 在第 1 步选下一项接着投就行` +
+        `（署名 / 联系方式都还留着）。`;
+      ok.hidden = false;
+    }
+    document.getElementById('step-pick')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   /*
@@ -1758,7 +2506,7 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
         const res = await fetch('/api/submit-cover', { method: 'POST', body: fd });
         const data = (await res.json()) as { ok?: boolean; id?: number; error?: string };
         if (!data.ok) throw new Error(data.error || '上传失败');
-        showSuccess(Number(data.id), `审核通过后封面会替换成这张。${backLink}`);
+        showSuccess(Number(data.id), `审核通过后封面会替换成这张。${backLink}`, field);
       } catch (err) {
         resetTurnstile(tsBox);
         showError(err instanceof Error && err.message ? err.message : '上传失败，请稍后再试');
@@ -1795,7 +2543,8 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
         }
         showSuccess(
           ids,
-          `审核通过后这些图会出现在《${mapInfo?.title}》条目底部的「图片集」里。${backLink}`
+          `审核通过后这些图会出现在《${mapInfo?.title}》条目底部的「图片集」里。${backLink}`,
+          'gallery'
         );
       } catch (err) {
         for (let i = ids.length - 1; i >= 0; i--) {
@@ -1875,7 +2624,8 @@ const fields = Object.entries(FIELD_RULES).map(([key, rule]: [string, any]) => (
         Number(data.id),
         reviseOf
           ? `这是一条<b>修订</b>稿：审核通过后会替换原来的那一条（署名不变）。${backLink}`
-          : backLink
+          : backLink,
+        field
       );
     } catch (err) {
       /* token 一次性：失败后换一个新的，否则用户改完再点会被判「验证没通过」 */

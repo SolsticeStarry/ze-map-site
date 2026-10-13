@@ -3412,6 +3412,333 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 
 [data-theme="light"] .btn-draft { color: #8a6516; border-color: rgba(195, 154, 58, 0.6); }
 
+/* 模式切换（单项补充 / 大面积整理）—— 2026-10-13 */
+.mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  width: fit-content;
+}
+
+.mode-tab {
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.mode-tab.is-on {
+  color: #1a1206;
+  background: linear-gradient(135deg, #e8c884, #d8b46a);
+}
+
+[data-theme="light"] .mode-tab.is-on { color: #fff; }
+
+/* 分节编辑器（大面积整理档） */
+.doc-intro { margin-bottom: 16px; }
+.doc-intro label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--muted); }
+.doc-intro textarea { width: 100%; }
+
+.doc-sections-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0 10px;
+}
+
+.doc-sections-title { font-size: 14px; font-weight: 800; }
+.doc-sections-hint { font-size: 12px; color: var(--muted); }
+.doc-sections { display: grid; gap: 14px; }
+
+.doc-card {
+  padding: 12px 14px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.doc-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+
+.doc-card-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 800;
+  font-size: 14.5px;
+}
+
+.doc-card-del { padding: 2px 10px; font-size: 16px; line-height: 1.2; }
+.doc-card-body { width: 100%; }
+
+/* 卡片工具条（上移 / 下移 / 恢复原文 / 删除）—— 小按钮，别抢正文 */
+.doc-tool { padding: 2px 9px; font-size: 12px; line-height: 1.4; }
+.doc-tool:disabled { opacity: 0.35; cursor: not-allowed; }
+.doc-card-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.doc-card-meta { font-size: 11.5px; color: var(--muted); }
+
+/* 改过的小节：左侧一道金色竖条，一眼看出自己动了哪几节 */
+.doc-card.is-changed { border-color: rgba(216, 180, 106, 0.55); box-shadow: inset 3px 0 0 #d8b46a; }
+
+/* 本地暂存恢复提示 */
+.doc-restore {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid #6fa8dc;
+  border-radius: 8px;
+  background: rgba(111, 168, 220, 0.1);
+  color: #bcd6ee;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.doc-restore .btn { margin-left: 8px; padding: 2px 10px; font-size: 12px; }
+
+/* 预览（页面上的样子）：暗底卡片 + 与条目页同款小节样式 */
+.doc-preview {
+  margin-top: 14px;
+  padding: 14px 16px 16px;
+  border: 1px dashed var(--border-2, var(--border));
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.doc-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.doc-preview-body h4 {
+  margin: 14px 0 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* 含组件 / 表格的小节：只读展示（草稿不收 < > { }，这一节采纳时原样保留） */
+.doc-card.is-locked {
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.doc-card-title.is-static { flex: 1; min-width: 0; font-weight: 800; font-size: 14.5px; color: var(--muted); }
+.doc-card-note { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+.doc-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.doc-add select { min-width: 180px; }
+.btn-ghost { background: transparent; border-color: var(--border); color: var(--muted); }
+
+/* ==========================================================================
+   大面积整理：折叠、历史版本（2026-10-13 稍晚加）
+   动机：一张图常有七八个小节，全摊开要找很久；而本地暂存只有「最新一版」，
+   改坏了就找不回来。折叠 + 版本点都是为了让长文编辑器真的能用。
+   ========================================================================== */
+
+/* 卡片的折叠箭头：在最左边，平时低调，悬停才亮 */
+.doc-tool.doc-fold {
+  padding: 2px 7px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.doc-card:not(.is-collapsed) .doc-tool.doc-fold { color: #e8c884; }
+.doc-collapse-all { margin-left: auto; }
+.submit-page .doc-collapse-all { padding: 4px 12px; font-size: 12.5px; font-weight: 500; }
+
+/* 收起时那一行摘要：可点（点开这一节），压在标题下面 */
+.doc-card-summary {
+  margin: 0;
+  padding: 2px 0 0 30px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.doc-card-summary:hover { color: #dde2ee; }
+.doc-card:not(.is-collapsed) .doc-card-summary { display: none; }
+.doc-card.is-collapsed .doc-card-body,
+.doc-card.is-collapsed .doc-card-foot { display: none; }
+.doc-card.is-collapsed { padding-bottom: 12px; }
+.doc-card.is-collapsed .doc-card-head { margin-bottom: 0; }
+
+/* 历史版本面板：和「本地暂存」提示同一套蓝，但更沉一点（它是可操作的一块） */
+.doc-history {
+  margin-top: 12px;
+  padding: 12px 14px 14px;
+  border: 1px solid rgba(111, 168, 220, 0.35);
+  border-radius: 12px;
+  background: rgba(111, 168, 220, 0.07);
+}
+.doc-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.doc-history-head .btn { padding: 2px 10px; font-size: 12px; }
+.doc-history-hint { margin: 0 0 10px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.doc-history-list { display: grid; gap: 8px; }
+.dh-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.dh-meta { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 12.5px; }
+.dh-meta b { font-weight: 700; }
+.dh-meta span { color: var(--muted); overflow-wrap: anywhere; }
+.dh-use { padding: 3px 12px; font-size: 12px; white-space: nowrap; }
+
+/* 提交成功后那排按钮（继续补充其它项 / 回条目页） */
+.succ-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 0 4px;
+}
+
+/* 从成功页回到表单时那条绿色提示（和红色错误提示对称） */
+.s-ok-note {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-left: 3px solid #4ade80;
+  border-radius: 8px;
+  background: rgba(74, 222, 128, 0.1);
+  color: #cdebd6;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* ---------- 投稿页的按钮基底（2026-10-13 补的一个老毛病） ----------
+   站里只给 `.sidebar-card .btn` 和账号页的 `.acc-btn` 写过基础样式，投稿页用的 `.btn`
+   一直没有基底 —— Tailwind 的 preflight 又把 button 的边框 / 内边距 / 背景全部清零，
+   于是「提交审核」「＋ 再加一节」这些其实一直是**纯文字**，看不出能点。
+   这里给投稿页补一套；`:where()` 是为了把权重压到 `.btn` 本身（0,1,0），
+   免得盖掉下面那些专门写的小按钮样式（卡片上的 ▲▾↺×、历史版本、清除暂存…）。 */
+:where(.submit-page) .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border: 1px solid var(--border-2, var(--border));
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+
+:where(.submit-page) .btn:hover { border-color: var(--accent-2); color: var(--accent-2); }
+:where(.submit-page) .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+:where(.submit-page) .btn-primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), #ff8a3d);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(255, 77, 77, 0.35);
+}
+
+:where(.submit-page) .btn-primary:hover {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 30px rgba(255, 77, 77, 0.5);
+}
+
+:where(.submit-page) .btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+  font-weight: 500;
+}
+
+:where(.submit-page) .btn-ghost:hover { color: var(--text); border-color: var(--accent-2); }
+
+/* 上面把权重压到了 0,1,0 —— 比它定义得更早的那几条要补回来，否则会被它盖掉 */
+.submit-page .btn-lg { padding: 13px 34px; font-size: 15.5px; border-radius: 12px; }
+.submit-page .doc-tool { padding: 4px 9px; font-size: 12.5px; }
+.submit-page .doc-fold { padding: 4px 7px; }
+.submit-page .item-row .btn { min-width: 42px; padding: 8px 11px; font-size: 14px; }
+
+@media (max-width: 640px) {
+  /* 手指点得着：小按钮也留够高度 */
+  .submit-page .doc-tool,
+  .submit-page .doc-fold { padding: 6px 11px; }
+}
+
+/* ---------- 投稿页 / 草稿编辑器的窄屏布局 ----------
+   手机是投稿的主力设备之一（截图就在手机上）：卡片工具条、模式切换、历史版本那一排
+   在窄屏都会挤成一条线，这里全部改成「一行一块」的竖排。
+   顺带把控件字号提到 16px —— iOS 上小于 16px 的输入框一聚焦就会把页面放大。 */
+@media (max-width: 640px) {
+  .mode-tabs { width: 100%; }
+  .mode-tab { flex: 1 1 0; padding: 9px 10px; }
+
+  .submit-page input[type="text"],
+  .submit-page input[type="number"],
+  .submit-page input[readonly],
+  .submit-page select,
+  .submit-page textarea { font-size: 16px; }
+
+  .doc-sections-head { align-items: center; }
+  .doc-sections-hint { flex: 1 1 100%; }
+  .doc-collapse-all { margin-left: 0; }
+  .submit-page .doc-collapse-all { padding: 6px 12px; }
+
+  /* 标题单独占一行，工具按钮到下一行排开 —— 否则标题被挤成几十像素宽 */
+  .doc-card { padding: 11px 12px 12px; }
+  .doc-card-head { flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .doc-card-title { flex: 1 1 100%; font-size: 15px; }
+  .doc-tool { padding: 5px 11px; font-size: 13px; }
+  .doc-card-summary { padding-left: 0; }
+  .doc-card-body { min-height: 170px; }
+
+  .doc-intro textarea { min-height: 104px; }
+  .doc-add { gap: 8px; }
+  .doc-add select { flex: 1 1 100%; min-width: 0; }
+  .doc-add .btn { flex: 1 1 auto; justify-content: center; }
+
+  .doc-preview-head { align-items: flex-start; flex-direction: column; }
+  .dh-row { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .dh-use { width: 100%; }
+  .succ-actions { gap: 8px; }
+  .succ-actions .btn { flex: 1 1 100%; justify-content: center; }
+  .batch-row { align-items: flex-start; }
+}
+
+/* 亮色模式下上面这几块（蓝 / 绿提示）要换深色文字，否则在浅底上看不清 */
+[data-theme="light"] .s-ok-note { color: #14532d; background: rgba(74, 222, 128, 0.12); }
+[data-theme="light"] .doc-restore { color: #1e4a6b; }
+[data-theme="light"] .doc-card-summary:hover { color: var(--text); }
+
 .acc-id-meta { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
 
 /*
