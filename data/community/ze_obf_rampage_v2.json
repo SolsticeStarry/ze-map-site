@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_obf_rampage_v2",
-  "updatedAt": "2026-10-04T11:20:03.365Z",
+  "updatedAt": "2026-10-13T07:23:43.078Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_obf_rampage_v2.webp",
@@ -10,7 +10,15 @@
       "submission": 56
     }
   },
-  "notes": [],
+  "notes": [
+    {
+      "text": "行动代号：野火燎原，NPST事件的后传。在经历NPST事件之后，重伤的尼赫仑斯利用传送将NPST小队（Rescape小队）传送到了一条NPST计划并没有发生的时间线。醒来的NPST小队在尝试联系指挥部时得知，Aurora基地内根本没有NPST的战斗序列，Rescape计划也没有通过，Pharos的运行引发了引力混乱，尼赫仑斯已经从Aurora基地逃走三个月了。大量的信息突然涌入了小队成员的脑子里面，他们不知道发生了什么，也不知道应该信任谁，但唯一知道的是，叛军已经发现了他们，他们必须逃出这里才能与基地内成员详细谈谈。好在Aurora基地给AOH总部发出了申请，派出了Ouroboros小队支援并接应NPST小队。小队成员需要穿过基地，得到基地外的支援，撤离这里。基地内的地图也同步到了小队的终端。此刻NPST小队正式更名为代号：RAMPAGE。他们的目的便是穿过基地。然而，不同时间线的路线造成了逃亡路线与原时间线的不同，这对小队来说是不小的挑战。好在小队有惊无险逃出了基地，与接应会合，最终炸毁了基地，与Aurora基地的成员一起前往Xen星终结这一切。",
+      "by": "SiKi",
+      "at": "2026-10-13T07:23:43.078Z",
+      "submission": 129,
+      "field": "story"
+    }
+  ],
   "log": [
     {
       "field": "cover",
@@ -19,7 +27,16 @@
       "by": "SiKi",
       "at": "2026-10-04T11:20:03.365Z",
       "submission": 56
+    },
+    {
+      "field": "story",
+      "from": null,
+      "to": null,
+      "by": "SiKi",
+      "at": "2026-10-13T07:23:43.078Z",
+      "submission": 129
     }
   ],
+  "draft": null,
   "items": []
 }
