@@ -19,7 +19,7 @@ import {
   notePayload,
   touch,
 } from '../shared/community-doc.mjs';
-import { FIELD_RULES, LIMITS, isField, validateValue } from '../shared/submission-fields.mjs';
+import { FIELD_RULES, LIMITS, docSections, isField, validateValue } from '../shared/submission-fields.mjs';
 import { mergeDraft, serializeResearch } from '../shared/draft-merge.mjs';
 import {
   GitError,
@@ -652,6 +652,43 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
   }
 
   const researchPath = `data/research/${slug}.json`;
+
+  /*
+   * ⚠️ 必须 **JSON.parse** 之后再交给 mergeDraft（2026-10-14 修的真事故）：
+   * submissions.value 存的是 `JSON.stringify(投稿值)`（见 insertSubmission 的 base 数组），
+   * 所以草稿在库里长这样：`"## 小节标题\n正文…"` —— 带外层引号、换行是字面 `\n`。
+   * 以前这里直接 `String(row.value)` 传下去，于是：
+   *   · `parseDoc()` 找不到行首的 `##`（那一行以引号开头）→ 0 个小节；
+   *   · 整段被当成「导语」写进 summary（还是带引号和 \n 的原文）；
+   *   · `sections` 被写成 `[]` → **generate-map-entries 的断言「sections 必须是非空数组」直接让构建挂掉**。
+   * 队列页（handleAdminQueue）和写回（flush）那两处一直是先 parse 的，只有这里漏了 ——
+   * 于是「审核台看得见草稿、写回也正常、唯独采纳会写坏原稿」，线上真的踩到了（ze_tenkinoko_welkin_z）。
+   */
+  let draftText = String(row.value ?? '');
+  try {
+    const parsedValue: unknown = JSON.parse(draftText);
+    if (typeof parsedValue === 'string') draftText = parsedValue;
+    /* 正文类字段是 { text, reviseOf } 的包；草稿理论上不会，但兼容一下不亏 */
+    else if (parsedValue && typeof parsedValue === 'object' && typeof (parsedValue as { text?: unknown }).text === 'string') {
+      draftText = String((parsedValue as { text: string }).text);
+    }
+  } catch {
+    /* 不是 JSON（老数据 / 手写进去的）：就当它本来就是纯文本 */
+  }
+
+  /*
+   * 采纳前先确认它**真的是分节草稿**：没有 `## 小节` 的文本合并进去只会得到空的 sections，
+   * 而 generate-map-entries 的断言「sections 必须是非空数组」会让整站构建挂掉。
+   * 这条检查放在读仓库之前 —— 注定要拒的稿子，不该先去动仓库（也少两次 GitHub 调用）。
+   */
+  if (!docSections(draftText).length) {
+    return fail(
+      '这条草稿里没有 `## 小节标题`，无法按小节合并（合并出空正文会让站点构建失败）。' +
+        '请在审核台**驳回**它并请投稿人重投一版（编辑器里每节都要有标题）；或者你直接改 data/research 里的原稿。',
+      400
+    );
+  }
+
   const raw = await readRepoText(env, researchPath);
   if (!raw) return fail(`仓库里没有 ${researchPath}（这张图还没有人工原稿，需要先建一份）`, 404);
 
@@ -662,7 +699,11 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
     return fail(`${researchPath} 不是合法 JSON，先修好它再采纳：${err instanceof Error ? err.message : String(err)}`, 500);
   }
 
-  const merged = mergeDraft(research, String(row.value ?? ''));
+  const merged = mergeDraft(research, draftText);
+  /* 兜底：合并结果绝不能是空小节数组（generate-map-entries 会当场抛错） */
+  if (!Array.isArray(merged.next.sections) || !merged.next.sections.length) {
+    return fail('合并结果是空的（草稿与现有一节都对不上），已中止采纳，仓库未改动', 400);
+  }
   const researchText = serializeResearch(merged.next, raw);
 
   /* 社区文档：清草稿 + 记一条「已采纳」，贡献者留在贡献者名单里 */

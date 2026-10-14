@@ -949,6 +949,95 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
   });
 
   /*
+   * 2026-10-14 线上真事故的回归测试：
+   * 采纳时把 submissions.value **原样**（没 JSON.parse）交给 mergeDraft，
+   * 于是 `"## 小节\n正文"` 这串带引号、带字面 \n 的文本被当成导语：
+   * 解析出 0 个小节 → summary 写成一坨带引号的原文、sections 写成 [] →
+   * generate-map-entries 的「sections 必须是非空数组」当场让构建失败
+   * （ze_tenkinoko_welkin_z，站点整整一轮构建挂掉）。
+   * 这里用**真库真行**跑一遍：必须先 parse，再合并，且 sections 不许为空。
+   */
+  await t.test('采纳：库里存的是 JSON 字符串，必须先 parse 再合并（否则写坏原稿、构建挂）', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    /* commitFiles 走 Git Data API，需要 GITHUB_TOKEN；这里用假 token + 假 GitHub */
+    env.GITHUB_TOKEN = 'test-gh-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    const draft = '## 基本信息\n\n地图由 [Lopb] 绘制\n\n- 3+1(ZM)个关卡\n';
+    db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter)
+       VALUES ('ze_demo','draft',?,'h','applied',?, 'AntiLockwise')`
+    ).run(JSON.stringify(draft), Date.now());
+
+    /* 假仓库：两个文件放在内存里，走真的 contents 读 + 真的 git data 写 */
+    const repoFiles = {
+      'data/research/ze_demo.json': JSON.stringify({ difficulty: '困难', tags: [], confidence: 'low' }, null, 1) + '\n',
+      'data/community/ze_demo.json': JSON.stringify({ v: 1, slug: 'ze_demo', fields: {}, notes: [], items: [], log: [] }, null, 2) + '\n',
+    };
+    const prevFetch = globalThis.fetch;
+    const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+    globalThis.fetch = async (input, init = {}) => {
+      const url = String(typeof input === 'string' ? input : input.url);
+      if (!url.includes('api.github.com')) return prevFetch(input, init);
+      const key = Object.keys(repoFiles).find((k) => url.includes(k));
+      if (url.includes('/contents/')) {
+        if (init.method === 'PUT') {
+          const body = JSON.parse(String(init.body ?? '{}'));
+          repoFiles[key] = Buffer.from(String(body.content ?? ''), 'base64').toString('utf8');
+          return jsonRes({ content: { sha: 'blobsha' } });
+        }
+        if (!key) return jsonRes({ message: 'Not Found' }, 404);
+        return jsonRes({ content: Buffer.from(repoFiles[key], 'utf8').toString('base64'), sha: 'sha1' });
+      }
+      if (url.includes('/git/ref/heads/')) return jsonRes({ object: { sha: 'head1' } });
+      if (url.includes('/git/commits/')) return jsonRes({ tree: { sha: 'tree1' } });
+      if (url.includes('/git/trees')) {
+        /* commitFiles 对文本文件是把内容**内联在 tree 条目**里提交的（不是走 /contents PUT） */
+        const body = JSON.parse(String(init.body ?? '{}'));
+        for (const entry of body.tree ?? []) {
+          if (entry && typeof entry.path === 'string' && typeof entry.content === 'string') repoFiles[entry.path] = entry.content;
+        }
+        return jsonRes({ sha: 'tree2' });
+      }
+      if (url.includes('/git/commits')) return jsonRes({ sha: 'commit1' });
+      if (url.includes('/git/refs/heads/')) return jsonRes({ object: { sha: 'commit1' } });
+      return jsonRes({ message: 'unexpected ' + url }, 500);
+    };
+    try {
+      const r = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_demo' }, headers: auth });
+      assert.equal(r.status, 200, JSON.stringify(r.data));
+      assert.deepEqual(r.data.added, ['基本信息'], '草稿那一节应当被「新增」进去');
+      const written = JSON.parse(repoFiles['data/research/ze_demo.json']);
+      assert.equal(written.sections.length, 1, 'sections 必须非空 —— 空数组会让构建脚本直接抛错');
+      assert.equal(written.sections[0].title, '基本信息');
+      assert.match(written.sections[0].body, /Lopb/);
+      assert.equal(written.summary, undefined, '草稿没有导语，就不该动 summary（更不能把带引号的原文写进去）');
+      assert.equal(written.confidence, 'medium');
+      /* 社区文档：草稿清空 + 记一条已采纳 */
+      const doc = JSON.parse(repoFiles['data/community/ze_demo.json']);
+      assert.equal(doc.draft, null);
+      assert.match(String(doc.fields.draft?.v ?? ''), /已采纳/);
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+  });
+
+  await t.test('采纳：草稿没有 `## 小节` 时**拒绝**（宁可报错，也不写坏仓库）', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    /* 造一条「存库格式不对」的草稿：整段没有小节（模拟老数据 / 手改过的行） */
+    db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter)
+       VALUES ('ze_demo2','draft',?,'h','applied',?, '某人')`
+    ).run(JSON.stringify('一大段没有小节的文字'), Date.now());
+
+    const r = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_demo2' }, headers: auth });
+    assert.equal(r.status, 400, JSON.stringify(r.data));
+    assert.match(r.data.error, /没有 `## 小节标题`|无法按小节合并/);
+  });
+
+  /*
    * 审核台改版（2026-10-13）：队列列表不再逐图读 GitHub 取「现值」——
    * 一次 Worker 调用只有 50 个子请求额度，limit 允许到 200，50 张不同的图就撞上限
    * （线上真的报过 500 Too many subrequests，整个审核台打不开）。
