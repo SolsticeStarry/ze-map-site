@@ -1109,6 +1109,61 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
   });
 
   /*
+   * 「把条目标题行当小节名」的护栏（2026-10-14 加，ze_tenkinoko_welkin_z 的第二次丑事）：
+   * 草稿长这样 `## - ze_demo5 (示例图) -\n\n地图由 … 绘制` —— 那行是**标题**，不是小节名。
+   * 直接采纳它跟原稿任何一节都不同名，会被当新小节追加：页面上多出一个
+   * 「- ze_demo5 (示例图) -」标题，内容还跟「基本信息」重复。
+   * 现在：不改写就 400（仓库一个字节不动）；带 retitle 改写成「基本信息」才合并，且照实报出来。
+   */
+  await t.test('采纳：标题行当小节名 → 不改写就拒（placeholder-title），带 retitle 才合并', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    env.GITHUB_TOKEN = 'test-gh-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    const banner = '- ze_demo5 (示例图) -';
+    const draft = `## ${banner}\n\n地图由 [某人] 绘制\n\n- 3 个关卡\n`;
+    db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter)
+       VALUES ('ze_demo5','draft',?,'h','applied',?, '整理者')`
+    ).run(JSON.stringify(draft), Date.now());
+
+    const repo = installFakeRepo({
+      'data/research/ze_demo5.json':
+        JSON.stringify({ title: '示例图', sections: [{ title: '基本信息', body: '原来的一句话' }], confidence: 'low' }, null, 2) + '\n',
+      'data/community/ze_demo5.json':
+        JSON.stringify({ v: 1, slug: 'ze_demo5', updatedAt: null, fields: {}, notes: [], draft: null, items: [], log: [] }, null, 2) + '\n',
+    });
+    const repoFiles = repo.files;
+    try {
+      const refused = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_demo5' }, headers: auth });
+      assert.equal(refused.status, 400, JSON.stringify(refused.data));
+      assert.equal(refused.data.code, 'placeholder-title');
+      assert.deepEqual(refused.data.titles, [banner]);
+      assert.match(refused.data.error, /标题行/);
+      assert.match(repoFiles['data/research/ze_demo5.json'], /原来的一句话/, '被拦下时仓库必须原封不动');
+
+      const ok = await call('/api/admin/adopt', {
+        method: 'POST',
+        body: { slug: 'ze_demo5', retitle: { [banner]: '基本信息' } },
+        headers: auth,
+      });
+      assert.equal(ok.status, 200, JSON.stringify(ok.data));
+      assert.deepEqual(ok.data.renamed, [{ from: banner, to: '基本信息' }]);
+      assert.deepEqual(ok.data.added, [], '改写后是替换同名小节，不该再多出一节');
+      assert.deepEqual(ok.data.replaced, ['基本信息']);
+      const written = JSON.parse(repoFiles['data/research/ze_demo5.json']);
+      assert.deepEqual(
+        written.sections.map((s) => s.title),
+        ['基本信息'],
+        '页面上不该出现「- ze_demo5 (示例图) -」这种小节标题'
+      );
+      assert.match(written.sections[0].body, /地图由 \[某人\] 绘制/);
+    } finally {
+      repo.restore();
+    }
+  });
+
+  /*
    * 审核台改版（2026-10-13）：队列列表不再逐图读 GitHub 取「现值」——
    * 一次 Worker 调用只有 50 个子请求额度，limit 允许到 200，50 张不同的图就撞上限
    * （线上真的报过 500 Too many subrequests，整个审核台打不开）。

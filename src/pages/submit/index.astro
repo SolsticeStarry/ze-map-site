@@ -559,7 +559,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 <script>
   /* 与 Worker 共用同一份字段规则与校验 —— 前端只是「提前告诉你哪里不对」，
      真正的权威校验在服务端（worker/submissions.ts）。 */
-  import { FIELD_RULES, validateValue } from '../../../shared/submission-fields.mjs';
+  import { FIELD_RULES, looksLikeBannerTitle, validateValue } from '../../../shared/submission-fields.mjs';
   /* 登录状态：与页头那个账号按钮共用一次请求（见 lib/account-client.ts） */
   import { ACCOUNT_EVENT, meOrThrow } from '../../lib/account-client';
   /* 人机验证（Turnstile）：放提交按钮上方；没配 site key 时不渲染 */
@@ -1501,6 +1501,21 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       meta.className = 'doc-card-meta';
       meta.textContent = cardMetaText(sec.title, sec.body);
       foot.append(meta);
+      /*
+       * 标题写成「- ze_flower (花之声) -」这种**标题行**时的提醒（2026-10-14 加）：
+       * 它不是小节名，采纳后页面上会多出一个以此命名的标题，内容还常和「基本信息」重复。
+       * 这里只提醒不拦（想写什么标题是投稿人的自由），采纳时审核台会要求改写成正经小节名。
+       */
+      const titleWarn = document.createElement('span');
+      titleWarn.className = 'doc-title-warn';
+      titleWarn.hidden = true;
+      titleWarn.textContent = '⚠️ 这看着像标题行，不像小节名（例如「基本信息」「关卡流程」）；采纳时会被要求改写';
+      foot.append(titleWarn);
+      const syncTitleWarn = () => {
+        titleWarn.hidden = !looksLikeBannerTitle(title.value, mapInfo?.slug ?? '');
+      };
+      title.addEventListener('input', syncTitleWarn);
+      syncTitleWarn();
       /* 插图片块：图片集里有图时才有意义（序号按图片集顺序，页面上的 :::figure 就是这个序号） */
       const galleryCount = Number(mapInfo?.galleryCount ?? 0);
       if (galleryCount > 0) {

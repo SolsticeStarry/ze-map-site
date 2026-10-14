@@ -3483,6 +3483,9 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 .doc-tool:disabled { opacity: 0.35; cursor: not-allowed; }
 .doc-card-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
 .doc-card-meta { font-size: 11.5px; color: var(--muted); }
+/* 标题写成「- ze_flower (花之声) -」这类标题行时的提醒（采纳时审核台会要求改写，见 shared 的 looksLikeBannerTitle） */
+.doc-title-warn { font-size: 11.5px; color: #e2b04a; line-height: 1.7; }
+.doc-title-warn[hidden] { display: none; }
 
 /* 改过的小节：左侧一道金色竖条，一眼看出自己动了哪几节 */
 .doc-card.is-changed { border-color: rgba(216, 180, 106, 0.55); box-shadow: inset 3px 0 0 #d8b46a; }

@@ -19,7 +19,7 @@ import {
   notePayload,
   touch,
 } from '../shared/community-doc.mjs';
-import { FIELD_RULES, LIMITS, docSections, isField, validateValue } from '../shared/submission-fields.mjs';
+import { FIELD_RULES, LIMITS, docSections, isField, looksLikeBannerTitle, parseDoc, validateValue } from '../shared/submission-fields.mjs';
 import { mergeDraft, serializeResearch } from '../shared/draft-merge.mjs';
 import {
   GitError,
@@ -735,7 +735,73 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
     return fail(`${researchPath} 不是合法 JSON，先修好它再采纳：${err instanceof Error ? err.message : String(err)}`, 500);
   }
 
-  const merged = mergeDraft(research, draftText);
+  /*
+   * 小节标题改写 + 「标题行混进来」的护栏（2026-10-14 加）。
+   *
+   * 起因：投稿人常把**条目标题行**当小节名写进草稿（整篇草稿会长成
+   * `## - ze_flower (花之声) -\n\n地图由 [Karon] 绘制…`）。它跟原稿里的任何一节都不同名，
+   * 于是被当成**新小节**追加：页面上多出一个叫「- ze_flower (花之声) -」的标题，
+   * 内容还跟「基本信息」重复（ze_tenkinoko_welkin_z 就这么丑过一次，最后手工回滚）。
+   *
+   * 处理办法分两步，都不猜：
+   *   1. `retitle`（可选，审核台采纳前填）：把这些标题改写成正经小节名（一般是「基本信息」）。
+   *      改写结果会照实报出来（返回里的 renamed），提交信息里也写一笔。
+   *   2. 没改写、又会在原稿里**新增**一个标题行小节 → 直接拒绝（400 placeholder-title），
+   *      并告诉审核员怎么改。注意「原稿里已经有同名小节」的情况不拦：那是替换，不会多出标题。
+   */
+  const retitleRaw = parsed.body.retitle;
+  const retitle: Record<string, string> = {};
+  if (retitleRaw && typeof retitleRaw === 'object' && !Array.isArray(retitleRaw)) {
+    for (const [from, to] of Object.entries(retitleRaw as Record<string, unknown>)) {
+      const key = String(from).trim();
+      const val = typeof to === 'string' ? to.trim().replace(/\s+/g, ' ') : '';
+      if (!key) continue;
+      if (!val) continue; /* 留空 = 不改写，照原样保留 */
+      if (val.length > 40 || /[<>{}#]/.test(val)) {
+        return fail(`小节标题「${val}」不像话（最多 40 字，且不能含 < > { } #）`, 400);
+      }
+      retitle[key] = val;
+    }
+  }
+
+  const parsedDoc = parseDoc(draftText);
+  const renamed: Array<{ from: string; to: string }> = [];
+  const draftSecs = parsedDoc.sections.map((s) => {
+    const to = retitle[s.title];
+    if (!to || to === s.title) return s;
+    renamed.push({ from: s.title, to });
+    return { title: to, body: s.body };
+  });
+
+  const existingTitles = new Set(
+    (Array.isArray(research.sections) ? research.sections : [])
+      .map((s) => (s && typeof (s as { title?: unknown }).title === 'string' ? String((s as { title: string }).title).trim() : ''))
+      .filter(Boolean)
+  );
+  const junky = draftSecs.filter((s) => looksLikeBannerTitle(s.title, slug) && !existingTitles.has(s.title.trim()));
+  if (junky.length) {
+    const list = junky.map((s) => `\`${s.title.trim()}\``).join('、');
+    return json(
+      {
+        ok: false,
+        code: 'placeholder-title',
+        titles: junky.map((s) => s.title.trim()),
+        existing: [...existingTitles],
+        error:
+          `草稿里的小节标题 ${list} 看着是**标题行**、不是小节名（原稿里没有这一节，` +
+          '采纳后页面上就会多出这么一个标题，内容还常和「基本信息」重复）。' +
+          '两个办法：① 在采纳框里把它改写成正经小节名（一般是「基本信息」），审核台会带着改写重发；' +
+          '② 驳回这条草稿，请投稿人在编辑器里把 `## ` 后面那行改成小节名（例如 `## 基本信息`）再投。',
+      },
+      400
+    );
+  }
+  /* 只有真的改写过才重建草稿文本（没改写就原样交给 mergeDraft，避免顺手重排人家的格式） */
+  const mergedText = renamed.length
+    ? [parsedDoc.intro, ...draftSecs.map((s) => `## ${s.title}\n${s.body}`)].filter((x) => String(x ?? '').trim()).join('\n\n')
+    : draftText;
+
+  const merged = mergeDraft(research, mergedText);
   /* 兜底：合并结果绝不能是空小节数组（generate-map-entries 会当场抛错） */
   if (!Array.isArray(merged.next.sections) || !merged.next.sections.length) {
     return fail('合并结果是空的（草稿与现有一节都对不上），已中止采纳，仓库未改动', 400);
@@ -759,7 +825,9 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
     `社区采纳：${slug} 整篇草稿合并进原稿` +
     `（替换 ${merged.replaced.length} 节${merged.replaced.length ? `：${merged.replaced.join('、')}` : ''}` +
     `${merged.added.length ? `，新增 ${merged.added.length} 节：${merged.added.join('、')}` : ''}` +
-    `${merged.kept.length ? `，保留 ${merged.kept.length} 节` : ''}；整理 ${by}，投稿 #${row.id}）`;
+    `${merged.kept.length ? `，保留 ${merged.kept.length} 节` : ''}` +
+    `${renamed.length ? `，改写标题：${renamed.map((r) => `${r.from} → ${r.to}`).join('；')}` : ''}` +
+    `；整理 ${by}，投稿 #${row.id}）`;
 
   let commitSha = '';
   try {
@@ -785,10 +853,12 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
     replaced: merged.replaced,
     added: merged.added,
     kept: merged.kept,
+    renamed,
     summaryUpdated: Boolean(merged.summary),
     message:
       `已采纳：${slug} 的草稿合并进原稿（替换 ${merged.replaced.length} 节、新增 ${merged.added.length} 节、` +
-      `保留 ${merged.kept.length} 节${merged.summary ? '，并更新了简介' : ''}）。` +
+      `保留 ${merged.kept.length} 节${merged.summary ? '，并更新了简介' : ''}` +
+      `${renamed.length ? `；小节标题改写 ${renamed.map((r) => `「${r.from}」→「${r.to}」`).join('、')}` : ''}）。` +
       '等下一次构建完成后生效；页面上的「社区整理版（未采纳）」会同时消失。',
   });
 }

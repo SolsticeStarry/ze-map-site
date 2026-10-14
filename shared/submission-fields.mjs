@@ -298,6 +298,34 @@ export function parseDoc(text) {
 /** 草稿里有哪几个小节（校验与提示用） */
 export const docSections = (text) => parseDoc(text).sections;
 
+/**
+ * 「这看着是**条目标题行**，不像小节名」—— 采纳前的护栏（2026-10-14 加）。
+ *
+ * 投稿人（包括站长的批量整理）常把条目标题写成一行带破折号的标题，再顺手加个 `## `：
+ *
+ *     ## - ze_flower (花之声) -
+ *
+ *     地图由 [Karon] 绘制
+ *     - 1个关卡
+ *     …
+ *
+ * 这行原本只是「标题」，但 `## ` 一加就成了**小节名**：采纳时它跟原稿里任何一节都不同名，
+ * 于是被当成新小节追加到末尾 —— 页面上出现一个叫「- ze_flower (花之声) -」的标题，
+ * 内容还往往跟「基本信息」重复（ze_tenkinoko_welkin_z 就这样丑过一次，最后手工回滚）。
+ *
+ * 判断标准（宽进严出，只拦最明显的三种）：符号包着的标题行、标题里直接写着地图短名、空标题。
+ * 三处共用这一份：投稿页编辑器（提醒投稿人）、审核台（采纳前改写标题）、Worker（不改写就拒）。
+ */
+export function looksLikeBannerTitle(title, slug = '') {
+  const t = String(title ?? '').trim();
+  if (!t) return true;
+  if (/^[-–—*#_\s]+$/.test(t)) return true;
+  if (/^[-–—].*[-–—]$/.test(t)) return true;
+  const s = String(slug ?? '').trim().toLowerCase();
+  if (s && t.toLowerCase().includes(s)) return true;
+  return false;
+}
+
 function checkUrl(raw) {
   let url;
   try {

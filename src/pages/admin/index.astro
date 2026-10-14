@@ -133,7 +133,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 </BaseLayout>
 
 <script>
-  import { FIELD_RULES, newTagsOf } from '../../../shared/submission-fields.mjs';
+  import { FIELD_RULES, looksLikeBannerTitle, newTagsOf } from '../../../shared/submission-fields.mjs';
   import { ITEM_ACTIONS, cdText, usesText } from '../../../shared/items.mjs';
 
   const rules = FIELD_RULES as Record<string, { label: string; kind?: string }>;
@@ -552,6 +552,18 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     }`;
   }
 
+  /**
+   * 草稿里有哪几个小节名（跟 worker 的 parseDoc 同一套规则：行首 `## `，`###` 不算）。
+   * 用来在采纳前发现「把条目标题行当小节名」的草稿，见下面 shared 的 looksLikeBannerTitle。
+   */
+  function draftSectionTitles(text: string): string[] {
+    return String(text ?? '')
+      .split(/\r?\n/)
+      .filter((line) => /^##\s+/.test(line) && !/^###/.test(line))
+      .map((line) => line.replace(/^##\s+/, '').trim())
+      .filter(Boolean);
+  }
+
   /** 长文本块：默认折到 8 行，点「展开全文」再看 —— 正文动辄几千字，铺开会把卡片撑成一面墙 */
   function textBlock(label: string, text: string, cls: string): HTMLElement {
     const wrap = el('div', `admin-pane ${cls}`);
@@ -789,14 +801,41 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       const adopt = el('button', 'btn btn-primary', '采纳为原稿') as HTMLButtonElement;
       adopt.type = 'button';
       adopt.onclick = async () => {
+        /*
+         * 采纳前先把「把标题行当小节名」的草稿挑出来（见 looksLikeBannerTitle）：
+         * 这类标题一旦采纳就会变成页面上一个小节标题（内容还常和「基本信息」重复），
+         * 所以在这儿给一个改写框，默认填「基本信息」，改完带着 retitle 一起提交。
+         * 留空 = 不改写，服务端会以 placeholder-title 拒掉并说明原因（不会写坏页面）。
+         */
+        const draftText = String(item.value ?? '');
+        const banner = draftSectionTitles(draftText).filter((t) => looksLikeBannerTitle(t, item.map_slug));
+        const fields = banner.slice(0, 4).map((t) => ({
+          key: `retitle:${t}`,
+          label: `标题「${t}」改成（留空=按原样新增这个标题）`,
+          value: '基本信息',
+        }));
         const r = await ask({
           title: '采纳为原稿',
           desc:
             `把《${mapTitle(item.map_slug) || item.map_slug}》的整篇草稿按小节合并进人工原稿：` +
-            '同名小节替换、新小节追加、没写到的小节原样保留。会立刻提交一次（不进攒批）。',
+            '同名小节替换、新小节追加、没写到的小节原样保留。会立刻提交一次（不进攒批）。' +
+            (banner.length
+              ? `\n\n⚠️ 这个草稿里有 ${banner.length} 个标题看着是**标题行**而不是小节名` +
+                `（${banner.map((t) => `「${t}」`).join('、')}）——` +
+                '原稿里没有同名小节，不改写就会在页面上多出这么一个标题。下面默认改写成「基本信息」，' +
+                '你可以改成别的（例如「关卡流程」）；留空则按原样新增。'
+              : ''),
+          fields,
           confirmText: '采纳并提交',
         });
-        if (r) adoptDraft(item.map_slug);
+        if (!r) return;
+        const retitle: Record<string, string> = {};
+        for (const [k, v] of Object.entries(r)) {
+          if (!k.startsWith('retitle:')) continue;
+          const to = String(v ?? '').trim();
+          if (to) retitle[k.slice('retitle:'.length)] = to;
+        }
+        adoptDraft(item.map_slug, { retitle });
       };
       actions.append(adopt);
     }
@@ -1262,11 +1301,18 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
    */
   /**
    * 采纳整篇草稿（2026-10-13）：把某张图的「社区整理版」按小节合并进人工原稿。
-   * 单独一次提交（不走攒批），服务端会回替换/新增/保留了几节，照着念给审核员听。
+   * 单独一次提交（不走攒批），服务端会回替换/新增/保留了几节、改写没改写标题，照着念给审核员听。
+   *
+   * @param opts.retitle 采纳前改写的小节标题（`{ 原标题: 新标题 }`），见按钮那段的说明
+   * @param opts.force 同一条草稿已经采纳过时，确认要再合并一遍（服务端默认拦）
    */
-  async function adoptDraft(slug: string, force = false) {
+  async function adoptDraft(slug: string, opts: { retitle?: Record<string, string>; force?: boolean } = {}) {
+    const { retitle, force = false } = opts;
+    const body: Record<string, unknown> = { slug };
+    if (force) body.force = true;
+    if (retitle && Object.keys(retitle).length) body.retitle = retitle;
     setStatus(force ? '强制再合并中…' : '采纳中…');
-    const { status, data } = await api('/api/admin/adopt', { method: 'POST', body: force ? { slug, force: true } : { slug } });
+    const { status, data } = await api('/api/admin/adopt', { method: 'POST', body });
     /*
      * 409 already-adopted：这条草稿此前已经采纳过、页面上也没有待采纳的草稿了。
      * 服务端拒绝是为了不把「采纳后又手工修过的原稿」用同一份旧草稿盖回去（真事故：
@@ -1278,11 +1324,12 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         desc:
           `${data.error}\n\n` +
           `投稿号 #${data.submission}${data.adoptedBy ? ` · 整理者 ${data.adoptedBy}` : ''}` +
-          `${data.adoptedAt ? ` · 采纳于 ${String(data.adoptedAt).slice(0, 10)}` : ''}`,
-        confirmText: '强制再合并一次',
+          `${data.adoptedAt ? ` · 采纳于 ${String(data.adoptedAt).slice(0, 10)}` : ''}` +
+          '\n\n（多半是重复点了一下 —— 想取消直接点「取消」；确实要再合并一遍才点右边那个。）',
+        confirmText: '仍然再合并一次',
         danger: true,
       });
-      if (again) await adoptDraft(slug, true);
+      if (again) await adoptDraft(slug, { ...opts, force: true });
       else setStatus('已取消：没有重复采纳');
       return;
     }
