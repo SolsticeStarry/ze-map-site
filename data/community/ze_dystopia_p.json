@@ -1,0 +1,44 @@
+{
+  "v": 1,
+  "slug": "ze_dystopia_p",
+  "updatedAt": "2026-10-14T11:43:40.718Z",
+  "fields": {
+    "duration": {
+      "v": "约 30 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:40.718Z",
+      "submission": 318
+    },
+    "aliases": {
+      "v": [
+        "EXG社区: 敌托邦【困难】"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:40.718Z",
+      "submission": 319
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "duration",
+      "from": null,
+      "to": "约 30 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:40.718Z",
+      "submission": 318
+    },
+    {
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "EXG社区: 敌托邦【困难】"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:40.718Z",
+      "submission": 319
+    }
+  ],
+  "draft": null,
+  "items": []
+}
