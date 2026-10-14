@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_tenkinoko_welkin_z",
-  "updatedAt": "2026-10-14T06:01:39.326Z",
+  "updatedAt": "2026-10-14T05:14:10.288Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_tenkinoko_welkin_z.webp",
@@ -63,7 +63,7 @@
     "draft": {
       "v": "已采纳 2026-10-14",
       "by": "AntiLockwise",
-      "at": "2026-10-14T06:01:39.326Z",
+      "at": "2026-10-14T05:14:10.288Z",
       "submission": 147
     }
   },
@@ -183,14 +183,6 @@
       "to": "已采纳为原稿",
       "by": "AntiLockwise",
       "at": "2026-10-14T05:14:10.288Z",
-      "submission": 147
-    },
-    {
-      "field": "draft",
-      "from": "社区整理版（未采纳）",
-      "to": "已采纳为原稿",
-      "by": "AntiLockwise",
-      "at": "2026-10-14T06:01:39.326Z",
       "submission": 147
     }
   ],
