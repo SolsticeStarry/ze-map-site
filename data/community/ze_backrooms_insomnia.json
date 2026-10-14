@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_backrooms_insomnia",
-  "updatedAt": "2026-09-24T08:49:12.101Z",
+  "updatedAt": "2026-10-14T14:57:58.944Z",
   "fields": {
     "videoUrls": {
       "v": [
@@ -23,6 +23,39 @@
       "by": "Liyuu~",
       "at": "2026-09-24T08:49:12.101Z",
       "submission": 6
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 2,
+      "by": "SolsticeStarry",
+      "at": "2026-10-14T14:57:09.182Z",
+      "submission": 374
+    }
+  ],
+  "draft": null,
+  "items": [
+    {
+      "action": "add",
+      "name": "火盐包",
+      "cd": 60,
+      "uses": null,
+      "note": "",
+      "intro": "在神器模型前方释放一片火盐区域，需要攻击火盐区域来点燃(枪或刀)，点燃后的火盐区对僵尸强减速，第一个撞到的僵尸会清空速度。",
+      "by": "SolsticeStarry",
+      "at": "2026-10-14T14:57:09.182Z",
+      "submission": 374
+    },
+    {
+      "action": "add",
+      "name": "火焰包 重复测试。",
+      "cd": 61,
+      "uses": null,
+      "note": "",
+      "intro": "",
+      "by": "SolsticeStarry",
+      "at": "2026-10-14T14:57:09.182Z",
+      "submission": 374
     }
   ]
 }

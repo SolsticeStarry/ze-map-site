@@ -1,13 +1,73 @@
 {
   "v": 1,
   "slug": "ze_visualizer",
-  "updatedAt": "2026-10-14T14:24:26.011Z",
+  "updatedAt": "2026-10-14T14:57:58.944Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_visualizer.webp",
       "by": "SiKi",
       "at": "2026-10-06T13:11:50.273Z",
       "submission": 118
+    },
+    "difficulty": {
+      "v": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 348
+    },
+    "aliases": {
+      "v": [
+        "MOEUB:深渊监视者"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 349
+    },
+    "tags": {
+      "v": [
+        "BOSS战",
+        "CSGO移植",
+        "多关卡",
+        "神器",
+        "弹幕",
+        "KZ",
+        "热门"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 350
+    },
+    "author": {
+      "v": "M4dara",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 351
+    },
+    "authorNote": {
+      "v": "M4dara (作者) seth (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 352
+    },
+    "version": {
+      "v": "ze_visualizer (CS2) v1_2 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 353
+    },
+    "duration": {
+      "v": "40分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 354
+    },
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1Gh411v7jC/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 356
     }
   },
   "notes": [],
@@ -27,6 +87,90 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T14:24:26.011Z",
       "submission": 347
+    },
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 348
+    },
+    {
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "MOEUB:深渊监视者"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 349
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "BOSS战",
+        "CSGO移植",
+        "多关卡",
+        "神器",
+        "弹幕",
+        "KZ",
+        "热门"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 350
+    },
+    {
+      "field": "author",
+      "from": null,
+      "to": "M4dara",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 351
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "M4dara (作者) seth (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 352
+    },
+    {
+      "field": "version",
+      "from": null,
+      "to": "ze_visualizer (CS2) v1_2 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 353
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "40分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 354
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 10,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1Gh411v7jC/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 356
     }
   ],
   "draft": {
@@ -35,5 +179,116 @@
     "at": "2026-10-14T14:24:26.011Z",
     "submission": 347
   },
-  "items": []
+  "items": [
+    {
+      "action": "add",
+      "name": "治愈 (人类)",
+      "cd": 100,
+      "uses": 99,
+      "note": "我们仍未知道是谁发明了免抓奶...",
+      "intro": "释放后 以使用者为中心 生成一片区域 区域内的人类会持续回复血量",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "action": "add",
+      "name": "能量球 (人类)",
+      "cd": 3,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 发射一颗能量球 触碰到球的僵尸会被施加弱减速效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "action": "add",
+      "name": "方块 (人类)",
+      "cd": 60,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 生成一个巨大的方块模型 模型范围内的人类/僵尸会被禁锢在其中",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "action": "add",
+      "name": "护盾 (人类)",
+      "cd": 60,
+      "uses": 99,
+      "note": "谁发明的牙盾和10秒盾...",
+      "intro": "释放后 以使用者为中心 生成一片区域 区域外的僵尸会被阻挡在外",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "action": "add",
+      "name": "冰冻球 (人类)",
+      "cd": 35,
+      "uses": 99,
+      "note": "孩子们.. 一直打被冻的僵尸会大飞",
+      "intro": "释放后 在使用者前方 发射一颗冰冻球 触碰到球的僵尸会被施加强定身效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "action": "add",
+      "name": "黑洞球 (人类)",
+      "cd": 50,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 发射一颗黑洞球 球触碰到僵尸后将在原地生成一片区域 区域内的僵尸会被吸入中心",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "action": "add",
+      "name": "能量球 (僵尸)",
+      "cd": 8,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 发射一颗能量球 触碰到球的人类会受到弱减速效果与微量伤害",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "action": "add",
+      "name": "冰冻球 (僵尸)",
+      "cd": 50,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 发射一颗冰冻球 触碰到球的人类会受到强定身效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "action": "add",
+      "name": "黑洞 (僵尸)",
+      "cd": 90,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为中心 生成一片区域 区域内的人类将被吸引到区域中心",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "action": "add",
+      "name": "治愈 (僵尸)",
+      "cd": 50,
+      "uses": 99,
+      "note": "僵尸奶神器自己有bug吃不到..",
+      "intro": "释放后 以使用者为中心 生成一片区域 区域内的所有僵尸将会被施加 加速效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    }
+  ]
 }
