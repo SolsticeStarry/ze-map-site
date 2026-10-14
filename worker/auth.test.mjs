@@ -949,6 +949,45 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
   });
 
   /*
+   * 假仓库：采纳要「读 data/ 再 commit」，本地不联网，所以把 globalThis.fetch 换成
+   * 内存文件系统 —— 走真的 contents 读、真的 git data 写，写完的东西能立刻断言。
+   * 用法：const repo = installFakeRepo({ 'data/research/x.json': '…' })，结束 repo.restore()。
+   */
+  function installFakeRepo(files) {
+    const prevFetch = globalThis.fetch;
+    const jsonRes = (data, status = 200) =>
+      new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+    globalThis.fetch = async (input, init = {}) => {
+      const url = String(typeof input === 'string' ? input : input.url);
+      if (!url.includes('api.github.com')) return prevFetch(input, init);
+      const key = Object.keys(files).find((k) => url.includes(k));
+      if (url.includes('/contents/')) {
+        if (init.method === 'PUT') {
+          const body = JSON.parse(String(init.body ?? '{}'));
+          files[key] = Buffer.from(String(body.content ?? ''), 'base64').toString('utf8');
+          return jsonRes({ content: { sha: 'blobsha' } });
+        }
+        if (!key) return jsonRes({ message: 'Not Found' }, 404);
+        return jsonRes({ content: Buffer.from(files[key], 'utf8').toString('base64'), sha: 'sha1' });
+      }
+      if (url.includes('/git/ref/heads/')) return jsonRes({ object: { sha: 'head1' } });
+      if (url.includes('/git/commits/')) return jsonRes({ tree: { sha: 'tree1' } });
+      if (url.includes('/git/trees')) {
+        /* commitFiles 对文本文件是把内容**内联在 tree 条目**里提交的（不是走 /contents PUT） */
+        const body = JSON.parse(String(init.body ?? '{}'));
+        for (const entry of body.tree ?? []) {
+          if (entry && typeof entry.path === 'string' && typeof entry.content === 'string') files[entry.path] = entry.content;
+        }
+        return jsonRes({ sha: 'tree2' });
+      }
+      if (url.includes('/git/commits')) return jsonRes({ sha: 'commit1' });
+      if (url.includes('/git/refs/heads/')) return jsonRes({ object: { sha: 'commit1' } });
+      return jsonRes({ message: 'unexpected ' + url }, 500);
+    };
+    return { files, restore: () => { globalThis.fetch = prevFetch; } };
+  }
+
+  /*
    * 2026-10-14 线上真事故的回归测试：
    * 采纳时把 submissions.value **原样**（没 JSON.parse）交给 mergeDraft，
    * 于是 `"## 小节\n正文"` 这串带引号、带字面 \n 的文本被当成导语：
@@ -969,40 +1008,11 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
        VALUES ('ze_demo','draft',?,'h','applied',?, 'AntiLockwise')`
     ).run(JSON.stringify(draft), Date.now());
 
-    /* 假仓库：两个文件放在内存里，走真的 contents 读 + 真的 git data 写 */
-    const repoFiles = {
+    const repo = installFakeRepo({
       'data/research/ze_demo.json': JSON.stringify({ difficulty: '困难', tags: [], confidence: 'low' }, null, 1) + '\n',
       'data/community/ze_demo.json': JSON.stringify({ v: 1, slug: 'ze_demo', fields: {}, notes: [], items: [], log: [] }, null, 2) + '\n',
-    };
-    const prevFetch = globalThis.fetch;
-    const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
-    globalThis.fetch = async (input, init = {}) => {
-      const url = String(typeof input === 'string' ? input : input.url);
-      if (!url.includes('api.github.com')) return prevFetch(input, init);
-      const key = Object.keys(repoFiles).find((k) => url.includes(k));
-      if (url.includes('/contents/')) {
-        if (init.method === 'PUT') {
-          const body = JSON.parse(String(init.body ?? '{}'));
-          repoFiles[key] = Buffer.from(String(body.content ?? ''), 'base64').toString('utf8');
-          return jsonRes({ content: { sha: 'blobsha' } });
-        }
-        if (!key) return jsonRes({ message: 'Not Found' }, 404);
-        return jsonRes({ content: Buffer.from(repoFiles[key], 'utf8').toString('base64'), sha: 'sha1' });
-      }
-      if (url.includes('/git/ref/heads/')) return jsonRes({ object: { sha: 'head1' } });
-      if (url.includes('/git/commits/')) return jsonRes({ tree: { sha: 'tree1' } });
-      if (url.includes('/git/trees')) {
-        /* commitFiles 对文本文件是把内容**内联在 tree 条目**里提交的（不是走 /contents PUT） */
-        const body = JSON.parse(String(init.body ?? '{}'));
-        for (const entry of body.tree ?? []) {
-          if (entry && typeof entry.path === 'string' && typeof entry.content === 'string') repoFiles[entry.path] = entry.content;
-        }
-        return jsonRes({ sha: 'tree2' });
-      }
-      if (url.includes('/git/commits')) return jsonRes({ sha: 'commit1' });
-      if (url.includes('/git/refs/heads/')) return jsonRes({ object: { sha: 'commit1' } });
-      return jsonRes({ message: 'unexpected ' + url }, 500);
-    };
+    });
+    const repoFiles = repo.files;
     try {
       const r = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_demo' }, headers: auth });
       assert.equal(r.status, 200, JSON.stringify(r.data));
@@ -1018,7 +1028,68 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
       assert.equal(doc.draft, null);
       assert.match(String(doc.fields.draft?.v ?? ''), /已采纳/);
     } finally {
-      globalThis.fetch = prevFetch;
+      repo.restore();
+    }
+  });
+
+  /*
+   * 重复采纳的护栏（2026-10-14 加，跟着上面那起事故一起来）：
+   * 采纳之后投稿行仍是 applied（审核台要能对账），「采纳为原稿」按钮也还在 ——
+   * 手一抖再点一次，就是拿**同一份旧草稿**再合并一遍，会把「采纳后又被手工修过的原稿」盖回去
+   * （ze_tenkinoko_welkin_z 正是这样抢修回来的）。现在第二次会被 409 拦下，仓库一个字节都不动；
+   * 真要用同一份草稿重来，得显式带 force。
+   */
+  await t.test('采纳：同一条草稿第二次被 409 拦住（要 force 才重来），新草稿不受影响', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    env.GITHUB_TOKEN = 'test-gh-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    const ins = db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter)
+       VALUES ('ze_demo4','draft',?,'h','applied',?, '整理者')`
+    );
+    ins.run(JSON.stringify('## 基本信息\n\n原始内容\n'), Date.now());
+
+    const repo = installFakeRepo({
+      'data/research/ze_demo4.json':
+        JSON.stringify({ sections: [{ title: '基本信息', body: '原来的一句话' }], confidence: 'low' }, null, 2) + '\n',
+      'data/community/ze_demo4.json':
+        JSON.stringify({ v: 1, slug: 'ze_demo4', updatedAt: null, fields: {}, notes: [], draft: null, items: [], log: [] }, null, 2) + '\n',
+    });
+    const repoFiles = repo.files;
+    try {
+      const first = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_demo4' }, headers: auth });
+      assert.equal(first.status, 200, JSON.stringify(first.data));
+
+      /* 采纳之后站长手工修原稿（线上那次抢修就是这么干的） */
+      repoFiles['data/research/ze_demo4.json'] = JSON.stringify(
+        { sections: [{ title: '基本信息', body: '人工修好的内容' }], confidence: 'medium' },
+        null,
+        2
+      ) + '\n';
+
+      const second = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_demo4' }, headers: auth });
+      assert.equal(second.status, 409, JSON.stringify(second.data));
+      assert.equal(second.data.code, 'already-adopted');
+      assert.match(second.data.error, /已经.*采纳过/);
+      assert.match(repoFiles['data/research/ze_demo4.json'], /人工修好的内容/, '被拦下时仓库必须原封不动');
+
+      const forced = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_demo4', force: true }, headers: auth });
+      assert.equal(forced.status, 200, JSON.stringify(forced.data));
+      assert.match(repoFiles['data/research/ze_demo4.json'], /原始内容/, 'force 时才按同一份草稿重新合并');
+
+      /* 又来了一份**新**草稿（新的投稿行）→ 不该被当成「已采纳过」而拦下 */
+      ins.run(JSON.stringify('## 关卡\n\n新的整理稿\n'), Date.now() + 1);
+      const third = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_demo4' }, headers: auth });
+      assert.equal(third.status, 200, JSON.stringify(third.data));
+      const written = JSON.parse(repoFiles['data/research/ze_demo4.json']);
+      assert.deepEqual(
+        written.sections.map((s) => s.title),
+        ['基本信息', '关卡'],
+        '新草稿照旧合并（同名替换、新节追加）'
+      );
+    } finally {
+      repo.restore();
     }
   });
 

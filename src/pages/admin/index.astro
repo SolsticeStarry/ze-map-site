@@ -1264,9 +1264,28 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
    * 采纳整篇草稿（2026-10-13）：把某张图的「社区整理版」按小节合并进人工原稿。
    * 单独一次提交（不走攒批），服务端会回替换/新增/保留了几节，照着念给审核员听。
    */
-  async function adoptDraft(slug: string) {
-    setStatus('采纳中…');
-    const { status, data } = await api('/api/admin/adopt', { method: 'POST', body: { slug } });
+  async function adoptDraft(slug: string, force = false) {
+    setStatus(force ? '强制再合并中…' : '采纳中…');
+    const { status, data } = await api('/api/admin/adopt', { method: 'POST', body: force ? { slug, force: true } : { slug } });
+    /*
+     * 409 already-adopted：这条草稿此前已经采纳过、页面上也没有待采纳的草稿了。
+     * 服务端拒绝是为了不把「采纳后又手工修过的原稿」用同一份旧草稿盖回去（真事故：
+     * ze_tenkinoko_welkin_z）。这里再问一次，确认才带 force 重发 —— 别让它变成静默失败。
+     */
+    if (status === 409 && data?.code === 'already-adopted' && !force) {
+      const again = await ask({
+        title: '这条草稿已经采纳过了',
+        desc:
+          `${data.error}\n\n` +
+          `投稿号 #${data.submission}${data.adoptedBy ? ` · 整理者 ${data.adoptedBy}` : ''}` +
+          `${data.adoptedAt ? ` · 采纳于 ${String(data.adoptedAt).slice(0, 10)}` : ''}`,
+        confirmText: '强制再合并一次',
+        danger: true,
+      });
+      if (again) await adoptDraft(slug, true);
+      else setStatus('已取消：没有重复采纳');
+      return;
+    }
     if (status !== 200) {
       setStatus(`${data?.error ?? '采纳失败'}（HTTP ${status}）`, true);
       return;

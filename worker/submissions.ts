@@ -689,6 +689,42 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
     );
   }
 
+  /*
+   * 这一条是不是**已经采纳过**了（2026-10-14 加）：
+   * 采纳之后投稿行仍是 applied（页面要能对账、也能在队列里看到），所以「采纳为原稿」按钮还在，
+   * 手一抖再点一次就会拿**同一份草稿**再合并一遍 —— 对刚合并好的原稿来说，这一下是二次覆盖：
+   * 原稿若在那之后被手工修过（ze_tenkinoko_welkin_z 就是这样修回来的），修好的内容会被盖回去。
+   * 判据全在社区文档里：草稿位空了（采纳时 doc.draft = null），且「已采纳」那条记的正是这条投稿号。
+   * 注意只看**这一条**投稿号：之后又有新草稿通过并写回时 doc.draft 非空，这里不会误拦。
+   * 真要重来，显式带 force（审核台会再弹一次确认）。
+   */
+  const community = await readCommunityDoc(env, slug).catch(() => null);
+  const doc = community?.doc ?? emptyDoc(slug);
+  const adopted = (doc.fields as Record<string, { v?: string; submission?: number; by?: string; at?: string }>).draft;
+  if (
+    parsed.body.force !== true &&
+    !doc.draft &&
+    adopted &&
+    typeof adopted.v === 'string' &&
+    adopted.v.startsWith('已采纳') &&
+    Number(adopted.submission) === row.id
+  ) {
+    const when = String(adopted.at ?? '').slice(0, 10);
+    return json(
+      {
+        ok: false,
+        code: 'already-adopted',
+        submission: row.id,
+        adoptedAt: adopted.at ?? null,
+        adoptedBy: adopted.by ?? null,
+        error:
+          `这条草稿（投稿 #${row.id}）已经在 ${when || '此前'} 采纳过了，页面上也没有待采纳的草稿。` +
+          '再采纳一次等于用同一份草稿重新合并，可能覆盖你之后手动改过的原稿。确实要重来请点「强制再合并」。',
+      },
+      409
+    );
+  }
+
   const raw = await readRepoText(env, researchPath);
   if (!raw) return fail(`仓库里没有 ${researchPath}（这张图还没有人工原稿，需要先建一份）`, 404);
 
@@ -706,9 +742,7 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
   }
   const researchText = serializeResearch(merged.next, raw);
 
-  /* 社区文档：清草稿 + 记一条「已采纳」，贡献者留在贡献者名单里 */
-  const community = await readCommunityDoc(env, slug).catch(() => null);
-  const doc = community?.doc ?? emptyDoc(slug);
+  /* 社区文档（上面已读过：既用于「是否已采纳」判断，也在这里写回）：清草稿 + 记一条「已采纳」 */
   const at = new Date().toISOString();
   const by = row.submitter || '匿名';
   doc.draft = null;

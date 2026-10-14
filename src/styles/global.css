@@ -3771,7 +3771,8 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
   font-size: 14px;
 }
 .admin-login-grid .btn { justify-self: start; }
-.admin-hint { margin: 6px 0; color: var(--muted); font-size: 12.5px; line-height: 1.8; }
+/* pre-line：对话框里的说明可以带换行（例如「已采纳过」那段的两行细节），别被压成一整行 */
+.admin-hint { margin: 6px 0; color: var(--muted); font-size: 12.5px; line-height: 1.8; white-space: pre-line; }
 .admin-hint b { color: var(--text); }
 .admin-status { margin: 10px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.7; overflow-wrap: anywhere; }
 .admin-status.is-error { color: #fca5a5; }
