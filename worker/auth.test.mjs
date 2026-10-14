@@ -1940,6 +1940,70 @@ test('站内收件箱：审核 / 写回 / 采纳 / 公告都进收件箱，已�
   });
 });
 
+/* ===== R2 同源回退（/terr/*）：地形分片与图集图片 =====
+ *
+ * 为什么值得单测：这条路是**国内部分网络下站点还能用的唯一依靠** ——
+ * R2 自定义域 terr.ze-map.cn 在那些网络里不通，前端失败后回退到这里。
+ * 2026-10-15 之前它只认 `terr/<id>.bin`，图集图片（十几张、每张 ~45 KB）没有回退，
+ * 域不通的用户看到的就是一片裂图。这里钉住：图集路径收、危险路径不收、类型/缓存头对。
+ */
+test('R2 同源回退：地形分片与图集图片都能取，路径不合法一律 400', async (t) => {
+  const { call, env } = await setup();
+  const store = new Map([
+    ['terr/3716633440.bin', { body: 'BIN', type: 'application/octet-stream' }],
+    ['gallery/ze_visualizer/u357.webp', { body: 'WEBP', type: 'image/webp' }],
+    ['gallery/ze_visualizer/05-workshop.jpg', { body: 'JPG', type: 'image/jpeg' }],
+  ]);
+  env.TERR = {
+    get: async (key) => {
+      const hit = store.get(key);
+      return hit ? { body: new Response(hit.body).body, size: hit.body.length } : null;
+    },
+  };
+  /* Node 里没有 Cloudflare 的 caches.default：给个空壳，命中/写缓存都不影响断言 */
+  const cacheStore = new Map();
+  globalThis.caches = {
+    default: {
+      match: async (req) => cacheStore.get(new Request(req).url),
+      put: async (req, res) => {
+        cacheStore.set(new Request(req).url, res);
+      },
+    },
+  };
+
+  await t.test('地形分片：200 + octet-stream + 一年不可变', async () => {
+    const r = await call('/terr/3716633440.bin');
+    assert.equal(r.res.status, 200);
+    assert.equal(r.res.headers.get('content-type'), 'application/octet-stream');
+    assert.match(r.res.headers.get('cache-control') ?? '', /immutable/);
+  });
+
+  await t.test('图集图片：200 + 正确的 image 类型（webp / jpg 都要认）', async () => {
+    const webp = await call('/terr/gallery/ze_visualizer/u357.webp');
+    assert.equal(webp.res.status, 200, '图集图片必须有回退 —— 不然 terr 域不通时图片集全是裂图');
+    assert.equal(webp.res.headers.get('content-type'), 'image/webp');
+    assert.match(webp.res.headers.get('cache-control') ?? '', /immutable/);
+
+    const jpg = await call('/terr/gallery/ze_visualizer/05-workshop.jpg');
+    assert.equal(jpg.res.status, 200);
+    assert.equal(jpg.res.headers.get('content-type'), 'image/jpeg');
+  });
+
+  await t.test('路径不合法：400 / 404，不能拿它当任意 R2 读取器', async () => {
+    /* %2e%2e%2f 不会被 URL 解析器规范化掉 —— 这才真的走到路由里（未编码的 ../ 会被浏览器/解析器先规整） */
+    const evil = await call('/terr/gallery/%2e%2e%2f%2e%2e%2fsecret.webp');
+    assert.equal(evil.res.status, 400, '穿目录的路径必须拒');
+    const badExt = await call('/terr/gallery/ze_visualizer/payload.bin');
+    assert.equal(badExt.res.status, 400, '图集只收图片扩展名');
+    const badPrefix = await call('/terr/videos/x.mp4');
+    assert.equal(badPrefix.res.status, 400);
+    const missing = await call('/terr/gallery/ze_visualizer/nope.webp');
+    assert.equal(missing.res.status, 404, 'R2 里没有就是 404');
+    const post = await call('/terr/3716633440.bin', { method: 'POST' });
+    assert.equal(post.res.status, 405);
+  });
+});
+
 /* ===== 神器 / 道具行：能删（2026-10-14 改口径） =====
  *
  * 站长在 ze_visualizer 上看到的怪事：服务器配置是 10 行英文名（Heal / Energy Ball…），

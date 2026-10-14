@@ -84,6 +84,12 @@ const desc = `CS2 僵尸逃跑地图实体预览：传送门、可破坏物、�
     <meta property="og:url" content={canonical.href} />
     <meta property="og:image" content={ogImage} />
     <meta name="twitter:card" content="summary_large_image" />
+    {/*
+      提前建连：地形分片（terr.ze-map.cn/terr）是这一页最大的一坨（实测 546 KB 一个文件），
+      而且是 app.js 起来之后才 fetch 的 —— 页面空转那几百毫秒正好用来握手。
+      带 crossorigin：fetch 走的是 CORS 连接池，不带的话这发预连接对不上，等于白发。
+    */}
+    <link rel="preconnect" href="https://terr.ze-map.cn" crossorigin />
   </head>
 <body>
 

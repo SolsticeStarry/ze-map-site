@@ -11,6 +11,20 @@ interface Props {
   image?: string;
   /** 不进搜索引擎（审核台这类只有站长用的页面） */
   noindex?: boolean;
+  /**
+   * 首屏大图（2026-10-15 加）：提前下、并抬到高优先级。
+   *
+   * 为什么需要：本站首页与地图页的「首屏大图」都是 **CSS 背景图**（`.hero-bg-layer` /
+   * `.map-hero-bg`），而 CSS 里的图片**不在预加载扫描器里** —— 浏览器必须先拿到 CSS、
+   * 解析出这条规则，才开始下图。实测（headless Edge，1280×900）首页 LCP 元素就是
+   * `div.hero-bg-layer`，2280 ms；地图页是 `div.map-hero-bg`，1304 ms。
+   * 写成 `<link rel="preload" as="image" fetchpriority="high">` 能把「发现时刻」提到解析 HTML 时。
+   */
+  preloadImage?: string;
+  /** 提前建连的源（普通 <img> 用，例如 R2 上的图集 terr.ze-map.cn） */
+  preconnect?: string[];
+  /** 提前建连的源（fetch/XHR 用，必须带 crossorigin 才对得上连接池） */
+  preconnectCors?: string[];
 }
 
 const {
@@ -18,11 +32,20 @@ const {
   description = '僵尸逃跑地图中文资料库 · 背景故事 · 通关流程 · 神器攻略',
   image,
   noindex = false,
+  preloadImage,
+  preconnect = [],
+  preconnectCors = [],
 } = Astro.props;
 
 const site = Astro.site ?? new URL('https://ze-map.cn');
 const canonical = new URL(Astro.url.pathname, site);
 const ogImage = image ? new URL(image, site).href : new URL('/images/hero-bg.jpg', site).href;
+/* preload 的 type 提示：写对了浏览器才会在「支持 webp」时真的用上这一发预加载 */
+const preloadType = /\.webp$/i.test(preloadImage ?? '')
+  ? 'image/webp'
+  : /\.(jpe?g)$/i.test(preloadImage ?? '')
+    ? 'image/jpeg'
+    : undefined;
 ---
 
 <!doctype html>
@@ -63,6 +86,13 @@ const ogImage = image ? new URL(image, site).href : new URL('/images/hero-bg.jpg
     <meta property="og:image" content={ogImage} />
     <meta name="twitter:card" content="summary_large_image" />
     <title>{title}</title>
+    {/* 第三方源提前建连：图集与地形分片在 terr.ze-map.cn（R2） */}
+    {preconnect.map((href) => <link rel="preconnect" href={href} />)}
+    {preconnectCors.map((href) => <link rel="preconnect" href={href} crossorigin />)}
+    {/* 首屏大图提前下（CSS 背景图不在预加载扫描器里，见 Props.preloadImage 的说明） */}
+    {preloadImage && (
+      <link rel="preload" as="image" href={preloadImage} type={preloadType} fetchpriority="high" />
+    )}
     <script is:inline>
       (function () {
         const saved = localStorage.getItem('theme');

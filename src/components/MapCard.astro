@@ -1,6 +1,7 @@
 ---
 import type { CollectionEntry } from 'astro:content';
 import { DIFFICULTY_CLASS } from '../../shared/difficulty.mjs';
+import { cardCover } from '../lib/cover-thumbs';
 
 interface Props {
   map: CollectionEntry<'maps'>;
@@ -11,6 +12,8 @@ const { title, titleEn, difficulty, players, duration, stages, tags, cover, enti
   map.data;
 const slug = map.id;
 const diffClass = DIFFICULTY_CLASS[difficulty as keyof typeof DIFFICULTY_CLASS] ?? 'diff-unknown';
+/* 卡片显示 379×213：人工封面换成 640 宽的缩略图（见 lib/cover-thumbs.ts），大图留给地图页顶部 */
+const coverSrc = cardCover(cover);
 
 const metaBits = [
   players ? `${players} 人` : null,
@@ -50,8 +53,8 @@ const previewUrl = entitySlug ? `/preview/?map=${entitySlug}` : null;
   <a class="map-card-hit" href={`/maps/${slug}/`} aria-label={`${title} 详情`}></a>
 
   <div class={`map-card-cover ${diffClass}`}>
-    {cover ? (
-      <img src={cover} alt={title} loading="lazy" />
+    {coverSrc ? (
+      <img src={coverSrc} alt={title} loading="lazy" decoding="async" />
     ) : (
       <div class="cover-fallback">
         <span class="cover-en">{titleEn}</span>

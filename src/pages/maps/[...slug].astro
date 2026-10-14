@@ -1,6 +1,7 @@
 ---
 import { render } from 'astro:content';
 import { getMaps } from '../../lib/maps';
+import { galleryFor } from '../../lib/gallery';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import MapCard from '../../components/MapCard.astro';
 import MapGallery from '../../components/MapGallery.astro';
@@ -224,6 +225,10 @@ const related = all
   title={`${title} | ZE 地图资料站`}
   description={`${title}（${titleEn}）— 僵尸逃跑地图资料：关卡流程、实体分布与预览。`}
   image={heroCover}
+  /* 首屏那张封面就是 LCP 元素（CSS 背景图，靠 preload 才提前开始下） */
+  preloadImage={heroCover}
+  /* 图集图片在 R2（terr.ze-map.cn）：有图集就先建连，省掉一次 TLS 往返（图集清单见 components/MapGallery.astro） */
+  preconnect={galleryFor(titleEn).length ? ['https://terr.ze-map.cn'] : []}
 >
   {/*
     Pagefind 筛选标记 —— 不显示任何内容，只是给站内搜索的索引器读的。

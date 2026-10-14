@@ -114,9 +114,33 @@ const isCoverImage = (img: { kind: string }) => coverIsWorkshop && img.kind === 
     <script>
       const grid = document.getElementById('gallery-grid');
       const box = document.getElementById('gallery-lightbox') as HTMLDialogElement | null;
+      /*
+       * R2 自定义域（terr.ze-map.cn）在国内部分网络不通 —— 站点自己的文档里就记着这件事
+       * （地形分片一直有同源回退，见 worker/terr.ts）。图集图片全在那个域上，没有回退就是一片裂图。
+       * 这里给每张图挂一次 error：直连失败就换成同源的 /terr/gallery/…（Worker 从 R2 取 + 边缘缓存一年）。
+       */
+      const sameOriginFallback = (url: string) => url.replace(/^https:\/\/terr\.ze-map\.cn\//, '/terr/');
+      const guard = (el: HTMLImageElement, onFallback?: (next: string) => void) => {
+        el.addEventListener('error', () => {
+          const cur = el.currentSrc || el.src;
+          const next = sameOriginFallback(cur);
+          if (!next.startsWith('/terr/') || el.dataset.r2Fallback === '1') return;
+          el.dataset.r2Fallback = '1';
+          onFallback?.(next);
+          el.src = next;
+        });
+      };
+      for (const im of grid?.querySelectorAll<HTMLImageElement>('.gallery-item img') ?? []) {
+        /* 灯箱用的是同一个按钮上的 data-src：顺手也换掉，免得点开再失败一次 */
+        const item = im.closest<HTMLButtonElement>('.gallery-item');
+        guard(im, (next) => {
+          if (item?.dataset.src) item.dataset.src = sameOriginFallback(item.dataset.src);
+        });
+      }
       if (grid && box) {
         const items = [...grid.querySelectorAll<HTMLButtonElement>('.gallery-item')];
         const img = document.getElementById('gl-img') as HTMLImageElement;
+        guard(img);
         const cap = document.getElementById('gl-cap') as HTMLElement;
         const idx = document.getElementById('gl-idx') as HTMLElement;
         const val = document.getElementById('gl-zoom-val') as HTMLElement;
