@@ -1,0 +1,155 @@
+{
+  "v": 1,
+  "slug": "ze_conflict",
+  "updatedAt": "2026-10-14T11:43:05.896Z",
+  "fields": {
+    "difficulty": {
+      "v": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:14.756Z",
+      "submission": 186
+    },
+    "aliases": {
+      "v": [
+        "音乐游戏:公交车"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:15.815Z",
+      "submission": 180
+    },
+    "tags": {
+      "v": [
+        "CSGO移植",
+        "多关卡",
+        "跳刀",
+        "弹幕",
+        "韩国作者",
+        "机关图",
+        "短流程"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:12.165Z",
+      "submission": 181
+    },
+    "authorNote": {
+      "v": "Rakka/Rio(作者) (为同一人)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:12.676Z",
+      "submission": 182
+    },
+    "version": {
+      "v": "v4_4 (CSGO) ze_conflict (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:13.180Z",
+      "submission": 183
+    },
+    "duration": {
+      "v": "15分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:13.703Z",
+      "submission": 184
+    },
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1fgvyeqE3Z/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:14.220Z",
+      "submission": 185
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "draft",
+      "from": null,
+      "to": "152 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:16.335Z",
+      "submission": 178
+    },
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:15.291Z",
+      "submission": 179
+    },
+    {
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "音乐游戏:公交车"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:15.815Z",
+      "submission": 180
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "CSGO移植",
+        "多关卡",
+        "跳刀",
+        "弹幕",
+        "韩国作者",
+        "机关图",
+        "短流程"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:12.165Z",
+      "submission": 181
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "Rakka/Rio(作者) (为同一人)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:12.676Z",
+      "submission": 182
+    },
+    {
+      "field": "version",
+      "from": null,
+      "to": "v4_4 (CSGO) ze_conflict (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:13.180Z",
+      "submission": 183
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "15分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:13.703Z",
+      "submission": 184
+    },
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1fgvyeqE3Z/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:14.220Z",
+      "submission": 185
+    },
+    {
+      "field": "difficulty",
+      "from": "困难",
+      "to": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:14.756Z",
+      "submission": 186
+    }
+  ],
+  "draft": {
+    "text": "## - ze_conflict (次元战争) -\n\n地图由 [Rakka/Rio] 绘制\n\n- 2个关卡\n\n- 高难度 跳刀/天坠/MG 环节\n\n- 地图由著名音游歌曲 [Conflict] (别称:音游公交车) 改编而来\n\n- 含 MG 的触发机关环节\n\n- 地图大量使用了 [Cranky] 的歌曲",
+    "by": "AntiLockwise",
+    "at": "2026-10-14T11:42:16.335Z",
+    "submission": 178
+  },
+  "items": []
+}

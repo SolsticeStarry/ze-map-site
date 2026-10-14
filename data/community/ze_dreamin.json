@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_dreamin",
-  "updatedAt": "2026-10-14T04:45:47.931Z",
+  "updatedAt": "2026-10-14T11:43:05.896Z",
   "fields": {
     "difficulty": {
       "v": "火星",
@@ -73,9 +73,22 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T04:45:25.301Z",
       "submission": 146
+    },
+    {
+      "field": "draft",
+      "from": null,
+      "to": "100 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:16.853Z",
+      "submission": 141
     }
   ],
-  "draft": null,
+  "draft": {
+    "text": "## - ze_dreamin(梦想) -\n\n地图由 Reflelia 绘制\n\n- 3+1(rtv)个关卡\n\n- 4场终点跳刀\n\n- 3场boss战\n\n- 4个人类神器&4个僵尸神器\n\n- 优美的音乐",
+    "by": "AntiLockwise",
+    "at": "2026-10-14T11:42:16.853Z",
+    "submission": 141
+  },
   "items": [
     {
       "action": "add",

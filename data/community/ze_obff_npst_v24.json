@@ -1,13 +1,25 @@
 {
   "v": 1,
   "slug": "ze_obff_npst_v24",
-  "updatedAt": "2026-09-29T12:38:48.364Z",
+  "updatedAt": "2026-10-14T11:43:05.896Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_obff_npst_v24.webp",
       "by": "白叶",
       "at": "2026-09-29T12:38:48.364Z",
       "submission": 31
+    },
+    "author": {
+      "v": "@Seth(英俊)",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 303
+    },
+    "authorNote": {
+      "v": "千音星璃(出资和制作规划);汐月雪，Luna(神器)",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 304
     }
   },
   "notes": [],
@@ -19,7 +31,24 @@
       "by": "白叶",
       "at": "2026-09-29T12:38:48.364Z",
       "submission": 31
+    },
+    {
+      "field": "author",
+      "from": null,
+      "to": "@Seth(英俊)",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 303
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "千音星璃(出资和制作规划);汐月雪，Luna(神器)",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 304
     }
   ],
+  "draft": null,
   "items": []
 }

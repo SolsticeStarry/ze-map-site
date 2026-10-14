@@ -1,13 +1,27 @@
 {
   "v": 1,
   "slug": "ze_obf_npst_v2",
-  "updatedAt": "2026-10-13T07:23:43.078Z",
+  "updatedAt": "2026-10-14T11:43:05.896Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_obf_npst_v2.webp",
       "by": "SiKi",
       "at": "2026-09-29T14:40:20.300Z",
       "submission": 32
+    },
+    "aliases": {
+      "v": [
+        "EXG社区: 代号:牛批神图V2【梦魇】"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 301
+    },
+    "duration": {
+      "v": "约 50 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 302
     }
   },
   "notes": [
@@ -16,7 +30,10 @@
       "by": "SiKi",
       "at": "2026-10-13T07:23:43.078Z",
       "submission": 128,
-      "field": "story"
+      "field": "story",
+      "revisedBy": null,
+      "revisedAt": null,
+      "revision": 0
     }
   ],
   "log": [
@@ -35,6 +52,24 @@
       "by": "SiKi",
       "at": "2026-10-13T07:23:43.078Z",
       "submission": 128
+    },
+    {
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "EXG社区: 代号:牛批神图V2【梦魇】"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 301
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "约 50 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 302
     }
   ],
   "draft": null,

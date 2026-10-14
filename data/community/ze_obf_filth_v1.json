@@ -1,13 +1,19 @@
 {
   "v": 1,
   "slug": "ze_obf_filth_v1",
-  "updatedAt": "2026-10-13T07:23:43.078Z",
+  "updatedAt": "2026-10-14T11:43:05.896Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_obf_filth_v1.webp",
       "by": "白叶",
       "at": "2026-09-26T08:10:47.469Z",
       "submission": 27
+    },
+    "duration": {
+      "v": "约 40 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 306
     }
   },
   "notes": [
@@ -16,7 +22,10 @@
       "by": "SiKi",
       "at": "2026-10-13T07:23:43.078Z",
       "submission": 127,
-      "field": "story"
+      "field": "story",
+      "revisedBy": null,
+      "revisedAt": null,
+      "revision": 0
     }
   ],
   "log": [
@@ -35,6 +44,14 @@
       "by": "SiKi",
       "at": "2026-10-13T07:23:43.078Z",
       "submission": 127
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "约 40 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 306
     }
   ],
   "draft": null,

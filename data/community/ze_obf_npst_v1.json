@@ -1,13 +1,19 @@
 {
   "v": 1,
   "slug": "ze_obf_npst_v1",
-  "updatedAt": "2026-09-29T15:42:45.020Z",
+  "updatedAt": "2026-10-14T11:43:05.896Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_obf_npst_v1.webp",
       "by": "SiKi",
       "at": "2026-09-29T15:42:45.020Z",
       "submission": 33
+    },
+    "duration": {
+      "v": "约 40 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 305
     }
   },
   "notes": [],
@@ -19,7 +25,16 @@
       "by": "SiKi",
       "at": "2026-09-29T15:42:45.020Z",
       "submission": 33
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "约 40 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 305
     }
   ],
+  "draft": null,
   "items": []
 }
