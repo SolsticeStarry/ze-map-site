@@ -1,16 +1,87 @@
 {
   "v": 1,
   "slug": "ze_gris_p",
-  "updatedAt": "2026-10-04T11:26:56.642Z",
+  "updatedAt": "2026-10-14T04:45:47.931Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_gris_p.webp",
       "by": "SiKi",
       "at": "2026-10-04T11:26:56.642Z",
       "submission": 74
+    },
+    "author": {
+      "v": "Kune",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:20.307Z",
+      "submission": 131
+    },
+    "authorNote": {
+      "v": "AntiLockwise",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:20.640Z",
+      "submission": 132
+    },
+    "duration": {
+      "v": "45分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:20.987Z",
+      "submission": 133
+    },
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1yT4y137Ae/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:21.666Z",
+      "submission": 135
+    },
+    "tags": {
+      "v": [
+        "多关卡",
+        "CSGO移植",
+        "BOSS战",
+        "弹幕",
+        "音乐",
+        "经典老图",
+        "方块",
+        "原作改编",
+        "日本作者"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:22.703Z",
+      "submission": 138
+    },
+    "sources": {
+      "v": [
+        "https://www.bilibili.com/video/BV1Jp411R72M/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:23.043Z",
+      "submission": 139
+    },
+    "difficulty": {
+      "v": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:23.550Z",
+      "submission": 140
     }
   },
-  "notes": [],
+  "notes": [
+    {
+      "text": "- 灰色方块题材 -\n\n-3场难度适中的boss战 \n-4个具有特色的最终逃亡路 \n-两个RTV关卡...\n-与地图契合度极高的配乐\n-已知最早的CSGO弹幕地图...",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:22.003Z",
+      "submission": 136,
+      "field": "summary"
+    },
+    {
+      "text": "- 地图背景 - \n \n地图的基于独立探索游戏 [NaissanceE] 制作 作者以其为蓝本下 创新了各种与原作差异化的元素 (BOSS战 SKYBOX天空盒场景 逃亡路等) \n\n作为KUNE对NaissanceE风格的第一次尝试 所以地图大体为创新为主 对于原作的还原度并没有到很高的地步...\n\n似乎是作者想要适配僵尸逃跑的64人玩法 地图的部分守点比一般地图要宽阔许多（存疑?)\n\n此图无任何与故事有关的文本 所以它并没有任何背景故事:)\n\n- 趣闻 - \n\n* 第一个玩到的RTV关卡其实为RTV 2 因为在CSGO中 使用 ent_fire rtv2指令(只是示例) 触发的关卡为第一个RTV关.. \n\n* 在古早版本的RTV2中 吸推结束后的ZM防守环节 与RTV1(需要射击boss的RTV关卡)一样 四个平台会一直生成覆盖大范围的伤害天谴 直到防守环节结束 后续版本被移除了...\n\n* CSS起源版本的格里斯/格劳为未经作者同意的盗版移植.\n\n* CSGO版本的格里斯 每个社区的吸推力度参数都因参数而不同 CS2则被p组移植削弱了25%左右的力度 现在无论哪个社区都是软绵绵的吸推PUSH了.(笑)\n\n* 这张地图还被移植到过 军团要塞2/地狱已满等同起源引擎的游戏中\n\n* 地图大量使用了CSGO的专属预制特效实体 到了CS2 它们因为不可用 所以全都被替换成了粒子特效实体.\n\n* 最早一批与LUFF(卤粉系列)/FF(最终幻想系列)/核电站 沙尘暴 蘑菇庄园等经典地图 齐名的神图\n\n* https://www.bilibili.com/video/BV1Jp411R72M/ 此条目内部分内容的来源 同时也是个非常值得观看的评测视频 :)\n\n- END -",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:22.362Z",
+      "submission": 137,
+      "field": "story"
+    }
+  ],
   "log": [
     {
       "field": "cover",
@@ -19,7 +90,147 @@
       "by": "SiKi",
       "at": "2026-10-04T11:26:56.642Z",
       "submission": 74
+    },
+    {
+      "field": "author",
+      "from": null,
+      "to": "Kune",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:20.307Z",
+      "submission": 131
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "AntiLockwise",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:20.640Z",
+      "submission": 132
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "45分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:20.987Z",
+      "submission": 133
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 4,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:21.329Z",
+      "submission": 134
+    },
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1yT4y137Ae/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:21.666Z",
+      "submission": 135
+    },
+    {
+      "field": "summary",
+      "from": null,
+      "to": null,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:22.003Z",
+      "submission": 136
+    },
+    {
+      "field": "story",
+      "from": null,
+      "to": null,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:22.362Z",
+      "submission": 137
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "多关卡",
+        "CSGO移植",
+        "BOSS战",
+        "弹幕",
+        "音乐",
+        "经典老图",
+        "方块",
+        "原作改编",
+        "日本作者"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:22.703Z",
+      "submission": 138
+    },
+    {
+      "field": "sources",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1Jp411R72M/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:23.043Z",
+      "submission": 139
+    },
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:23.550Z",
+      "submission": 140
     }
   ],
-  "items": []
+  "draft": null,
+  "items": [
+    {
+      "action": "add",
+      "name": "治疗光环",
+      "cd": 99,
+      "uses": 99,
+      "note": "每隔一小段时间后(3s左右) 为血量在99以下的玩家 +1 HP",
+      "intro": "",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:21.329Z",
+      "submission": 134
+    },
+    {
+      "action": "add",
+      "name": "ZM1",
+      "cd": 3,
+      "uses": 99,
+      "note": "右键向前方生成一道对人类造成伤害的光束 在出现预警结束后 向特效范围内造成一次 3x20(总计60) 的持续伤害",
+      "intro": "",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:21.329Z",
+      "submission": 134
+    },
+    {
+      "action": "add",
+      "name": "ZM2",
+      "cd": 3,
+      "uses": 99,
+      "note": "左键将可视的方块的实体发射出去 右键固定后 将会将范围内的人类禁锢 僵尸可无视方块的阻挡",
+      "intro": "",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:21.329Z",
+      "submission": 134
+    },
+    {
+      "action": "add",
+      "name": "ZM3",
+      "cd": 3,
+      "uses": 99,
+      "note": "左键将可视的圆环范围发射出去 右键固定后 将会对圆环范围内的人类造成伤害与减速",
+      "intro": "",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:45:21.329Z",
+      "submission": 134
+    }
+  ]
 }
