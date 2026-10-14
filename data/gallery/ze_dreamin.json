@@ -1,6 +1,6 @@
 {
   "slug": "ze_dreamin",
-  "count": 10,
+  "count": 15,
   "images": [
     {
       "src": "https://terr.ze-map.cn/gallery/ze_dreamin/05-workshop.webp",
@@ -59,6 +59,36 @@
       "src": "https://terr.ze-map.cn/gallery/ze_dreamin/u172.webp",
       "kind": "user",
       "caption": "第二关 BOSS战",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_dreamin/u173.webp",
+      "kind": "user",
+      "caption": "第三关 道中",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_dreamin/u174.webp",
+      "kind": "user",
+      "caption": "第三关 道中",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_dreamin/u175.webp",
+      "kind": "user",
+      "caption": "第三关 boss战防守环节",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_dreamin/u176.webp",
+      "kind": "user",
+      "caption": "第三关 最终跳刀",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_dreamin/u177.webp",
+      "kind": "user",
+      "caption": "第四关(RTV)关 道中",
       "by": "AntiLockwise"
     }
   ]
