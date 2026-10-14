@@ -645,7 +645,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
      一行 = 一件道具。**动作不让投稿人选**：名字对得上本站已有的表就是「更正」，
      对不上就是「新增」，勾了「本图没有这件」就是「删除」（只加标注，不删行）。
      理由：2026-09-28 的反馈——面对「更正 / 新增」下拉框，投稿人不知道该选哪个。 */
-  type ItemRow = { n?: string; c?: string; u?: string; k?: string; l?: string; i?: string };
+  type ItemRow = { n?: string; c?: string; u?: string; k?: string; l?: string; i?: string; del?: boolean };
 
   /** 本站这张图现在的表（手写正文 + 服务器配置 + 已通过的社区更正，构建期合成） */
   function currentItemRows(): ItemRow[] {
@@ -694,8 +694,9 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     cd.max = '3600';
     cd.step = '0.5';
     cd.placeholder = '冷却秒';
-    /* 表里存的是「60 秒」/「—」这种展示值：能取出数字就预填，取不出就留空（留空 = 这一项不动） */
-    if (preset?.c) {
+    /* 表里存的是「60 秒」/「—」这种展示值：能取出数字就预填，取不出就留空（留空 = 这一项不动）。
+       删除行不预填 —— 那一行只是「本图没有这件」，带着冷却/次数只会让审核台看着糊涂。 */
+    if (preset?.c && !preset?.del) {
       const m = /(\d+(?:\.\d+)?)/.exec(String(preset.c));
       if (m) cd.value = m[1];
     }
@@ -706,7 +707,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     uses.min = '0';
     uses.max = '99';
     uses.placeholder = '次数';
-    if (preset?.u && /^\d+$/.test(String(preset.u).trim())) uses.value = String(preset.u).trim();
+    if (preset?.u && !preset?.del && /^\d+$/.test(String(preset.u).trim())) uses.value = String(preset.u).trim();
 
     const del = document.createElement('button');
     del.type = 'button';
@@ -731,7 +732,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     intro.maxLength = 200;
     intro.placeholder = '说明（选填）：这件神器是干嘛的，一句话';
     intro.className = 'ir-intro';
-    if (preset?.i) intro.value = String(preset.i);
+    if (preset?.i && !preset?.del) intro.value = String(preset.i);
 
     const missingWrap = document.createElement('label');
     missingWrap.className = 'ir-missing';
@@ -750,7 +751,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       const hit = knownItemRow(name.value);
       if (missing.checked) {
         status.textContent = hit
-          ? `提交后会把「${describeItemRow(hit)}」标成『本图没有这件』（原来的行保留，只加标注）`
+          ? `提交后「${describeItemRow(hit)}」这一行会**从表里删掉**（页面不再显示它；原值留在仓库历史与审核记录里，随时能回滚）`
           : '表里没有这个名字，勾了也不会生效 —— 先填一个表里已有的名字';
         return;
       }
@@ -767,6 +768,8 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 
     name.addEventListener('input', refresh);
     missing.addEventListener('change', refresh);
+    /* 「删除已有神器」那条路（点上面列表里的「删除」）带进来的行：勾已经打好了 */
+    if (preset?.del) missing.checked = true;
 
     wrap.append(line1, line2, status);
     rowsEl.append(wrap);
@@ -821,16 +824,29 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       } else {
         const p = document.createElement('p');
         p.className = 'form-hint';
-        p.textContent = `本站这张图现在的表（${rows.length} 件，点一件就能改它的冷却 / 次数 / 说明）：`;
+        p.textContent =
+          `本站这张图现在的表（${rows.length} 件）：点名字带进下面的表单去改；` +
+          '点「删除」反馈本图没有这件（提交后会从表里删掉）。';
         const box = document.createElement('div');
         box.className = 'field-chips items-current-chips';
         for (const r of rows) {
+          /* 一件 = 一个「改」按钮 + 一个「删除」按钮。删除必须好点：
+             以前只能自己把名字原样打一遍再勾「本图没有这件」，打错一个字就变成「新增一件」（2026-10-14 站长的反馈）。 */
+          const cell = document.createElement('span');
+          cell.className = 'items-current-item';
           const b = document.createElement('button');
           b.type = 'button';
           b.textContent = String(r.n ?? '');
-          b.title = `${describeItemRow(r)}${r.i ? ` · 说明：${r.i}` : ''} —— 点一下带进下面的表单`;
+          b.title = `${describeItemRow(r)}${r.i ? ` · 说明：${r.i}` : ''} —— 点一下带进下面的表单去改`;
           b.addEventListener('click', () => addItemRow(r));
-          box.append(b);
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.className = 'items-current-del';
+          del.textContent = '删除';
+          del.title = `本图没有「${String(r.n ?? '')}」—— 提交后这一行会从表里删掉（原因可以写在备注里）`;
+          del.addEventListener('click', () => addItemRow({ ...r, del: true }));
+          cell.append(b, del);
+          box.append(cell);
         }
         curEl.append(p, box);
       }

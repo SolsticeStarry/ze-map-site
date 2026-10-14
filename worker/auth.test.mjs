@@ -1940,3 +1940,76 @@ test('站内收件箱：审核 / 写回 / 采纳 / 公告都进收件箱，已�
   });
 });
 
+/* ===== 神器 / 道具行：能删（2026-10-14 改口径） =====
+ *
+ * 站长在 ze_visualizer 上看到的怪事：服务器配置是 10 行英文名（Heal / Energy Ball…），
+ * 社区又把中文名（治愈 / 能量球…）作为「新增」补了一遍 —— 同一批神器在表里躺了两份（20 行）。
+ * 想删掉英文那几行时才发现：投稿页只有「本图没有这件」这个勾，而它以前**只是加一句备注**，
+ * 行还在表里。现在删除会让那一行从表里消失（留痕在社区文档与 git 历史里，表下有一句说明）。
+ */
+test('神器表：反馈「本图没有这件」时整行从表里去掉（不再是只加标注）', async (t) => {
+  const { mergeItems, visibleItemRows, ITEM_ACTIONS } = await import('../shared/items.mjs');
+
+  await t.test('删除：标成 removed 并从渲染列表里去掉，但记着是谁说的', () => {
+    const base = [
+      { name: 'Heal', cd: 100, maxuses: 0 },
+      { name: 'Energy Ball', cd: 3, maxuses: 0 },
+      { name: 'Square', cd: 60, maxuses: 0 },
+    ];
+    const rows = [
+      { action: 'add', name: '治愈 (人类)', cd: '100', uses: '99', by: 'AntiLockwise' },
+      { action: 'remove', name: 'heal', note: '中文名叫「治愈」', by: 'AntiLockwise' },
+    ];
+    const r = mergeItems(base, rows);
+    assert.deepEqual(r.removed, ['Heal'], '名字大小写不敏感也要能命中');
+    assert.deepEqual(
+      visibleItemRows(r.rows).map((x) => x.name),
+      ['Energy Ball', 'Square', '治愈 (人类)'],
+      '被删的那行不再出现在表里，社区补充照旧追加到末尾'
+    );
+    const gone = r.rows.find((x) => x.name === 'Heal');
+    assert.equal(gone.kind, 'removed');
+    assert.equal(gone.by, 'AntiLockwise', '谁反馈的要留着（表下那句说明要用）');
+    assert.equal(gone.note, '中文名叫「治愈」');
+    assert.equal(r.changed, 2);
+  });
+
+  await t.test('删除社区自己补的行：也能撤掉（改成 removed 后不再显示）', () => {
+    const r = mergeItems(
+      [],
+      [
+        { action: 'add', name: '错误的神器', cd: 10, by: '某人' },
+        { action: 'remove', name: '错误的神器', by: '站长' },
+      ]
+    );
+    assert.deepEqual(r.removed, ['错误的神器']);
+    assert.deepEqual(visibleItemRows(r.rows), [], '整张表被撤空也不该报错（生成器那边有 length 判断）');
+  });
+
+  await t.test('删除一个表里没有的名字：不能凭空多出一件（记进 unmatched）', () => {
+    const r = mergeItems([{ name: 'Heal', cd: 100, maxuses: 0 }], [{ action: 'remove', name: 'Heal 打错字了', by: '某人' }]);
+    assert.deepEqual(r.unmatched, ['Heal 打错字了']);
+    assert.deepEqual(
+      r.rows.map((x) => x.name),
+      ['Heal'],
+      '以前这里会追加一行空白的「Heal 打错字了」，页面上就多出一件不存在的道具'
+    );
+    assert.deepEqual(r.removed, []);
+  });
+
+  await t.test('更正 / 新增不受影响：原值仍留在 original 里（备注列要写「从多少改成多少」）', () => {
+    const r = mergeItems(
+      [{ name: 'Heal', cd: 100, maxuses: 0 }],
+      [{ action: 'update', name: 'Heal', cd: '60', uses: '5', note: '我们服是 60 秒', by: '某人' }]
+    );
+    assert.deepEqual(r.removed, []);
+    const row = r.rows[0];
+    assert.equal(row.kind, 'updated');
+    assert.deepEqual(row.original, { cd: 100, uses: 0 }, 'maxuses=0 就是「不限」，原值照存');
+    assert.equal(row.cd, 60);
+    assert.equal(row.uses, 5);
+    assert.equal(visibleItemRows(r.rows).length, 1, '更正过的行当然还在表里');
+    assert.equal(ITEM_ACTIONS.remove, '删除', '审核台显示的动作名');
+  });
+});
+

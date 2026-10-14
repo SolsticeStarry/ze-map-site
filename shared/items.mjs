@@ -191,12 +191,14 @@ function pickDocRow(cells) {
  *
  * @param base 服务器配置：[{ name, cd, maxuses }]
  * @param rows 社区行：[{ action, name, cd, uses, note, by }]
- * @returns {{ rows: Array, changed: number }}
+ * @returns {{ rows: Array, changed: number, removed: string[], unmatched: string[] }}
  *   rows[].kind：
  *     server   服务器配置原样
  *     updated  社区更正（original 里留着原值）
  *     added    社区补充（服务器配置里没有）
- *     removed  社区反馈「本图没有这件道具」（原行保留，只是标注）
+ *     removed  社区反馈「本图没有这件」→ **渲染时整行不出现**（见下面的说明）
+ *   unmatched：删除了一份表里根本没有的名字（打错字、或原表已经改过）——
+ *     既不能删、更不能当成「新增一件」，交给调用方去提示。
  */
 export function mergeItems(base = [], rows = []) {
   const out = (Array.isArray(base) ? base : []).map((it) => ({
@@ -213,6 +215,7 @@ export function mergeItems(base = [], rows = []) {
 
   const index = new Map(out.map((r) => [itemKey(r.name), r]));
   let changed = 0;
+  const unmatched = [];
 
   for (const raw of Array.isArray(rows) ? rows : []) {
     const row = normalizeItemRow(raw);
@@ -223,6 +226,13 @@ export function mergeItems(base = [], rows = []) {
     if (hit) {
       hit.by = row.by;
       if (row.action === 'remove') {
+        /*
+         * 删除（2026-10-14 改口径）：以前只是把这一行标成「社区反馈：本图没有这件道具」，
+         * 行还留在表里 —— 于是「20 件」的表里躺着 10 行英文名 + 10 行中文名（它们是同一批神器），
+         * 站长问「为什么删不掉」。现在 kind 仍记 removed（留痕、可回滚），
+         * 但**渲染层整行不出现**，只在表下留一句「社区反馈本图没有这 N 件」。
+         * 原值不会丢：社区文档里有这条投稿、git 历史里有原表，改主意把这条驳回/撤掉即可。
+         */
         hit.kind = 'removed';
         hit.note = row.note;
       } else {
@@ -238,8 +248,18 @@ export function mergeItems(base = [], rows = []) {
       continue;
     }
 
-    /* 基表里没有：追加一行（基表为空时整张表都由社区提供） */
-    out.push({
+    /*
+     * 基表里没有这一行。删除要单独处理（2026-10-14 修）：
+     * 以前不管什么动作都往表里追加，于是「删除一个表里没有的名字」会**凭空多出一件道具**
+     * （cd/次数都是空）—— 打错一个字就变成这种鬼数据。现在记进 unmatched，交给调用方提示。
+     */
+    if (row.action === 'remove') {
+      unmatched.push(row.name);
+      continue;
+    }
+    /* 追加一行（基表为空时整张表都由社区提供），并登记进索引 ——
+       这样**同一批里后来的行**还能命中它（例如先补一件、再把它删掉）。 */
+    const added = {
       name: row.name,
       cd: row.cd,
       uses: row.uses,
@@ -248,9 +268,19 @@ export function mergeItems(base = [], rows = []) {
       intro: row.intro,
       by: row.by,
       original: null,
-    });
+    };
+    out.push(added);
+    index.set(itemKey(added.name), added);
     changed++;
   }
 
-  return { rows: out, changed };
+  return {
+    rows: out,
+    changed,
+    removed: out.filter((r) => r.kind === 'removed').map((r) => r.name),
+    unmatched,
+  };
 }
+
+/** 渲染时要显示的行（removed 的整行不出现；见 mergeItems 的说明） */
+export const visibleItemRows = (rows) => (Array.isArray(rows) ? rows : []).filter((r) => r?.kind !== 'removed');

@@ -3026,9 +3026,22 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 .ir-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .ir-note { flex: 1 1 260px; }
 .ir-intro { flex: 1 1 260px; }
-/* 现有神器表列成一排可点的按钮（点一件就带进下面的行里改） */
+/* 现有神器表列成一排可点的按钮（点名字 = 带进下面的行里改；点「删除」= 反馈本图没有这件） */
 .items-current-chips { margin-top: 6px; }
 .items-current-chips button { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 一件 = 名字 + 删除，两个按钮贴在一起，看起来是「一体」的 */
+.items-current-item { display: inline-flex; align-items: stretch; gap: 0; }
+.items-current-item > button:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.items-current-del {
+  max-width: none !important;
+  padding: 0 8px;
+  border-left: 0 !important;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  color: #fca5a5;
+  font-size: 12px;
+}
+.items-current-del:hover { border-color: #fca5a5 !important; color: #fff; background: rgba(248, 113, 113, 0.18); }
 .ir-missing { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
 .ir-status { margin: 6px 0 0; }
 .s-add-row { margin-top: 12px; }

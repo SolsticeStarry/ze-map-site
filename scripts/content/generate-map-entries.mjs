@@ -251,6 +251,13 @@ const cell = (s) => mdSafe(String(s ?? '').replace(/\|/g, '\\|').replace(/\s*\n\
  * 后者没法重写正文里的表，只能在正文末尾补一节「社区更正」。
  */
 function itemsBlock(rows, { title, lead, showNote, anchors, intros }) {
+  /*
+   * 社区反馈「本图没有这件」的行**整行不出现**（2026-10-14 改）：
+   * 以前只是加一句备注，行还留在表里 —— 站长看到的是「10 行英文名 + 10 行中文名」这种重复表。
+   * 现在它们从表里去掉，只在表下留一句「社区反馈本图没有这 N 件」，来源与备注都写清楚。
+   */
+  const gone = (Array.isArray(rows) ? rows : []).filter((r) => r?.kind === 'removed');
+  const shown = (Array.isArray(rows) ? rows : []).filter((r) => r?.kind !== 'removed');
   /* 有对应讲解的行，道具名变成锚点链接（跳到自己那条教程）——
      没有讲解的保持纯文本，免得整表都是点不动的假链接。 */
   const nameCell = (r) => {
@@ -279,7 +286,7 @@ function itemsBlock(rows, { title, lead, showNote, anchors, intros }) {
     '',
     `| ${head.join(' | ')} |`,
     `|${head.map(() => '---').join('|')}|`,
-    ...rows.map((r) =>
+    ...shown.map((r) =>
       [
         nameCell(r),
         cell(cdText(r.cd)),
@@ -293,7 +300,16 @@ function itemsBlock(rows, { title, lead, showNote, anchors, intros }) {
         .replace(/$/, ' |')
     ),
     '',
-  ];
+    /* 被社区删除的行：表里不再出现，但要说清楚「少了哪几件、谁说的」，否则没人知道和服务器配置的差在哪 */
+    gone.length
+      ? `> 社区反馈本图**没有**下面这 ${gone.length} 件，已从表中移除：` +
+        gone
+          .map((r) => `\`${mdSafe(r.name)}\`${r.by ? `（${mdSafe(r.by)}${r.note ? `；${mdSafe(r.note)}` : ''}）` : ''}`)
+          .join('、') +
+        '。'
+      : null,
+    gone.length ? '' : null,
+  ].filter((x) => x !== null);
 }
 
 /**
@@ -758,13 +774,18 @@ function renderEntry(rec, research, wsRec, gfl) {
        免得 340 多个条目凭空多出一列空白（也免得 diff 里全是噪音）。 */
     const showNote = communityCount > 0;
     const title = gfl?.items?.length ? '神器 / 道具（服务器配置）' : '神器 / 道具（社区补充）';
+    /* 社区反馈「本图没有」的行不计入表格（也不计入件数），只在下面那句说明里点名 */
+    const shownCount = merged.rows.length - merged.removed.length;
+    const goneNote = merged.removed.length
+      ? `；另有 ${merged.removed.length} 件经社区反馈本图没有（或已换用别的叫法），已从下表移除`
+      : '';
     const lead = gfl?.items?.length
-      ? `以下 ${merged.rows.length} 件道具来自公开的服务器 entwatch 配置，是本图在服务器上实际注册的神器与道具${
+      ? `以下 ${shownCount} 件道具来自公开的服务器 entwatch 配置，是本图在服务器上实际注册的神器与道具${
           gfl._from ? `（取自 GFL 的 \`${gfl._from}\` 配置）` : ''
         }${communityCount ? '；备注里标了「社区更正 / 社区补充」的行来自社区投稿' : ''}${
           guideAnchors.size ? '；带链接的道具名可以点进下面的教程' : ''
-        }${relicIntros.size ? '；「说明」列是社区写的一句话介绍' : ''}：`
-      : `本站没有这张图的服务器配置解析结果，以下 ${merged.rows.length} 件来自[社区投稿](/contribute/)补充：`;
+        }${relicIntros.size ? '；「说明」列是社区写的一句话介绍' : ''}${goneNote}：`
+      : `本站没有这张图的服务器配置解析结果，以下 ${shownCount} 件来自[社区投稿](/contribute/)补充${goneNote}：`;
     gameplay.push(...itemsBlock(merged.rows, { title, lead, showNote, anchors: guideAnchors, intros: relicIntros }));
   }
 
@@ -852,13 +873,19 @@ function renderEntry(rec, research, wsRec, gfl) {
         ...(() => {
           const docRows = docItemRows(research.sections.map((s) => `## ${s.title}\n\n${s.body}`).join('\n\n'));
           const mergedDoc = mergeItems(docRows.map((r) => ({ name: r.name, cd: r.cd, maxuses: null })), communityItemsOf(pageSlug));
-          const changed = mergedDoc.rows.filter((r) => r.kind !== 'server');
-          return changed.length
+          /* kind !== 'server' = 社区动过手脚的行（更正 / 补充 / 删除）；删除的那些由 itemsBlock
+             整行滤掉、只在表下留一句说明，所以这里的件数要按「表里真的出现的行」算。 */
+          const nonServer = mergedDoc.rows.filter((r) => r.kind !== 'server');
+          const changedCount = nonServer.filter((r) => r.kind !== 'removed').length;
+          const goneCount = nonServer.length - changedCount;
+          return nonServer.length
             ? [
                 '',
-                ...itemsBlock(changed, {
+                ...itemsBlock(nonServer, {
                   title: '神器 / 道具更正（社区投稿）',
-                  lead: `上面的神器表由本站人工整理；以下是[社区投稿](/contribute/)的更正与补充（${changed.length} 件），未列出的行仍以原表为准：`,
+                  lead:
+                    `上面的神器表由本站人工整理；以下是[社区投稿](/contribute/)的更正与补充（${changedCount} 件` +
+                    `${goneCount ? `，另有 ${goneCount} 件经反馈本图没有、已从表中移除` : ''}），未列出的行仍以原表为准：`,
                   showNote: true,
                   anchors: guideAnchorsFor(guides, mergedDoc.rows),
                   intros: relicIntros,
