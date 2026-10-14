@@ -148,6 +148,27 @@ function loadWorkshop(id) {
   try { return readJson(f); } catch { return null; }
 }
 
+/**
+ * 这张图该指向**哪一条**工坊条目 —— 默认用实体目录快照里记的 `rec.f`。
+ *
+ * 为什么要能覆盖（2026-10-14 加）：目录是**当时**的快照，作者删掉旧上传、另起一条之后，
+ * 快照里的 ID 就成了死链 —— 页面上「工坊文件 ID」点过去显示「查无此项」，还挂着「已下架」标签，
+ * 而地图其实活得好好的（ze_bang_dream_mygo 就是这样：早期 FYS 的打包条目 3595134284 已被删除，
+ * 作者自己的 [BangDream][MyGO]ze_bang_dream_mygo = 3600074056 才是活的）。
+ *
+ * 办法：在 `data/research/<slug>.json` 里写一行 `"workshopId": "<新的工坊 ID>"`。
+ * 工坊侧的一切（入口链接 / 自述 / 订阅数 / 发布与更新时间 / 有没有「查无此项」）都跟着新条目走；
+ * **实体分片仍然按老 key 取** —— 那串编号是本站烘焙快照的目录号（`2001/<地图名>/<工坊ID>`），
+ * 说的是「这份实体数据是从哪次上传烘的」，改了它反而查不到分片。
+ */
+function workshopIdOf(rec, research) {
+  const override = String(research?.workshopId ?? '').trim();
+  return /^\d{6,}$/.test(override) ? override : String(rec?.f ?? '');
+}
+
+/** 读这张图的工坊详情（含覆盖），renderEntry 与两个调用点共用同一个口径 */
+const workshopFor = (rec, research) => loadWorkshop(workshopIdOf(rec, research));
+
 /* 工坊上传者昵称映射（scripts/content/fetch-creators.ps1 产出） */
 const CREATORS_FILE = path.join(ROOT, 'data/creators.json');
 const creators = fs.existsSync(CREATORS_FILE) ? readJson(CREATORS_FILE) : {};
@@ -458,7 +479,9 @@ function renderEntry(rec, research, wsRec, gfl) {
    */
   const pageSlug = rec.pageSlug || rec.m;
   const sizeMb = MAP_SIZES[pageSlug];
-  const wsUrl = `https://steamcommunity.com/sharedfiles/filedetails/?id=${rec.f}`;
+  /* 工坊条目：默认目录快照里的 rec.f，data/research 写了 workshopId 就用它（见 workshopIdOf） */
+  const wsId = workshopIdOf(rec, research);
+  const wsUrl = `https://steamcommunity.com/sharedfiles/filedetails/?id=${wsId}`;
   const groups = Object.fromEntries((catalog.groups || []).map((g) => [g.id, g]));
   const baked = rec.source === BAKED_SOURCE;
   /*
@@ -553,7 +576,7 @@ function renderEntry(rec, research, wsRec, gfl) {
     `tags: [${tags.map((x) => JSON.stringify(x)).join(', ')}]`,
     hasCover ? `cover: ${JSON.stringify(coverRel)}` : null,
     `workshopUrl: ${wsUrl}`,
-    `workshopId: ${JSON.stringify(rec.f)}`,
+    `workshopId: ${JSON.stringify(wsId)}`,
     subs ? `workshopSubs: ${subs}` : null,
     wsRec?.views ? `workshopViews: ${wsRec.views}` : null,
     uploader && !research?.author ? `uploader: ${JSON.stringify(uploader)}` : null,
@@ -664,7 +687,7 @@ function renderEntry(rec, research, wsRec, gfl) {
     '| 项目 | 内容 |',
     '|---|---|',
     `| 地图英文名 | ${rec.m} |`,
-    `| 工坊文件 ID | [${rec.f}](${wsUrl}) |`,
+    `| 工坊文件 ID | [${wsId}](${wsUrl}) |`,
     uploader ? `| 工坊上传者 | ${uploader} |` : null,
     `| 适用游戏 | CS2 |`,
     released ? `| 工坊发布 | ${released} |` : null,
@@ -1041,7 +1064,7 @@ for (const rec of pageMaps) {
   if (stageInfo.from && stages === stageInfo.stages) {
     stageFix.push(`${rec.m}: ${rec.st || 0} → ${stageInfo.stages}（${stageInfo.from}）`);
   }
-  const mdx = renderEntry({ ...rec, pageSlug: slug, st: stages }, research, loadWorkshop(rec.f), loadGfl(rec.m));
+  const mdx = renderEntry({ ...rec, pageSlug: slug, st: stages }, research, workshopFor(rec, research), loadGfl(rec.m));
   if (research?.summary) enriched++;
   if (research) usedResearch.add(research);
 
@@ -1093,7 +1116,7 @@ for (const research of new Set(researchFiles.values())) {
       bg: false, rb: false, source: null, sourceBuilt: null, pageSlug: mapName, noEntity: true,
     },
     research,
-    loadWorkshop(wsId),
+    workshopFor({ f: wsId }, research),
     loadGfl(mapName)
   );
   if (prev?.replace(/\r\n/g, '\n') === mdx) continue;

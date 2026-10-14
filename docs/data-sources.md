@@ -74,3 +74,24 @@ s2ze 那份数据里还留着其中 16 张的**原工坊预览图地址**（图�
 - 约定：**不同服务器的难度口径可能不同，有出入以对应服务器为准**；如果 FYS 之后想改口径或撤下标注，
   改这两处即可（别再散落到别的页面，免得撤不干净）。
 
+## 6. 工坊条目的 ID（目录快照 vs. 作者换过的上传，2026-10-14）
+
+每张图用哪个工坊条目，默认取**实体目录快照**里记的那个（`public/entity/catalog.json` 的 `f`，
+页面 frontmatter 的 `workshopId`）。快照是**当时**拍的，作者删掉旧上传、另起一条之后它就成了死链：
+页面挂着「已下架」标签、点「工坊文件 ID」显示查无此项，而地图其实活得好好的。
+
+- **遇到就该改指向**：在 `data/research/<slug>.json` 里写一行 `"workshopId": "<新的工坊 ID>"`，
+  重新生成即可（`npm run data:entries`，构建时也会自动跑；实现见 `generate-map-entries.mjs` 的
+  `workshopIdOf`）。
+- 效果：工坊入口、自述、订阅数、发布/更新时间、「查无此项」判断**全部跟着新条目走**；
+  **实体分片仍然按老 key 取**（`entityKey: 2001/<地图名>/<老工坊ID>`）—— 那串编号是本站烘焙快照的目录号，
+  不是工坊 ID，改了它反而找不到分片。
+- 新条目的详情要先抓进缓存（它不在目录里，全量模式抓不到）：
+  `node scripts/content/fetch-workshop.mjs --ids <工坊ID>`，产物 `data/workshop/<id>.json`（**入库**）。
+- 首个案例：`ze_bang_dream_mygo`（爱音の梦）。快照记的 `3595134284` 是早期 FYS 的打包条目，
+  已被删除（`result: 9`）；作者本人的 `[BangDream][MyGO]ze_bang_dream_mygo` = `3600074056` 才是活的
+  （2025-11-05 发布、842 MB、订阅 2,224），2026-10-14 由社区朋友指出后改指向。
+- 判断口径：Steam 接口 `ISteamRemoteStorage/GetPublishedFileDetails` 的 `result`，
+  1 = 正常、9 = 查无此项。全站现在有 **119 张**图是这个状态（绝大多数是作者真删了，
+  页面挂「已下架」是对的）—— 只有**确实换了上传**的才该加 `workshopId` 覆盖。
+
