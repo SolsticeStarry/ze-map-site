@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_requiem_test",
-  "updatedAt": "2026-10-06T14:16:08.646Z",
+  "updatedAt": "2026-10-14T11:43:25.087Z",
   "fields": {
     "difficulty": {
       "v": "困难",
@@ -14,6 +14,12 @@
       "by": "SiKi",
       "at": "2026-10-06T13:11:51.730Z",
       "submission": 122
+    },
+    "duration": {
+      "v": "约 25 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 312
     }
   },
   "notes": [],
@@ -33,7 +39,16 @@
       "by": "SiKi",
       "at": "2026-10-06T13:11:51.730Z",
       "submission": 122
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "约 25 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 312
     }
   ],
+  "draft": null,
   "items": []
 }

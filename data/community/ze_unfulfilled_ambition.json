@@ -1,0 +1,58 @@
+{
+  "v": 1,
+  "slug": "ze_unfulfilled_ambition",
+  "updatedAt": "2026-10-14T11:43:25.087Z",
+  "fields": {
+    "stages": {
+      "v": 1,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 307
+    },
+    "author": {
+      "v": "ze探险家",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 308
+    },
+    "sources": {
+      "v": [
+        "https://steamcommunity.com/sharedfiles/filedetails/?id=3736078005"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 309
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "stages",
+      "from": null,
+      "to": 1,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 307
+    },
+    {
+      "field": "author",
+      "from": null,
+      "to": "ze探险家",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 308
+    },
+    {
+      "field": "sources",
+      "from": null,
+      "to": [
+        "https://steamcommunity.com/sharedfiles/filedetails/?id=3736078005"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 309
+    }
+  ],
+  "draft": null,
+  "items": []
+}

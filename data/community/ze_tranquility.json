@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_tranquility",
-  "updatedAt": "2026-10-09T12:26:35.123Z",
+  "updatedAt": "2026-10-14T11:43:25.087Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_tranquility.webp",
@@ -18,6 +18,25 @@
       "by": "匿名",
       "at": "2026-10-09T12:26:31.988Z",
       "submission": 123
+    },
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1m55y6rExR/",
+        "https://www.bilibili.com/video/BV11pg96pEGf/"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 316
+    },
+    "sources": {
+      "v": [
+        "https://www.bilibili.com/video/BV1m55y6rExR/",
+        "https://www.bilibili.com/video/BV11pg96pEGf/",
+        "https://steamcommunity.com/sharedfiles/filedetails/?id=3707338750"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 317
     }
   },
   "notes": [],
@@ -41,7 +60,31 @@
       "by": "匿名",
       "at": "2026-10-09T12:26:31.988Z",
       "submission": 123
+    },
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1m55y6rExR/",
+        "https://www.bilibili.com/video/BV11pg96pEGf/"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 316
+    },
+    {
+      "field": "sources",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1m55y6rExR/",
+        "https://www.bilibili.com/video/BV11pg96pEGf/",
+        "https://steamcommunity.com/sharedfiles/filedetails/?id=3707338750"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 317
     }
   ],
+  "draft": null,
   "items": []
 }

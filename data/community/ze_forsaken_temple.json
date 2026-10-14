@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_forsaken_temple",
-  "updatedAt": "2026-10-04T11:22:34.947Z",
+  "updatedAt": "2026-10-14T11:43:25.087Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_forsaken_temple.webp",
@@ -19,7 +19,171 @@
       "by": "SiKi",
       "at": "2026-10-04T11:22:34.947Z",
       "submission": 63
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 14,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
     }
   ],
-  "items": []
+  "draft": null,
+  "items": [
+    {
+      "action": "update",
+      "name": "Fire Magic",
+      "cd": 76,
+      "uses": null,
+      "note": "",
+      "intro": "向前生成一个较大范围方形火焰减速僵尸",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Heal Magic",
+      "cd": 81,
+      "uses": null,
+      "note": "",
+      "intro": "生成一个环状跟随神器手的范围治疗圈",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Water Magic",
+      "cd": 91,
+      "uses": null,
+      "note": "",
+      "intro": "向前生成一个蓝色较大范围圆环定身僵尸",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Gravity Magic",
+      "cd": 91,
+      "uses": null,
+      "note": "",
+      "intro": "向前生成一个黑洞吸引僵尸",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Holy Magic",
+      "cd": null,
+      "uses": 1,
+      "note": "",
+      "intro": "生成一个大范围覆盖的绿色区域结束后处死区域内僵尸",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "The Bait",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "外观与触发神器葡萄一样该神器下方为陷阱板",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Fruit of Knowledge",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "触发神器外观为葡萄样水果",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Flame of Magic",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "触发神器外观为燃烧的火焰",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Zombie Heal",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "在自身周围生成跟随自己的僵尸范围奶",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Zombie Beam",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "生成两束位于自己视角正下方的具有持续伤害的激光",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Zombie Gravity",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "在自身前方生成一个小范围的黑洞吸引人类",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Ammo Magic",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "生成一个跟随自身的环形范围弹药区域内拥有无限子弹效果",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Temple Key",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "触发第二关封锁的门(该神器为灵魂绑定在第一个拿到的人身上)",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    },
+    {
+      "action": "update",
+      "name": "Tornado Magic",
+      "cd": 91,
+      "uses": null,
+      "note": "",
+      "intro": "向前生成一个环形范围风，处于范围内的僵尸将吹飞并且悬浮在空中拥有定身效果",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 313
+    }
+  ]
 }
