@@ -1,11 +1,35 @@
 {
   "slug": "ze_mist_p",
-  "count": 1,
+  "count": 5,
   "images": [
     {
       "src": "https://terr.ze-map.cn/gallery/ze_mist_p/05-workshop.webp",
       "kind": "workshop",
       "caption": "工坊预览图（作者上传）"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_mist_p/u328.webp",
+      "kind": "user",
+      "caption": "镜湖",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_mist_p/u329.webp",
+      "kind": "user",
+      "caption": "地下宫殿",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_mist_p/u330.webp",
+      "kind": "user",
+      "caption": "boss战",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_mist_p/u331.webp",
+      "kind": "user",
+      "caption": "逃亡路",
+      "by": "AntiLockwise"
     }
   ]
 }

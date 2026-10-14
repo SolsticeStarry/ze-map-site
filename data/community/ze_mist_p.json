@@ -1,0 +1,222 @@
+{
+  "v": 1,
+  "slug": "ze_mist_p",
+  "updatedAt": "2026-10-14T13:36:06.028Z",
+  "fields": {
+    "aliases": {
+      "v": [
+        "X社区:迷雾"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 332
+    },
+    "tags": {
+      "v": [
+        "BOSS战",
+        "CSGO移植",
+        "单关卡",
+        "弹幕",
+        "跳刀",
+        "长征"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 333
+    },
+    "author": {
+      "v": "Soft Serve",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 334
+    },
+    "authorNote": {
+      "v": "Soft Serve (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 335
+    },
+    "version": {
+      "v": "ze_mist_p (CS2) q3 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 336
+    },
+    "duration": {
+      "v": "15分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 337
+    },
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1GVFjzUEXh/",
+        "https://www.bilibili.com/video/BV1AY411N7cF/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 339
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "X社区:迷雾"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 332
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "BOSS战",
+        "CSGO移植",
+        "单关卡",
+        "弹幕",
+        "跳刀",
+        "长征"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 333
+    },
+    {
+      "field": "author",
+      "from": null,
+      "to": "Soft Serve",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 334
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "Soft Serve (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 335
+    },
+    {
+      "field": "version",
+      "from": null,
+      "to": "ze_mist_p (CS2) q3 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 336
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "15分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 337
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 6,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 338
+    },
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1GVFjzUEXh/",
+        "https://www.bilibili.com/video/BV1AY411N7cF/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 339
+    },
+    {
+      "field": "draft",
+      "from": null,
+      "to": "52 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 341
+    }
+  ],
+  "draft": {
+    "text": "## 地图由 [Soft Serve] 绘制\n\n1个关卡\n\n6个人类神器\n\n两场Boss战&一场最终MG",
+    "by": "AntiLockwise",
+    "at": "2026-10-14T13:36:06.028Z",
+    "submission": 341
+  },
+  "items": [
+    {
+      "action": "add",
+      "name": "治愈光环",
+      "cd": 60,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一片区域 区域内的人类会持续受到治疗效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 338
+    },
+    {
+      "action": "add",
+      "name": "静电立场",
+      "cd": 10,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一片区域 区域内的僵尸会持续受到弱减速效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 338
+    },
+    {
+      "action": "add",
+      "name": "剧毒喷雾",
+      "cd": 10,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方发射喷雾 接触到喷雾的僵尸会被削减生命值",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 338
+    },
+    {
+      "action": "add",
+      "name": "灵魂爆发",
+      "cd": 10,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方发射能量球 接触到能量球的僵尸将会受到推力效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 338
+    },
+    {
+      "action": "add",
+      "name": "灼热炽焰",
+      "cd": 10,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方生成一片直线区域 区域内的僵尸将会持续受到灼烧减速效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 338
+    },
+    {
+      "action": "add",
+      "name": "冰霜新星",
+      "cd": 10,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一片区域 区域内的僵尸将会受到强定身效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 338
+    }
+  ]
+}

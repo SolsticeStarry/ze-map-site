@@ -1,0 +1,187 @@
+{
+  "v": 1,
+  "slug": "ze_grau_p",
+  "updatedAt": "2026-10-14T13:36:02.741Z",
+  "fields": {
+    "author": {
+      "v": "Kune",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 320
+    },
+    "tags": {
+      "v": [
+        "BOSS战",
+        "CSGO移植",
+        "多关卡",
+        "方块",
+        "经典老图",
+        "日本作者"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 321
+    },
+    "authorNote": {
+      "v": "Kune (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 322
+    },
+    "version": {
+      "v": "a03_4ff (CSGO) ze_grau_p (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 323
+    },
+    "duration": {
+      "v": "20分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 324
+    },
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1Q54y1X74s"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 326
+    },
+    "sources": {
+      "v": [
+        "https://www.bilibili.com/video/BV1Jp411R72M/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 327
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "author",
+      "from": null,
+      "to": "Kune",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 320
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "BOSS战",
+        "CSGO移植",
+        "多关卡",
+        "方块",
+        "经典老图",
+        "日本作者"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 321
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "Kune (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 322
+    },
+    {
+      "field": "version",
+      "from": null,
+      "to": "a03_4ff (CSGO) ze_grau_p (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 323
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "20分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 324
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 3,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 325
+    },
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1Q54y1X74s"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 326
+    },
+    {
+      "field": "sources",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1Jp411R72M/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 327
+    },
+    {
+      "field": "draft",
+      "from": null,
+      "to": "85 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 340
+    }
+  ],
+  "draft": {
+    "text": "## 地图由 [Kune] 绘制\n\n3+1（RTV）个关卡\n\n1 个人类神器 & 2 个僵尸神器\n\n一场 Boss 战 & 一场最终 MG\n\n由知名游戏《创世E》改编而来",
+    "by": "AntiLockwise",
+    "at": "2026-10-14T13:36:02.741Z",
+    "submission": 340
+  },
+  "items": [
+    {
+      "action": "add",
+      "name": "治愈光环",
+      "cd": 0,
+      "uses": 99,
+      "note": "",
+      "intro": "为神器光环范围内的人类持续回复血量",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 325
+    },
+    {
+      "action": "add",
+      "name": "僵尸减速球",
+      "cd": 0,
+      "uses": null,
+      "note": "",
+      "intro": "向前方发射一个减速球 命中的人类将会受到缓速效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 325
+    },
+    {
+      "action": "add",
+      "name": "僵尸加速",
+      "cd": 30,
+      "uses": 99,
+      "note": "",
+      "intro": "使用后给予使用者加速效果",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 325
+    }
+  ]
+}
