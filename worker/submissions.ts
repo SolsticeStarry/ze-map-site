@@ -65,6 +65,7 @@ import {
   type GalleryManifest,
 } from './gallery';
 import { allowWrite, fail, isBanned, json, readJsonBody, type Env } from './http';
+import { ensureSchema } from './auth';
 import { turnstileMessage, verifyTurnstile } from './turnstile';
 import { SLUG_RE } from './votes';
 import { accountForSubmit, recalcUserStats } from './auth';
@@ -720,19 +721,57 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
 /** GET /api/admin/queue?status=pending&limit=50 */
 export async function handleAdminQueue(request: Request, env: Env, url: URL): Promise<Response> {
   if (request.method !== 'GET') return fail('只支持 GET', 405);
+  /* 老库可能还没有 batch / user_id 这两列（懒建表由投稿/注册路径触发）——
+     审核台是只读入口，先补一次表，否则这里会 500「no such column: batch」。 */
+  await ensureSchema(env);
 
   const status = url.searchParams.get('status') ?? 'pending';
   /* approved = 审核通过但还没写回仓库（攒批队列），见 handleAdminFlush */
   if (!['pending', 'approved', 'applied', 'rejected'].includes(status)) return fail('状态不合法');
   const limitRaw = Number(url.searchParams.get('limit') ?? 50);
   const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 200) : 50;
+  const offsetRaw = Number(url.searchParams.get('offset') ?? 0);
+  const offset = Number.isInteger(offsetRaw) && offsetRaw > 0 ? Math.min(offsetRaw, 100000) : 0;
+
+  /*
+   * 关键词 / 地图过滤（2026-10-13 审核台改版加）。
+   * 以前只能在浏览器里翻已加载的那 50 条 —— 队列上百条时等于没法找。
+   * 现在下沉到 SQL：q 匹配地图代码 / 字段 / 署名 / 理由 / 内容，map 精确匹配某张图。
+   * 参数全部走绑定，LIKE 的通配符由我们自己拼（用户输入里的 % _ 会被转义掉）。
+   */
+  const qRaw = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+  const mapRaw = (url.searchParams.get('map') ?? '').trim();
+  const mapFilter = SLUG_RE.test(mapRaw) ? mapRaw : '';
+
+  const where: string[] = ['status = ?1'];
+  const binds: unknown[] = [status];
+  if (qRaw) {
+    const like = `%${qRaw.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
+    binds.push(like);
+    const i = binds.length;
+    where.push(
+      `(map_slug LIKE ?${i} ESCAPE '\\' OR field LIKE ?${i} ESCAPE '\\'` +
+        ` OR IFNULL(submitter,'') LIKE ?${i} ESCAPE '\\'` +
+        ` OR IFNULL(note,'') LIKE ?${i} ESCAPE '\\'` +
+        ` OR value LIKE ?${i} ESCAPE '\\')`
+    );
+  }
+  if (mapFilter) {
+    binds.push(mapFilter);
+    where.push(`map_slug = ?${binds.length}`);
+  }
+  const whereSql = where.join(' AND ');
+
+  const totalRow = await env.DB.prepare(`SELECT COUNT(*) AS n FROM submissions WHERE ${whereSql}`)
+    .bind(...binds)
+    .first<{ n: number }>();
 
   const { results } = await env.DB.prepare(
     `SELECT id, map_slug, field, value, note, submitter, contact, status, created_at,
             reviewed_at, reviewer, reject_note, commit_sha, error, batch
-     FROM submissions WHERE status = ?1 ORDER BY created_at ASC LIMIT ?2`
+     FROM submissions WHERE ${whereSql} ORDER BY created_at ASC LIMIT ?${binds.length + 1} OFFSET ?${binds.length + 2}`
   )
-    .bind(status, limit)
+    .bind(...binds, limit, offset)
     .all<SubmissionRow & { batch?: string | null }>();
 
   /* 批量投稿的「同批还有几条」：审核台据此知道这几条要一起看（一次整理，别只通过一半） */
@@ -747,14 +786,75 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
   ).all<{ status: string; n: number }>();
 
   /*
-   * 附上社区文档里该字段的当前值，审核员好做「现值 vs 新值」对比。
-   * 读不到（没配 GITHUB_TOKEN、网络抽风）不算错误 —— 队列照样要能看，
-   * 每张图只读一次。
+   * ⚠️ 这里**不再**顺手去读每张图的社区文档（2026-10-13 改）。
+   *
+   * 以前为了给审核员看「现值 vs 新值」，对页面上每个不同的地图都调一次 GitHub API。
+   * 一次 Worker 调用只有 50 个子请求额度（免费版），而 limit 允许到 200 ——
+   * 队列里 50 张不同的图时正好撞在线上限上，报 500 Too many subrequests，
+   * 整个审核台打不开。现在改成：列表只返回投稿本身，「现值」由审核台按需另取
+   * （GET /api/admin/current，一次最多 10 条），列表永远只花 3 个子请求。
    */
+  const items = (results ?? []).map((row) => {
+    let value: unknown = null;
+    try {
+      value = JSON.parse(row.value);
+    } catch {
+      value = null;
+    }
+    const payload = isNoteField(row.field) ? notePayload(value) : null;
+    const batchId = (row as { batch?: string | null }).batch ?? '';
+    return {
+      ...row,
+      ...(batchId ? { batch: batchId, batchCount: batchCounts.get(batchId) ?? 1 } : {}),
+      value: payload ? payload.text : value,
+      ...(payload?.reviseOf ? { reviseOf: payload.reviseOf } : {}),
+      /* 现值没取（由 /api/admin/current 按需拉）；神器 / 道具不需要「一个现值」 */
+      current: null,
+      currentPending: row.status === 'pending' || row.status === 'approved',
+    };
+  });
+
+  return json({
+    ok: true,
+    status,
+    items,
+    q: qRaw,
+    map: mapFilter,
+    limit,
+    offset,
+    total: Number(totalRow?.n ?? 0),
+    counts: Object.fromEntries((counts.results ?? []).map((r) => [r.status, r.n])),
+    gitReady: Boolean(env.GITHUB_TOKEN),
+  });
+}
+
+/**
+ * GET /api/admin/current?ids=1,2,3
+ *
+ * 取「这几条投稿对应的现值」——审核台按需调用（一次最多 10 条），
+ * 让队列列表不必为每张图各读一次 GitHub。
+ * 一张图只读一次（同一次调用内缓存）；读不到（没配 token / 网络问题）不回错误，
+ * 对应条目返回 current: null —— 审核台照常能审，只是没有对比。
+ */
+export async function handleAdminCurrent(request: Request, env: Env, url: URL): Promise<Response> {
+  if (request.method !== 'GET') return fail('只支持 GET', 405);
+  await ensureSchema(env);
+
+  const raw = (url.searchParams.get('ids') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const ids = [...new Set(raw.map((s) => Number(s)).filter((n) => Number.isInteger(n) && n > 0))];
+  if (!ids.length) return fail('要给 ids');
+  if (ids.length > 10) return fail('一次最多取 10 条');
+
+  const placeholders = ids.map((_, i) => `?${i + 1}`).join(',');
+  const { results } = await env.DB.prepare(
+    `SELECT id, map_slug, field, value FROM submissions WHERE id IN (${placeholders})`
+  )
+    .bind(...ids)
+    .all<{ id: number; map_slug: string; field: string; value: string }>();
+
   const cache = new Map<string, CommunityFile | null>();
-  const items = [];
+  const out: Record<string, unknown> = {};
   for (const row of results ?? []) {
-    /* 读不到（没配 GITHUB_TOKEN、网络抽风）不算错误 —— 队列照样要能看，每张图只读一次 */
     try {
       if (!cache.has(row.map_slug)) cache.set(row.map_slug, await readCommunityDoc(env, row.map_slug));
     } catch {
@@ -776,8 +876,7 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
     } else if (isNoteField(row.field)) {
       /*
        * 正文类字段是追加 / 修订 note，没有「一个现值」。
-       * 修订时把**目标那一条的原文**当成现值，审核台就能看到正常的 diff
-       * （不然只是一条孤零零的新文本，判断不了它改的是哪一段）。
+       * 修订时把**目标那一条的原文**当成现值，审核台就能看到正常的 diff。
        */
       const reviseId = notePayload(value).reviseOf;
       const notes: Array<{ text?: string }> = doc?.notes ?? [];
@@ -786,27 +885,10 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
     } else {
       current = doc?.fields?.[row.field]?.v ?? null;
     }
-
-    /* note 字段的修订包拆开：审核台看到的就是「新正文 + 修订目标」两件事 */
-    const payload = isNoteField(row.field) ? notePayload(value) : null;
-    const batchId = (row as { batch?: string | null }).batch ?? '';
-    items.push({
-      ...row,
-      /* 同一批投了几条（批量整理）：审核台据此把这一组当一件事看 */
-      ...(batchId ? { batch: batchId, batchCount: batchCounts.get(batchId) ?? 1 } : {}),
-      value: payload ? payload.text : value,
-      ...(payload?.reviseOf ? { reviseOf: payload.reviseOf } : {}),
-      current,
-    });
+    out[String(row.id)] = current;
   }
 
-  return json({
-    ok: true,
-    status,
-    items,
-    counts: Object.fromEntries((counts.results ?? []).map((r) => [r.status, r.n])),
-    gitReady: Boolean(env.GITHUB_TOKEN),
-  });
+  return json({ ok: true, current: out, docsRead: cache.size });
 }
 
 /**

@@ -927,6 +927,105 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
     assert.equal(r.status, 401);
   });
 
+  /*
+   * 审核台改版（2026-10-13）：队列列表不再逐图读 GitHub 取「现值」——
+   * 一次 Worker 调用只有 50 个子请求额度，limit 允许到 200，50 张不同的图就撞上限
+   * （线上真的报过 500 Too many subrequests，整个审核台打不开）。
+   * 现在列表只花 3 个子请求，现值走 /api/admin/current 按需取。
+   */
+  await t.test('队列列表：不再逐图读现值，只回投稿本身', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const ins = db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter)
+       VALUES (?,?,?, 'h', 'pending', ?, ?)`
+    );
+    ins.run('ze_alpha', 'difficulty', '"困难"', Date.now(), '甲');
+    ins.run('ze_beta', 'story', '"一段故事"', Date.now() + 1, '乙');
+
+    const r = await call('/api/admin/queue?status=pending', { headers: { authorization: 'Bearer test-admin-token' } });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.equal(r.data.items.length, 2);
+    assert.equal(r.data.items[0].current, null, '现值不在列表里取（交给 /api/admin/current）');
+    assert.equal(r.data.items[0].currentPending, true, '待审的要告诉前端「现值还没取」');
+    assert.equal(r.data.total, 2);
+    assert.equal(r.data.limit, 50);
+    assert.equal(r.data.offset, 0);
+    assert.equal(r.data.gitReady, false, '没配 GITHUB_TOKEN 时如实说明');
+  });
+
+  await t.test('队列筛选：关键词 / 地图 / 分页都对', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    const ins = db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter, note)
+       VALUES (?,?,?, 'h', ?, ?, ?, ?)`
+    );
+    /* 三条待审 + 一条已上线（不该混进来） */
+    ins.run('ze_alpha', 'difficulty', '"困难"', 'pending', 1000, '甲', '');
+    ins.run('ze_alpha', 'story', '"甲写的故事"', 'pending', 2000, '甲', '');
+    ins.run('ze_beta', 'story', '"乙写的故事"', 'pending', 3000, '乙', '来自 B 站');
+    ins.run('ze_beta', 'story', '"已经上线的"', 'applied', 4000, '丙', '');
+
+    const all = await call('/api/admin/queue?status=pending', { headers: auth });
+    assert.equal(all.data.items.length, 3);
+    assert.equal(all.data.total, 3, 'total 只数当前状态');
+
+    const byMap = await call('/api/admin/queue?status=pending&map=ze_alpha', { headers: auth });
+    assert.equal(byMap.data.items.length, 2);
+    assert.ok(byMap.data.items.every((i) => i.map_slug === 'ze_alpha'));
+
+    const byWord = await call('/api/admin/queue?status=pending&q=乙', { headers: auth });
+    assert.equal(byWord.data.items.length, 1, '关键词能匹配署名');
+    assert.equal(byWord.data.items[0].submitter, '乙');
+
+    const byContent = await call('/api/admin/queue?status=pending&q=' + encodeURIComponent('故事'), { headers: auth });
+    assert.equal(byContent.data.items.length, 2, '关键词也能匹配投稿内容');
+    assert.equal(byContent.data.total, 2);
+
+    const paged = await call('/api/admin/queue?status=pending&limit=1&offset=1', { headers: auth });
+    assert.equal(paged.data.items.length, 1);
+    assert.equal(paged.data.items[0].created_at, 2000, '按时间升序的第 2 条');
+    assert.equal(paged.data.total, 3, '分页不影响 total');
+
+    /* LIKE 的通配符要转义：用户搜 % 不该把整张表捞回来 */
+    const wildcard = await call('/api/admin/queue?status=pending&q=%25', { headers: auth });
+    assert.equal(wildcard.data.items.length, 0, '% 当普通字符，不是通配符');
+
+    const badMap = await call('/api/admin/queue?status=pending&map=../../etc', { headers: auth });
+    assert.equal(badMap.data.items.length, 3, '非法地图参数被忽略（不当成过滤条件）');
+  });
+
+  await t.test('现值接口：要密钥、限 10 条、按 id 回值', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter)
+       VALUES ('ze_alpha','difficulty','"困难"','h','pending',?, '甲')`
+    ).run(Date.now());
+    const id = db.prepare(`SELECT id FROM submissions ORDER BY id DESC LIMIT 1`).get().id;
+
+    const noAuth = await call(`/api/admin/current?ids=${id}`);
+    assert.equal(noAuth.status, 401, '没有密钥不能取现值');
+
+    const empty = await call('/api/admin/current?ids=', { headers: auth });
+    assert.equal(empty.status, 400);
+
+    const tooMany = await call(`/api/admin/current?ids=${Array.from({ length: 11 }, (_, i) => i + 1).join(',')}`, { headers: auth });
+    assert.equal(tooMany.status, 400);
+    assert.match(tooMany.data.error, /最多取 10 条/);
+
+    /* 没配 GITHUB_TOKEN：取不到社区文档不算错误，值回 null，但 id 要认出来 */
+    const ok = await call(`/api/admin/current?ids=${id},999999`, { headers: auth });
+    assert.equal(ok.status, 200, JSON.stringify(ok.data));
+    assert.ok(Object.prototype.hasOwnProperty.call(ok.data.current, String(id)), '认识的 id 要有键');
+    assert.equal(ok.data.current[String(id)], null, '读不到文档时现值是 null');
+    assert.equal(ok.data.current['999999'], undefined, '不存在的 id 不编造');
+    assert.equal(ok.data.docsRead, 1, '一张图只读一次');
+  });
+
   await t.test('mergeDraft：同名小节替换、新节追加、没写到的小节原样保留', async () => {
     const { mergeDraft, serializeResearch } = await import('../shared/draft-merge.mjs');
     const research = {

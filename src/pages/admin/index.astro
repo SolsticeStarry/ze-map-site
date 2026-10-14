@@ -1,6 +1,6 @@
 ---
 /**
- * 审核台（P2）—— 只有站长用。
+ * 审核台（P2；2026-10-13 改版）
  *
  * 认证方式：ADMIN_TOKEN（Worker secret）。密钥存在浏览器 localStorage，
  * 请求时走 Authorization: Bearer。没有密钥的人打开这个页面只会看到一个输入框。
@@ -11,78 +11,125 @@
  * 作为第二层照样能叠加。
  *
  * ⚠️ 渲染投稿内容一律用 textContent，绝不用 innerHTML —— 投稿是陌生人写的，
- *    用 innerHTML 就等于让投稿人往审核台里注入脚本偷密钥。
+ *    用 innerHTML 就等于让投稿人往审核台里注入脚本偷密钥。改版新增的节点
+ *    （卡片、标签徽章、对话框）全部走 el()/textContent，别图省事写 innerHTML。
+ *
+ * 2026-10-13 改版要点：
+ *   · 视觉：按钮终于有基底（站里只给 .sidebar-card .btn 写过样式，其余 .btn 被
+ *     Tailwind preflight 清零成纯文字）；标签页有计数与选中态；条卡分区块排版。
+ *   · 便利：关键词 / 地图筛选（下沉到 SQL）、分页「加载更多」、全选与批量通过 /
+ *     批量驳回、地图中文名（不再只有 slug）、「/」聚焦搜索、自动刷新开关。
+ *   · 安全：「写回仓库」前弹二次确认（列出条数与涉及的地图）、危险操作走对话框
+ *     （不再 window.prompt）、页面 noindex、一键清除本机密钥。
+ *   · 可靠：队列接口不再为每张图读一次 GitHub（会撞 50 子请求额度），
+ *     现值改走 /api/admin/current 按需分批取。
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 ---
 
-<BaseLayout title="审核台 | ZE 地图资料站" description="社区投稿审核">
-  <div class="container">
-    <div class="form-card">
+<BaseLayout title="审核台 | ZE 地图资料站" description="社区投稿审核" noindex>
+  <div class="container admin-page" data-pagefind-ignore>
+    {/* ---------- 登录卡 ---------- */}
+    <section class="admin-login" id="a-login">
       <h1>审核台</h1>
-      <p class="form-hint">
-        密钥只保存在你这台浏览器里（localStorage），不会发往别处。<br />
-        「通过」只是把投稿攒进<b>待写回</b>队列；点一次
-        <b>「写回仓库」</b>才会真正提交 —— <b>不管攒了多少条，都只产生一个 commit、只触发一次重建</b>
-        （省 Cloudflare 构建分钟）。别忘了点，没写回就不会上线。
+      <p class="admin-hint">
+        密钥只保存在你这台浏览器里（localStorage），不会发往别处。点
+        <b>「通过」</b>只是把投稿攒进<b>待写回</b>；点一次<b>「写回仓库」</b>才会真正提交 ——
+        <b>不管攒了多少条，都只产生一个 commit、只触发一次重建</b>（省 Cloudflare 构建分钟）。
       </p>
-      <div class="form-grid">
-        <div class="form-row">
-          <label for="a-token">管理密钥（ADMIN_TOKEN）</label>
+      <div class="admin-login-grid">
+        <label>
+          <span>管理密钥（ADMIN_TOKEN）</span>
           <input id="a-token" type="password" placeholder="粘贴后点连接" autocomplete="off" />
-        </div>
-        <div class="form-row">
-          <label for="a-reviewer">审核人署名（会写进 git 提交信息）</label>
-          <input id="a-reviewer" maxlength="32" placeholder="站长" />
-        </div>
+        </label>
+        <label>
+          <span>审核人署名（写进 git 提交信息）</span>
+          <input id="a-reviewer" maxlength="32" placeholder="站长" autocomplete="off" />
+        </label>
+        <button class="btn btn-primary" id="a-connect" type="button">连接</button>
       </div>
-      <button class="btn btn-primary" id="a-connect" type="button">连接</button>
-      <p class="form-hint" id="a-status"></p>
-    </div>
+      <p class="admin-status" id="a-status"></p>
+    </section>
 
-    <div class="form-card" id="a-panel" hidden>
-      <div class="queue-actions" style="margin-bottom: 14px">
-        <button class="btn" type="button" data-status="pending" id="a-tab-pending">待审</button>
-        <button class="btn" type="button" data-status="approved">待写回</button>
-        <button class="btn" type="button" data-status="applied">已上线</button>
-        <button class="btn" type="button" data-status="rejected">已驳回</button>
-        {/*
-          「账号」标签：看账号列表 + 停用/恢复/解锁。
-          做它的直接原因：`users.banned` 这一列和检查一直都在，但**以前没有任何入口能改它**，
-          想停用一个刷号的账号只能手改数据库。顺带把「最近 24 小时新增几个」摆出来，
-          因为防刷的四道闸有三道是按这个数算的（见 docs/accounts.md 的「防滥用」一节）。
-        */}
-        <button class="btn" type="button" data-status="accounts">账号</button>
-        <button class="btn" type="button" id="a-reload">刷新</button>
-      </div>
-      <p class="queue-counts" id="a-counts"></p>
+    {/* ---------- 主面板 ---------- */}
+    <section id="a-panel" hidden>
+      <header class="admin-bar">
+        <div class="admin-tabs" id="a-tabs" role="tablist" aria-label="投稿状态">
+          <button class="admin-tab" type="button" role="tab" data-status="pending">待审<b class="tab-n">0</b></button>
+          <button class="admin-tab" type="button" role="tab" data-status="approved">待写回<b class="tab-n">0</b></button>
+          <button class="admin-tab" type="button" role="tab" data-status="applied">已上线<b class="tab-n">0</b></button>
+          <button class="admin-tab" type="button" role="tab" data-status="rejected">已驳回<b class="tab-n">0</b></button>
+          {/*
+            「账号」标签：看账号列表 + 停用 / 恢复 / 解锁 / 重置口令 / 挂称号。
+            做它的直接原因：`users.banned` 这一列和检查一直都在，但**以前没有任何入口能改它**。
+          */}
+          <button class="admin-tab" type="button" role="tab" data-status="accounts">账号</button>
+        </div>
+        <div class="admin-tools">
+          <input
+            id="a-q"
+            class="admin-search"
+            type="search"
+            placeholder="搜地图 / 署名 / 内容…（按 / 聚焦）"
+            autocomplete="off"
+          />
+          <button class="btn btn-ghost" id="a-reload" type="button">刷新</button>
+          <label class="admin-auto">
+            <input type="checkbox" id="a-auto" />
+            自动刷新
+          </label>
+          <button class="btn btn-ghost admin-forget" id="a-forget" type="button">清除密钥</button>
+        </div>
+      </header>
+
+      <p class="admin-counts" id="a-counts"></p>
+      <p class="admin-status" id="a-panel-status"></p>
 
       {/*
-        攒批区：把「通过」攒起来的投稿一次写回。
-        flush 失败不会丢东西 —— 状态留在 approved，修好后（比如换 token）再点一次即可。
+        攒批区：把「通过」攒起来的投稿一次写回。有存货就显眼地摆出来，
+        免得忘了点导致「审核通过却没上线」。flush 失败不会丢东西 ——
+        状态留在 approved，修好后（比如换 token）再点一次即可。
       */}
-      <div
-        id="a-flush"
-        hidden
-        style="border:1px solid var(--border); border-left:3px solid var(--accent-2); border-radius:10px; padding:12px 16px; margin:0 0 14px; background:var(--panel-2)"
-      >
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+      <div class="admin-flush" id="a-flush" hidden>
+        <div class="admin-flush-row">
           <strong id="a-staged-count">已攒 0 条待写回</strong>
           <button class="btn btn-primary" type="button" id="a-flush-go">写回仓库（一次提交）</button>
-          <span class="form-hint" style="margin:0">
-            不点这个按钮，审核通过的内容不会出现在网站上。
-          </span>
+          <span class="admin-hint">不点这个按钮，审核通过的内容不会出现在网站上。</span>
         </div>
-        <p class="form-hint" id="a-flush-out" style="margin:8px 0 0"></p>
+        <p class="admin-hint" id="a-flush-out"></p>
       </div>
 
-      <p class="form-hint" id="a-pending-tip" hidden>
-        勾选多条 → <b>批量通过</b>（攒进待写回），再点上面的「写回仓库」。
-      </p>
+      {/* 批量选择条：勾了才出现 */}
+      <div class="admin-selbar" id="a-selbar" hidden>
+        <span>已选 <b id="a-sel-n">0</b> 条</span>
+        <button class="btn" type="button" id="a-sel-all">全选本页</button>
+        <button class="btn btn-ghost" type="button" id="a-sel-none">清除选择</button>
+        <button class="btn btn-primary" type="button" id="a-batch">批量通过（攒着）</button>
+        <button class="btn" type="button" id="a-batch-reject">批量驳回</button>
+      </div>
 
-      <div id="a-list"></div>
-    </div>
+      <div id="a-list" class="admin-list"></div>
+      <div class="admin-more" id="a-more" hidden>
+        <button class="btn" type="button" id="a-more-go">加载更多</button>
+        <span class="admin-hint" id="a-more-hint"></span>
+      </div>
+    </section>
   </div>
+
+  {/*
+    通用对话框：驳回理由 / 封禁理由 / 改昵称 / 挂称号 / 写回确认 / 清除密钥都走它。
+    比 window.prompt 好看，也能带「快捷理由」按钮与多行输入。
+  */}
+  <dialog class="admin-dialog" id="a-dialog" aria-labelledby="a-dialog-title">
+    <h2 id="a-dialog-title">标题</h2>
+    <p class="admin-hint" id="a-dialog-desc" hidden></p>
+    <div id="a-dialog-chips" class="admin-dialog-chips" hidden></div>
+    <div id="a-dialog-body" class="admin-dialog-body"></div>
+    <div class="admin-dialog-actions">
+      <button class="btn btn-ghost" type="button" id="a-dialog-cancel">取消</button>
+      <button class="btn btn-primary" type="button" id="a-dialog-ok">确定</button>
+    </div>
+  </dialog>
 </BaseLayout>
 
 <script>
@@ -165,7 +212,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   const tokenEl = $<HTMLInputElement>('a-token');
   const reviewerEl = $<HTMLInputElement>('a-reviewer');
   const statusEl = $<HTMLElement>('a-status');
+  const panelStatusEl = $<HTMLElement>('a-panel-status');
   const panel = $<HTMLElement>('a-panel');
+  const loginCard = $<HTMLElement>('a-login');
   const countsEl = $<HTMLElement>('a-counts');
   const listEl = $<HTMLElement>('a-list');
 
@@ -173,8 +222,55 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   let reviewer = localStorage.getItem('ze-admin-reviewer') ?? '';
   let currentStatus = 'pending';
 
+  /* 列表状态（改版后带筛选与分页）：q / map 由服务端过滤，offset 追加式加载 */
+  const PAGE_SIZE = 50;
+  let keyword = '';
+  let mapOnly = '';
+  let items: QueueItem[] = [];
+  let total = 0;
+  const picked = new Set<number>();
+  /** 待审图片的 objectURL：重新渲染前统一回收，不然翻几页就攒一堆内存 */
+  let thumbs: string[] = [];
+
   tokenEl.value = token;
   reviewerEl.value = reviewer;
+
+  /* ===== 地图中文名（2026-10-13 改版加）=====
+     队列里以前只有 slug（《ze_lotr_minas_tirith》），审核时得自己在脑子里翻译。
+     构建期生成的 /submit/maps.json 里有中文名，拉一次就够。
+     顺便让搜索支持中文名：输入「米那斯」时把 map 过滤条件带上。 */
+  interface MapRow {
+    slug: string;
+    title?: string;
+    titleEn?: string;
+  }
+  let mapsIndex: MapRow[] = [];
+  const mapTitle = (slug: string): string => {
+    const hit = mapsIndex.find((m) => m.slug === slug);
+    return hit?.title && hit.title !== slug ? hit.title : '';
+  };
+  async function loadMapsIndex(): Promise<void> {
+    if (mapsIndex.length) return;
+    try {
+      const res = await fetch('/submit/maps.json');
+      const list = (await res.json()) as MapRow[];
+      mapsIndex = Array.isArray(list) ? list : [];
+    } catch {
+      mapsIndex = [];
+    }
+  }
+  /** 关键词命中唯一一张图的标题时 → 用 slug 过滤（中文名也能搜） */
+  function resolveMapFromKeyword(text: string): string {
+    const q = text.trim().toLowerCase();
+    if (q.length < 2) return '';
+    const hits = mapsIndex.filter(
+      (m) =>
+        (m.title ?? '').toLowerCase().includes(q) ||
+        (m.titleEn ?? '').toLowerCase().includes(q) ||
+        m.slug.toLowerCase() === q
+    );
+    return hits.length === 1 ? hits[0].slug : '';
+  }
 
   interface QueueItem {
     id: number;
@@ -192,6 +288,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     reject_note: string | null;
     /** 正文类字段的修订稿：要替换的那条社区投稿的 id（服务端已把 { text, reviseOf } 拆开） */
     reviseOf?: string;
+    /** 批量投稿：同一批的批次号与条数 */
+    batch?: string;
+    batchCount?: number;
+    /** 现值是否已经取过（列表不再顺手取，见 loadCurrents） */
+    currentLoaded?: boolean;
+    /** 现值还没取（待审 / 待写回才有意义） */
+    currentPending?: boolean;
   }
 
   /** 建节点用 textContent 赋值 —— 天然免疫 HTML 注入 */
@@ -230,8 +333,114 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   }
 
   function setStatus(text: string, isError = false) {
-    statusEl.textContent = text;
-    statusEl.className = isError ? 'form-error' : 'form-hint';
+    /* 面板开着就写在面板里（看得见），否则写在登录卡上 */
+    const target = panel.hidden ? statusEl : panelStatusEl;
+    target.textContent = text;
+    target.className = isError ? 'admin-status is-error' : 'admin-status';
+    if (!panel.hidden && !isError && text) {
+      /* 顺便同步到登录卡：清空密钥回到登录界面后还知道上次干了什么 */
+      statusEl.textContent = text;
+      statusEl.className = 'admin-status';
+    }
+  }
+
+  /* ===== 通用对话框（改版加）=====
+     以前驳回理由 / 封禁理由 / 改昵称 / 挂称号全靠 window.prompt：
+     不能带快捷理由、不能多行、样式丑、有的浏览器还会拦。
+     这里用一个原生 <dialog> 统一实现（Esc 关、焦点锁在框里都是浏览器给的）。 */
+  type AskField = { key: string; label: string; value?: string; placeholder?: string; multiline?: boolean };
+  interface AskOptions {
+    title: string;
+    desc?: string;
+    fields?: AskField[];
+    /** 快捷理由：点一下填进第一个字段 */
+    chips?: string[];
+    confirmText?: string;
+    danger?: boolean;
+  }
+  const dialogEl = $<HTMLDialogElement>('a-dialog');
+
+  function ask(opts: AskOptions): Promise<Record<string, string> | null> {
+    const titleEl = $<HTMLElement>('a-dialog-title');
+    const descEl = $<HTMLElement>('a-dialog-desc');
+    const bodyEl = $<HTMLElement>('a-dialog-body');
+    const chipsEl = $<HTMLElement>('a-dialog-chips');
+    const okBtn = $<HTMLButtonElement>('a-dialog-ok');
+    const cancelBtn = $<HTMLButtonElement>('a-dialog-cancel');
+
+    titleEl.textContent = opts.title;
+    descEl.textContent = opts.desc ?? '';
+    descEl.hidden = !opts.desc;
+    bodyEl.replaceChildren();
+    chipsEl.replaceChildren();
+    chipsEl.hidden = !opts.chips?.length;
+    okBtn.textContent = opts.confirmText ?? '确定';
+    okBtn.classList.toggle('btn-danger', Boolean(opts.danger));
+    /* 上一次可能被 confirmFlush 改过文案，这里恢复默认 */
+    cancelBtn.textContent = '取消';
+    cancelBtn.classList.remove('btn-danger');
+
+    const inputs = new Map<string, HTMLInputElement | HTMLTextAreaElement>();
+    for (const f of opts.fields ?? []) {
+      const wrap = el('label', 'admin-dialog-field');
+      wrap.append(el('span', undefined, f.label));
+      const input = f.multiline
+        ? (el('textarea') as HTMLTextAreaElement)
+        : (el('input') as HTMLInputElement);
+      if (f.multiline) (input as HTMLTextAreaElement).rows = 3;
+      else (input as HTMLInputElement).type = 'text';
+      input.value = f.value ?? '';
+      input.placeholder = f.placeholder ?? '';
+      wrap.append(input);
+      bodyEl.append(wrap);
+      inputs.set(f.key, input);
+    }
+
+    const first = [...inputs.values()][0];
+    for (const chip of opts.chips ?? []) {
+      const b = el('button', 'admin-chip', chip) as HTMLButtonElement;
+      b.type = 'button';
+      b.onclick = () => {
+        if (!first) return;
+        first.value = chip;
+        first.focus();
+      };
+      chipsEl.append(b);
+    }
+
+    return new Promise((resolve) => {
+      const done = (value: Record<string, string> | null) => {
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+        dialogEl.onkeydown = null;
+        dialogEl.oncancel = null;
+        dialogEl.onclick = null;
+        if (dialogEl.open) dialogEl.close();
+        resolve(value);
+      };
+      okBtn.onclick = () => {
+        const out: Record<string, string> = {};
+        for (const [k, input] of inputs) out[k] = input.value.trim();
+        done(out);
+      };
+      cancelBtn.onclick = () => done(null);
+      /* Esc / 点背景 = 取消 */
+      dialogEl.oncancel = () => done(null);
+      dialogEl.onclick = (e) => {
+        if (e.target === dialogEl) done(null);
+      };
+      /* 单行输入里回车 = 确定（多行输入回车是换行，别抢） */
+      dialogEl.onkeydown = (e) => {
+        const t = e.target as HTMLElement;
+        if (e.key === 'Enter' && t.tagName === 'INPUT') {
+          e.preventDefault();
+          okBtn.click();
+        }
+      };
+      if (!dialogEl.open) dialogEl.showModal();
+      first?.focus();
+      first?.select?.();
+    });
   }
 
   /**
@@ -254,6 +463,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         return;
       }
       img.src = URL.createObjectURL(await res.blob());
+      /* 记下来，重新渲染 / 换页时统一回收（否则翻几页就攒一堆图片内存） */
+      thumbs.push(img.src);
     } catch {
       img.replaceWith(el('p', 'form-error', '待审图片取不到（网络错误）'));
     }
@@ -310,18 +521,94 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     return table;
   }
 
-  function renderItem(item: QueueItem): HTMLElement {    const box = el('div', 'queue-item');
+  /** 相对时间：队列关心的是「刚投的要不要马上看」，绝对时间反而要自己算一下 */
+  function fmtAgo(ts: number): string {
+    const diff = Date.now() - ts;
+    if (diff < 60_000) return '刚刚';
+    if (diff < 3600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+    if (diff < 86400_000) return `${Math.floor(diff / 3600_000)} 小时前`;
+    const days = Math.floor(diff / 86400_000);
+    return days < 30 ? `${days} 天前` : new Date(ts).toLocaleDateString('zh-CN');
+  }
 
-    const head = el('div', 'queue-head');
-    head.append(
-      el('span', 'queue-map', `《${item.map_slug}》`),
-      el('span', 'queue-field', rules[item.field]?.label ?? item.field),
-      /* 修订稿一眼可辨：待审列表里「新增一段」和「改掉别人已上线的一段」份量不一样 */
-      ...(item.reviseOf ? [el('span', 'queue-badge', `修订 #${item.reviseOf}`)] : []),
-      el('span', 'queue-meta', new Date(item.created_at).toLocaleString('zh-CN'))
-    );
-    box.append(head);
+  const STATUS_LABEL: Record<string, string> = {
+    pending: '待审',
+    approved: '待写回',
+    applied: '已上线',
+    rejected: '已驳回',
+  };
 
+  /** 草稿太长没法整篇并排比：给字数 + 小节名，正文用「展开」再看 */
+  function docSummary(text: string): string {
+    const s = String(text ?? '');
+    const sections = s
+      .split(/^##\s+/m)
+      .slice(1)
+      .map((chunk) => (chunk.split('\n')[0] ?? '').trim())
+      .filter(Boolean);
+    const chars = [...s.trim()].length;
+    return `${chars} 字 · ${sections.length} 个小节${
+      sections.length ? `（${sections.slice(0, 6).join('、')}${sections.length > 6 ? ' …' : ''}）` : ''
+    }`;
+  }
+
+  /** 长文本块：默认折到 8 行，点「展开全文」再看 —— 正文动辄几千字，铺开会把卡片撑成一面墙 */
+  function textBlock(label: string, text: string, cls: string): HTMLElement {
+    const wrap = el('div', `admin-pane ${cls}`);
+    wrap.append(el('span', 'admin-pane-label', label));
+    const body = el('div', 'admin-pane-text', text || '（空）');
+    wrap.append(body);
+    if (String(text ?? '').length > 320) {
+      body.classList.add('is-clamped');
+      const more = el('button', 'admin-pane-more', '展开全文') as HTMLButtonElement;
+      more.type = 'button';
+      more.onclick = () => {
+        const clamped = body.classList.toggle('is-clamped');
+        more.textContent = clamped ? '展开全文' : '收起';
+      };
+      wrap.append(more);
+    }
+    return wrap;
+  }
+
+  const fmtDate = (ts: number) => new Date(ts).toLocaleString('zh-CN', { hour12: false });
+
+  /** 卡片头：地图中文名 + slug（可点，只看这张图）+ 字段 + 状态 + 时间 + 编号 */
+  function itemHead(item: QueueItem): HTMLElement {
+    const head = el('div', 'admin-item-head');
+    const title = mapTitle(item.map_slug);
+    head.append(el('span', 'admin-item-map', title ? `《${title}》` : `《${item.map_slug}》`));
+
+    const slug = el('span', 'admin-chip is-mono', item.map_slug);
+    slug.title = '点一下只看这张图的投稿';
+    slug.onclick = () => {
+      mapOnly = mapOnly === item.map_slug ? '' : item.map_slug;
+      const box = $<HTMLInputElement>('a-q');
+      if (box) box.value = mapOnly;
+      void load();
+    };
+    head.append(slug);
+    head.append(el('span', 'admin-chip is-field', rules[item.field]?.label ?? item.field));
+    head.append(el('span', `admin-chip is-status is-${item.status}`, STATUS_LABEL[item.status] ?? item.status));
+    if (item.reviseOf) head.append(el('span', 'admin-chip is-revise', `修订 #${item.reviseOf}`));
+    if (item.batchCount && item.batchCount > 1) {
+      head.append(el('span', 'admin-chip is-batch', `同批 ${item.batchCount} 条`));
+    }
+    head.append(el('span', 'admin-item-id', `#${item.id}`));
+
+    const time = el('span', 'admin-item-time', `${fmtAgo(item.created_at)} · ${fmtDate(item.created_at)}`);
+    head.append(time);
+    return head;
+  }
+
+  function renderItem(item: QueueItem): HTMLElement {
+    const box = el('div', `admin-item is-${item.status}`);
+    box.dataset.id = String(item.id);
+    box.append(itemHead(item));
+
+    const main = el('div', 'admin-item-main');
+
+    /* ---------- 以下是各字段的「看什么」 ---------- */
     if (item.field === 'cover') {
       const meta = (item.value ?? {}) as Record<string, unknown>;
       const size = `${meta.width ?? '?'}×${meta.height ?? '?'} · ${Math.round((Number(meta.bytes) || 0) / 1024)} KB`;
@@ -331,19 +618,17 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
          **按设计已经删掉了** —— 以前这里照样去取，结果审核台把「成功」显示成
          一片红字「待审图片取不到」，2026-09-26 被误解成上传失败（其实 git 里已经提交了）。 */
       if (item.status === 'pending' || item.status === 'approved') {
-        const img = el('img') as HTMLImageElement;
+        const img = el('img', 'admin-thumb') as HTMLImageElement;
         img.alt = '待审封面';
-        img.style.cssText =
-          'max-width:340px;width:100%;border-radius:8px;border:1px solid var(--border);display:block;margin:8px 0';
-        box.append(img);
+        main.append(img);
         void loadImageThumb(item.id, img, 'cover');
-        box.append(el('p', 'queue-note', `${size} · 通过后写成 ${target}`));
+        main.append(el('p', 'admin-note', `${size} · 通过后写成 ${target}`));
       } else {
-        box.append(el('p', 'queue-note', `${size} · 目标路径 ${target}`));
-        box.append(
+        main.append(el('p', 'admin-note', `${size} · 目标路径 ${target}`));
+        main.append(
           el(
             'p',
-            'queue-note',
+            'admin-note',
             item.status === 'applied'
               ? '✅ 图片已写回仓库（KV 里的临时副本已清理）'
               : '已驳回（KV 里的临时副本已清理）'
@@ -360,31 +645,28 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       const name = `u${item.id}.${meta.ext ?? 'webp'}`;
       const target = `https://terr.ze-map.cn/gallery/${item.map_slug}/${name}`;
 
-      /* 只有还躺在队列里的才去取图：已上线的临时副本按设计已经删掉了 */
       if (item.status === 'pending' || item.status === 'approved') {
-        const img = el('img') as HTMLImageElement;
+        const img = el('img', 'admin-thumb is-wide') as HTMLImageElement;
         img.alt = '待审图片集图片';
-        img.style.cssText =
-          'max-width:460px;width:100%;border-radius:8px;border:1px solid var(--border);display:block;margin:8px 0';
-        box.append(img);
+        main.append(img);
         void loadImageThumb(item.id, img, 'gallery');
-        box.append(el('p', 'queue-note', `${size} · 通过后写成 ${target}`));
+        main.append(el('p', 'admin-note', `${size} · 通过后写成 ${target}`));
       } else {
-        box.append(el('p', 'queue-note', `${size} · ${target}`));
-        box.append(
+        main.append(el('p', 'admin-note', `${size} · ${target}`));
+        main.append(
           el(
             'p',
-            'queue-note',
+            'admin-note',
             item.status === 'applied'
               ? '✅ 已进图片集并写回清单（KV 里的临时副本已清理）'
               : '已驳回（KV 里的临时副本已清理）'
           )
         );
       }
-      box.append(
+      main.append(
         el(
           'p',
-          'queue-note',
+          'admin-note',
           item.value && (item.value as Record<string, unknown>).caption
             ? `图片说明：${String((item.value as Record<string, unknown>).caption)}`
             : '图片说明：（没写，会显示成「玩家截图」）'
@@ -393,45 +675,58 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     } else if (rules[item.field]?.kind === 'itemlist') {
       /* 神器 / 道具：逐行合并，所以要看「这次提交的行」与「文档里已有的行」 */
       const rows = Array.isArray(item.value) ? (item.value as Array<Record<string, unknown>>) : [];
-      const current = Array.isArray(item.current) ? (item.current as Array<Record<string, unknown>>) : [];
-      box.append(el('p', 'queue-note', `本次投稿 ${rows.length} 行（通过后逐行合并，不整表替换）`));
-      box.append(itemsTable(rows, '（这次没有可应用的行）'));
-      box.append(el('p', 'queue-note', `社区文档里已有的行 ${current.length} 条`));
-      box.append(itemsTable(current, '（社区文档里还没有神器 / 道具行）'));
+      main.append(el('p', 'admin-note', `本次投稿 ${rows.length} 行（通过后逐行合并，不整表替换）`));
+      main.append(itemsTable(rows, '（这次没有可应用的行）'));
+      const curBox = el('div', 'admin-current');
+      curBox.dataset.current = String(item.id);
+      curBox.append(el('p', 'admin-note is-quiet', '社区文档里已有的行：读取中…'));
+      main.append(curBox);
     } else if (rules[item.field]?.kind === 'tags') {
-      /* 标签：标出「这张图新增 / 去掉 / 全站新词」，比一行 diff 好审 */
-      box.append(tagsBlock(item));
-    } else if (item.reviseOf) {
-      /*
-       * 正文类字段的修订稿：通过后**替换**目标那一条的正文，不是新增。
-       * 上面已经把目标那条的原文当成 current 取回来了，所以照常显示 diff；
-       * 但要写清「这会改掉别人已经上线的一段」——审核时下手会不一样。
-       */
-      box.append(
-        el(
-          'p',
-          'queue-note',
-          `✏️ 修订稿：通过后替换社区投稿 #${item.reviseOf} 那一条的正文（署名保持原作者，页面另标是谁修订的）`
-        )
-      );
-      const diff = el('p', 'queue-diff');
-      diff.append(
-        el('del', undefined, fmt(item.current)),
-        el('span', undefined, ' → '),
-        el('ins', undefined, fmt(item.value))
-      );
-      box.append(diff);
+      /* 标签：标出「这张图新增 / 去掉 / 全站新词」，比一行 diff 好审。
+         现值（这张图现在的标签）由 /api/admin/current 补上后再重画这一块。 */
+      const holder = el('div', 'tag-block-holder');
+      holder.append(tagsBlock(item));
+      main.append(holder);
+      const curBox = el('div', 'admin-current');
+      curBox.dataset.current = String(item.id);
+      main.append(curBox);
+    } else if (rules[item.field]?.kind === 'doc') {
+      /* 整篇草稿：不可能整篇并排比，给字数 + 小节 + 是否已有草稿 */
+      main.append(el('p', 'admin-note', `草稿：${docSummary(String(item.value ?? ''))}`));
+      const details = el('details', 'admin-fold');
+      details.append(el('summary', undefined, '展开草稿全文'));
+      details.append(textBlock('本次提交', String(item.value ?? ''), 'is-new'));
+      main.append(details);
+      const curBox = el('div', 'admin-current');
+      curBox.dataset.current = String(item.id);
+      main.append(curBox);
+      if (item.status === 'pending') {
+        main.append(el('p', 'admin-note is-quiet', '整篇草稿：通过并写回后，页面上会以「社区整理版（未采纳）」显示'));
+      }
     } else {
-      const diff = el('p', 'queue-diff');
-      diff.append(
-        el('del', undefined, fmt(item.current)),
-        el('span', undefined, ' → '),
-        el('ins', undefined, fmt(item.value))
-      );
-      box.append(diff);
+      /* 普通字段 / 正文：现值 vs 新值两栏对比（现值由 /api/admin/current 按需取） */
+      const diff = el('div', 'admin-diff');
+      const curBox = el('div', 'admin-current');
+      curBox.dataset.current = String(item.id);
+      diff.append(curBox, textBlock('本次提交', fmt(item.value), 'is-new'));
+      main.append(diff);
+      if (item.reviseOf) {
+        /*
+         * 正文类字段的修订稿：通过后**替换**目标那一条的正文，不是新增。
+         * 现值（上面那栏）取的就是目标那条的原文，所以照常对比；
+         * 但要写清「这会改掉别人已经上线的一段」——审核时下手会不一样。
+         */
+        main.append(
+          el(
+            'p',
+            'admin-note is-warn',
+            `✏️ 修订稿：通过后替换社区投稿 #${item.reviseOf} 那一条的正文（署名保持原作者，页面另标是谁修订的）`
+          )
+        );
+      }
     }
 
-    if (item.note) box.append(el('p', 'queue-note', `理由：${item.note}`));
+    if (item.note) main.append(el('p', 'admin-note', `理由：${item.note}`));
 
     const who = [
       item.submitter ? `投稿人：${item.submitter}` : '投稿人：匿名',
@@ -439,26 +734,33 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     ]
       .filter(Boolean)
       .join('　');
-    box.append(el('p', 'queue-note', who));
+    main.append(el('p', 'admin-note is-quiet', who));
 
-    if (item.error) box.append(el('p', 'form-error', `上次写回失败：${item.error}`));
-    if (item.commit_sha) box.append(el('p', 'queue-note', `提交：${item.commit_sha.slice(0, 8)}`));
-    if (item.reject_note) box.append(el('p', 'queue-note', `驳回理由：${item.reject_note}`));
+    if (item.error) main.append(el('p', 'admin-error', `上次写回失败：${item.error}`));
+    if (item.commit_sha) main.append(el('p', 'admin-note is-quiet', `提交：${item.commit_sha.slice(0, 8)}`));
+    if (item.reject_note) main.append(el('p', 'admin-note', `驳回理由：${item.reject_note}`));
     /* 批量投稿（2026-10-13）：同一次整理交上来的几条要一起判，别只通过一半 */
     if (item.batchCount && item.batchCount > 1) {
-      box.append(el('p', 'queue-note', `同一批提交：这一批共 ${item.batchCount} 项（${item.batch}）—— 一次整理的几项，建议一起处理`));
+      main.append(
+        el('p', 'admin-note', `同一批提交：这一批共 ${item.batchCount} 项（${item.batch}）—— 一次整理的几项，建议一起处理`)
+      );
     }
+    box.append(main);
 
-    const actions = el('div', 'queue-actions');
+    /* ---------- 操作区 ---------- */
+    const actions = el('div', 'admin-actions');
 
     /* 待审的给个勾选框：勾几条 → 顶部「批量通过」一次攒进去 */
     if (item.status === 'pending') {
-      const pick = el('label', 'queue-note') as HTMLLabelElement;
-      pick.style.cssText = 'display:flex;gap:6px;align-items:center;margin:0 8px 0 0';
+      const pick = el('label', 'admin-pick');
       const cb = document.createElement('input');
       cb.type = 'checkbox';
-      cb.dataset.pick = String(item.id);
-      cb.style.cssText = 'width:16px;height:16px';
+      cb.checked = picked.has(item.id);
+      cb.onchange = () => {
+        if (cb.checked) picked.add(item.id);
+        else picked.delete(item.id);
+        renderSelbar();
+      };
       pick.append(cb, document.createTextNode('选中'));
       actions.append(pick);
     }
@@ -486,36 +788,56 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     if (item.field === 'draft' && item.status === 'applied') {
       const adopt = el('button', 'btn btn-primary', '采纳为原稿') as HTMLButtonElement;
       adopt.type = 'button';
-      adopt.onclick = () => {
-        if (!confirm(`把「${item.map_slug}」的整篇草稿合并进人工原稿？\n（同名小节替换、新小节追加，没写到的小节保留；会立刻提交一次）`)) return;
-        adoptDraft(item.map_slug);
+      adopt.onclick = async () => {
+        const r = await ask({
+          title: '采纳为原稿',
+          desc:
+            `把《${mapTitle(item.map_slug) || item.map_slug}》的整篇草稿按小节合并进人工原稿：` +
+            '同名小节替换、新小节追加、没写到的小节原样保留。会立刻提交一次（不进攒批）。',
+          confirmText: '采纳并提交',
+        });
+        if (r) adoptDraft(item.map_slug);
       };
       actions.append(adopt);
-    } else if (item.field === 'draft' && item.status === 'pending') {
-      actions.append(el('span', 'queue-note', '整篇草稿：通过并写回后，页面上会以「社区整理版（未采纳）」显示'));
     }
 
     if (item.status === 'pending' || item.status === 'approved') {
       const no = el('button', 'btn', '驳回') as HTMLButtonElement;
       no.type = 'button';
-      no.onclick = () => {
-        const reason = prompt('驳回理由（会展示给投稿人）：', '');
-        if (reason !== null && reason.trim()) review([item.id], 'reject', reason.trim());
-      };
+      no.onclick = () => rejectMany([item.id]);
       actions.append(no);
     }
 
     if (item.status !== 'applied') {
-      const ban = el('button', 'btn', '封禁此来源') as HTMLButtonElement;
+      const ban = el('button', 'btn btn-ghost', '封禁此来源') as HTMLButtonElement;
       ban.type = 'button';
-      ban.onclick = () => {
-        const reason = prompt('封禁理由（内部记录）：', '垃圾投稿');
-        if (reason !== null && reason.trim()) banSource(item.id, reason.trim());
+      ban.onclick = async () => {
+        const r = await ask({
+          title: '封禁来源',
+          desc: '封禁后该来源不能再投稿 / 注册，它的待审投稿会一并驳回。理由只作内部记录。',
+          fields: [{ key: 'reason', label: '封禁理由', value: '垃圾投稿', multiline: true }],
+          chips: ['垃圾投稿', '广告', '恶意刷投稿', '冒名或辱骂'],
+          confirmText: '封禁',
+          danger: true,
+        });
+        if (r?.reason) banSource(item.id, r.reason);
       };
       actions.append(ban);
     }
 
-    const view = el('a', 'btn', '打开条目 ↗') as HTMLAnchorElement;
+    const copy = el('button', 'btn btn-ghost', '复制编号') as HTMLButtonElement;
+    copy.type = 'button';
+    copy.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(String(item.id));
+        setStatus(`已复制编号 #${item.id}`);
+      } catch {
+        setStatus(`编号 #${item.id}（复制没成功，手动记一下）`, true);
+      }
+    };
+    actions.append(copy);
+
+    const view = el('a', 'btn btn-ghost', '打开条目 ↗') as HTMLAnchorElement;
     view.href = `/maps/${item.map_slug}/`;
     view.target = '_blank';
     view.rel = 'noopener';
@@ -525,64 +847,187 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     return box;
   }
 
-  async function load() {
-    listEl.replaceChildren(el('p', 'form-hint', '加载中…'));
+  /* ===== 现值：按 id 分批取（2026-10-13 改版加）=====
+     队列列表不再为每张图读一次 GitHub —— 那会撞上「一次调用 50 个子请求」的额度，
+     队列一多整个审核台就打不开（线上真的报过 500 Too many subrequests）。
+     现在列表只回投稿本身，现值按需分批取（服务端也限一次最多 10 条）。 */
+  async function loadCurrents(rows: QueueItem[]): Promise<void> {
+    const need = rows
+      .filter((r) => r.currentPending && !r.currentLoaded)
+      .filter((r) => rules[r.field]?.kind !== 'cover' && rules[r.field]?.kind !== 'gallery')
+      .map((r) => r.id);
+    if (!need.length) return;
+
+    for (let i = 0; i < need.length; i += 6) {
+      const chunk = need.slice(i, i + 6);
+      const { status, data } = await api(`/api/admin/current?ids=${chunk.join(',')}`);
+      for (const id of chunk) {
+        const item = rows.find((r) => r.id === id);
+        if (item) item.currentLoaded = true;
+        const box = listEl.querySelector<HTMLElement>(`.admin-current[data-current="${id}"]`);
+        if (!box) continue;
+        box.replaceChildren();
+        if (status !== 200) {
+          box.append(el('p', 'admin-note is-quiet', '现值没取到（不影响审核，刷新再试）'));
+          continue;
+        }
+        const current = data?.current?.[String(id)] ?? null;
+        const kind = rules[item?.field ?? '']?.kind;
+        if (kind === 'itemlist') {
+          const arr = Array.isArray(current) ? (current as Array<Record<string, unknown>>) : [];
+          box.append(el('p', 'admin-note', `社区文档里已有的行 ${arr.length} 条`));
+          box.append(itemsTable(arr, '（社区文档里还没有神器 / 道具行）'));
+        } else if (kind === 'tags') {
+          /* 标签的对比由 tagsBlock 负责：把现值补进 item 后重画那一块 */
+          if (item) {
+            item.current = current;
+            const holder = listEl.querySelector<HTMLElement>(
+              `.admin-item[data-id="${id}"] .tag-block-holder`
+            );
+            if (holder) holder.replaceChildren(tagsBlock(item));
+          }
+        } else if (kind === 'doc') {
+          const text = current === null || current === undefined ? '' : String(current);
+          box.append(
+            text
+              ? el('p', 'admin-note', `这张图现在已有草稿：${docSummary(text)}`)
+              : el('p', 'admin-note is-quiet', '这张图现在还没有草稿（通过了就是第一篇）')
+          );
+        } else {
+          box.append(textBlock('现在的值', fmt(current), 'is-old'));
+        }
+      }
+    }
+  }
+
+  /** 批量选择条：勾了才出现，并同步计数 */
+  function renderSelbar(): void {
+    const bar = $<HTMLElement>('a-selbar');
+    const n = picked.size;
+    bar.hidden = n === 0 || currentStatus !== 'pending';
+    $<HTMLElement>('a-sel-n').textContent = String(n);
+    for (const cb of listEl.querySelectorAll<HTMLInputElement>('.admin-pick input')) {
+      const row = cb.closest<HTMLElement>('.admin-item');
+      const id = Number(row?.dataset.id ?? 0);
+      cb.checked = picked.has(id);
+    }
+  }
+
+  /** 批量驳回：一次填一个理由，逐条带同一个理由驳回 */
+  async function rejectMany(ids: number[]): Promise<void> {
+    if (!ids.length) return;
+    const r = await ask({
+      title: ids.length > 1 ? `驳回 ${ids.length} 条投稿` : `驳回投稿 #${ids[0]}`,
+      desc: '理由会展示给投稿人（他在「查审核状态」里能看到），写清楚他才好改。',
+      fields: [{ key: 'reason', label: '驳回理由', multiline: true, placeholder: '例如：难度不对，本站现在标的是困难' }],
+      chips: ['资料不准确', '没有来源', '写法或格式需要调整', '与本站已有内容重复', '与地图无关 / 广告'],
+      confirmText: '确认驳回',
+      danger: true,
+    });
+    if (!r?.reason) {
+      if (r && !r.reason) setStatus('驳回要写理由 —— 投稿人看不到原因就没法改', true);
+      return;
+    }
+    await review(ids, 'reject', r.reason);
+  }
+
+  async function load(): Promise<void> {
+    listEl.replaceChildren(el('p', 'admin-note is-quiet', '加载中…'));
     /* 账号标签走另一套接口：它跟投稿队列没关系，别去拉队列 */
     if (currentStatus === 'accounts') return loadAccounts();
-    /* 先拿全站标签词表：审核标签投稿时要标出「全站首次出现的新词」。
-       加载失败不影响审核 —— tagsBlock 会退化成「自己确认一遍」。 */
+    /* 先拿全站标签词表（审核标签投稿时要标出「全站首次出现的新词」）与地图中文名。
+       两个都是本地静态 JSON、失败也不影响审核；和队列请求**并行**发出，
+       顺序 await 会让首屏白等一个来回。 */
     await loadTagVocabulary();
-    const { status, data } = await api(`/api/admin/queue?status=${currentStatus}`);
+    await refreshCounts();
+
+    const params = new URLSearchParams({ status: currentStatus, limit: String(PAGE_SIZE), offset: String(items.length) });
+    if (keyword.trim()) {
+      /* 中文名命中唯一一张图 → 转成 map 过滤（库里只有 slug，中文名搜不到） */
+      const byTitle = mapOnly || resolveMapFromKeyword(keyword);
+      if (byTitle) params.set('map', byTitle);
+      else params.set('q', keyword.trim());
+    } else if (mapOnly) {
+      params.set('map', mapOnly);
+    }
+
+    const [, { status, data }] = await Promise.all([
+      loadMapsIndex(),
+      api(`/api/admin/queue?${params.toString()}`),
+    ]);
     if (status !== 200) {
       listEl.replaceChildren();
       setStatus(data?.error ?? `加载失败（HTTP ${status}）`, true);
-      if (status === 401) panel.hidden = true;
+      if (status === 401) {
+        panel.hidden = true;
+        loginCard.hidden = false;
+      }
       return;
     }
-    setStatus('');
     panel.hidden = false;
+    loginCard.hidden = true;
+    setStatus(data.gitReady ? '' : '⚠️ 服务端还没配 GITHUB_TOKEN，写回会失败');
 
-    const c = data.counts ?? {};
-    const staged = Number(c.approved ?? 0);
-    countsEl.textContent =
-      `待审 ${c.pending ?? 0} · 待写回 ${staged} · 已上线 ${c.applied ?? 0} · 已驳回 ${c.rejected ?? 0}` +
-      (data.gitReady ? '' : '　⚠️ 服务端还没配 GITHUB_TOKEN，写回会失败');
-
-    /* 攒批区：有存货就显眼地摆出来，免得忘了点导致「审核通过却没上线」 */
-    const flushBox = $<HTMLElement>('a-flush');
-    $<HTMLElement>('a-staged-count').textContent = staged
-      ? `已攒 ${staged} 条待写回`
-      : '当前没有待写回的投稿';
-    flushBox.hidden = staged === 0;
-    $<HTMLElement>('a-pending-tip').hidden = currentStatus !== 'pending';
-
-    /* 批量通过按钮：只在待审标签下出现 */
-    const oldBatch = document.getElementById('a-batch');
-    oldBatch?.remove();
-    if (currentStatus === 'pending') {
-      const batch = el('button', 'btn btn-primary', '批量通过选中') as HTMLButtonElement;
-      batch.type = 'button';
-      batch.id = 'a-batch';
-      batch.onclick = () => {
-        const ids = [...document.querySelectorAll<HTMLInputElement>('input[data-pick]')]
-          .filter((cb) => cb.checked)
-          .map((cb) => Number(cb.dataset.pick));
-        if (!ids.length) return setStatus('先勾选要通过的投稿', true);
-        review(ids, 'approve');
-      };
-      $<HTMLButtonElement>('a-reload').before(batch);
-    }
+    const page: QueueItem[] = data.items ?? [];
+    items = items.concat(page);
+    total = Number(data.total ?? items.length);
 
     listEl.replaceChildren();
-    const items: QueueItem[] = data.items ?? [];
+    /* 上一轮的 objectURL 先回收，别翻几页就攒一堆 */
+    for (const url of thumbs) URL.revokeObjectURL(url);
+    thumbs = [];
+
     if (items.length === 0) {
-      const empty = currentStatus === 'pending' ? '没有待审投稿 🎉'
-        : currentStatus === 'approved' ? '没有待写回的投稿'
-        : '暂无记录';
-      listEl.append(el('p', 'form-hint', empty));
+      listEl.append(el('p', 'admin-note is-quiet', emptyText()));
+      renderSelbar();
+      updateMore();
       return;
     }
     for (const item of items) listEl.append(renderItem(item));
+    renderSelbar();
+    updateMore();
+    void loadCurrents(page);
+  }
+
+  /** 清空当前列表重新拉（换标签 / 换筛选 / 刷新） */
+  async function reload(): Promise<void> {
+    items = [];
+    picked.clear();
+    await load();
+  }
+
+  function emptyText(): string {
+    if (keyword.trim() || mapOnly) return '没有匹配的投稿 —— 换个关键词，或清空搜索框';
+    if (currentStatus === 'pending') return '没有待审投稿 🎉';
+    if (currentStatus === 'approved') return '没有待写回的投稿';
+    return '暂无记录';
+  }
+
+  function updateMore(): void {
+    const more = $<HTMLElement>('a-more');
+    const hint = $<HTMLElement>('a-more-hint');
+    more.hidden = items.length >= total;
+    hint.textContent = `已显示 ${items.length} / ${total} 条`;
+  }
+
+  /** 标签页上的计数（顺带把「待写回」标出来 —— 那是要记得写回的存货） */
+  async function refreshCounts(): Promise<void> {
+    const { status, data } = await api('/api/admin/queue?status=pending&limit=1');
+    if (status !== 200) return;
+    const c = data.counts ?? {};
+    for (const tab of document.querySelectorAll<HTMLElement>('.admin-tab[data-status]')) {
+      const key = tab.dataset.status ?? '';
+      const badge = tab.querySelector<HTMLElement>('.tab-n');
+      if (!badge) continue;
+      badge.textContent = String(c[key] ?? 0);
+      badge.classList.toggle('is-zero', Number(c[key] ?? 0) === 0);
+    }
+    const staged = Number(c.approved ?? 0);
+    countsEl.textContent =
+      `待审 ${c.pending ?? 0} · 待写回 ${staged} · 已上线 ${c.applied ?? 0} · 已驳回 ${c.rejected ?? 0}` +
+      (keyword.trim() || mapOnly ? `　（当前筛选：${mapOnly || keyword.trim()}）` : '');
+    $<HTMLElement>('a-staged-count').textContent = staged ? `已攒 ${staged} 条待写回` : '当前没有待写回的投稿';
+    $<HTMLElement>('a-flush').hidden = staged === 0;
   }
 
   /* ===== 账号标签 ===== */
@@ -603,17 +1048,23 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   const fmtTime = (ts: number | null) => (ts ? new Date(ts).toLocaleString('zh-CN', { hour12: false }) : '—');
 
   async function loadAccounts() {
+    /* 账号标签跟投稿队列没关系：把队列专用那几块收起来 */
     $<HTMLElement>('a-flush').hidden = true;
-    $<HTMLElement>('a-pending-tip').hidden = true;
+    $<HTMLElement>('a-selbar').hidden = true;
+    $<HTMLElement>('a-more').hidden = true;
     const { status, data } = await api('/api/admin/accounts?limit=200');
     if (status !== 200) {
       listEl.replaceChildren();
       setStatus(data?.error ?? `加载失败（HTTP ${status}）`, true);
-      if (status === 401) panel.hidden = true;
+      if (status === 401) {
+        panel.hidden = true;
+        loginCard.hidden = false;
+      }
       return;
     }
-    setStatus('');
     panel.hidden = false;
+    loginCard.hidden = true;
+    setStatus('');
 
     const t = data.totals ?? {};
     const lim = data.limits ?? {};
@@ -623,37 +1074,39 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       `　（限流：单 IP ${lim.registerPerHour ?? '—'}/小时、${lim.registerPerDay ?? '—'}/天）`;
 
     listEl.replaceChildren();
-    const items: AccountItem[] = data.items ?? [];
-    if (!items.length) {
-      listEl.append(el('p', 'form-hint', '还没有人注册。'));
+    const accounts: AccountItem[] = data.items ?? [];
+    if (!accounts.length) {
+      listEl.append(el('p', 'admin-note is-quiet', '还没有人注册。'));
       return;
     }
-    for (const acc of items) listEl.append(renderAccount(acc));
+    for (const acc of accounts) listEl.append(renderAccount(acc));
   }
 
   function renderAccount(acc: AccountItem) {
-    const box = el('div', 'queue-item');
-    box.style.cssText = 'border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:10px';
+    const box = el('div', `admin-item is-account${acc.banned ? ' is-banned' : ''}`);
+    box.dataset.account = String(acc.id);
 
-    const head = el('p', 'queue-title');
-    const name = el('strong', undefined, acc.name);
-    head.append(name, document.createTextNode(`　#${acc.id}`));
-    if (acc.banned) head.append(el('span', 'sbox-badge', '已停用'));
-    if (acc.locked) head.append(el('span', 'sbox-badge', '锁定中'));
+    const head = el('div', 'admin-item-head');
+    head.append(el('strong', undefined, acc.name));
+    head.append(el('span', 'admin-item-id', `#${acc.id}`));
+    if (acc.banned) head.append(el('span', 'admin-chip is-status is-rejected', '已停用'));
+    if (acc.locked) head.append(el('span', 'admin-chip is-status is-pending', '锁定中'));
     box.append(head);
 
-    box.append(
+    const main = el('div', 'admin-item-main');
+    main.append(
       el(
         'p',
-        'queue-note',
+        'admin-note',
         `注册：${fmtTime(acc.created_at)}　最近登录：${fmtTime(acc.last_login)}　` +
           `通过 ${acc.approved} · 驳回 ${acc.rejected}` +
           (Number(acc.fail_count ?? 0) ? `　连续输错 ${acc.fail_count} 次` : '')
       )
     );
-    if (acc.contact) box.append(el('p', 'queue-note', `联系方式：${acc.contact}`));
+    if (acc.contact) main.append(el('p', 'admin-note', `联系方式：${acc.contact}`));
+    box.append(main);
 
-    const actions = el('div', 'queue-actions');
+    const actions = el('div', 'admin-actions');
     if (acc.banned) {
       const un = el('button', 'btn', '恢复账号') as HTMLButtonElement;
       un.type = 'button';
@@ -662,9 +1115,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     } else {
       const ban = el('button', 'btn', '停用账号') as HTMLButtonElement;
       ban.type = 'button';
-      ban.onclick = () => {
-        if (!confirm(`停用「${acc.name}」？他手上的登录会立刻失效，之后也登不进来。`)) return;
-        accountAction(acc.id, 'ban');
+      ban.onclick = async () => {
+        const r = await ask({
+          title: '停用账号',
+          desc: `停用「${acc.name}」后，他手上的登录会立刻失效，之后也登不进来。`,
+          confirmText: '停用',
+          danger: true,
+        });
+        if (r) accountAction(acc.id, 'ban');
       };
       actions.append(ban);
     }
@@ -677,20 +1135,27 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     /* 忘了口令只能人工找回（本站不收邮箱）——给个一键重置，临时口令显示在状态行里 */
     const reset = el('button', 'btn', '重置口令') as HTMLButtonElement;
     reset.type = 'button';
-    reset.onclick = () => {
-      if (!confirm(`给「${acc.name}」换一个临时口令？他自己手上的登录会立刻失效。`)) return;
-      accountAction(acc.id, 'reset');
+    reset.onclick = async () => {
+      const r = await ask({
+        title: '重置口令',
+        desc: `给「${acc.name}」换一个 10 位临时口令：他手上的登录会立刻失效，临时口令只在下面显示一次，请转告他本人登录后自己改掉。`,
+        confirmText: '重置',
+        danger: true,
+      });
+      if (r) accountAction(acc.id, 'reset');
     };
     actions.append(reset);
     /* 昵称违规时改名：新名字照样过昵称规则；还没写回的投稿署名会一起改 */
     const rename = el('button', 'btn', '改昵称') as HTMLButtonElement;
     rename.type = 'button';
-    rename.onclick = () => {
-      const next = prompt(`把「${acc.name}」改成什么？`, `用户#${acc.id}`);
-      if (next === null) return;
-      const name = next.trim();
-      if (!name) return setStatus('新昵称不能为空', true);
-      accountAction(acc.id, 'rename', { name });
+    rename.onclick = async () => {
+      const r = await ask({
+        title: '改昵称',
+        desc: '新昵称同样要过昵称规则（长度、敏感词、广告与联系方式都不收）；还没写回的投稿署名会一起改。',
+        fields: [{ key: 'name', label: '新昵称', value: `用户#${acc.id}` }],
+        confirmText: '改名',
+      });
+      if (r?.name) accountAction(acc.id, 'rename', { name: r.name });
     };
     actions.append(rename);
     /*
@@ -700,12 +1165,16 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
      */
     const up = el('button', 'btn', '挂授权UP') as HTMLButtonElement;
     up.type = 'button';
-    up.onclick = () => {
-      const next = prompt(`把「${acc.name}」挂到哪位 UP 主？\n（写 B 站昵称，要和站上视频署名完全一致）`, '');
-      if (next === null) return;
-      const name = next.trim();
-      if (!name) return setStatus('UP 昵称不能为空', true);
-      accountAction(acc.id, 'linkup', { name });
+    up.onclick = async () => {
+      const told = await ask({
+        title: '挂「授权 UP 主」称号',
+        desc:
+          '填 B 站昵称，要和站上视频署名**完全一致**（服务端会拿同意收录的名单核对，对不上会被拒）。' +
+          '这个称号只人工发放 —— 昵称撞名不会自动给。',
+        fields: [{ key: 'name', label: 'B 站昵称' }],
+        confirmText: '挂称号',
+      });
+      if (told?.name) accountAction(acc.id, 'linkup', { name: told.name });
     };
     actions.append(up);
     const unlink = el('button', 'btn', '摘称号') as HTMLButtonElement;
@@ -719,12 +1188,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
      */
     const gh = el('button', 'btn', '挂 GitHub 贡献者') as HTMLButtonElement;
     gh.type = 'button';
-    gh.onclick = () => {
-      const next = prompt(`把「${acc.name}」记为仓库贡献者：填 GitHub 用户名（多个用逗号隔开）`, '');
-      if (next === null) return;
-      const name = next.trim();
-      if (!name) return setStatus('GitHub 用户名不能为空', true);
-      accountAction(acc.id, 'linkgh', { name });
+    gh.onclick = async () => {
+      const r = await ask({
+        title: '挂「仓库贡献者」称号',
+        desc: '填 GitHub 用户名（多个用逗号隔开）。服务端会拿仓库贡献者名单核对，一个都对不上会被拒。',
+        fields: [{ key: 'name', label: 'GitHub 用户名', placeholder: '例如：trrrr-ai, MiKU' }],
+        confirmText: '挂称号',
+      });
+      if (r?.name) accountAction(acc.id, 'linkgh', { name: r.name });
     };
     actions.append(gh);
     const ungh = el('button', 'btn', '摘 GitHub 称号') as HTMLButtonElement;
@@ -764,7 +1235,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     });
     if (status !== 200 && status !== 207) {
       setStatus(`${data?.error ?? '操作失败'}（HTTP ${status}）`, true);
-      await load();
+      await reload();
       return;
     }
     const failed = (data.results ?? []).filter((r: { ok: boolean }) => !r.ok);
@@ -777,7 +1248,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     } else {
       setStatus(`已驳回 ${okCount} 条${failed.length ? `；${failed.length} 条没成功` : ''}`);
     }
-    await load();
+    picked.clear();
+    await reload();
   }
 
   /**
@@ -800,10 +1272,98 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       return;
     }
     setStatus(String(data.message ?? '已采纳'));
-    await loadQueue();
+    await reload();
+  }
+
+  /**
+   * 写回仓库前的二次确认（2026-10-13 加）：
+   * 这一下会产生真实 commit 并触发一次重建，不该是「手一滑就发生」的事。
+   * 先把待写回的清单拉出来，照条数 / 图数 / 都改了哪些字段念一遍再让人点。
+   */
+  async function confirmFlush(): Promise<boolean> {
+    const { status, data } = await api('/api/admin/queue?status=approved&limit=200');
+    if (status !== 200) {
+      setStatus(`${data?.error ?? '读取待写回清单失败'}（HTTP ${status}）`, true);
+      return false;
+    }
+    const rows: QueueItem[] = data.items ?? [];
+    const maps = [...new Set(rows.map((r) => r.map_slug))];
+    const fields = [...new Set(rows.map((r) => rules[r.field]?.label ?? r.field))];
+    const covers = rows.filter((r) => r.field === 'cover').length;
+    const galleries = rows.filter((r) => r.field === 'gallery').length;
+
+    const box = el('div', 'admin-confirm-list');
+    box.append(
+      el(
+        'p',
+        'admin-note',
+        `共 ${rows.length} 条投稿 → ${maps.length} 张图 · 涉及字段：${fields.join('、') || '（无）'}`
+      )
+    );
+    const ul = el('ul', 'admin-confirm-maps');
+    for (const slug of maps.slice(0, 40)) {
+      const n = rows.filter((r) => r.map_slug === slug).length;
+      ul.append(el('li', undefined, `${mapTitle(slug) || slug}（${slug}）× ${n}`));
+    }
+    if (maps.length > 40) ul.append(el('li', undefined, `…还有 ${maps.length - 40} 张`));
+    box.append(ul);
+    if (covers || galleries) {
+      box.append(
+        el('p', 'admin-note', `其中封面 ${covers} 张、图片集 ${galleries} 张 —— 图片会随同一个提交一起进仓库 / R2。`)
+      );
+    }
+    box.append(
+      el(
+        'p',
+        'admin-note is-warn',
+        '点「写回仓库」后会立刻提交到 GitHub（一个 commit）并触发一次自动重建，通常 1~2 分钟后上线。'
+      )
+    );
+
+    /* 用对话框把清单摆出来（不是纯 confirm 文案），条数多的时候能滚动看完 */
+    return await new Promise<boolean>((resolve) => {
+      const dlg = $<HTMLDialogElement>('a-dialog');
+      $<HTMLElement>('a-dialog-title').textContent = '确认写回仓库';
+      const desc = $<HTMLElement>('a-dialog-desc');
+      desc.textContent = '这一步会产生真实的 git 提交。';
+      desc.hidden = false;
+      $<HTMLElement>('a-dialog-chips').hidden = true;
+      $<HTMLElement>('a-dialog-chips').replaceChildren();
+      const body = $<HTMLElement>('a-dialog-body');
+      body.replaceChildren(box);
+      const ok = $<HTMLButtonElement>('a-dialog-ok');
+      const cancel = $<HTMLButtonElement>('a-dialog-cancel');
+      ok.textContent = '写回仓库';
+      ok.classList.add('btn-danger');
+      cancel.textContent = '再等等';
+      const done = (v: boolean) => {
+        ok.onclick = null;
+        cancel.onclick = null;
+        dlg.oncancel = null;
+        dlg.onclick = null;
+        ok.classList.remove('btn-danger');
+        if (dlg.open) dlg.close();
+        resolve(v);
+      };
+      ok.onclick = () => done(true);
+      cancel.onclick = () => done(false);
+      dlg.oncancel = () => done(false);
+      dlg.onclick = (e) => {
+        if (e.target === dlg) done(false);
+      };
+      if (!dlg.open) dlg.showModal();
+      cancel.focus();
+    });
   }
 
   async function flush() {
+    const rows = await api('/api/admin/queue?status=approved&limit=1');
+    if (Number(rows.data?.counts?.approved ?? 0) === 0) {
+      setStatus('没有待写回的投稿');
+      return;
+    }
+    if (!(await confirmFlush())) return;
+
     const btn = $<HTMLButtonElement>('a-flush-go');
     const out = $<HTMLElement>('a-flush-out');
     btn.disabled = true;
@@ -840,7 +1400,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     } finally {
       btn.disabled = false;
       btn.textContent = old;
-      await load();
+      await reload();
     }
   }
 
@@ -849,7 +1409,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     const { status, data } = await api('/api/admin/unstage', { method: 'POST', body: { id } });
     if (status !== 200) return setStatus(`${data?.error ?? '撤回失败'}（HTTP ${status}）`, true);
     setStatus('已退回待审');
-    await load();
+    await reload();
   }
 
   async function banSource(id: number, reason: string) {
@@ -860,8 +1420,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       return;
     }
     setStatus('已封禁，该来源的待审投稿也一并驳回了');
-    await load();
+    await reload();
   }
+
+  /* ===== 接线 ===== */
 
   $<HTMLButtonElement>('a-connect').onclick = async () => {
     token = tokenEl.value.trim();
@@ -869,19 +1431,122 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     localStorage.setItem('ze-admin-token', token);
     localStorage.setItem('ze-admin-reviewer', reviewer);
     setStatus('连接中…');
+    items = [];
     await load();
   };
 
-  $<HTMLButtonElement>('a-reload').onclick = () => load();
-  $<HTMLButtonElement>('a-flush-go').onclick = () => flush();
+  /* 清除本机保存的密钥：公用电脑上审完就走，别把密钥留在浏览器里 */
+  $<HTMLButtonElement>('a-forget').onclick = async () => {
+    const r = await ask({
+      title: '清除本机密钥',
+      desc: '会从这台浏览器里删掉 ADMIN_TOKEN 与署名（Worker 侧的密钥不受影响，下次要用重新粘贴）。',
+      confirmText: '清除',
+      danger: true,
+    });
+    if (!r) return;
+    localStorage.removeItem('ze-admin-token');
+    localStorage.removeItem('ze-admin-reviewer');
+    token = '';
+    tokenEl.value = '';
+    items = [];
+    picked.clear();
+    panel.hidden = true;
+    loginCard.hidden = false;
+    setStatus('已清除本机密钥');
+  };
 
-  for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-status]')) {
+  $<HTMLButtonElement>('a-reload').onclick = () => reload();
+  $<HTMLButtonElement>('a-flush-go').onclick = () => flush();
+  $<HTMLButtonElement>('a-more-go').onclick = () => load();
+
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('.admin-tab[data-status]')) {
     btn.onclick = () => {
       currentStatus = btn.dataset.status as string;
-      load();
+      for (const other of document.querySelectorAll('.admin-tab')) other.classList.toggle('is-on', other === btn);
+      keyword = '';
+      mapOnly = '';
+      $<HTMLInputElement>('a-q').value = '';
+      items = [];
+      picked.clear();
+      void load();
     };
   }
 
+  /* 搜索：防抖 300ms，回车立即搜；点了地图 slug 说明要只看这张图，输入框里会带上 slug */
+  let searchTimer: number | undefined;
+  const searchEl = $<HTMLInputElement>('a-q');
+  searchEl.oninput = () => {
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      keyword = searchEl.value;
+      mapOnly = '';
+      items = [];
+      picked.clear();
+      void load();
+    }, 300);
+  };
+  searchEl.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      window.clearTimeout(searchTimer);
+      keyword = searchEl.value;
+      mapOnly = '';
+      items = [];
+      void load();
+    } else if (e.key === 'Escape') {
+      searchEl.value = '';
+      keyword = '';
+      mapOnly = '';
+      items = [];
+      void load();
+    }
+  };
+
+  /* 批量选择 */
+  $<HTMLButtonElement>('a-sel-all').onclick = () => {
+    for (const item of items) if (item.status === 'pending') picked.add(item.id);
+    renderSelbar();
+  };
+  $<HTMLButtonElement>('a-sel-none').onclick = () => {
+    picked.clear();
+    renderSelbar();
+  };
+  $<HTMLButtonElement>('a-batch').onclick = () => {
+    const ids = [...picked];
+    if (!ids.length) return setStatus('先勾选要通过的投稿', true);
+    void review(ids, 'approve');
+  };
+  $<HTMLButtonElement>('a-batch-reject').onclick = () => void rejectMany([...picked]);
+
+  /* 自动刷新：只在「没勾选、没开对话框、搜索框没聚焦」时静默刷新，免得更到一半把选择冲掉 */
+  let autoTimer: number | undefined;
+  $<HTMLInputElement>('a-auto').onchange = (e) => {
+    const on = (e.target as HTMLInputElement).checked;
+    window.clearInterval(autoTimer);
+    if (!on) return;
+    autoTimer = window.setInterval(() => {
+      if (picked.size || dialogEl.open || document.activeElement === searchEl) return;
+      if (currentStatus === 'accounts') void loadAccounts();
+      else void reload();
+    }, 30_000);
+  };
+
+  /* 键盘：`/` 聚焦搜索（审核时手不离键盘），Esc 退出搜索框 */
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      searchEl.focus();
+    }
+  });
+
   /* 已经有密钥就自动连一次 */
-  if (token) load();
+  if (token) {
+    for (const tab of document.querySelectorAll('.admin-tab')) {
+      tab.classList.toggle('is-on', (tab as HTMLElement).dataset.status === currentStatus);
+    }
+    void load();
+  } else {
+    for (const tab of document.querySelectorAll('.admin-tab')) {
+      tab.classList.toggle('is-on', (tab as HTMLElement).dataset.status === currentStatus);
+    }
+  }
 </script>

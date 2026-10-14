@@ -40,6 +40,7 @@ import {
 } from './http';
 import {
   handleAdminAdopt,
+  handleAdminCurrent,
   handleAdminBan,
   handleAdminFlush,
   handleAdminImage,
@@ -113,6 +114,8 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (denied) return denied;
 
     if (path === '/api/admin/queue') return handleAdminQueue(request, env, url);
+    /* 现值：给「现值 vs 新值」对比用，按 id 取（列表不再逐图读 GitHub，见 handleAdminQueue 注释） */
+    if (path === '/api/admin/current') return handleAdminCurrent(request, env, url);
     if (path === '/api/admin/review') return handleAdminReview(request, env);
     if (path === '/api/admin/flush') return handleAdminFlush(request, env);
     /* 采纳整篇草稿：把社区整理版合并进人工原稿（2026-10-13） */

@@ -3704,6 +3704,326 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 [data-theme="light"] .sc-warn { color: #6b4d0c; background: rgba(195, 154, 58, 0.12); }
 [data-theme="light"] .sc-warn b { color: #6b4d0c; }
 
+/* ==========================================================================
+   审核台（2026-10-13 改版）
+   为什么要写这么多：这个页面几乎全是脚本渲染的，而站里只给 `.sidebar-card .btn`
+   写过按钮基底（其余 .btn 被 Tailwind preflight 清零，看着就是纯文字）。
+   所以按钮基底 + 卡片 + 标签 + 对话框都补在这里，选择器统一挂在 .admin-page 下；
+   动态创建的节点也一样命中（页面根节点就是 .admin-page），用 :where() 压权重，
+   免得盖掉那些专门写的小按钮样式。
+   ========================================================================== */
+
+:where(.admin-page) .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-2, var(--border));
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+
+:where(.admin-page) .btn:hover { border-color: var(--accent-2); color: var(--accent-2); }
+:where(.admin-page) .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+:where(.admin-page) .btn-primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), #ff8a3d);
+  color: #fff;
+  box-shadow: 0 4px 18px -6px rgba(255, 77, 77, 0.7);
+}
+:where(.admin-page) .btn-primary:hover { color: #fff; transform: translateY(-1px); }
+
+:where(.admin-page) .btn-ghost { background: transparent; border-color: var(--border); color: var(--muted); font-weight: 500; }
+:where(.admin-page) .btn-ghost:hover { color: var(--text); border-color: var(--accent-2); }
+
+/* 危险动作（封禁 / 驳回 / 写回）的确认按钮：红描边，但别用实心红 */
+:where(.admin-page) .btn-danger { border-color: rgba(248, 113, 113, 0.6); color: #fca5a5; }
+:where(.admin-page) .btn-danger:hover { border-color: #f87171; color: #fecaca; }
+
+.admin-page { padding: 22px 0 60px; }
+
+/* ---------- 登录卡 ---------- */
+.admin-login {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 22px 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel-2);
+}
+.admin-login h1 { margin: 0 0 8px; font-size: 22px; }
+.admin-login-grid { display: grid; gap: 12px; margin: 16px 0 4px; }
+.admin-login-grid label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.admin-login-grid input {
+  padding: 10px 12px;
+  border: 1px solid var(--border-2, var(--border));
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 14px;
+}
+.admin-login-grid .btn { justify-self: start; }
+.admin-hint { margin: 6px 0; color: var(--muted); font-size: 12.5px; line-height: 1.8; }
+.admin-hint b { color: var(--text); }
+.admin-status { margin: 10px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.7; overflow-wrap: anywhere; }
+.admin-status.is-error { color: #fca5a5; }
+
+/* ---------- 顶部工具条（标签 + 搜索 + 动作） ---------- */
+.admin-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel-2);
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  backdrop-filter: blur(8px);
+}
+
+.admin-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.admin-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-tab:hover { color: var(--text); }
+.admin-tab.is-on { background: var(--panel); border-color: var(--border-2, var(--border)); color: var(--text); }
+.admin-tab .tab-n {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.admin-tab .tab-n.is-zero { opacity: 0.4; }
+.admin-tab.is-on .tab-n { background: rgba(34, 211, 238, 0.18); color: var(--accent-2); }
+
+.admin-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.admin-search {
+  width: min(300px, 42vw);
+  padding: 8px 12px;
+  border: 1px solid var(--border-2, var(--border));
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13.5px;
+}
+.admin-search:focus { outline: none; border-color: var(--accent-2); }
+.admin-auto { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+.admin-forget { border-color: transparent; }
+
+.admin-counts { margin: 12px 0 0; color: var(--muted); font-size: 12.5px; }
+
+/* ---------- 攒批区 ---------- */
+.admin-flush {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-2);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+.admin-flush-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.admin-flush .admin-hint { margin: 8px 0 0; }
+
+/* ---------- 批量选择条 ---------- */
+.admin-selbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px dashed var(--border-2, var(--border));
+  border-radius: 12px;
+  background: rgba(34, 211, 238, 0.05);
+  font-size: 13px;
+}
+.admin-selbar b { color: var(--accent-2); }
+
+/* ---------- 队列卡片 ---------- */
+.admin-list { display: grid; gap: 14px; margin-top: 12px; }
+
+.admin-item {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.admin-item.is-applied { border-color: rgba(74, 222, 128, 0.25); }
+.admin-item.is-rejected { opacity: 0.82; }
+.admin-item.is-banned { border-color: rgba(248, 113, 113, 0.4); }
+
+.admin-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+.admin-item-map { font-size: 14.5px; font-weight: 700; }
+.admin-item-id { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.admin-item-time { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+.admin-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--border-2, var(--border));
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.admin-chip.is-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer; }
+.admin-chip.is-mono:hover { color: var(--accent-2); border-color: var(--accent-2); }
+.admin-chip.is-field { color: var(--text); }
+.admin-chip.is-status.is-pending { color: #fbbf24; border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.08); }
+.admin-chip.is-status.is-approved { color: var(--accent-2); border-color: rgba(34, 211, 238, 0.45); background: rgba(34, 211, 238, 0.08); }
+.admin-chip.is-status.is-applied { color: #4ade80; border-color: rgba(34, 197, 94, 0.45); background: rgba(34, 197, 94, 0.08); }
+.admin-chip.is-status.is-rejected { color: #f87171; border-color: rgba(248, 113, 113, 0.45); background: rgba(248, 113, 113, 0.08); }
+.admin-chip.is-revise { color: #e8c884; border-color: rgba(216, 180, 106, 0.5); }
+.admin-chip.is-batch { color: #c084fc; border-color: rgba(192, 132, 252, 0.45); }
+
+.admin-item-main { padding: 12px 14px; display: grid; gap: 8px; }
+.admin-note { margin: 0; color: #dde2ee; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.admin-note.is-quiet { color: var(--muted); font-size: 12.5px; }
+.admin-note.is-warn { color: #e6d3a6; }
+.admin-error { margin: 0; color: #fca5a5; font-size: 12.5px; }
+
+.admin-thumb { display: block; width: min(340px, 100%); border: 1px solid var(--border); border-radius: 10px; }
+.admin-thumb.is-wide { width: min(460px, 100%); }
+
+/* 现值 vs 新值：宽屏并排、窄屏堆叠；正文可能几千字，所以先折到 8 行 */
+.admin-diff { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.admin-pane {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.admin-pane.is-old { border-left: 3px solid rgba(248, 113, 113, 0.5); }
+.admin-pane.is-new { border-left: 3px solid rgba(74, 222, 128, 0.5); }
+.admin-pane-label { color: var(--muted); font-size: 11.5px; }
+.admin-pane-text { color: #dde2ee; font-size: 13px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-pane-text.is-clamped { max-height: 168px; overflow: hidden; }
+.admin-pane-more {
+  justify-self: start;
+  padding: 2px 8px;
+  border: 0;
+  background: none;
+  color: var(--accent-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.admin-current { display: grid; gap: 8px; }
+.admin-fold { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
+.admin-fold summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+.admin-fold[open] summary { margin-bottom: 8px; }
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.12);
+}
+.admin-pick { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+.admin-pick input { width: 16px; height: 16px; }
+
+.admin-more { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+
+/* ---------- 通用对话框 ---------- */
+.admin-dialog {
+  width: min(620px, 94vw);
+  max-height: 86vh;
+  overflow: auto;
+  margin: auto;
+  padding: 20px 22px 18px;
+  border: 1px solid var(--border-2, var(--border));
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.9);
+}
+.admin-dialog::backdrop { background: rgba(4, 5, 10, 0.72); }
+.admin-dialog h2 { margin: 0 0 6px; font-size: 17px; }
+.admin-dialog-body { display: grid; gap: 12px; margin: 12px 0 0; }
+.admin-dialog-field { display: grid; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.admin-dialog-field input,
+.admin-dialog-field textarea {
+  padding: 9px 11px;
+  border: 1px solid var(--border-2, var(--border));
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+  resize: vertical;
+}
+.admin-dialog-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.admin-dialog-chips .admin-chip { cursor: pointer; }
+.admin-dialog-chips .admin-chip:hover { color: var(--accent-2); border-color: var(--accent-2); }
+.admin-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.admin-confirm-list { display: grid; gap: 8px; }
+.admin-confirm-maps {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.9;
+  max-height: 240px;
+  overflow: auto;
+}
+
+@media (max-width: 640px) {
+  .admin-bar { position: static; }
+  .admin-tools { width: 100%; margin-left: 0; }
+  .admin-search { width: 100%; }
+  .admin-item-time { margin-left: 0; }
+  .admin-actions .btn { flex: 1 1 auto; }
+  .admin-dialog { padding: 16px 14px 14px; width: 94vw; }
+  .admin-dialog-actions { flex-direction: column-reverse; }
+  .admin-dialog-actions .btn { width: 100%; }
+}
+
+[data-theme="light"] .admin-item-head { background: rgba(0, 0, 0, 0.02); }
+[data-theme="light"] .admin-note,
+[data-theme="light"] .admin-pane-text { color: var(--text); }
+[data-theme="light"] .admin-actions { background: rgba(0, 0, 0, 0.03); }
+[data-theme="light"] .admin-chip.is-status.is-pending { color: #b45309; }
+[data-theme="light"] .admin-chip.is-status.is-approved { color: #0e7490; }
+[data-theme="light"] .admin-chip.is-status.is-applied { color: #15803d; }
+[data-theme="light"] .admin-chip.is-status.is-rejected { color: #b91c1c; }
+[data-theme="light"] .admin-note.is-warn { color: #6b4d0c; }
+
 /* 从成功页回到表单时那条绿色提示（和红色错误提示对称） */
 .s-ok-note {
   margin: 0 0 16px;

@@ -9,12 +9,15 @@ interface Props {
   description?: string;
   /** 分享预览图（相对路径或绝对 URL） */
   image?: string;
+  /** 不进搜索引擎（审核台这类只有站长用的页面） */
+  noindex?: boolean;
 }
 
 const {
   title = 'ZE 地图资料站',
   description = '僵尸逃跑地图中文资料库 · 背景故事 · 通关流程 · 神器攻略',
   image,
+  noindex = false,
 } = Astro.props;
 
 const site = Astro.site ?? new URL('https://ze-map.cn');
@@ -50,6 +53,7 @@ const ogImage = image ? new URL(image, site).href : new URL('/images/hero-bg.jpg
     <base target="_blank" />
 
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
     <link rel="canonical" href={canonical.href} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ZE 地图资料站" />
