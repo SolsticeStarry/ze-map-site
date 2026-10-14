@@ -1,11 +1,53 @@
 {
   "slug": "ze_tenkinoko_welkin_z",
-  "count": 1,
+  "count": 8,
   "images": [
     {
       "src": "https://terr.ze-map.cn/gallery/ze_tenkinoko_welkin_z/05-workshop.webp",
       "kind": "workshop",
       "caption": "工坊预览图（作者上传）"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tenkinoko_welkin_z/u148.webp",
+      "kind": "user",
+      "caption": "音乐列表&作者&感谢名单",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tenkinoko_welkin_z/u149.webp",
+      "kind": "user",
+      "caption": "关卡1 道中",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tenkinoko_welkin_z/u150.webp",
+      "kind": "user",
+      "caption": "关卡1 道中",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tenkinoko_welkin_z/u151.webp",
+      "kind": "user",
+      "caption": "关卡1 道中",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tenkinoko_welkin_z/u152.webp",
+      "kind": "user",
+      "caption": "关卡3 道中",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tenkinoko_welkin_z/u153.webp",
+      "kind": "user",
+      "caption": "关卡3/4/5 结尾跳刀",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tenkinoko_welkin_z/u154.webp",
+      "kind": "user",
+      "caption": "关卡2/3 BOSS战",
+      "by": "AntiLockwise"
     }
   ]
 }

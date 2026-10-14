@@ -1,11 +1,17 @@
 {
   "slug": "ze_dreamin",
-  "count": 1,
+  "count": 2,
   "images": [
     {
       "src": "https://terr.ze-map.cn/gallery/ze_dreamin/05-workshop.webp",
       "kind": "workshop",
       "caption": "工坊预览图（作者上传）"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_dreamin/u164.webp",
+      "kind": "user",
+      "caption": "1/2/3/4关 起始点",
+      "by": "AntiLockwise"
     }
   ]
 }

@@ -1,16 +1,75 @@
 {
   "v": 1,
   "slug": "ze_tenkinoko_welkin_z",
-  "updatedAt": "2026-10-04T11:25:52.753Z",
+  "updatedAt": "2026-10-14T04:54:12.971Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_tenkinoko_welkin_z.webp",
       "by": "SiKi",
       "at": "2026-10-04T11:25:52.753Z",
       "submission": 70
+    },
+    "difficulty": {
+      "v": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:24.663Z",
+      "submission": 155
+    },
+    "tags": {
+      "v": [
+        "多关卡",
+        "神器",
+        "BOSS战",
+        "跳刀",
+        "CS·GO移植",
+        "经典老图",
+        "中文作者",
+        "动漫改编"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:25.018Z",
+      "submission": 156
+    },
+    "author": {
+      "v": "Lopb",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:25.364Z",
+      "submission": 157
+    },
+    "authorNote": {
+      "v": "Lopb(作者) 不知名的好心人/南宫紫梦(移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:25.729Z",
+      "submission": 158
+    },
+    "version": {
+      "v": "v1_7f (CSGO) ze_tenkinoko_welkin_z (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:26.099Z",
+      "submission": 159
+    },
+    "duration": {
+      "v": "30分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:26.449Z",
+      "submission": 160
+    },
+    "stages": {
+      "v": 4,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:26.824Z",
+      "submission": 161
     }
   },
-  "notes": [],
+  "notes": [
+    {
+      "text": "[森岛帆高]\n\n明明你们什么都知道.. 却还是要拦着我! 我只是想..再见到她啊！！！\n\n比起蔚蓝的青空,我更想要阳菜回来..! 就算天气变得阴晴不定，那又如何！！\n\n*天空因晴女阳菜的离去而降下神罚... 让我们与帆高将天野阳菜夺回来!",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.529Z",
+      "submission": 163,
+      "field": "story"
+    }
+  ],
   "log": [
     {
       "field": "cover",
@@ -19,7 +78,222 @@
       "by": "SiKi",
       "at": "2026-10-04T11:25:52.753Z",
       "submission": 70
+    },
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:24.663Z",
+      "submission": 155
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "多关卡",
+        "神器",
+        "BOSS战",
+        "跳刀",
+        "CS·GO移植",
+        "经典老图",
+        "中文作者",
+        "动漫改编"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:25.018Z",
+      "submission": 156
+    },
+    {
+      "field": "author",
+      "from": null,
+      "to": "Lopb",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:25.364Z",
+      "submission": 157
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "Lopb(作者) 不知名的好心人/南宫紫梦(移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:25.729Z",
+      "submission": 158
+    },
+    {
+      "field": "version",
+      "from": null,
+      "to": "v1_7f (CSGO) ze_tenkinoko_welkin_z (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:26.099Z",
+      "submission": 159
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "30分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:26.449Z",
+      "submission": 160
+    },
+    {
+      "field": "stages",
+      "from": null,
+      "to": 4,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:26.824Z",
+      "submission": 161
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 12,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "field": "story",
+      "from": null,
+      "to": null,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.529Z",
+      "submission": 163
     }
   ],
-  "items": []
+  "draft": null,
+  "items": [
+    {
+      "action": "add",
+      "name": "森岛帆高 (人类)",
+      "cd": 15,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方生成一段持续0.5秒左右的的推力区域 区域内的僵尸会被驱逐至神器释放的方向",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "暴风雪 (人类)",
+      "cd": 65,
+      "uses": 99,
+      "note": "神器为充能制 故CD会上下浮动",
+      "intro": "释放后 在使用者前方生成一块减速区域 神器的最后三秒持续时间效果将转为强定身 (使用后再次按E可收回神器)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "灼热烈阳 (人类)",
+      "cd": 65,
+      "uses": 99,
+      "note": "神器为充能制 故CD会上下浮动",
+      "intro": "释放后 在使用者前方生成一块灼烧区域 减速效果由社区的灼烧参数而定 (使用后再次按E可收回神器)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "暴风 (人类)",
+      "cd": 65,
+      "uses": 99,
+      "note": "神器为CD制",
+      "intro": "释放后 以使用者为圆心 生成一块圆柱形的推力区域 区域随使用者而移动 区域外的僵尸将被抵挡在外(注:风的背后比前方范围要小 僵尸神器可从后方操作风)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "晴天娃娃 (人类)",
+      "cd": 65,
+      "uses": 99,
+      "note": "神器为充能制 故CD会上下浮动",
+      "intro": "释放后 在使用者前方生成一块圆形的推力区域 区域外的僵尸将会被阻挡在外",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "彩虹治愈术 (人类)",
+      "cd": 65,
+      "uses": 99,
+      "note": "神器为CD制",
+      "intro": "释放后 以使用者为圆心 生成一块治愈区域 区域内的人类会瞬间回复至200血 同时将刷新充能神器的CD",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "冰封陵墓(人类)",
+      "cd": 65,
+      "uses": 99,
+      "note": "神器为动态CD制",
+      "intro": "释放后 在使用者前方 射出一个冰冻球 射中僵尸后将会在僵尸处生成一段强控区域 区域直至中心的水晶消失前都会存在 僵尸可破坏水晶 未命中神器将进入10秒的CD",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "电闪雷鸣(人类)",
+      "cd": 1,
+      "uses": 1,
+      "note": "神器为次数制",
+      "intro": "释放后 以使用者为圆心 生成一段约20秒后生效的大范围特效区域 生效后区域内的僵尸将被全部处死",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "迷雾 (僵尸)",
+      "cd": 70,
+      "uses": 99,
+      "note": "神器为CD制",
+      "intro": "释放后 以使用者为圆心 生成一个遮挡视线的迷雾特效 特效范围内的人类会持续受到伤害",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "秒杀 (僵尸)",
+      "cd": 70,
+      "uses": 99,
+      "note": "神器为CD制",
+      "intro": "释放后 以使用者为圆心 生成一个伤害区域(可穿墙) 区域范围内的人类会被立即处死",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "黑洞 (僵尸)",
+      "cd": 70,
+      "uses": 99,
+      "note": "神器为CD制",
+      "intro": "释放后 以使用者为圆心 生成一个吸力区域(可穿墙) 区域内的人类会被吸至吸力中心",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    },
+    {
+      "action": "add",
+      "name": "火焰 (僵尸)",
+      "cd": 70,
+      "uses": 99,
+      "note": "神器为CD制",
+      "intro": "释放后 以使用者为圆心 生成一个伤害区域(可穿墙) 区域内的人类会持续受到伤害",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T04:53:27.174Z",
+      "submission": 162
+    }
+  ]
 }
