@@ -27,6 +27,16 @@ const COOKIE = 'zc_sess';
 /** 会话有效期 90 天 */
 const SESSION_TTL = 90 * 24 * 60 * 60;
 /**
+ * GitHub 登录（OAuth）用的 state Cookie（2026-10-14 加）。
+ * 只活 10 分钟、只用于「这一次授权请求」——GitHub 不支持 PKCE，state 是唯一的 CSRF 防线。
+ */
+const GH_STATE_COOKIE = 'zc_gh_state';
+const GH_STATE_TTL = 10 * 60;
+/** GitHub 登录只读公开资料，**不申请 user:email**（本站本来就不收邮箱） */
+const GH_SCOPE = 'read:user';
+/** 没有口令的账号（GitHub 建的号）在 pass_hash 里写的哨兵前缀 */
+const GH_PASS_PREFIX = 'github$';
+/**
  * PBKDF2 迭代次数。
  *
  * ⚠️ **不能超过 10 万** —— Cloudflare Workers 的 WebCrypto 有硬上限，超了直接抛：
@@ -68,6 +78,13 @@ const LOGIN_PER_HOUR = 30;
 const REGISTER_PER_HOUR = 3;
 const REGISTER_PER_DAY = 3;
 const NEW_ACCOUNTS_PER_DAY = 200;
+/**
+ * GitHub 建号的**小时**上限（按 IP）。
+ * 为什么不用 REGISTER_PER_DAY=3：那道闸是给匿名注册防刷号的（随便填个昵称就能开号）；
+ * GitHub 账号本身有成本，而同一个出口后面可能坐着好几位都在用 GitHub 登录的人。
+ * 全站 200/24h 那一层照旧兜底。
+ */
+const GH_REGISTER_PER_HOUR = 20;
 
 /** 连续口令错几次就锁账号（挡「换 IP 接着猜同一个账号」） */
 const MAX_LOGIN_FAILS = 5;
@@ -113,6 +130,14 @@ export interface UserRow {
   up_name?: string | null;
   /** 对应哪些 GitHub 用户名（逗号分隔；仓库贡献者称号） */
   gh_names?: string | null;
+  /** 绑定过的 GitHub 数字 id（GitHub 登录用；无口令账号的 pass_hash 是 `github$<id>`） */
+  gh_id?: number | null;
+  /** 绑定的 GitHub 登录名（会随改名更新） */
+  gh_login?: string | null;
+  /** 什么时候绑的 */
+  gh_linked_at?: number | null;
+  /** GitHub 头像地址（只用于个人主页展示） */
+  gh_avatar?: string | null;
 }
 
 /**
@@ -232,6 +257,344 @@ function cookieHeader(env: Env, url: URL, token: string | null, maxAge: number):
   return `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 
+/** state Cookie（HttpOnly；SameSite=Lax 才收得到 GitHub 302 回来的那一次请求） */
+function ghStateCookie(env: Env, url: URL, value: string | null, maxAge: number): string {
+  const secure = isLocalHost(url.host) ? '' : '; Secure';
+  return `${GH_STATE_COOKIE}=${value ?? ''}; Path=/api/auth; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+}
+
+/* ===== GitHub 登录（2026-10-14 加） =====
+ *
+ * 定位：**可选的一条路**，不是必选项。口令注册 / 登录一行没动，不登录也能投稿这条底线也不动；
+ * 没配密钥时整条路自动关闭（页面上的按钮换成一句说明），不会出现「点了没反应」。
+ *
+ * 为什么值得做（除了「少记一个口令」）：
+ *   · 本站已经在用 GitHub（投稿写回、贡献者名单），登录一次就能**自动核对贡献者称号**，
+ *     不必再让站长手填用户名；
+ *   · 不新增任何个人信息：只读 `read:user`（登录名/头像/数字 id），**不申请 user:email**。
+ *
+ * 安全要点（都在下面的实现里）：
+ *   · `state` 随机值 + HttpOnly Cookie 比对（GitHub 不支持 PKCE，这是唯一的 CSRF 防线）；
+ *   · **access_token 不落库**：只用来读一次 profile 就丢，我们不需要以用户身份调 GitHub；
+ *   · 已登录时走**绑定**，未登录时按 `gh_id` 找回；**绝不按昵称自动认领**（那是账号劫持）；
+ *   · 昵称冲突、保留名、已占用名都走现有 checkName()，冲突就换一个候选名，不影响登录。
+ */
+
+interface GhOAuthConfig {
+  id: string;
+  secret: string;
+  /** 授权站（线上是 https://github.com；测的时候可以指向假站） */
+  base: string;
+  /** API 站（线上是 https://api.github.com） */
+  api: string;
+}
+
+/** 配好了才启用；没配返回 null（调用方据此给出「本站没开」的提示） */
+function ghOAuthConfig(env: Env): GhOAuthConfig | null {
+  const id = String(env.GITHUB_OAUTH_CLIENT_ID ?? '').trim();
+  const secret = String(env.GITHUB_OAUTH_CLIENT_SECRET ?? '').trim();
+  if (!id || !secret) return null;
+  return {
+    id,
+    secret,
+    base: String(env.GITHUB_OAUTH_BASE ?? 'https://github.com').replace(/\/+$/, ''),
+    api: String(env.GITHUB_API_BASE ?? 'https://api.github.com').replace(/\/+$/, ''),
+  };
+}
+
+/** 本站是否开了 GitHub 登录（/api/me 会带上它，页面据此决定显示按钮还是说明） */
+export function githubLoginEnabled(env: Env): boolean {
+  return ghOAuthConfig(env) !== null;
+}
+
+/** 回调地址固定挂 /api/ 下（静态资源层接不到 /api/*，见 wrangler.jsonc 的 run_worker_first） */
+const ghCallbackUrl = (url: URL) => new URL('/api/auth/github/callback', url.origin).href;
+
+const b64url = (bytes: Uint8Array) =>
+  b64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+/** 32 字节随机 state */
+function newState(): string {
+  return b64url(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+/**
+ * 把 GitHub 昵称变成候选站内昵称：先原样（过 checkName），
+ * 不行就依次试 `login-2`、`login-3`、`gh-login`、`gh-<id>` —— 都不行就报错让用户自己注册后绑定。
+ */
+function ghNameCandidates(login: string, ghId: number): string[] {
+  const base = login.replace(/[^A-Za-z0-9_-]/g, '').slice(0, NAME_MAX);
+  const out = [login, base, `${base}-2`, `${base}-3`, `gh-${base}`.slice(0, NAME_MAX), `gh-${ghId}`];
+  return [...new Set(out.filter((x) => x.length >= NAME_MIN))];
+}
+
+/** 一次 GitHub 调用的超时保护：授权站抽风时别把用户吊在那里 */
+async function ghFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 8000);
+  try {
+    return await fetch(url, { ...init, signal: ac.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * GET /api/auth/github/start
+ * 生成 state（写 HttpOnly Cookie）→ 302 到 GitHub 授权页。
+ */
+export async function handleGithubStart(request: Request, env: Env, url: URL): Promise<Response> {
+  const cfg = ghOAuthConfig(env);
+  if (!cfg) return fail('本站还没开启 GitHub 登录（站长未配置）—— 用昵称 + 口令注册即可', 503);
+
+  const state = newState();
+  const authorize =
+    `${cfg.base}/login/oauth/authorize?` +
+    new URLSearchParams({
+      client_id: cfg.id,
+      redirect_uri: ghCallbackUrl(url),
+      scope: GH_SCOPE,
+      state,
+      allow_signup: 'true',
+    }).toString();
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: authorize,
+      'set-cookie': ghStateCookie(env, url, state, GH_STATE_TTL),
+      'cache-control': 'no-store',
+    },
+  });
+}
+
+/** 出问题一律 302 回 /account/ 并带一句人话（别把用户留在 JSON 错误页上） */
+function ghBackToAccount(url: URL, params: Record<string, string>, cookies: string[] = []): Response {
+  const target = new URL('/account/', url.origin);
+  for (const [k, v] of Object.entries(params)) target.searchParams.set(k, v);
+  const res = new Response(null, { status: 302, headers: { location: target.href, 'cache-control': 'no-store' } });
+  for (const c of cookies) res.headers.append('set-cookie', c);
+  return res;
+}
+
+/**
+ * GET /api/auth/github/callback?code=&state=
+ *
+ * 三种落点：
+ *   1. 这个 GitHub 号**已经绑过**某个站内账号 → 直接登录那个账号；
+ *   2. 当前**已登录**（想让已有账号绑上 GitHub）→ 绑定到当前账号；
+ *   3. 都没匹配上 → 用 GitHub 登录名建一个新账号（昵称冲突就换候选名）。
+ */
+export async function handleGithubCallback(request: Request, env: Env, url: URL, ipHash: string): Promise<Response> {
+  const cfg = ghOAuthConfig(env);
+  const clearState = ghStateCookie(env, url, null, 0);
+  if (!cfg) return ghBackToAccount(url, { gh: 'off' }, [clearState]);
+  /* 懒建表先跑一遍：老库还没有 gh_* 那几列（下面任何一条查询都会用到） */
+  await ensureSchema(env);
+
+  const code = url.searchParams.get('code') ?? '';
+  const state = url.searchParams.get('state') ?? '';
+  const cookieState = readCookie(request, GH_STATE_COOKIE);
+  const deny = url.searchParams.get('error'); // 用户在 GitHub 点了取消
+  if (deny) return ghBackToAccount(url, { gh: 'cancel' }, [clearState]);
+
+  /* state 必须与 Cookie 里那一个**完全一致**（constant-time 比较），否则一律拒 */
+  if (!code || !state || !cookieState || !safeEqual(state, cookieState)) {
+    return ghBackToAccount(url, { gh: 'state' }, [clearState]);
+  }
+
+  if (await isBanned(env, ipHash)) return ghBackToAccount(url, { gh: 'banned' }, [clearState]);
+  await ensureSchema(env);
+
+  /* ① 用 code 换 access_token（只活这一次请求，不落库） */
+  let accessToken = '';
+  try {
+    const res = await ghFetch(`${cfg.base}/login/oauth/access_token`, {
+      method: 'POST',
+      headers: { accept: 'application/json', 'content-type': 'application/json', 'user-agent': 'ze-map-site' },
+      body: JSON.stringify({
+        client_id: cfg.id,
+        client_secret: cfg.secret,
+        code,
+        redirect_uri: ghCallbackUrl(url),
+      }),
+    });
+    const data = (await res.json()) as { access_token?: string; error?: string };
+    accessToken = String(data?.access_token ?? '');
+    if (!accessToken) return ghBackToAccount(url, { gh: 'token' }, [clearState]);
+  } catch {
+    return ghBackToAccount(url, { gh: 'token' }, [clearState]);
+  }
+
+  /* ② 读公开资料（不再用这个 token 做别的事） */
+  let ghId = 0;
+  let login = '';
+  let avatar = '';
+  try {
+    const res = await ghFetch(`${cfg.api}/user`, {
+      headers: { authorization: `Bearer ${accessToken}`, accept: 'application/vnd.github+json', 'user-agent': 'ze-map-site' },
+    });
+    if (!res.ok) return ghBackToAccount(url, { gh: 'profile' }, [clearState]);
+    const prof = (await res.json()) as { id?: number; login?: string; avatar_url?: string };
+    ghId = Number(prof?.id ?? 0);
+    login = String(prof?.login ?? '').trim();
+    avatar = String(prof?.avatar_url ?? '');
+    if (!ghId || !login) return ghBackToAccount(url, { gh: 'profile' }, [clearState]);
+  } catch {
+    return ghBackToAccount(url, { gh: 'profile' }, [clearState]);
+  }
+
+  /* ③ 这个 GitHub 号是不是已经绑过账号 */
+  const linked = await env.DB.prepare(`SELECT * FROM users WHERE gh_id = ?1`).bind(ghId).first<UserRow>();
+  const current = await getSessionUser(request, env);
+
+  /* 贡献者称号：只有真的在仓库贡献者名单里才自动挂（拿不到名单就跳过，不影响登录） */
+  const isContributor = await contributorHit(env, login);
+
+  if (linked) {
+    if (current && current.id !== linked.id) {
+      /* 同一个 GitHub 号想绑到第二个账号：拒。否则一个 GitHub 身份能开两扇门 */
+      return ghBackToAccount(url, { gh: 'taken' }, [clearState]);
+    }
+    if (linked.banned) return ghBackToAccount(url, { gh: 'disabled' }, [clearState]);
+    await touchGithubLogin(env, linked, ghId, login, avatar, isContributor);
+    const fresh = await env.DB.prepare(`SELECT * FROM users WHERE id = ?1`).bind(linked.id).first<UserRow>();
+    const token = await makeToken(env, fresh ?? linked);
+    return ghBackToAccount(url, { gh: 'ok' }, [
+      clearState,
+      cookieHeader(env, url, token, SESSION_TTL),
+    ]);
+  }
+
+  if (current) {
+    /* 已登录 → 绑定到当前账号（若它已经绑过别的 GitHub 号，先让用户解绑） */
+    if (Number(current.gh_id ?? 0)) {
+      return ghBackToAccount(url, { gh: 'already' }, [clearState]);
+    }
+    await touchGithubLogin(env, current, ghId, login, avatar, isContributor);
+    return ghBackToAccount(url, { gh: 'bound' }, [clearState]);
+  }
+
+  /* ④ 新账号：昵称按候选名依次试（checkName + 唯一索引双保险） */
+  let chosen = '';
+  for (const cand of ghNameCandidates(login, ghId)) {
+    const checked = checkName(cand, env);
+    if (!checked.ok) continue;
+    const used = await env.DB.prepare(`SELECT id FROM users WHERE name_key = ?1`)
+      .bind(nameKey(checked.value))
+      .first<{ id: number }>();
+    if (used) continue;
+    chosen = checked.value;
+    break;
+  }
+  if (!chosen) {
+    /* 名字全被占了：不硬塞，让用户自己注册一个昵称再来绑定（体验差一点，但绝不越权） */
+    return ghBackToAccount(url, { gh: 'name' }, [clearState]);
+  }
+
+  /* 配额：GitHub 注册也占「全站新账号」这道闸，但不走「单 IP 3 个/天」——
+     那是给匿名注册防刷号用的；GitHub 账号本身有成本，按上限更宽的小时桶来算。 */
+  const recent = await env.DB.prepare(`SELECT COUNT(*) AS n FROM users WHERE created_at >= ?1`)
+    .bind(Date.now() - 24 * 60 * 60 * 1000)
+    .first<{ n: number }>();
+  if (Number(recent?.n ?? 0) >= NEW_ACCOUNTS_PER_DAY) {
+    return ghBackToAccount(url, { gh: 'quota' }, [clearState]);
+  }
+  if (!(await allowWrite(env, ipHash, 'gh-register', GH_REGISTER_PER_HOUR))) {
+    return ghBackToAccount(url, { gh: 'rate' }, [clearState]);
+  }
+
+  let row: UserRow | null = null;
+  try {
+    row = await env.DB.prepare(
+      `INSERT INTO users (name, name_key, pass_hash, contact, created_at, last_login, gh_id, gh_login, gh_linked_at, gh_names)
+       VALUES (?1,?2,?3,NULL,?4,?4,?5,?6,?4,?7) RETURNING *`
+    )
+      .bind(
+        chosen,
+        nameKey(chosen),
+        `${GH_PASS_PREFIX}${ghId}`,
+        Date.now(),
+        ghId,
+        login,
+        isContributor ? login : null
+      )
+      .first<UserRow>();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    /* 并发下撞唯一索引：当成「这个昵称刚被占」处理，让用户走「已注册 → 登录后绑定」 */
+    if (/UNIQUE|constraint/i.test(msg)) return ghBackToAccount(url, { gh: 'name' }, [clearState]);
+    throw err;
+  }
+  if (!row) return ghBackToAccount(url, { gh: 'fail' }, [clearState]);
+
+  const token = await makeToken(env, row);
+  return ghBackToAccount(url, { gh: 'new' }, [clearState, cookieHeader(env, url, token, SESSION_TTL)]);
+}
+
+/** 这个 GitHub 登录名在仓库贡献者名单里吗（拿不到名单 / 没配 token → false，静默跳过） */
+async function contributorHit(env: Env, login: string): Promise<boolean> {
+  try {
+    const known = await listContributors(env);
+    return known.has(login.toLowerCase()) || known.has(login);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 记下 GitHub 身份。
+ * `gh_names` 是**「仓库贡献者」称号**那一列（决定徽章），所以只有真的在贡献者名单里才写；
+ * 只是绑定了 GitHub 的人不该凭空多一个称号 —— 称号是对外承诺，规则见 docs/admin-guide.md。
+ */
+async function touchGithubLogin(
+  env: Env,
+  user: UserRow,
+  ghId: number,
+  login: string,
+  avatar: string,
+  isContributor: boolean
+): Promise<void> {
+  const names = ghLogins(user);
+  const has = names.some((x) => x.toLowerCase() === login.toLowerCase());
+  const nextNames = isContributor && !has ? [...names, login].slice(0, 4).join(',') : names.join(',');
+  await env.DB.prepare(
+    `UPDATE users SET gh_id = ?1, gh_login = ?2, gh_linked_at = ?3, gh_avatar = ?4, gh_names = ?5 WHERE id = ?6`
+  )
+    .bind(
+      /* 已经绑过就用原来的（同一个 GitHub 号，登录名可能改过）；没绑过就写上这次的 id */
+      Number(user.gh_id ?? 0) || ghId,
+      login,
+      Date.now(),
+      avatar || null,
+      nextNames || null,
+      user.id
+    )
+    .run();
+}
+
+/**
+ * POST /api/auth/github/unbind（要登录）
+ * 解绑前必须**有口令**，否则这个账号就再也登不进来了（本站不收邮箱，找回只能人工）。
+ * 已经拿到的「仓库贡献者」称号**不撤**：人确实贡献过，称号和「这次绑定」是两件事。
+ */
+export async function handleGithubUnbind(request: Request, env: Env, url: URL): Promise<Response> {
+  if (request.method !== 'POST') return fail('只支持 POST', 405);
+  const user = await getSessionUser(request, env);
+  if (!user) return fail('请先登录', 401);
+
+  const hasPassword = !String(user.pass_hash ?? '').startsWith(GH_PASS_PREFIX);
+  if (!hasPassword) {
+    return fail('这个账号还没有口令：先去「设置」里设一个口令，再来解绑 —— 否则你会把自己锁在外面', 400);
+  }
+  await env.DB.prepare(`UPDATE users SET gh_id = NULL, gh_login = NULL, gh_linked_at = NULL, gh_avatar = NULL WHERE id = ?1`)
+    .bind(user.id)
+    .run();
+  const fresh = await env.DB.prepare(`SELECT * FROM users WHERE id = ?1`).bind(user.id).first<UserRow>();
+  return json({ ok: true, user: publicUser(fresh ?? user), message: '已解绑 GitHub' });
+}
+
+
 export function setSessionCookie(env: Env, url: URL, data: unknown, token: string): Response {
   const res = json(data);
   res.headers.append('set-cookie', cookieHeader(env, url, token, SESSION_TTL));
@@ -274,11 +637,61 @@ export async function getSessionUser(request: Request, env: Env): Promise<UserRo
  * 为什么不用 `wrangler d1 migrations apply`：本机的 API token 只有 R2 权限（KV 都被拒过），
  * 跑不了 D1 迁移。所以让 Worker 自己在第一次用到账号功能时把表补上 —— 语句幂等，
  * 每个 isolate 只检查一次（`PRAGMA table_info` 一次轻量读）。
+ *
+ * ⚠️ 2026-10-14 修：以前这里**假定 submissions / bans / rate_limits 已经存在**
+ * （生产的库是早先建好的，所以一直没暴露）。可一旦库是新的、或某张表被删掉，
+ * 补列那句 `ALTER TABLE submissions …` 就会抛 `no such table: submissions`，
+ * 而这句在一个大 try 里 —— 后面的 bans 就再也不会建，接着 `isBanned()` 直接 500，
+ * 表现成「GitHub 登录/注册报服务器内部错误」（本机用全新的本地 D1 跑 E2E 时踩到）。
+ * 现在：四张表都自己保证存在，且每一步各管各的失败 —— 一处坏不拖累其它。
  */
 let schemaReady = false;
 
 export async function ensureSchema(env: Env): Promise<void> {
   if (schemaReady) return;
+  /* 每一步单独兜错：任何一步失败都只记日志，不让后面的步骤被跳过 */
+  const step = async (what: string, fn: () => Promise<unknown>) => {
+    try {
+      await fn();
+    } catch (err) {
+      console.error(`ensureSchema(${what}) 失败：` + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  /*
+   * 先保证几张基础表都存在：以前默认 submissions / bans / rate_limits 已经建好
+   * （生产的库确实是），于是「新库」这条路从没走过 —— 一旦是空库，下面补列那句
+   * ALTER TABLE submissions 就会抛错，把后面的 bans 一起带走（见上面的说明）。
+   */
+  await step('bans', () =>
+    env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS bans (ip_hash TEXT PRIMARY KEY, reason TEXT, banned_at INTEGER NOT NULL)`
+    ).run()
+  );
+  await step('rate_limits', () =>
+    env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS rate_limits (
+         ip_hash TEXT NOT NULL, window TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0,
+         PRIMARY KEY (ip_hash, window)
+       )`
+    ).run()
+  );
+  await step('submissions', () =>
+    env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS submissions (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         map_slug TEXT NOT NULL, field TEXT NOT NULL, value TEXT NOT NULL,
+         note TEXT, submitter TEXT, contact TEXT, ip_hash TEXT NOT NULL,
+         status TEXT NOT NULL DEFAULT 'pending', created_at INTEGER NOT NULL,
+         reviewed_at INTEGER, reviewer TEXT, reject_note TEXT, commit_sha TEXT, error TEXT,
+         user_id INTEGER, batch TEXT
+       )`
+    ).run()
+  );
+  await step('idx_sub_status', () =>
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_sub_status ON submissions (status, created_at)`).run()
+  );
+
   try {
     await env.DB.prepare(
       `CREATE TABLE IF NOT EXISTS users (
@@ -331,17 +744,49 @@ export async function ensureSchema(env: Env): Promise<void> {
     if (!hasUserCol('gh_names')) {
       await env.DB.prepare(`ALTER TABLE users ADD COLUMN gh_names TEXT`).run();
     }
+    /*
+     * GitHub 登录（2026-10-14 加）的四列：
+     *   gh_id       GitHub 的数字 id（**登录时认它**，登录名会改名）、
+     *   gh_login    当前登录名（展示用）、
+     *   gh_linked_at 绑定时间、gh_avatar 头像地址（个人主页展示）。
+     * 为什么另存 gh_id 而不是复用 gh_names：gh_names 是「仓库贡献者称号」，
+     * 只有真在贡献者名单里的人才有；绑定了 GitHub 但没贡献过的人不该凭空多一个称号。
+     */
+    if (!hasUserCol('gh_id')) {
+      await env.DB.prepare(`ALTER TABLE users ADD COLUMN gh_id INTEGER`).run();
+    }
+    if (!hasUserCol('gh_login')) {
+      await env.DB.prepare(`ALTER TABLE users ADD COLUMN gh_login TEXT`).run();
+    }
+    if (!hasUserCol('gh_linked_at')) {
+      await env.DB.prepare(`ALTER TABLE users ADD COLUMN gh_linked_at INTEGER`).run();
+    }
+    if (!hasUserCol('gh_avatar')) {
+      await env.DB.prepare(`ALTER TABLE users ADD COLUMN gh_avatar TEXT`).run();
+    }
+    /* 一个 GitHub 号只能绑一个站内账号：靠**部分唯一索引**兜住并发（NULL 不算冲突） */
+    try {
+      await env.DB.prepare(
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_gh ON users(gh_id) WHERE gh_id IS NOT NULL`
+      ).run();
+    } catch {
+      /* 索引建不起来（老库里有脏数据）不该拖垮账号系统：登录路径里还有一次显式查询兜着 */
+    }
 
     /* submissions.user_id：老的库没有这一列，补上 */
     const cols = await env.DB.prepare(`PRAGMA table_info(submissions)`).all<{ name: string }>();
     if (!(cols.results ?? []).some((c) => c.name === 'user_id')) {
-      await env.DB.prepare(`ALTER TABLE submissions ADD COLUMN user_id INTEGER`).run();
+      await step('submissions.user_id', () =>
+        env.DB.prepare(`ALTER TABLE submissions ADD COLUMN user_id INTEGER`).run()
+      );
     }
     /* submissions.batch：批量投稿（2026-10-13）用，同一批共用一个短 id */
     if (!(cols.results ?? []).some((c) => c.name === 'batch')) {
-      await env.DB.prepare(`ALTER TABLE submissions ADD COLUMN batch TEXT`).run();
+      await step('submissions.batch', () => env.DB.prepare(`ALTER TABLE submissions ADD COLUMN batch TEXT`).run());
     }
-    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_sub_user ON submissions(user_id, created_at)`).run();
+    await step('idx_sub_user', () =>
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_sub_user ON submissions(user_id, created_at)`).run()
+    );
     schemaReady = true;
   } catch (err) {
     /* 建表失败不能把整个接口打死：记日志，让调用方按「没有账号系统」继续跑 */
@@ -464,6 +909,22 @@ function publicUser(user: UserRow, up?: AgreedUp | null) {
               ghLogins(user).length === 1
                 ? `https://github.com/${encodeURIComponent(ghLogins(user)[0])}`
                 : 'https://github.com/hhjjdsj/ze-map-site/graphs/contributors',
+          },
+        }
+      : {}),
+    /*
+     * 绑定的 GitHub 身份（2026-10-14 加）：和上面的 gh（称号徽章）**不是一回事** ——
+     * gh 只在「仓库贡献者」名单里才有；ghLogin 是「这个账号绑了哪个 GitHub」，
+     * 个人主页显示成一行「已绑定 GitHub：@xxx」，也用来决定要不要显示「解绑」按钮。
+     * 另外告诉前端：这个账号有没有口令（没有口令就不许解绑，否则会把自己锁在外面）。
+     */
+    ...(user.gh_id
+      ? {
+          ghLogin: {
+            login: String(user.gh_login ?? ''),
+            url: user.gh_login ? `https://github.com/${encodeURIComponent(String(user.gh_login))}` : '',
+            avatar: String(user.gh_avatar ?? ''),
+            hasPassword: !String(user.pass_hash ?? '').startsWith(GH_PASS_PREFIX),
           },
         }
       : {}),
@@ -660,13 +1121,16 @@ export async function handleMe(request: Request, env: Env, url: URL): Promise<Re
   if (request.method !== 'GET') return fail('只支持 GET', 405);
   await ensureSchema(env);
   const user = await getSessionUser(request, env);
-  if (!user) return json({ ok: true, user: null });
+  /* github.enabled：本站开没开 GitHub 登录（没配密钥时要让页面把按钮换成一句说明，
+     而不是给一个点了没反应的按钮）。没登录时也要给，登录页的按钮靠它决定显不显示。 */
+  const github = { enabled: githubLoginEnabled(env) };
+  if (!user) return json({ ok: true, user: null, github });
 
   /* 授权 UP 主称号：同意名单按 isolate 缓存 10 分钟，正常请求不额外打 R2（见 videos.ts） */
   const up = await agreedUpFor(env, user);
 
   if (url.searchParams.get('lite') === '1') {
-    return json({ ok: true, user: publicUser(user, up), lite: true });
+    return json({ ok: true, user: publicUser(user, up), github, lite: true });
   }
 
   await recalcUserStats(env, user.id);
@@ -702,7 +1166,7 @@ export async function handleMe(request: Request, env: Env, url: URL): Promise<Re
     if (row.status in tally) tally[row.status as keyof typeof tally] = Number(row.n) || 0;
   }
 
-  return json({ ok: true, user: publicUser(fresh ?? user, up), submissions: results ?? [], counts: tally });
+  return json({ ok: true, user: publicUser(fresh ?? user, up), submissions: results ?? [], counts: tally, github });
 }
 
 /** POST /api/password —— 改口令（旧 Cookie 全部作废，只保留当前这一个） */
@@ -717,13 +1181,27 @@ export async function handlePassword(request: Request, env: Env, url: URL): Prom
   const oldPass = String(parsed.body.oldPassword ?? '');
   const next = checkPassword(parsed.body.newPassword);
   if (!next.ok) return fail(next.error);
-  if (!(await verifyPassword(oldPass, user.pass_hash))) return fail('原口令不对', 401);
+  /*
+   * GitHub 登录建的账号**没有口令**（pass_hash 是哨兵值），这时不许要「原口令」——
+   * 否则他永远设不上口令，也就永远解绑不了 GitHub（本站不收邮箱，找不回）。
+   * 已经有口令的账号照旧必须验原口令。
+   */
+  const hadPassword = !String(user.pass_hash ?? '').startsWith(GH_PASS_PREFIX);
+  if (hadPassword && !(await verifyPassword(oldPass, user.pass_hash))) return fail('原口令不对', 401);
 
   const hash = await hashPassword(next.value);
   await env.DB.prepare(`UPDATE users SET pass_hash = ?1, pass_ver = pass_ver + 1 WHERE id = ?2`).bind(hash, user.id).run();
   const fresh = await env.DB.prepare(`SELECT * FROM users WHERE id = ?1`).bind(user.id).first<UserRow>();
   const token = await makeToken(env, fresh ?? user);
-  return setSessionCookie(env, url, { ok: true, message: '口令已更新（其它设备上的登录会失效）' }, token);
+  return setSessionCookie(
+    env,
+    url,
+    {
+      ok: true,
+      message: hadPassword ? '口令已更新（其它设备上的登录会失效）' : '已设置口令（现在可以解绑 GitHub 了，其它设备上的登录会失效）',
+    },
+    token
+  );
 }
 
 /** POST /api/profile —— 改联系方式 / 昵称（昵称只影响以后的署名，历史投稿不改） */

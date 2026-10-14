@@ -90,6 +90,18 @@ export interface Env {
   GITHUB_BRANCH?: string;
   /** 便于本地拿假 GitHub 做测试 */
   GITHUB_API_BASE?: string;
+  /**
+   * GitHub 登录（OAuth App）的两把钥匙，**可选**：
+   * 不配就是「本站没开 GitHub 登录」—— 页面上的按钮会换成一句说明，
+   * 口令注册与登录完全不受影响（GitHub 只是多出来的一条可选项，不强制）。
+   * 设置：`wrangler secret put GITHUB_OAUTH_CLIENT_ID` / `..._SECRET`。
+   * 回调地址固定填 `https://ze-map.cn/api/auth/github/callback`
+   * （必须挂在 /api/ 下，否则会被静态资源层接走，见 wrangler.jsonc 的 run_worker_first）。
+   */
+  GITHUB_OAUTH_CLIENT_ID?: string;
+  GITHUB_OAUTH_CLIENT_SECRET?: string;
+  /** 便于本地拿假 GitHub 做测试：换成假授权站地址即可（默认 https://github.com） */
+  GITHUB_OAUTH_BASE?: string;
 }
 
 export function json(data: unknown, status = 200): Response {

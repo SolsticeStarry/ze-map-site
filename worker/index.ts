@@ -58,6 +58,9 @@ import { handleVideoMeta, handleVideoThanks } from './videos';
 import {
   handleAdminAccountAction,
   handleAdminAccounts,
+  handleGithubCallback,
+  handleGithubStart,
+  handleGithubUnbind,
   handleLogin,
   handleLogout,
   handleMe,
@@ -166,6 +169,14 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (path === '/api/me') return handleMe(request, env, url);
   if (path === '/api/password') return handlePassword(request, env, url);
   if (path === '/api/profile') return handleProfile(request, env);
+  /*
+   * GitHub 登录（2026-10-14）：**可选**的一条路，口令注册/登录一行没动。
+   * ⚠️ 回调必须挂在 /api/ 下 —— 只有 /api/* 与 /terr/* 会进 Worker
+   * （wrangler.jsonc 的 run_worker_first），挂到 /auth/... 会被静态资源层接走成 404。
+   */
+  if (path === '/api/auth/github/start') return handleGithubStart(request, env, url);
+  if (path === '/api/auth/github/callback') return handleGithubCallback(request, env, url, ipHash);
+  if (path === '/api/auth/github/unbind') return handleGithubUnbind(request, env, url);
 
   return fail('未知接口', 404);
 }

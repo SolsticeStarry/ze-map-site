@@ -48,6 +48,18 @@ export interface AccountUser extends AccountLevel {
     logins: string[];
     url: string;
   };
+  /**
+   * 绑定的 GitHub 身份（2026-10-14 加）：和上面的 gh（称号徽章）**不是一回事** ——
+   * gh 只在「仓库贡献者」名单里才有；ghLogin 表示「这个账号绑了哪个 GitHub」。
+   * hasPassword=false 表示这是 GitHub 建的号（还没设口令）：页面据此收起「原口令」那一栏、
+   * 并告诉用户「想解绑先设口令」。
+   */
+  ghLogin?: {
+    login: string;
+    url: string;
+    avatar: string;
+    hasPassword: boolean;
+  };
 }
 
 export interface AccountSubmission {
@@ -72,6 +84,11 @@ export interface AccountMe {
   user: AccountUser | null;
   submissions: AccountSubmission[];
   counts: AccountCounts;
+  /**
+   * 站点开了哪些第三方登录（目前只有 GitHub）。
+   * 没配密钥时 enabled=false —— 页面要把按钮换成一句说明，而不是给一个点了没反应的按钮。
+   */
+  github?: { enabled: boolean };
 }
 
 /** 登录状态变了（登录 / 注册 / 退出）时广播，页面上的其它块据此重画 */
@@ -83,7 +100,12 @@ export function notifyChanged(): void {
   document.dispatchEvent(new CustomEvent(ACCOUNT_EVENT));
 }
 
-const EMPTY: AccountMe = { user: null, submissions: [], counts: { pending: 0, approved: 0, applied: 0, rejected: 0 } };
+const EMPTY: AccountMe = {
+  user: null,
+  submissions: [],
+  counts: { pending: 0, approved: 0, applied: 0, rejected: 0 },
+  github: { enabled: false },
+};
 
 let lite: Promise<AccountMe> | null = null;
 let full: Promise<AccountMe> | null = null;
@@ -96,6 +118,7 @@ async function request(url: string): Promise<AccountMe> {
     user: data.user ?? null,
     submissions: data.submissions ?? [],
     counts: data.counts ?? EMPTY.counts,
+    github: data.github ?? { enabled: false },
   };
 }
 

@@ -25,6 +25,8 @@
   `NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not supported`
   —— 本地 Node 没这个限制，所以只有 `worker/auth.test.mjs` 里那条断言能提前拦住它（2026-10-11 踩过）。
   不存明文、不存可逆哈希、不存邮箱 —— 找回口令走 QQ 群找站长（和现有运营方式一致）。
+  2026-10-14 起多了 **GitHub 登录**（可选，见下面的「GitHub 登录」一节）：
+  它只存 GitHub 的数字 id 与登录名，**同样不碰邮箱**。
 - 投稿与账号的关联是 `submissions.user_id`（匿名投稿是 `NULL`）。
 - `migrations/0003_users.sql` 是**给人看的记录**：线上不靠它建表，见下面「懒建表」。
 
@@ -46,15 +48,76 @@
 所以 `worker/auth.ts` 的 `ensureSchema()` 在第一次用到账号功能时自己补结构（幂等）：
 
 ```
+CREATE TABLE IF NOT EXISTS bans / rate_limits / submissions   ← 2026-10-14 起也自己建
 CREATE TABLE IF NOT EXISTS users (...)
 CREATE INDEX  IF NOT EXISTS idx_users_name_key ...
-PRAGMA table_info(submissions)  → 没有 user_id 就 ALTER TABLE submissions ADD COLUMN user_id INTEGER
+ALTER TABLE users ADD COLUMN fail_count / locked_until / up_name / gh_names / gh_id / gh_login / gh_linked_at / gh_avatar
+CREATE UNIQUE INDEX idx_users_gh ON users(gh_id) WHERE gh_id IS NOT NULL
+PRAGMA table_info(submissions)  → 没有 user_id / batch 就 ALTER TABLE 补上
 CREATE INDEX  IF NOT EXISTS idx_sub_user ...
 ```
 
-- 每个 isolate 只跑一次（模块级 `schemaReady`）；失败只打日志、不抛，`accountForSubmit` 里
+- 每个 isolate 只跑一次（模块级 `schemaReady`）；**每一步各自兜错**（`step()`），
+  一处失败不会把后面的步骤一起带走；失败只打日志、不抛，`accountForSubmit` 里
   每次投稿前也会先调一遍 —— 这样**新库上第一条投稿就不会因为缺 `user_id` 列而 500**。
-- 真踩过的坑见「投稿那条路不能依赖账号结构」。
+- ⚠️ 2026-10-14 修的一个真坑：以前这里**假定 `submissions` / `bans` / `rate_limits` 已经存在**
+  （生产的库是早先建好的，所以一直没暴露）。用全新的本地 D1 跑 GitHub 登录的端到端测试时，
+  补列那句 `ALTER TABLE submissions …` 抛 `no such table: submissions`，把同一个 try 里
+  后面的建表全跳过 → `isBanned()` 直接 500，表现成「GitHub 登录报服务器内部错误」。
+  现在四张表都自己保证存在，并加了一条「全新的空库也能用」的单测。
+
+## GitHub 登录（2026-10-14 加，**可选**的一条路）
+
+站长的要求：**不强制**。GitHub 只是多出来的一条路 —— 口令注册 / 登录一行没动，
+「不登录也能投稿」这条底线也没动；**没配密钥时整条路自动关闭**（页面上按钮换成一句说明）。
+
+### 怎么开启（两步）
+
+```bash
+# 1) 在 GitHub 建一个 OAuth App（Settings → Developer settings → OAuth Apps）
+#    Homepage:    https://ze-map.cn
+#    Callback:    https://ze-map.cn/api/auth/github/callback   ← 必须挂在 /api/ 下（见下）
+# 2) 把两把钥匙写进 Worker secret
+wrangler secret put GITHUB_OAUTH_CLIENT_ID
+wrangler secret put GITHUB_OAUTH_CLIENT_SECRET
+```
+
+- **回调地址必须在 `/api/` 下**：只有 `/api/*` 与 `/terr/*` 会进 Worker
+  （`wrangler.jsonc` 的 `run_worker_first`），挂到 `/auth/...` 会被静态资源层接走成 HTML 404。
+- 没配密钥时：`/api/me` 回 `github.enabled = false`，页面不显示按钮、只显示一句
+  「本站暂未开启 GitHub 登录」；`GET /api/auth/github/start` 回 503 + 一句人话。
+
+### 三种落点（`handleGithubCallback`）
+
+| 情况 | 结果 |
+|---|---|
+| 这个 GitHub 号**已经绑过**某个账号 | 直接登录那个账号（认 `gh_id`，登录名改了也认得出） |
+| 当前**已登录**（想让已有账号绑上） | 绑定到当前账号（该账号若已绑过别的 GitHub 号 → 拒绝，先解绑） |
+| 都没匹配上 | 用 GitHub 登录名建新号；昵称被占/保留名 → 依次试 `login-2`、`login-3`、`gh-login`、`gh-<id>`，全被占就让用户自己注册后绑定（**绝不抢别人的昵称**） |
+
+- 已绑到**另一个**站内账号的 GitHub 号再来 → `gh=taken`，不自动改绑。
+- 被封禁的账号 / 来源 → 一律拒（`gh=disabled` / `gh=banned`）。
+- 建号占「全站 200 个新账号/24 小时」这道闸，但**不走**「单 IP 3 个/天」——
+  那是给匿名注册防刷号用的；GitHub 账号本身有成本，同一个出口后面可能坐着好几位真人
+  （改用 20 个/小时的小时桶）。
+
+### 安全设计
+
+| 项 | 做法 |
+|---|---|
+| CSRF | `state` 32 字节随机值 + **HttpOnly Cookie**（`zc_gh_state`，Path=/api/auth，10 分钟），constant-time 比对；GitHub 不支持 PKCE，这是唯一防线 |
+| 令牌 | **access_token 不落库**：只用来读一次 `/user` 就丢（本站不需要以用户身份调 GitHub） |
+| 授权范围 | 只要 `read:user`；**不申请 `user:email`**（本站本来就不收邮箱） |
+| 用户信息 | 只存 `gh_id` / `gh_login` / `gh_linked_at` / `gh_avatar`（头像仅用于展示，页面暂未使用） |
+| 称号 | `gh_names`（「仓库贡献者」）只在登录名**确实出现在仓库贡献者名单**时才自动写入；名单读不到（没配 `GITHUB_TOKEN`）就静默跳过 —— 不凭一句登录发称号 |
+| 解绑 | `POST /api/auth/github/unbind`：**没有口令的账号不许解绑**（会把自己锁在外面）；已有口令的账号走正常登录态 |
+
+### 没口令的账号（GitHub 建的号）
+
+- `pass_hash` 写哨兵值 `github$<gh_id>`；`verifyPassword` 对哨兵值恒为 false（口令登录进不来）。
+- `POST /api/password` 对**没有口令的账号不校验原口令**（否则他永远设不上口令 → 永远解绑不了）；
+  已经有口令的账号照旧必须验原口令（有单测盯着这条底线）。
+- 页面据此把「原口令」那一栏收起来，并写明「设一个口令就不用担心哪天 GitHub 登不上」。
 
 ## 等级与免审（`levelOf`）
 

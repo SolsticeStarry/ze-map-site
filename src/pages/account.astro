@@ -90,6 +90,28 @@ import QqGroup from '../components/QqGroup.astro';
           <p class="form-error" id="acc-error" hidden></p>
           <p class="form-ok" id="acc-ok" hidden></p>
 
+          {/*
+            GitHub 登录（2026-10-14）：**可选**的一条路，不是必选项 ——
+            口令注册 / 登录完全不动，这里只是多一个按钮。
+            没配密钥时（github.enabled === false）这一块整块隐藏，换成下面那句说明，
+            免得给出一个点了没反应的按钮。
+            target="_self"：站点默认所有链接新开标签页（BaseLayout 的 <base target>），
+            授权流程必须**同一个标签页**走完，否则回调落在新标签、原页面还是未登录状态。
+          */}
+          <div class="acc-gh-login" id="gh-login-box" hidden>
+            <div class="acc-or"><span>或</span></div>
+            <a class="acc-btn acc-btn-block acc-btn-gh" id="gh-login" href="/api/auth/github/start" target="_self">
+              <span class="acc-gh-mark" aria-hidden="true"></span>用 GitHub 登录 / 注册
+            </a>
+            <p class="acc-hint">
+              没注册过会自动建一个号（昵称取你的 GitHub 用户名，之后可改）；已有账号请先登录，再在下面「GitHub」一栏点绑定。
+              只是可选项 —— 用昵称 + 口令注册照旧。
+            </p>
+          </div>
+          <p class="acc-hint" id="gh-off-note" hidden>
+            本站暂未开启 GitHub 登录（站长未配置密钥）—— 用昵称 + 口令注册即可。
+          </p>
+
           <div class="acc-auth-foot">
             <span>不想注册？</span>
             <a href="/submit/">直接去投稿 →</a>
@@ -210,8 +232,8 @@ import QqGroup from '../components/QqGroup.astro';
           </div>
           <div class="acc-set-block">
             <h3>口令</h3>
-            <p class="acc-hint">改完口令后，其它设备上的登录会立刻失效（当前这台会自动续上）。</p>
-            <div class="form-row">
+            <p class="acc-hint" id="pw-hint">改完口令后，其它设备上的登录会立刻失效（当前这台会自动续上）。</p>
+            <div class="form-row" id="pw-old-row">
               <label for="pw-old">原口令</label>
               <input id="pw-old" type="password" maxlength="72" autocomplete="current-password" />
             </div>
@@ -220,6 +242,18 @@ import QqGroup from '../components/QqGroup.astro';
               <input id="pw-new" type="password" maxlength="72" autocomplete="new-password" />
             </div>
             <button class="acc-btn" type="button" id="pw-go">改口令</button>
+          </div>
+          {/*
+            GitHub 绑定（2026-10-14）：已有账号也能挂上 GitHub —— 挂上之后可以用 GitHub 一键登录，
+            在贡献者名单里的人还会自动拿到「仓库贡献者」称号（不必再让站长手填用户名）。
+            没开这个功能时整块隐藏。
+          */}
+          <div class="acc-set-block" id="gh-block" hidden>
+            <h3>GitHub</h3>
+            <p class="acc-hint" id="gh-state">读取中…</p>
+            <a class="acc-btn" id="gh-bind-go" href="/api/auth/github/start" target="_self" hidden>绑定 GitHub</a>
+            <button class="acc-btn" type="button" id="gh-unbind-go" hidden>解绑 GitHub</button>
+            <p class="acc-hint" id="gh-note" hidden></p>
           </div>
         </div>
         <p class="form-error" id="acc-error2" hidden></p>
@@ -499,19 +533,114 @@ import QqGroup from '../components/QqGroup.astro';
           if (loading) loading.hidden = true;
           if (guest) guest.hidden = false;
           if (meBox) meBox.hidden = true;
+          paintGithubGuest(Boolean(data.github?.enabled));
+          showGithubResult();
           return;
         }
         /* 先把骨架画出来（用户能立刻看到自己是谁），地图名随后补上 */
         renderMe(data.user, data.submissions, data.counts);
+        paintGithubBound(data.user, Boolean(data.github?.enabled));
         if (data.submissions.length) {
           await loadTitles();
           renderMe(data.user, data.submissions, data.counts);
         }
+        showGithubResult();
       } catch {
         if (loading) {
           loading.textContent = '读取登录状态失败（接口没通）。不影响浏览与投稿 —— 刷新重试即可。';
         }
       }
+    }
+
+    /* ===== GitHub 登录 / 绑定（2026-10-14） =====
+       三条出口都在页面里说清：没开的整块隐藏、没绑的给「绑定」、绑了的给「解绑」+提示。 */
+
+    /** 未登录：开没开决定显示按钮还是说明 */
+    function paintGithubGuest(enabled: boolean) {
+      const box = $('gh-login-box');
+      const off = $('gh-off-note');
+      if (box) box.hidden = !enabled;
+      if (off) off.hidden = enabled;
+    }
+
+    /** 已登录：绑定状态那一块 */
+    function paintGithubBound(user: Me, enabled: boolean) {
+      const block = $('gh-block');
+      const stateEl = $('gh-state');
+      const bind = $('gh-bind-go');
+      const unbind = $('gh-unbind-go');
+      const note = $('gh-note');
+      if (block) block.hidden = !enabled;
+      if (!enabled) return;
+
+      const linked = user.ghLogin;
+      if (stateEl) {
+        stateEl.textContent = linked
+          ? `已绑定 GitHub：@${linked.login}${linked.hasPassword ? '' : '（这个账号没有口令，只能用 GitHub 登录）'}`
+          : '还没绑定。绑定后可以用 GitHub 一键登录本站。';
+      }
+      if (bind) bind.hidden = Boolean(linked);
+      if (unbind) unbind.hidden = !linked;
+      if (note) {
+        if (linked && !linked.hasPassword) {
+          note.textContent = '想解绑？先在左边「口令」里设一个口令（没有口令的账号解绑后就登不进来了）。';
+          note.hidden = false;
+        } else if (linked) {
+          note.textContent = '解绑不影响已经拿到的称号，也不影响用口令登录。';
+          note.hidden = false;
+        } else {
+          note.hidden = true;
+        }
+      }
+      /* 没有口令的账号（GitHub 建的）：改口令不需要「原口令」，那一栏直接收起来 */
+      const oldRow = $('pw-old-row');
+      const pwHint = $('pw-hint');
+      if (oldRow) oldRow.hidden = !hasPasswordNow(user);
+      if (pwHint) {
+        pwHint.textContent = hasPasswordNow(user)
+          ? '改完口令后，其它设备上的登录会立刻失效（当前这台会自动续上）。'
+          : '这个账号是 GitHub 建的，还没有口令 —— 设一个口令就不用担心哪天 GitHub 登不上（设完其它设备上的登录会失效）。';
+      }
+    }
+
+    /** 这个账号有没有口令（GitHub 建的号一开始没有） */
+    const hasPasswordNow = (user: Me) => user.ghLogin?.hasPassword !== false;
+
+    /** 从 GitHub 回来时带的结果（?gh=...）—— 用一句人话说清楚发生了什么 */
+    const GH_RESULT: Record<string, { text: string; ok: boolean }> = {
+      new: { text: '已用 GitHub 建号并登录了。想改名、设口令都在下面的「账号设置」里。', ok: true },
+      ok: { text: '已用 GitHub 登录。', ok: true },
+      bound: { text: '已把这个账号绑到你的 GitHub 上 —— 以后可以一键登录。', ok: true },
+      cancel: { text: 'GitHub 授权取消了，什么都没变。用昵称 + 口令登录照旧。', ok: false },
+      state: { text: '授权校验没过（state 不匹配，可能是页面放太久或跨站请求），请再点一次。', ok: false },
+      token: { text: 'GitHub 换令牌失败，请稍后再试（不影响口令登录）。', ok: false },
+      profile: { text: '读取 GitHub 资料失败，请稍后再试。', ok: false },
+      taken: { text: '这个 GitHub 已经绑在另一个站内账号上了 —— 先用那个账号登录，或先在它那边解绑。', ok: false },
+      already: { text: '当前账号已经绑过另一个 GitHub 了，先解绑再绑这个。', ok: false },
+      name: { text: '你的 GitHub 用户名在本站已被占用 —— 先用昵称 + 口令注册一个账号，再在「GitHub」一栏绑定。', ok: false },
+      quota: { text: '今天的新账号名额用完了（不影响投稿）—— 明天再试，或让站长把上限调大。', ok: false },
+      rate: { text: '这个网络出口今天用 GitHub 建号太频繁了，请过一会儿再试。', ok: false },
+      banned: { text: '该来源已被禁止注册。', ok: false },
+      disabled: { text: '这个账号已被停用，请联系站长。', ok: false },
+      off: { text: '本站还没开启 GitHub 登录。', ok: false },
+      fail: { text: 'GitHub 建号失败，请稍后再试。', ok: false },
+    };
+
+    /** 只在带 ?gh= 时提示一次，并把参数从地址栏抹掉（刷新不该重复弹） */
+    let ghResultShown = false;
+    function showGithubResult() {
+      if (ghResultShown) return;
+      const code = new URLSearchParams(location.search).get('gh');
+      if (!code) return;
+      ghResultShown = true;
+      const hit = GH_RESULT[code];
+      const clean = new URL(location.href);
+      clean.searchParams.delete('gh');
+      history.replaceState(null, '', clean.pathname + clean.search + clean.hash);
+      if (!hit) return;
+      /* 无论成功失败都用「错误框」的样式会更醒目，但成功还是走绿框 */
+      if (hit.ok) showOk(hit.text);
+      else showErr(hit.text);
     }
 
     /* ---- 注册 / 登录两页切换（滑块） ---- */
@@ -622,8 +751,24 @@ import QqGroup from '../components/QqGroup.astro';
         ($('pw-old') as HTMLInputElement).value = '';
         ($('pw-new') as HTMLInputElement).value = '';
         showOk(String(d.message ?? '口令已更新'));
+        await refresh();
       } catch (e) {
         showErr(e instanceof Error ? e.message : '改口令失败');
+      }
+    });
+
+    /* 解绑 GitHub：服务端会拦「没有口令就解绑」的情况（否则会把自己锁在外面） */
+    $('gh-unbind-go')?.addEventListener('click', async () => {
+      showErr('');
+      showOk('');
+      if (!confirm('解绑后就不能用 GitHub 一键登录这个账号了（称号与投稿记录都保留）。确定解绑？')) return;
+      try {
+        const d = await post('/api/auth/github/unbind', {});
+        showOk(String(d.message ?? '已解绑 GitHub'));
+        notifyChanged();
+        await refresh();
+      } catch (e) {
+        showErr(e instanceof Error ? e.message : '解绑失败');
       }
     });
 

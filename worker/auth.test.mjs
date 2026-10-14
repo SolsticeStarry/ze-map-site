@@ -68,10 +68,15 @@ CREATE TABLE IF NOT EXISTS users (
 
 const norm = (v) => (v === undefined || v === null ? null : typeof v === 'boolean' ? (v ? 1 : 0) : v);
 
-function makeD1({ migrated = false } = {}) {
+function makeD1({ migrated = false, empty = false } = {}) {
   const db = new DatabaseSync(':memory:');
-  db.exec(SCHEMA_0001);
-  db.exec(SCHEMA_0002);
+  /* empty=true：完全空库（模拟「新建的 D1 / 本地 wrangler dev 第一次跑」）。
+     2026-10-14 踩到的坑：ensureSchema 以前假定 submissions/bans 已存在，
+     空库上补列那句 ALTER 会抛，把后面的 bans 一起带走 → isBanned 500。 */
+  if (!empty) {
+    db.exec(SCHEMA_0001);
+    db.exec(SCHEMA_0002);
+  }
   if (migrated) {
     db.exec(SCHEMA_0003);
     db.exec(`ALTER TABLE submissions ADD COLUMN user_id INTEGER`);
@@ -102,13 +107,21 @@ async function setup(opts = {}) {
   const worker = (await import(pathToFileURL(BUNDLE).href + `?v=${++loadSeq}`)).default;
   const { db, DB } = makeD1(opts);
   const env = { DB, IP_SALT: 'test-salt', ASSETS: { fetch: async () => new Response('asset') } };
-  const jar = { cookie: '' };
+  /*
+   * Cookie 罐：以前只盯 zc_sess，加了 GitHub 登录之后还要带上 zc_gh_state
+   * （state Cookie 的 Path=/api/auth，回调请求照样会带；浏览器行为，测试里手动模拟）。
+   * Max-Age=0 表示清除（登出、或回调结束时清 state）。
+   */
+  const jar = { cookies: new Map(), get cookie() {
+    return [...jar.cookies].map(([k, v]) => `${k}=${v}`).join('; ');
+  } };
 
-  const call = async (pathname, { method = 'GET', body, cookie, ip, headers = {} } = {}) => {
+  const call = async (pathname, { method = 'GET', body, cookie, ip, headers = {}, redirect = 'manual' } = {}) => {
     const useCookie = cookie !== undefined ? cookie : jar.cookie;
     const res = await worker.fetch(
       new Request(HOST + pathname, {
         method,
+        redirect,
         headers: {
           origin: HOST,
           /* 默认同一个出口 IP；测限流时用 ip 换成别的，走的就是另一套桶 */
@@ -122,8 +135,16 @@ async function setup(opts = {}) {
       env
     );
     const setCookies = res.headers.getSetCookie?.() ?? [];
-    const session = setCookies.find((c) => c.startsWith('zc_sess='));
-    if (session) jar.cookie = session.split(';')[0];
+    for (const c of setCookies) {
+      const [pair, ...attrs] = c.split(';');
+      const eq = pair.indexOf('=');
+      if (eq < 0) continue;
+      const name = pair.slice(0, eq).trim();
+      const value = pair.slice(eq + 1).trim();
+      const cleared = attrs.some((a) => /^\s*max-age=0\s*$/i.test(a));
+      if (cleared || !value) jar.cookies.delete(name);
+      else jar.cookies.set(name, value);
+    }
     let data = null;
     try {
       data = await res.json();
@@ -1121,3 +1142,295 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
     assert.equal((await call('/api/me')).data.user.up, undefined, '摘掉之后立刻没有徽章');
   });
 });
+
+/* ===== 6. GitHub 登录（2026-10-14 加，可选的一条路） =====
+ *
+ * 怎么测：把 GitHub 的两个端点（授权站 + API 站）换成假站（`env.GITHUB_OAUTH_BASE` /
+ * `env.GITHUB_API_BASE`）；Worker 里的 fetch 就在同一个进程里，直接替换 globalThis.fetch。
+ * 这样 state 校验、换 token、读 profile、建号 / 绑定 / 找回、贡献者称号自动核对
+ * 全都能端到端跑一遍 —— 不需要真的 GitHub 账号，也不会碰线上。
+ */
+test('GitHub 登录：可选、可绑定、可找回，且不碰口令这条路', async (t) => {
+  const realFetch = globalThis.fetch;
+  /** 假 GitHub：/login/oauth/access_token 换 token；/user 读资料；/repos/.../contributors 读贡献者名单 */
+  const fakeGithub = (opts = {}) => {
+    const calls = [];
+    globalThis.fetch = async (input, init = {}) => {
+      const url = String(typeof input === 'string' ? input : input.url);
+      calls.push({ url, method: init.method ?? 'GET', body: init.body ?? '' });
+      const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+
+      if (url.startsWith('https://gh.test/login/oauth/access_token')) {
+        const sent = JSON.parse(String(init.body ?? '{}'));
+        if (sent.code !== opts.goodCode) return json({ error: 'bad_verification_code' });
+        return json({ access_token: 'gho_fake_token', token_type: 'bearer', scope: 'read:user' });
+      }
+      if (url.startsWith('https://api.gh.test/user')) {
+        const auth = String((init.headers ?? {}).authorization ?? '');
+        if (!auth.includes('gho_fake_token')) return json({ message: 'Bad credentials' }, 401);
+        return json(opts.profile ?? { id: 4242, login: 'octocat', avatar_url: 'https://avatars.example/u/4242' });
+      }
+      if (url.includes('/contributors')) {
+        if (!opts.contributors) return json({ message: 'Not Found' }, 404);
+        return json(opts.contributors);
+      }
+      return json({ message: 'unexpected ' + url }, 500);
+    };
+    return { calls, restore: () => { globalThis.fetch = realFetch; } };
+  };
+
+  const withGithub = (env, extra = {}) => {
+    env.GITHUB_OAUTH_CLIENT_ID = 'Iv1.test';
+    env.GITHUB_OAUTH_CLIENT_SECRET = 'secret';
+    env.GITHUB_OAUTH_BASE = 'https://gh.test';
+    env.GITHUB_API_BASE = 'https://api.gh.test';
+    return Object.assign(env, extra);
+  };
+
+  await t.test('没配密钥：整条路自动关闭，口令注册照旧能用', async () => {
+    const { call, env } = await setup();
+    const me = await call('/api/me');
+    assert.equal(me.data.github.enabled, false, '页面据此把按钮换成说明，而不是给一个点了没反应的按钮');
+    const start = await call('/api/auth/github/start');
+    assert.equal(start.status, 503);
+    assert.match(start.data.error, /还没开启 GitHub 登录/);
+    const reg = await call('/api/register', { method: 'POST', body: { name: '口令用户', password: 'pass12345' } });
+    assert.equal(reg.status, 200, '口令注册不受影响');
+  });
+
+  await t.test('start：302 到假 GitHub 并带上 state，state 写进 HttpOnly Cookie', async () => {
+    const { call, env } = await setup();
+    withGithub(env);
+    const r = await call('/api/auth/github/start');
+    assert.equal(r.status, 302);
+    const loc = r.res.headers.get('location') ?? '';
+    assert.ok(loc.startsWith('https://gh.test/login/oauth/authorize?'), loc);
+    const u = new URL(loc);
+    assert.equal(u.searchParams.get('client_id'), 'Iv1.test');
+    assert.equal(u.searchParams.get('scope'), 'read:user', '只读公开资料，不申请 user:email');
+    assert.equal(u.searchParams.get('redirect_uri'), 'http://localhost:8787/api/auth/github/callback');
+    const state = u.searchParams.get('state') ?? '';
+    assert.ok(state.length >= 20, 'state 要够随机');
+    const cookie = r.setCookies.join(';');
+    assert.match(cookie, /zc_gh_state=/);
+    assert.match(cookie, /HttpOnly/);
+    assert.match(cookie, /Path=\/api\/auth/);
+  });
+
+  await t.test('callback：state 不对 / 缺 code / 用户取消 → 一律不发号', async () => {
+    const { call, env, db } = await setup();
+    withGithub(env);
+
+    const noState = await call('/api/auth/github/callback?code=x&state=wrong');
+    assert.equal(noState.status, 302);
+    assert.match(noState.res.headers.get('location') ?? '', /gh=state/);
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM users`).get().n, 0, 'state 不对不能建号');
+
+    const cancel = await call('/api/auth/github/callback?error=access_denied');
+    assert.match(cancel.res.headers.get('location') ?? '', /gh=cancel/);
+
+    await call('/api/auth/github/start');
+    const badCode = await call('/api/auth/github/callback?code=wrong&state=' + new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state'));
+    assert.match(badCode.res.headers.get('location') ?? '', /gh=token/);
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM users`).get().n, 0, '换不到 token 不能建号');
+  });
+
+  await t.test('callback：新用户 → 建号并登录（昵称取 GitHub 登录名）', async () => {
+    const { call, env } = await setup();
+    /* 贡献者名单要 GITHUB_TOKEN 才读得到（拿不到就静默跳过，见下一条用例） */
+    withGithub(env, { GITHUB_TOKEN: 'test-gh-token' });
+    const gh = fakeGithub({ goodCode: 'code-1', contributors: [{ login: 'octocat', contributions: 3 }] });
+    await call('/api/auth/github/start');
+    const state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+
+    const r = await call(`/api/auth/github/callback?code=code-1&state=${state}`);
+    assert.equal(r.status, 302, '成功后 302 回 /account/，别把用户留在 JSON 上');
+    assert.match(r.res.headers.get('location') ?? '', /gh=new/);
+    assert.match(r.setCookies.join(';'), /zc_sess=/, '要发会话 Cookie');
+    gh.restore();
+
+    const me = await call('/api/me');
+    assert.equal(me.data.user.name, 'octocat');
+    assert.equal(me.data.user.ghLogin.login, 'octocat');
+    assert.equal(me.data.user.ghLogin.hasPassword, false, 'GitHub 建的号没有口令');
+    assert.equal(me.data.user.gh.logins[0], 'octocat', '在贡献者名单里 → 自动挂「仓库贡献者」称号');
+    assert.equal(me.data.github.enabled, true);
+  });
+
+  await t.test('全新的空库也能用（本地 wrangler dev / 重建 D1 的场景）', async () => {
+    const { call, env, one } = await setup({ empty: true });
+    withGithub(env);
+    const gh = fakeGithub({ goodCode: 'code-empty' });
+    await call('/api/auth/github/start');
+    const state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+
+    const r = await call(`/api/auth/github/callback?code=code-empty&state=${state}`);
+    gh.restore();
+    assert.equal(r.status, 302, '空库上不能 500 —— ensureSchema 得自己把表建齐');
+    assert.match(r.res.headers.get('location') ?? '', /gh=new/);
+
+    /* 四张基础表都要真的建出来（以前是假定已存在） */
+    for (const table of ['users', 'bans', 'rate_limits', 'submissions']) {
+      const hit = one(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, table);
+      assert.ok(hit, `缺表：${table}`);
+    }
+    /* 投稿这条路也要能用（匿名通道不依赖账号结构） */
+    const sub = await call('/api/submit', { method: 'POST', body: submitBody() });
+    assert.equal(sub.status, 200, JSON.stringify(sub.data));
+  });
+
+  await t.test('拿不到贡献者名单（没配 GITHUB_TOKEN）→ 照样能登录，只是不自动发称号', async () => {    const { call, env } = await setup();
+    withGithub(env); // 故意不给 GITHUB_TOKEN
+    const gh = fakeGithub({ goodCode: 'code-1', contributors: [{ login: 'octocat', contributions: 3 }] });
+    await call('/api/auth/github/start');
+    const state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+    const r = await call(`/api/auth/github/callback?code=code-1&state=${state}`);
+    gh.restore();
+
+    assert.match(r.res.headers.get('location') ?? '', /gh=new/, '名单读不到不该挡住登录');
+    const me = await call('/api/me');
+    assert.equal(me.data.user.ghLogin.login, 'octocat', '绑定信息照样有');
+    assert.equal(me.data.user.gh, undefined, '称号要有人工/名单依据，读不到就不发');
+  });
+
+  await t.test('callback：同一个 GitHub 号再来一次 → 还是那个账号（不会重复建号）', async () => {
+    const { call, env, db } = await setup();
+    withGithub(env);
+    let gh = fakeGithub({ goodCode: 'code-1' });
+    await call('/api/auth/github/start');
+    let state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+    await call(`/api/auth/github/callback?code=code-1&state=${state}`);
+    gh.restore();
+
+    await call('/api/logout', { method: 'POST', body: {} });
+    gh = fakeGithub({ goodCode: 'code-2' });
+    await call('/api/auth/github/start');
+    state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+    const again = await call(`/api/auth/github/callback?code=code-2&state=${state}`);
+    gh.restore();
+    assert.match(again.res.headers.get('location') ?? '', /gh=ok/);
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM users`).get().n, 1, '一个 GitHub 号只对应一个站内账号');
+  });
+
+  await t.test('已登录 + 已有口令账号 → 绑定 GitHub（不新建账号）', async () => {
+    const { call, env, db } = await setup();
+    withGithub(env);
+    await call('/api/register', { method: 'POST', body: { name: '老用户', password: 'pass12345' } });
+    assert.equal((await call('/api/me')).data.user.ghLogin, undefined, '一开始没绑');
+
+    const gh = fakeGithub({ goodCode: 'code-bind' });
+    await call('/api/auth/github/start');
+    const state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+    const r = await call(`/api/auth/github/callback?code=code-bind&state=${state}`);
+    gh.restore();
+
+    assert.match(r.res.headers.get('location') ?? '', /gh=bound/);
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM users`).get().n, 1, '绑定不该多出一个账号');
+    const me = await call('/api/me');
+    assert.equal(me.data.user.name, '老用户', '昵称不变');
+    assert.equal(me.data.user.ghLogin.login, 'octocat');
+    assert.equal(me.data.user.ghLogin.hasPassword, true);
+    assert.equal(me.data.user.gh, undefined, '没在贡献者名单里 → 不该凭空多一个称号');
+    /* 绑定之后照样能用口令登录（GitHub 只是多了一条路） */
+    await call('/api/logout', { method: 'POST', body: {} });
+    const byPass = await call('/api/login', { method: 'POST', body: { name: '老用户', password: 'pass12345' } });
+    assert.equal(byPass.status, 200, '口令这条路完全没被动过');
+  });
+
+  await t.test('一个 GitHub 号不能同时绑两个站内账号', async () => {
+    const { call, env, db } = await setup();
+    withGithub(env);
+    await call('/api/register', { method: 'POST', body: { name: '甲用户', password: 'pass12345' } });
+    let gh = fakeGithub({ goodCode: 'code-a' });
+    await call('/api/auth/github/start');
+    let state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+    await call(`/api/auth/github/callback?code=code-a&state=${state}`);
+    gh.restore();
+    await call('/api/logout', { method: 'POST', body: {} });
+
+    await call('/api/register', { method: 'POST', body: { name: '乙用户', password: 'pass12345' } });
+    gh = fakeGithub({ goodCode: 'code-b' });
+    await call('/api/auth/github/start');
+    state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+    const r = await call(`/api/auth/github/callback?code=code-b&state=${state}`);
+    gh.restore();
+    assert.match(r.res.headers.get('location') ?? '', /gh=taken/);
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM users WHERE gh_id IS NOT NULL`).get().n, 1, '还是只有一个账号绑着它');
+  });
+
+  await t.test('昵称已被占用 → 换个候选名建号，不抢别人的名字', async () => {
+    const { call, env, db } = await setup();
+    withGithub(env);
+    await call('/api/register', { method: 'POST', body: { name: 'octocat', password: 'pass12345' } });
+    await call('/api/logout', { method: 'POST', body: {} });
+
+    const gh = fakeGithub({ goodCode: 'code-dup' });
+    await call('/api/auth/github/start');
+    const state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+    await call(`/api/auth/github/callback?code=code-dup&state=${state}`);
+    gh.restore();
+
+    const rows = db.prepare(`SELECT name, gh_id FROM users ORDER BY id`).all();
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].name, 'octocat');
+    assert.equal(rows[0].gh_id, null, '原来那个口令账号没被抢走 / 没被绑定');
+    assert.notEqual(rows[1].name, 'octocat', '新号换了个候选名');
+    assert.equal(rows[1].gh_id, 4242);
+  });
+
+  await t.test('被封禁的账号 / 来源 → GitHub 登录也进不来', async () => {
+    const { call, env, db } = await setup();
+    withGithub(env);
+    let gh = fakeGithub({ goodCode: 'code-1' });
+    await call('/api/auth/github/start');
+    let state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+    await call(`/api/auth/github/callback?code=code-1&state=${state}`);
+    gh.restore();
+
+    db.prepare(`UPDATE users SET banned = 1 WHERE gh_id = 4242`).run();
+    await call('/api/logout', { method: 'POST', body: {} });
+    gh = fakeGithub({ goodCode: 'code-2' });
+    await call('/api/auth/github/start');
+    state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+    const banned = await call(`/api/auth/github/callback?code=code-2&state=${state}`);
+    gh.restore();
+    assert.match(banned.res.headers.get('location') ?? '', /gh=disabled/);
+    assert.equal((await call('/api/me')).data.user, null, '没发号');
+  });
+
+  await t.test('解绑：没口令的账号先拒（否则会把自己锁在外面）；设了口令才能解绑', async () => {
+    const { call, env } = await setup();
+    withGithub(env);
+    const gh = fakeGithub({ goodCode: 'code-1' });
+    await call('/api/auth/github/start');
+    const state = new URL((await call('/api/auth/github/start')).res.headers.get('location')).searchParams.get('state');
+    await call(`/api/auth/github/callback?code=code-1&state=${state}`);
+    gh.restore();
+
+    const refused = await call('/api/auth/github/unbind', { method: 'POST', body: {} });
+    assert.equal(refused.status, 400);
+    assert.match(refused.data.error, /先.*设一个口令|还没有口令/);
+
+    /* 没有口令也能设口令（不校验原口令）——这是 GitHub 建的号唯一能设口令的路径 */
+    const set = await call('/api/password', { method: 'POST', body: { oldPassword: '', newPassword: 'newpass12345' } });
+    assert.equal(set.status, 200, JSON.stringify(set.data));
+    assert.match(set.data.message, /已设置口令/);
+
+    const ok = await call('/api/auth/github/unbind', { method: 'POST', body: {} });
+    assert.equal(ok.status, 200, JSON.stringify(ok.data));
+    assert.equal(ok.data.user.ghLogin, undefined);
+    /* 解绑后用新口令照样登录 */
+    await call('/api/logout', { method: 'POST', body: {} });
+    const byPass = await call('/api/login', { method: 'POST', body: { name: 'octocat', password: 'newpass12345' } });
+    assert.equal(byPass.status, 200, '解绑后口令这条路必须还在');
+  });
+
+  await t.test('已有的口令账号不能用「空原口令」改口令（安全底线）', async () => {
+    const { call, env } = await setup();
+    withGithub(env);
+    await call('/api/register', { method: 'POST', body: { name: '有口令的人', password: 'pass12345' } });
+    const bad = await call('/api/password', { method: 'POST', body: { oldPassword: '', newPassword: 'newpass12345' } });
+    assert.equal(bad.status, 401, '有口令的账号仍然必须验原口令');
+  });
+});
+

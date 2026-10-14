@@ -67,6 +67,17 @@ import { PERSON_ICON } from '../lib/account-client';
       <p class="form-error" id="am-error" hidden></p>
       <p class="form-ok" id="am-ok" hidden></p>
 
+      {/*
+        GitHub 登录（2026-10-14）：可选的一条路。没配密钥（github.enabled=false）时整块隐藏。
+        target="_self"：站点默认新开标签（BaseLayout 的 <base target>），
+        但授权流程必须同一个标签页走完，否则回调落在新标签、这里还是未登录。
+      */}
+      <div class="am-gh-login" id="am-gh-login" hidden>
+        <a class="acc-btn acc-btn-block acc-btn-gh" id="am-gh-go" href="/api/auth/github/start" target="_self">
+          <span class="acc-gh-mark" aria-hidden="true"></span>用 GitHub 登录 / 注册
+        </a>
+      </div>
+
       <div class="am-foot">
         <a href="/account/">我的投稿与等级 →</a>
         <span class="am-sep">·</span>
@@ -153,6 +164,9 @@ import { PERSON_ICON } from '../lib/account-client';
 
     guest!.hidden = Boolean(user);
     meBox!.hidden = !user;
+    /* GitHub 按钮：只在站长配好了密钥时出现（没配就给一句说明都嫌啰嗦，直接不显示） */
+    const ghLogin = $('am-gh-login');
+    if (ghLogin) ghLogin.hidden = !(data?.github?.enabled ?? false) || Boolean(user);
     if (!reachable) say('登录状态没读到（接口没通）—— 不影响投稿，稍后重试即可');
     if (!user) return;
 
