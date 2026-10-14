@@ -419,10 +419,28 @@ export async function handleGithubCallback(request: Request, env: Env, url: URL,
         redirect_uri: ghCallbackUrl(url),
       }),
     });
-    const data = (await res.json()) as { access_token?: string; error?: string };
+    const raw = await res.text();
+    let data: { access_token?: string; error?: string; error_description?: string } = {};
+    try {
+      data = JSON.parse(raw) as typeof data;
+    } catch {
+      /* 非 JSON（极少见）：留空，下面统一记日志 */
+    }
     accessToken = String(data?.access_token ?? '');
-    if (!accessToken) return ghBackToAccount(url, { gh: 'token' }, [clearState]);
-  } catch {
+    if (!accessToken) {
+      /*
+       * 失败原因记进日志（`wrangler tail` 能直接看到）—— 排查「点了 GitHub 登录却回到
+       * gh=token」时，没有这一行就只能猜。常见：code 过期/已用过（GitHub 回 404 Not Found）、
+       * redirect_uri 与注册值不一致、secret 换过。
+       * ⚠️ 日志里**只打错误码与描述**，绝不打印 token 或 secret。
+       */
+      console.error(
+        `GitHub 换 token 失败：HTTP ${res.status} · ${String(data?.error ?? '')} ${String(data?.error_description ?? '')}`.slice(0, 300)
+      );
+      return ghBackToAccount(url, { gh: 'token' }, [clearState]);
+    }
+  } catch (err) {
+    console.error('GitHub 换 token 异常：' + (err instanceof Error ? err.message : String(err)));
     return ghBackToAccount(url, { gh: 'token' }, [clearState]);
   }
 
@@ -434,13 +452,20 @@ export async function handleGithubCallback(request: Request, env: Env, url: URL,
     const res = await ghFetch(`${cfg.api}/user`, {
       headers: { authorization: `Bearer ${accessToken}`, accept: 'application/vnd.github+json', 'user-agent': 'ze-map-site' },
     });
-    if (!res.ok) return ghBackToAccount(url, { gh: 'profile' }, [clearState]);
+    if (!res.ok) {
+      console.error(`GitHub 读资料失败：HTTP ${res.status} ${(await res.text().catch(() => '')).slice(0, 160)}`);
+      return ghBackToAccount(url, { gh: 'profile' }, [clearState]);
+    }
     const prof = (await res.json()) as { id?: number; login?: string; avatar_url?: string };
     ghId = Number(prof?.id ?? 0);
     login = String(prof?.login ?? '').trim();
     avatar = String(prof?.avatar_url ?? '');
-    if (!ghId || !login) return ghBackToAccount(url, { gh: 'profile' }, [clearState]);
-  } catch {
+    if (!ghId || !login) {
+      console.error('GitHub 资料缺 id/login：' + JSON.stringify(prof).slice(0, 160));
+      return ghBackToAccount(url, { gh: 'profile' }, [clearState]);
+    }
+  } catch (err) {
+    console.error('GitHub 读资料异常：' + (err instanceof Error ? err.message : String(err)));
     return ghBackToAccount(url, { gh: 'profile' }, [clearState]);
   }
 
