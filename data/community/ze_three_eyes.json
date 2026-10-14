@@ -1,0 +1,173 @@
+{
+  "v": 1,
+  "slug": "ze_three_eyes",
+  "updatedAt": "2026-10-14T12:26:39.329Z",
+  "fields": {
+    "difficulty": {
+      "v": "火星",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:23:42.868Z",
+      "submission": 221
+    },
+    "aliases": {
+      "v": [
+        "移植者自己的叫法可以吗? (笑) - 三色之眼"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:23:58.480Z",
+      "submission": 222
+    },
+    "tags": {
+      "v": [
+        "秘鲁作者",
+        "跳刀",
+        "弹幕",
+        "多关卡",
+        "Boss",
+        "CSGO移植"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:24:08.038Z",
+      "submission": 223
+    },
+    "author": {
+      "v": "Lv.100 Crobat",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:24:51.971Z",
+      "submission": 224
+    },
+    "authorNote": {
+      "v": "Lv.100 Crobat (作者) AntiLocwise (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:25:04.619Z",
+      "submission": 225
+    },
+    "version": {
+      "v": "ze_three_eyes (CS2) v1_1 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:25:27.877Z",
+      "submission": 226
+    },
+    "duration": {
+      "v": "30分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:25:38.825Z",
+      "submission": 227
+    },
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1x64y1e7uo/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:25:46.091Z",
+      "submission": 228
+    },
+    "title": {
+      "v": "三眼",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:25:57.610Z",
+      "submission": 229
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "draft",
+      "from": null,
+      "to": "110 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:22:27.468Z",
+      "submission": 213
+    },
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "火星",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:23:42.868Z",
+      "submission": 221
+    },
+    {
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "移植者自己的叫法可以吗? (笑) - 三色之眼"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:23:58.480Z",
+      "submission": 222
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "秘鲁作者",
+        "跳刀",
+        "弹幕",
+        "多关卡",
+        "Boss",
+        "CSGO移植"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:24:08.038Z",
+      "submission": 223
+    },
+    {
+      "field": "author",
+      "from": null,
+      "to": "Lv.100 Crobat",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:24:51.971Z",
+      "submission": 224
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "Lv.100 Crobat (作者) AntiLocwise (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:25:04.619Z",
+      "submission": 225
+    },
+    {
+      "field": "version",
+      "from": null,
+      "to": "ze_three_eyes (CS2) v1_1 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:25:27.877Z",
+      "submission": 226
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "30分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:25:38.825Z",
+      "submission": 227
+    },
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1x64y1e7uo/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:25:46.091Z",
+      "submission": 228
+    },
+    {
+      "field": "title",
+      "from": null,
+      "to": "三眼",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:25:57.610Z",
+      "submission": 229
+    }
+  ],
+  "draft": {
+    "text": "## - ze_three_eyes (三眼) -\n\n地图由 [Lv.100 Crobat] 绘制\n\n- 4个关卡\n\n- 关底跳刀/弹幕\n\n- 4场boss战\n\n- 困难的防守地形\n\n- 大量使用了电子风/音游类型的音乐",
+    "by": "AntiLockwise",
+    "at": "2026-10-14T12:22:27.468Z",
+    "submission": 213
+  },
+  "items": []
+}

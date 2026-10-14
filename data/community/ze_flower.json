@@ -1,0 +1,131 @@
+{
+  "v": 1,
+  "slug": "ze_flower",
+  "updatedAt": "2026-10-14T12:26:36.385Z",
+  "fields": {
+    "aliases": {
+      "v": [
+        "Top游廊(5E):花园幻境(笑)"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:20:23.294Z",
+      "submission": 188
+    },
+    "tags": {
+      "v": [
+        "弹幕",
+        "跳刀",
+        "单关卡",
+        "CSGO移植",
+        "日本作者",
+        "弹幕演出"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:19:46.137Z",
+      "submission": 189
+    },
+    "authorNote": {
+      "v": "Karon (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:20:31.545Z",
+      "submission": 190
+    },
+    "version": {
+      "v": "ze_flower (CS2) a3_1 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:06.674Z",
+      "submission": 191
+    },
+    "duration": {
+      "v": "10分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:13.538Z",
+      "submission": 192
+    },
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1nykRBFEQF/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:22.864Z",
+      "submission": 193
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "draft",
+      "from": null,
+      "to": "84 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:19:38.382Z",
+      "submission": 187
+    },
+    {
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "Top游廊(5E):花园幻境(笑)"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:20:23.294Z",
+      "submission": 188
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "弹幕",
+        "跳刀",
+        "单关卡",
+        "CSGO移植",
+        "日本作者",
+        "弹幕演出"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:19:46.137Z",
+      "submission": 189
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "Karon (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:20:31.545Z",
+      "submission": 190
+    },
+    {
+      "field": "version",
+      "from": null,
+      "to": "ze_flower (CS2) a3_1 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:06.674Z",
+      "submission": 191
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "10分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:13.538Z",
+      "submission": 192
+    },
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1nykRBFEQF/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:22.864Z",
+      "submission": 193
+    }
+  ],
+  "draft": {
+    "text": "## - ze_flower (花之声) -\n\n地图由 [Karon] 绘制\n\n- 1个关卡\n\n- 高难度的最终/弹幕/跳刀环节\n\n- 随音乐变化的场景/弹幕/跳刀演出",
+    "by": "AntiLockwise",
+    "at": "2026-10-14T12:19:38.382Z",
+    "submission": 187
+  },
+  "items": []
+}

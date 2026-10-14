@@ -1,11 +1,35 @@
 {
   "slug": "ze_flower",
-  "count": 1,
+  "count": 5,
   "images": [
     {
       "src": "https://terr.ze-map.cn/gallery/ze_flower/05-workshop.webp",
       "kind": "workshop",
       "caption": "工坊预览图（作者上传）"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_flower/u194.webp",
+      "kind": "user",
+      "caption": "起点1",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_flower/u195.webp",
+      "kind": "user",
+      "caption": "起点2",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_flower/u196.webp",
+      "kind": "user",
+      "caption": "道中1",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_flower/u197.webp",
+      "kind": "user",
+      "caption": "最终跳刀",
+      "by": "AntiLockwise"
     }
   ]
 }
