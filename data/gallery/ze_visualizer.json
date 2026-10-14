@@ -1,6 +1,6 @@
 {
   "slug": "ze_visualizer",
-  "count": 9,
+  "count": 17,
   "images": [
     {
       "src": "https://terr.ze-map.cn/gallery/ze_visualizer/05-workshop.webp",
@@ -53,6 +53,54 @@
       "src": "https://terr.ze-map.cn/gallery/ze_visualizer/u364.webp",
       "kind": "user",
       "caption": "关卡4_1",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_visualizer/u365.webp",
+      "kind": "user",
+      "caption": "关卡4_2",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_visualizer/u366.webp",
+      "kind": "user",
+      "caption": "关卡4_3",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_visualizer/u367.webp",
+      "kind": "user",
+      "caption": "关卡4_4",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_visualizer/u368.webp",
+      "kind": "user",
+      "caption": "关卡5_1",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_visualizer/u369.webp",
+      "kind": "user",
+      "caption": "关卡5_2 (事 故 高 发 点)",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_visualizer/u370.webp",
+      "kind": "user",
+      "caption": "关卡5_3",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_visualizer/u371.webp",
+      "kind": "user",
+      "caption": "关卡6_1",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_visualizer/u372.webp",
+      "kind": "user",
+      "caption": "关卡6_2",
       "by": "AntiLockwise"
     }
   ]
