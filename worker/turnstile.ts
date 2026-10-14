@@ -55,18 +55,33 @@ export async function verifyTurnstile(
   }
 
   if (!res.ok) {
-    /* 5xx 之类：同样是服务端问题；4xx 才是 token 本身不对 */
-    console.error('siteverify 返回 ' + res.status);
+    /* 5xx 之类：同样是服务端问题；4xx 才是 token 本身不对。
+       把返回体也记一小段 —— Cloudflare 会在这里给 error-codes（见下），排查用得上。 */
+    const snippet = (await res.text().catch(() => '')).slice(0, 200);
+    console.error(`siteverify 返回 ${res.status}：${snippet}`);
     return { ok: false, reason: res.status >= 500 ? 'unavailable' : 'invalid' };
   }
 
-  let data: { success?: boolean } = {};
+  let data: { success?: boolean; 'error-codes'?: string[] } = {};
   try {
-    data = (await res.json()) as { success?: boolean };
+    data = (await res.json()) as typeof data;
   } catch {
     return { ok: false, reason: 'unavailable' };
   }
-  return data.success === true ? { ok: true } : { ok: false, reason: 'invalid' };
+  if (data.success !== true) {
+    /*
+     * 记下 Cloudflare 给的原因，**只有这一个地方能区分**下面这些情况：
+     *   invalid-input-response —— token 假/过期（用户没点、或脚本直接打接口）
+     *   invalid-input-secret   —— secret 配错了（换过 widget / 复制错格子）
+     *   timeout-or-duplicate   —— token 已经被用过一次（一次性，失败后必须 reset）
+     *   bad-request            —— 站点域名没加进 widget 的 hostname 列表
+     * 这些码不含任何秘密，可以放心写日志（2026-10-14 加：当时靠手工探针才分清
+     * 「secret 错」和「token 假」，有这一行就不用再猜了）。
+     */
+    console.error('siteverify 判定未通过：' + JSON.stringify(data['error-codes'] ?? []).slice(0, 200));
+    return { ok: false, reason: 'invalid' };
+  }
+  return { ok: true };
 }
 
 /** 给用户看的那句话（两个入口共用，措辞保持一致） */
