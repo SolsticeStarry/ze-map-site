@@ -6,13 +6,36 @@
  * 没账号的走「没有账号？注册一个」在同一张面板里切到注册，不用跳页。
  * 登录后图标变成渐变头像（昵称首字），点开是迷你个人卡：等级 + 统计 + 进个人主页 / 去投稿 / 退出。
  *
+ * 收件箱（2026-10-14）：账号按钮**左边**多一个小铃铛，只有登录后才出现。
+ * 有未读就亮红点（数字），点开是收件箱面板：审核结果 / 写回上线 / 草稿被采纳 / 站长公告，
+ * 逐条点开看细节，也能「全部已读」。它不挡任何东西 —— 没登录时连铃铛都不显示。
+ *
  * 三条约束（和整个账号系统一致）：
  *   1. **不登录也能用整站**：这个按钮纯粹是入口，不挡任何东西；
- *   2. **页面照旧是静态的**：这里只是「静态 HTML + 打开面板时问一次 /api/me」；
+ *   2. **页面照旧是静态的**：这里只是「静态 HTML + 打开面板时问一次 /api/me」，
+ *      收件箱也是同一个路子（进页面问一次未读数，页面可见时每 2 分钟再看一眼）；
  *   3. 面板里的表单与 /account/ 页共用同一套接口与会话，逻辑不重复实现第二份。
  */
-import { PERSON_ICON } from '../lib/account-client';
+import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
 ---
+
+{/* 收件箱铃铛：登录后才有内容，所以默认 hidden，登录状态读出来再显示 */}
+<div class="am-bell-wrap" id="am-bell-wrap" hidden>
+  <button class="am-btn" id="am-bell" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="收件箱">
+    <span class="am-avatar" set:html={BELL_ICON} />
+    <span class="am-bell-dot" id="am-bell-dot" hidden></span>
+  </button>
+
+  <div class="am-panel am-inbox" id="am-inbox" role="dialog" aria-label="收件箱" hidden>
+    <div class="am-inbox-head">
+      <b>收件箱</b>
+      <button class="am-link" type="button" id="am-inbox-all">全部已读</button>
+    </div>
+    <p class="am-inbox-hint" id="am-inbox-hint"></p>
+    <div class="am-inbox-list" id="am-inbox-list"></div>
+    <button class="acc-btn acc-btn-block" type="button" id="am-inbox-more" hidden>加载更多</button>
+  </div>
+</div>
 
 <div class="am" id="am">
   <button class="am-btn" id="am-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="账号">
@@ -109,7 +132,17 @@ import { PERSON_ICON } from '../lib/account-client';
 </div>
 
 <script>
-  import { ACCOUNT_EVENT, PERSON_ICON, meOrThrow, notifyChanged, type AccountMe } from '../lib/account-client';
+  import {
+    ACCOUNT_EVENT,
+    BELL_ICON,
+    PERSON_ICON,
+    fetchNotifications,
+    markNotificationsRead,
+    meOrThrow,
+    notifyChanged,
+    type AccountMe,
+    type AccountNotification,
+  } from '../lib/account-client';
   import { mountTurnstile, resetTurnstile, takeTurnstileToken, turnstileHint, turnstileToken } from '../lib/turnstile';
   /* 昵称规则的**通用**部分：本地先拦一道给出即时反馈；政治类词表只在服务端（不入库） */
   import { checkNicknameContent, nicknameRejectMessage } from '../../shared/nickname-rules.mjs';
@@ -148,6 +181,187 @@ import { PERSON_ICON } from '../lib/account-client';
   let state: AccountMe | null = null;
   let loaded = false;
 
+  /* ---------- 收件箱（2026-10-14） ----------
+   * 只做三件事：登录后拉未读数（红点）、点开拉一页列表、点条目/全部已读。
+   * 全部 DOM 用 createElement + textContent 拼（**不用 innerHTML**）：通知正文里有用户投稿的
+   * 地图名与审核理由，拼 HTML 就等于给自己开一个注入口子。 */
+  const bellWrap = document.getElementById('am-bell-wrap');
+  const bellBtn = document.getElementById('am-bell');
+  const bellDot = document.getElementById('am-bell-dot');
+  const inbox = document.getElementById('am-inbox');
+  const inboxList = document.getElementById('am-inbox-list');
+  const inboxHint = document.getElementById('am-inbox-hint');
+  const inboxMore = document.getElementById('am-inbox-more') as HTMLButtonElement | null;
+  const inboxAll = document.getElementById('am-inbox-all');
+  const PAGE = 10;
+  let notes: AccountNotification[] = [];
+  let noteUnread = 0;
+  let noteTotal = 0;
+  let logged = false;
+  let busy = false;
+
+  /** 建一个元素：className + 文本（文本一律走 textContent） */
+  const mk = (tag: string, cls?: string, text?: string): HTMLElement => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  /** 「刚刚 / 12 分钟前 / 3 小时前 / 2 天前 / 2026-10-14」 */
+  function relTime(ts: number): string {
+    const diff = Date.now() - Number(ts);
+    if (!Number.isFinite(diff) || diff < 60_000) return '刚刚';
+    const min = Math.floor(diff / 60_000);
+    if (min < 60) return `${min} 分钟前`;
+    const hour = Math.floor(min / 60);
+    if (hour < 24) return `${hour} 小时前`;
+    const day = Math.floor(hour / 24);
+    if (day < 7) return `${day} 天前`;
+    return new Date(Number(ts)).toLocaleDateString('zh-CN');
+  }
+
+  const KIND_LABEL: Record<string, string> = {
+    review: '审核',
+    flush: '上线',
+    adopt: '采纳',
+    account: '账号',
+    announce: '公告',
+  };
+
+  function paintDot() {
+    if (bellDot) {
+      bellDot.hidden = noteUnread <= 0;
+      bellDot.textContent = noteUnread > 9 ? '9+' : String(noteUnread);
+    }
+    if (bellBtn) {
+      bellBtn.title = noteUnread > 0 ? `收件箱（${noteUnread} 条未读）` : '收件箱';
+    }
+  }
+
+  /** 「共 N 条 · M 条未读」那一行：单独抽出来，便于**不重建列表**地更新 */
+  function paintHint() {
+    if (!inboxHint) return;
+    inboxHint.textContent = noteTotal ? `共 ${noteTotal} 条 · ${noteUnread} 条未读` : '';
+    inboxHint.hidden = !noteTotal;
+  }
+
+  /** 只问未读数（limit=1）：页头红点用，接口不通就静默 —— 收件箱坏了不该在页头挂个错误 */
+  async function refreshUnread(): Promise<void> {
+    if (!logged) return;
+    try {
+      const page = await fetchNotifications(0, 1);
+      /* 面板开着的时候来了新通知才重拉列表（平时只改数字 —— 重建列表会把展开的那条收起来） */
+      const grew = page.total > noteTotal;
+      noteUnread = page.unread;
+      noteTotal = page.total;
+      paintDot();
+      if (grew && inbox && !inbox.hidden) await loadNotes(true);
+      else paintHint();
+    } catch {
+      paintDot();
+    }
+  }
+
+  /** 一条通知：标题行（点开/收起 + 已读）与正文（含「去看看」链接） */
+  function noteNode(n: AccountNotification): HTMLElement {
+    const box = mk('div', `am-note${n.read ? '' : ' is-unread'}`);
+
+    const head = mk('button', 'am-note-head') as HTMLButtonElement;
+    head.type = 'button';
+    const dot = mk('span', 'am-note-dot');
+    dot.hidden = n.read;
+    const title = mk('span', 'am-note-title', n.title);
+    const meta = mk('span', 'am-note-meta', `${KIND_LABEL[n.kind] ?? '通知'} · ${relTime(n.createdAt)}`);
+    head.append(dot, title, meta);
+
+    const body = mk('div', 'am-note-body');
+    body.hidden = true;
+    if (n.body) body.append(mk('p', 'am-note-text', n.body));
+    if (n.link) {
+      const go = mk('a', 'am-note-go', '去看看 →') as HTMLAnchorElement;
+      go.href = n.link;
+      body.append(go);
+    }
+
+    head.addEventListener('click', async () => {
+      const open = body.hidden;
+      body.hidden = !open;
+      box.classList.toggle('is-open', open);
+      if (!open || n.read) return;
+      /* 展开即已读：先本地改（界面立刻反应），再把结果同步回服务端的未读数。
+         ⚠️ 这里**不能**调 renderNotes()：那会重建整个列表，把刚点开的这条又收起来。 */
+      n.read = true;
+      box.classList.remove('is-unread');
+      dot.hidden = true;
+      try {
+        const r = await markNotificationsRead({ ids: [n.id] });
+        noteUnread = r.unread;
+      } catch {
+        noteUnread = Math.max(0, noteUnread - 1);
+      }
+      paintDot();
+      paintHint();
+    });
+
+    box.append(head, body);
+    return box;
+  }
+
+  function renderNotes() {
+    if (!inboxList) return;
+    inboxList.replaceChildren();
+    if (!notes.length) {
+      inboxList.append(
+        mk(
+          'p',
+          'am-inbox-empty',
+          '还没有通知。投稿通过、写回上线、草稿被采纳，或者站长发公告时，都会出现在这里。'
+        )
+      );
+    } else {
+      for (const n of notes) inboxList.append(noteNode(n));
+    }
+    if (inboxMore) inboxMore.hidden = notes.length >= noteTotal;
+    paintHint();
+  }
+
+  /** 拉一页：reset=true 从头拉（打开面板/已读全部后），否则接着往后拉 */
+  async function loadNotes(reset: boolean): Promise<void> {
+    if (busy) return;
+    busy = true;
+    if (inboxHint && reset) {
+      inboxHint.hidden = false;
+      inboxHint.textContent = '读取中…';
+    }
+    try {
+      const offset = reset ? 0 : notes.length;
+      const page = await fetchNotifications(offset, PAGE);
+      notes = reset ? page.items : [...notes, ...page.items];
+      noteUnread = page.unread;
+      noteTotal = page.total;
+      paintDot();
+      renderNotes();
+    } catch {
+      if (reset) notes = [];
+      if (inboxHint) {
+        inboxHint.hidden = false;
+        inboxHint.textContent = '收件箱没读到（接口没通），稍后再试';
+      }
+      renderNotes();
+    } finally {
+      busy = false;
+    }
+  }
+
+  const openInbox = (open: boolean) => {
+    if (!inbox) return;
+    inbox.hidden = !open;
+    bellBtn?.setAttribute('aria-expanded', String(open));
+    bellBtn?.classList.toggle('is-open', open);
+    if (open) void loadNotes(true);
+  };
+
   function paint(data: AccountMe | null, reachable: boolean) {
     state = data;
     const user = data?.user ?? null;
@@ -164,6 +378,16 @@ import { PERSON_ICON } from '../lib/account-client';
 
     guest!.hidden = Boolean(user);
     meBox!.hidden = !user;
+    /* 收件箱铃铛：只有登录后才显示；退出登录时把红点与列表一起清掉 */
+    logged = Boolean(user);
+    if (bellWrap) bellWrap.hidden = !user;
+    if (!user) {
+      noteUnread = 0;
+      noteTotal = 0;
+      notes = [];
+      paintDot();
+      openInbox(false);
+    }
     /* GitHub 按钮：只在站长配好了密钥时出现（没配就给一句说明都嫌啰嗦，直接不显示） */
     const ghLogin = $('am-gh-login');
     if (ghLogin) ghLogin.hidden = !(data?.github?.enabled ?? false) || Boolean(user);
@@ -214,6 +438,8 @@ import { PERSON_ICON } from '../lib/account-client';
       paint(null, false);
     }
     loaded = true;
+    /* 登录了才去问收件箱（未登录时这一步根本不发请求） */
+    if (logged) void refreshUnread();
   }
 
   /* ---- 人机验证（Turnstile）：登录 / 注册各挂一块 ---- */
@@ -247,15 +473,59 @@ import { PERSON_ICON } from '../lib/account-client';
     openPanel(willOpen);
   });
 
-  /* 点面板外面 / 按 Esc 关掉 */
+  /* 点面板外面 / 按 Esc 关掉（账号卡与收件箱都关） */
   document.addEventListener('click', (e) => {
-    if (panel.hidden) return;
     const t = e.target instanceof Node ? e.target : null;
-    if (!t || panel.contains(t) || btn.contains(t)) return;
-    openPanel(false);
+    const inAccount = Boolean(t && (panel!.contains(t) || btn!.contains(t)));
+    const inInbox = Boolean(t && ((inbox && inbox.contains(t)) || (bellBtn && bellBtn.contains(t))));
+    if (!panel!.hidden && t && !inAccount) openPanel(false);
+    if (inbox && !inbox.hidden && t && !inInbox) openInbox(false);
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !panel.hidden) openPanel(false);
+    if (e.key !== 'Escape') return;
+    if (!panel!.hidden) openPanel(false);
+    if (inbox && !inbox.hidden) openInbox(false);
+  });
+
+  /* ---------- 收件箱的交互 ---------- */
+  bellBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = Boolean(inbox?.hidden);
+    if (willOpen) openPanel(false);
+    openInbox(willOpen);
+  });
+
+  /* 全部已读：服务端一条语句标完，回来重拉第一页（未读数也一起刷新） */
+  inboxAll?.addEventListener('click', async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      const r = await markNotificationsRead({ all: true });
+      noteUnread = r.unread;
+      paintDot();
+      busy = false;
+      await loadNotes(true);
+    } catch {
+      busy = false;
+      if (inboxHint) {
+        inboxHint.hidden = false;
+        inboxHint.textContent = '标记失败（接口没通），稍后再试';
+      }
+    }
+  });
+
+  inboxMore?.addEventListener('click', () => void loadNotes(false));
+
+  /*
+   * 红点得在**不刷新页面**的情况下出现：页面可见时每 2 分钟问一次未读数
+   * （只发一次请求、只查计数），切回标签页时立刻补一次。
+   * 未登录时 refreshUnread 直接返回，不发请求。
+   */
+  setInterval(() => {
+    if (document.visibilityState === 'visible') void refreshUnread();
+  }, 120_000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void refreshUnread();
   });
 
   /* 登录 / 注册 两页切换（默认登录：没有账号再点「注册一个」） */
@@ -351,10 +621,10 @@ import { PERSON_ICON } from '../lib/account-client';
     showPane('log');
   });
 
-  /* 别的地方（账号页 / 投稿页）改了登录状态，这里跟着变 */
+  /* 别的地方（账号页 / 投稿页）改了登录状态，这里跟着变：账号卡与收件箱铃铛一起重读 */
   document.addEventListener(ACCOUNT_EVENT, () => {
     loaded = false;
-    if (!panel.hidden) void load();
+    void load();
   });
 
   /* 进页面就先问一次：登录过的人一进来就该看到自己的头像（未登录时这一步几乎无成本） */

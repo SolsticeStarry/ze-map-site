@@ -150,3 +150,67 @@ export const PERSON_ICON =
   '<circle cx="12" cy="8.2" r="3.6"></circle>' +
   '<path d="M4.8 20.2c0-3.7 3.2-6.2 7.2-6.2s7.2 2.5 7.2 6.2"></path>' +
   '</svg>';
+
+/* 收件箱铃铛图标（2026-10-14）：和上面同一个路子，内联 SVG */
+export const BELL_ICON =
+  '<svg class="am-icon" viewBox="0 0 24 24" aria-hidden="true">' +
+  '<path d="M6.4 9.8a5.6 5.6 0 0 1 11.2 0c0 3.6.9 5.2 1.7 6.1.3.4 0 1-.5 1H5.2c-.5 0-.8-.6-.5-1 .8-.9 1.7-2.5 1.7-6.1Z"></path>' +
+  '<path d="M9.7 19.2a2.4 2.4 0 0 0 4.6 0"></path>' +
+  '</svg>';
+
+/* ===== 收件箱（2026-10-14） ===== */
+
+/** 收件箱里的一条通知。字段与 worker/notifications.ts 的返回一一对应 */
+export interface AccountNotification {
+  id: number;
+  /** review=审核结果 / flush=写回上线 / adopt=草稿被采纳 / account=账号事件 / announce=站长公告 */
+  kind: string;
+  title: string;
+  body: string;
+  /** 点开详情后的去处（站内路径或 https 链接），可能没有 */
+  link: string | null;
+  submissionId: number | null;
+  /** 全员公告（user_id 为空）—— 界面上标一下「公告」 */
+  broadcast: boolean;
+  createdAt: number;
+  read: boolean;
+}
+
+export interface NotificationPage {
+  items: AccountNotification[];
+  unread: number;
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * 取收件箱的一页。**接口不通就抛**（调用方决定是显示红点还是静默）：
+ * 页头铃铛只想拿 unread，所以允许 limit=1。
+ */
+export async function fetchNotifications(offset = 0, limit = 10): Promise<NotificationPage> {
+  const res = await fetch(`/api/me/notifications?limit=${limit}&offset=${offset}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as Partial<NotificationPage>;
+  return {
+    items: data.items ?? [],
+    unread: Number(data.unread ?? 0),
+    total: Number(data.total ?? 0),
+    limit: Number(data.limit ?? limit),
+    offset: Number(data.offset ?? offset),
+  };
+}
+
+/** 标记已读：给 ids 就标那几条，all=true 就把看得见的全标了。返回新的未读数。 */
+export async function markNotificationsRead(
+  payload: { ids?: number[]; all?: boolean }
+): Promise<{ marked: number; unread: number }> {
+  const res = await fetch('/api/me/notifications/read', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = (await res.json().catch(() => ({}))) as { marked?: number; unread?: number; error?: string };
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return { marked: Number(data.marked ?? 0), unread: Number(data.unread ?? 0) };
+}

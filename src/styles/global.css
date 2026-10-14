@@ -445,6 +445,65 @@ img { max-width: 100%; display: block; }
 .am-head { display: grid; gap: 2px; margin: 0 0 14px; }
 .am-head b { font-size: 15px; font-weight: 800; }
 .am-head span { color: var(--muted); font-size: 12px; line-height: 1.7; }
+
+/* ===== 收件箱（2026-10-14）：账号按钮左边那个铃铛 =====
+   只有登录后才出现（hidden 由脚本控制）；有未读就亮一个红点数字。 */
+.am-bell-wrap { position: relative; flex-shrink: 0; }
+.am-bell-wrap[hidden] { display: none; }
+.am-bell-dot {
+  position: absolute;
+  /* 别超出页头：按钮上下各只有 15px 余量，红点探出去会被页头裁掉半个（截图上真的看到过） */
+  top: -3px;
+  right: -3px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ff4d4d, #ff8a3d);
+  color: #1a0a06;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  box-shadow: 0 4px 12px -4px rgba(255, 77, 77, 0.95);
+}
+.am-bell-dot[hidden] { display: none; }
+.am-inbox { width: min(94vw, 380px); padding: 14px 16px 16px; }
+.am-inbox-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.am-inbox-head b { font-size: 15px; font-weight: 800; }
+.am-inbox-hint { margin: 4px 0 10px; color: var(--muted); font-size: 12px; }
+.am-inbox-hint[hidden] { display: none; }
+.am-inbox-list { display: grid; gap: 8px; max-height: min(60vh, 460px); overflow-y: auto; }
+.am-inbox-empty { margin: 6px 0 2px; color: var(--muted); font-size: 12.5px; line-height: 1.8; }
+.am-note { border: 1px solid var(--border); border-radius: 12px; background: var(--panel-2); overflow: hidden; }
+.am-note.is-unread { border-color: rgba(34, 211, 238, 0.42); }
+.am-note-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.am-note-head:hover { background: rgba(255, 255, 255, 0.04); }
+.am-note-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-2); }
+.am-note-dot[hidden] { display: none; }
+.am-note-title { font-size: 13px; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.am-note-meta { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.am-note-body { padding: 0 12px 11px 27px; }
+.am-note-text { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.85; white-space: pre-line; overflow-wrap: anywhere; }
+.am-note-go { display: inline-block; margin-top: 7px; color: var(--accent-2); font-size: 12.5px; }
+.am-note-go:hover { text-decoration: underline; }
+/* 手机：铃铛和账号按钮都往右收，面板贴边不留缝 */
+@media (max-width: 720px) {
+  .am-inbox { width: min(96vw, 360px); }
+}
 .am-pane { animation: accIn 0.22s ease; }
 /* 面板里的输入框沿用账号页那一套（见文件末尾「账号」一节） */
 .am-panel .form-row { margin-bottom: 11px; }

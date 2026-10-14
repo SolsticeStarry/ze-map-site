@@ -177,6 +177,45 @@ async function register(call, name, password = 'pass12345', contact = '') {
   return r;
 }
 
+/*
+ * 假仓库：审核台写回 / 采纳要「读 data/ 再 commit」，本地不联网，所以把 globalThis.fetch 换成
+ * 内存文件系统 —— 走真的 contents 读、真的 git data 写，写完的东西能立刻断言。
+ * 用法：const repo = installFakeRepo({ 'data/research/x.json': '…' })，结束 repo.restore()。
+ */
+function installFakeRepo(files) {
+  const prevFetch = globalThis.fetch;
+  const jsonRes = (data, status = 200) =>
+    new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(typeof input === 'string' ? input : input.url);
+    if (!url.includes('api.github.com')) return prevFetch(input, init);
+    const key = Object.keys(files).find((k) => url.includes(k));
+    if (url.includes('/contents/')) {
+      if (init.method === 'PUT') {
+        const body = JSON.parse(String(init.body ?? '{}'));
+        files[key] = Buffer.from(String(body.content ?? ''), 'base64').toString('utf8');
+        return jsonRes({ content: { sha: 'blobsha' } });
+      }
+      if (!key) return jsonRes({ message: 'Not Found' }, 404);
+      return jsonRes({ content: Buffer.from(files[key], 'utf8').toString('base64'), sha: 'sha1' });
+    }
+    if (url.includes('/git/ref/heads/')) return jsonRes({ object: { sha: 'head1' } });
+    if (url.includes('/git/commits/')) return jsonRes({ tree: { sha: 'tree1' } });
+    if (url.includes('/git/trees')) {
+      /* commitFiles 对文本文件是把内容**内联在 tree 条目**里提交的（不是走 /contents PUT） */
+      const body = JSON.parse(String(init.body ?? '{}'));
+      for (const entry of body.tree ?? []) {
+        if (entry && typeof entry.path === 'string' && typeof entry.content === 'string') files[entry.path] = entry.content;
+      }
+      return jsonRes({ sha: 'tree2' });
+    }
+    if (url.includes('/git/commits')) return jsonRes({ sha: 'commit1' });
+    if (url.includes('/git/refs/heads/')) return jsonRes({ object: { sha: 'commit1' } });
+    return jsonRes({ message: 'unexpected ' + url }, 500);
+  };
+  return { files, restore: () => { globalThis.fetch = prevFetch; } };
+}
+
 /* ===== 1. 不登录也能投稿 ===== */
 
 test('不登录也能投稿：匿名通道完全不依赖账号结构', async (t) => {
@@ -949,45 +988,6 @@ test('人机验证：配了 secret 就必过，token 不对与服务不可达给
   });
 
   /*
-   * 假仓库：采纳要「读 data/ 再 commit」，本地不联网，所以把 globalThis.fetch 换成
-   * 内存文件系统 —— 走真的 contents 读、真的 git data 写，写完的东西能立刻断言。
-   * 用法：const repo = installFakeRepo({ 'data/research/x.json': '…' })，结束 repo.restore()。
-   */
-  function installFakeRepo(files) {
-    const prevFetch = globalThis.fetch;
-    const jsonRes = (data, status = 200) =>
-      new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
-    globalThis.fetch = async (input, init = {}) => {
-      const url = String(typeof input === 'string' ? input : input.url);
-      if (!url.includes('api.github.com')) return prevFetch(input, init);
-      const key = Object.keys(files).find((k) => url.includes(k));
-      if (url.includes('/contents/')) {
-        if (init.method === 'PUT') {
-          const body = JSON.parse(String(init.body ?? '{}'));
-          files[key] = Buffer.from(String(body.content ?? ''), 'base64').toString('utf8');
-          return jsonRes({ content: { sha: 'blobsha' } });
-        }
-        if (!key) return jsonRes({ message: 'Not Found' }, 404);
-        return jsonRes({ content: Buffer.from(files[key], 'utf8').toString('base64'), sha: 'sha1' });
-      }
-      if (url.includes('/git/ref/heads/')) return jsonRes({ object: { sha: 'head1' } });
-      if (url.includes('/git/commits/')) return jsonRes({ tree: { sha: 'tree1' } });
-      if (url.includes('/git/trees')) {
-        /* commitFiles 对文本文件是把内容**内联在 tree 条目**里提交的（不是走 /contents PUT） */
-        const body = JSON.parse(String(init.body ?? '{}'));
-        for (const entry of body.tree ?? []) {
-          if (entry && typeof entry.path === 'string' && typeof entry.content === 'string') files[entry.path] = entry.content;
-        }
-        return jsonRes({ sha: 'tree2' });
-      }
-      if (url.includes('/git/commits')) return jsonRes({ sha: 'commit1' });
-      if (url.includes('/git/refs/heads/')) return jsonRes({ object: { sha: 'commit1' } });
-      return jsonRes({ message: 'unexpected ' + url }, 500);
-    };
-    return { files, restore: () => { globalThis.fetch = prevFetch; } };
-  }
-
-  /*
    * 2026-10-14 线上真事故的回归测试：
    * 采纳时把 submissions.value **原样**（没 JSON.parse）交给 mergeDraft，
    * 于是 `"## 小节\n正文"` 这串带引号、带字面 \n 的文本被当成导语：
@@ -1494,6 +1494,27 @@ test('GitHub 登录：可选、可绑定、可找回，且不碰口令这条路'
     assert.equal(sub.status, 200, JSON.stringify(sub.data));
   });
 
+  /*
+   * 空库上的**第一个请求**：注册（2026-10-14 补）。
+   * 上面那条用例先跑了 GitHub 回调（它会 ensureSchema），所以掩盖了这个洞：
+   * 注册 / 登录 / 投稿 / 投票都是**先查封禁与限流（bans / rate_limits）、后建表**，
+   * 空库上第一个请求必然 500 `no such table: bans` —— 本地 wrangler dev 起新库时就是这么炸的。
+   * 现在 http.ts 的 isBanned / allowWrite 把「表还没建」当成「没有记录」（只吞这一种错）。
+   */
+  await t.test('空库上的第一个请求就是注册：不能 500（封禁与限流表还没建）', async () => {
+    const { call, one } = await setup({ empty: true });
+    const r = await call('/api/register', { method: 'POST', body: { name: '空库第一人', password: 'pass12345' } });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.equal(r.data.user.name, '空库第一人');
+    for (const table of ['users', 'bans', 'rate_limits']) {
+      assert.ok(one(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, table), `缺表：${table}`);
+    }
+    /* 紧接着的第二个请求要走正常的限流计数（表已经建好了） */
+    const again = await call('/api/register', { method: 'POST', body: { name: '空库第二人', password: 'pass12345' } });
+    assert.equal(again.status, 200, JSON.stringify(again.data));
+    assert.ok(Number(one(`SELECT COUNT(*) AS n FROM rate_limits`).n) > 0, '限流计数开始记了');
+  });
+
   await t.test('拿不到贡献者名单（没配 GITHUB_TOKEN）→ 照样能登录，只是不自动发称号', async () => {    const { call, env } = await setup();
     withGithub(env); // 故意不给 GITHUB_TOKEN
     const gh = fakeGithub({ goodCode: 'code-1', contributors: [{ login: 'octocat', contributions: 3 }] });
@@ -1646,6 +1667,276 @@ test('GitHub 登录：可选、可绑定、可找回，且不碰口令这条路'
     await call('/api/register', { method: 'POST', body: { name: '有口令的人', password: 'pass12345' } });
     const bad = await call('/api/password', { method: 'POST', body: { oldPassword: '', newPassword: 'newpass12345' } });
     assert.equal(bad.status, 401, '有口令的账号仍然必须验原口令');
+  });
+});
+
+/* ===== 站内收件箱（2026-10-14） =====
+ *
+ * 站长要的：审核通过 / 写回上线 / 草稿被采纳 / 站长公告 → 账号旁边一个红点，点开逐条看，也能一键已读。
+ * 这一组用例把「谁会收到、收到什么、已读怎么算、会不会串号」全部钉住：
+ *   · 每条通知都必须挂在**正确的人**头上（别人的私信看不到、也标不了已读）；
+ *   · 公告只有一行（user_id IS NULL），但每个人的已读互不影响；
+ *   · 未登录 401、旧库没表也能用（懒建表）、标记已读是幂等的。
+ */
+test('站内收件箱：审核 / 写回 / 采纳 / 公告都进收件箱，已读各算各的', async (t) => {
+  await t.test('没登录不给看：GET / POST 都是 401', async () => {
+    const { call } = await setup();
+    const list = await call('/api/me/notifications');
+    assert.equal(list.status, 401, JSON.stringify(list.data));
+    const read = await call('/api/me/notifications/read', { method: 'POST', body: { all: true } });
+    assert.equal(read.status, 401);
+  });
+
+  await t.test('空库也能用：新账号收件箱是空的，unread=0', async () => {
+    const { call } = await setup();
+    await register(call, '新来的');
+    const r = await call('/api/me/notifications');
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.deepEqual(r.data.items, []);
+    assert.equal(r.data.unread, 0);
+    assert.equal(r.data.total, 0);
+  });
+
+  await t.test('投稿通过 / 驳回：各来一条通知，理由跟着走；已读幂等', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    const me = await register(call, '投稿的人');
+    const userId = me.data.user.id;
+
+    /* 两条投稿：一条通过、一条驳回（都挂在这个账号上） */
+    const a = await call('/api/submit', {
+      method: 'POST',
+      body: submitBody({ map: 'ze_alpha', field: 'difficulty', value: '困难' }),
+    });
+    const b = await call('/api/submit', {
+      method: 'POST',
+      body: submitBody({ map: 'ze_beta', field: 'difficulty', value: '普通' }),
+    });
+    assert.equal(a.status, 200, JSON.stringify(a.data));
+    assert.equal(b.status, 200, JSON.stringify(b.data));
+
+    await call('/api/admin/review', { method: 'POST', body: { id: a.data.id, action: 'approve' }, headers: auth });
+    await call('/api/admin/review', {
+      method: 'POST',
+      body: { id: b.data.id, action: 'reject', rejectNote: '难度写错了' },
+      headers: auth,
+    });
+
+    const list = await call('/api/me/notifications');
+    assert.equal(list.status, 200, JSON.stringify(list.data));
+    assert.equal(list.data.unread, 2, '通过 + 驳回各一条');
+    const titles = list.data.items.map((x) => x.title);
+    assert.ok(titles.some((x) => /投稿已通过/.test(x)), titles.join(' / '));
+    assert.ok(titles.some((x) => /投稿被驳回/.test(x)), titles.join(' / '));
+    const rejected = list.data.items.find((x) => /驳回/.test(x.title));
+    assert.match(rejected.body, /难度写错了/, '驳回理由要原样带上');
+    assert.equal(rejected.submissionId, b.data.id);
+    assert.equal(rejected.read, false);
+    assert.equal(rejected.broadcast, false);
+
+    /* 单条已读：只影响那一条 */
+    const one = await call('/api/me/notifications/read', { method: 'POST', body: { ids: [rejected.id] } });
+    assert.equal(one.status, 200, JSON.stringify(one.data));
+    assert.equal(one.data.marked, 1);
+    assert.equal(one.data.unread, 1);
+
+    /* 重复标同一条：幂等，不再增加 marked */
+    const again = await call('/api/me/notifications/read', { method: 'POST', body: { ids: [rejected.id] } });
+    assert.equal(again.data.marked, 0, 'OR IGNORE：重复标记不报错也不重复计数');
+    assert.equal(again.data.unread, 1);
+
+    /* 全部已读 */
+    const all = await call('/api/me/notifications/read', { method: 'POST', body: { all: true } });
+    assert.equal(all.data.unread, 0);
+    const after = await call('/api/me/notifications');
+    assert.ok(after.data.items.every((x) => x.read), '全部标记后每条都是已读');
+    assert.equal(userId, me.data.user.id);
+  });
+
+  await t.test('写回上线：按「人 + 图」聚合成一条，带上字段与页面链接', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    env.GITHUB_TOKEN = 'test-gh-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '整理的人');
+
+    /* 同一个人对同一张图投了两个字段 → 写回后应当只有 1 条通知、字段列两个 */
+    const ins = db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter, user_id)
+       VALUES ('ze_gamma', ?, ?, 'h', 'approved', ?, '整理的人', 1)`
+    );
+    ins.run('difficulty', JSON.stringify('困难'), Date.now());
+    ins.run('duration', JSON.stringify('40 分钟'), Date.now() + 1);
+
+    const repo = installFakeRepo({
+      'data/community/ze_gamma.json':
+        JSON.stringify({ v: 1, slug: 'ze_gamma', updatedAt: null, fields: {}, notes: [], draft: null, items: [], log: [] }, null, 2) + '\n',
+    });
+    try {
+      const flush = await call('/api/admin/flush', { method: 'POST', body: {}, headers: auth });
+      assert.equal(flush.status, 200, JSON.stringify(flush.data));
+      assert.equal(flush.data.committed, 2);
+    } finally {
+      repo.restore();
+    }
+
+    const list = await call('/api/me/notifications');
+    const up = list.data.items.filter((x) => x.kind === 'flush');
+    assert.equal(up.length, 1, '同一张图的多条投稿聚合成一条通知');
+    assert.match(up[0].title, /投稿已上线/);
+    assert.match(up[0].title, /ze_gamma/);
+    assert.match(up[0].body, /2 条投稿/);
+    assert.match(up[0].body, /难度/);
+    assert.match(up[0].body, /时长|游戏时长|单局时长|40 分钟/, '字段中文名要写进正文');
+    assert.equal(up[0].link, '/maps/ze_gamma/');
+  });
+
+  await t.test('草稿被采纳：整理者收到一条「已采纳」', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    env.GITHUB_TOKEN = 'test-gh-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '写草稿的人');
+
+    const draft = '## 关卡流程\n\n第一关：跳刀。\n';
+    db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter, user_id)
+       VALUES ('ze_delta','draft',?,'h','applied',?, '写草稿的人', 1)`
+    ).run(JSON.stringify(draft), Date.now());
+
+    const repo = installFakeRepo({
+      'data/research/ze_delta.json':
+        JSON.stringify({ title: '德尔塔', sections: [{ title: '基本信息', body: '原样' }], confidence: 'medium' }, null, 2) + '\n',
+      'data/community/ze_delta.json':
+        JSON.stringify({ v: 1, slug: 'ze_delta', updatedAt: null, fields: {}, notes: [], draft: draft, items: [], log: [] }, null, 2) + '\n',
+    });
+    try {
+      const adopt = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_delta' }, headers: auth });
+      assert.equal(adopt.status, 200, JSON.stringify(adopt.data));
+    } finally {
+      repo.restore();
+    }
+
+    const list = await call('/api/me/notifications');
+    const hit = list.data.items.find((x) => x.kind === 'adopt');
+    assert.ok(hit, '采纳后应当有通知：' + list.data.items.map((x) => x.title).join(' / '));
+    assert.match(hit.title, /草稿已被采纳/);
+    assert.match(hit.body, /新增 1 节|替换 1 节/);
+    assert.equal(hit.link, '/maps/ze_delta/');
+  });
+
+  await t.test('公告：只有一行，两个账号都看得到，已读互不影响', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '甲甲');
+    const jia = (await call('/api/me')).data.user.id;
+
+    const post = await call('/api/admin/announce', {
+      method: 'POST',
+      body: { title: '站点维护通知', body: '今晚 23:00 重建一次，页面短暂 502 属正常。', link: '/about/' },
+      headers: auth,
+    });
+    assert.equal(post.status, 200, JSON.stringify(post.data));
+    assert.equal(post.data.recipients, 1, '当时只有 1 个账号');
+
+    const rows = db.prepare(`SELECT COUNT(*) AS n FROM notifications WHERE user_id IS NULL`).all();
+    assert.equal(rows[0].n, 1, '公告只存一行（不是每人一行）');
+
+    /* 甲读了 */
+    const listA = await call('/api/me/notifications');
+    assert.equal(listA.data.unread, 1);
+    assert.equal(listA.data.items[0].broadcast, true, '公告要标出来');
+    await call('/api/me/notifications/read', { method: 'POST', body: { all: true } });
+    assert.equal((await call('/api/me/notifications')).data.unread, 0);
+
+    /* 乙后注册（公告是注册前发的，照样看得到），但他还是未读 —— 已读各算各的 */
+    await call('/api/logout', { method: 'POST', body: {} });
+    await register(call, '乙乙');
+    const listB = await call('/api/me/notifications');
+    assert.equal(listB.data.unread, 1, '别人的已读不影响我');
+    assert.equal(listB.data.items[0].title, '站点维护通知');
+    const yi = (await call('/api/me')).data.user.id;
+    assert.notEqual(yi, jia);
+  });
+
+  await t.test('不会串号：看不到别人的私信，也标不了别人的已读', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+
+    await register(call, '甲甲');
+    const sub = await call('/api/submit', { method: 'POST', body: submitBody({ map: 'ze_alpha' }) });
+    await call('/api/admin/review', { method: 'POST', body: { id: sub.data.id, action: 'approve' }, headers: auth });
+    const mine = await call('/api/me/notifications');
+    const myId = mine.data.items[0].id;
+
+    await call('/api/logout', { method: 'POST', body: {} });
+    await register(call, '乙乙');
+    const other = await call('/api/me/notifications');
+    assert.equal(other.data.items.length, 0, '乙不该看到甲的审核通知');
+    assert.equal(other.data.unread, 0);
+
+    const tryMark = await call('/api/me/notifications/read', { method: 'POST', body: { ids: [myId] } });
+    assert.equal(tryMark.status, 200, JSON.stringify(tryMark.data));
+    assert.equal(tryMark.data.marked, 0, '别人的通知标不了');
+    assert.equal(tryMark.data.unread, 0);
+  });
+
+  await t.test('分页与入参校验：limit/offset 生效，垃圾入参被拒', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '收公告的人');
+    for (let i = 0; i < 3; i++) {
+      await call('/api/admin/announce', { method: 'POST', body: { title: `公告 ${i + 1}` }, headers: auth });
+    }
+
+    const page1 = await call('/api/me/notifications?limit=2');
+    assert.equal(page1.data.items.length, 2);
+    assert.equal(page1.data.total, 3);
+    assert.equal(page1.data.unread, 3);
+    const page2 = await call('/api/me/notifications?limit=2&offset=2');
+    assert.equal(page2.data.items.length, 1);
+    assert.notEqual(page2.data.items[0].id, page1.data.items[0].id, '第二页不该和第一页重复');
+
+    const noIds = await call('/api/me/notifications/read', { method: 'POST', body: {} });
+    assert.equal(noIds.status, 400);
+    const tooMany = await call('/api/me/notifications/read', {
+      method: 'POST',
+      body: { ids: Array.from({ length: 101 }, (_, i) => i + 1) },
+    });
+    assert.equal(tooMany.status, 400);
+    const noTitle = await call('/api/admin/announce', { method: 'POST', body: { title: '  ' }, headers: auth });
+    assert.equal(noTitle.status, 400);
+  });
+
+  await t.test('账号事件也进收件箱：停用 / 恢复 / 重置口令 / 改名', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    const me = await register(call, '被处理的账号');
+    const id = me.data.user.id;
+
+    await call('/api/admin/accounts', { method: 'POST', body: { id, action: 'ban' }, headers: auth });
+    await call('/api/admin/accounts', { method: 'POST', body: { id, action: 'unban' }, headers: auth });
+    await call('/api/admin/accounts', { method: 'POST', body: { id, action: 'reset' }, headers: auth });
+    await call('/api/admin/accounts', { method: 'POST', body: { id, action: 'rename', name: '改过的名字' }, headers: auth });
+
+    /* 重置口令会让旧会话失效 → 用新昵称 + 临时口令重新登录（临时口令只在管理员响应里） */
+    const reset = await call('/api/admin/accounts', { method: 'POST', body: { id, action: 'reset' }, headers: auth });
+    const temp = reset.data.tempPassword;
+    await call('/api/login', { method: 'POST', body: { name: '改过的名字', password: temp } });
+
+    const list = await call('/api/me/notifications');
+    const titles = list.data.items.map((x) => x.title);
+    for (const want of ['账号已被停用', '账号已恢复', '口令已被站长重置', '你的昵称被站长改了']) {
+      assert.ok(titles.includes(want), `缺「${want}」，现有：${titles.join(' / ')}`);
+    }
+    const resetNote = list.data.items.find((x) => x.title === '口令已被站长重置');
+    assert.doesNotMatch(resetNote.body, /[a-zA-Z0-9]{10}/, '临时口令绝不能写进收件箱');
+    assert.ok(list.data.unread >= 4);
   });
 });
 

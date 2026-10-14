@@ -168,6 +168,8 @@ wrangler secret put GITHUB_OAUTH_CLIENT_SECRET
 | `GET /api/me` | `{user, submissions, counts}`；未登录 `user: null`，**200 而不是 401**（前端不必分支出错态） |
 | `POST /api/password` | 旧口令 + 新口令；旧 Cookie 全部作废，给当前设备续一个新 Cookie |
 | `POST /api/profile` | 改昵称 / 联系方式；昵称只影响**以后**的署名，历史投稿不改 |
+| `GET /api/me/notifications` | 收件箱（`?limit=&offset=`）：`{items, unread, total}`；未登录 401 |
+| `POST /api/me/notifications/read` | 标已读：`{ids:[…]}` 或 `{all:true}`；返回 `{marked, unread}`，幂等 |
 
 `counts` 是个人页那四个数字块用的：`{pending, approved, applied, rejected}`，
 一条 SQL `GROUP BY status` 数出来。口径与 `user.approved` / `user.rejected` **不同**：
@@ -179,6 +181,39 @@ wrangler secret put GITHUB_OAUTH_CLIENT_SECRET
 
 `worker/index.ts` 的 `fetch` 外面包了一层 try/catch：任何没接住的异常现在回 **JSON 500**
 （以前是 Cloudflare 的 HTML 错误页，前端 `.json()` 直接报「请求失败」）。
+
+## 站内收件箱（2026-10-14 加）
+
+页头账号按钮**左边**多了一个小铃铛（登录后才有）：有未读就亮红点（数字，>9 显示 `9+`），
+点开是收件箱面板 —— 逐条点开看细节（正文 + 「去看看」链接），也能「全部已读」。
+
+**谁往里写**（全部是服务端自动的，`worker/notifications.ts` 的 `pushNotification`）：
+
+| 事件 | 通知 | 写在哪 |
+|---|---|---|
+| 投稿通过（攒批） | 「投稿已通过：《图》」+ 说明还要等写回 | `handleAdminReview` |
+| 投稿驳回 | 「投稿被驳回」+ 审核员写的理由 | 同上 |
+| 写回仓库上线 | 「投稿已上线」——**按「人 + 图」聚合成一条**（一次攒批十几条不刷屏） | `handleAdminFlush` |
+| 整篇草稿被采纳 | 「你整理的《图》草稿已被采纳」+ 替换/新增/保留几节 | `handleAdminAdopt` |
+| 账号事件 | 停用 / 恢复 / 重置口令 / 改名 / 挂称号 | `handleAdminAccountAction` 等 |
+| 站长公告 | 全员公告（`user_id IS NULL`，**只存一行**） | `POST /api/admin/announce`（审核台「发公告」按钮） |
+
+设计上的几条硬规矩：
+
+1. **写通知绝不能拖垮正事**：审核 / 写回 / 采纳里的插入全部 try/catch，失败只 `console.error` ——
+   收件箱坏了不该让「通过一条投稿」变成 500。
+2. **公告只有一行**：已读状态在 `notification_reads`（主键 `user_id + notification_id`），
+   所以一条公告发给 100 个人也只有一行，各自的已读互不影响；`INSERT OR IGNORE` 保证重复标记幂等。
+3. **看不到别人的**：列表与已读的 SQL 都带 `(user_id = ?1 OR user_id IS NULL)`，
+   猜 id 也标不了别人的通知（单测「不会串号」盯着这条）。
+4. **不写敏感内容**：重置口令那条**不带临时口令**（口令只回给拿 ADMIN_TOKEN 的站长，靠人转告）。
+5. **前端不用 innerHTML**：通知正文里有地图名与审核理由（用户可控），全部 `createElement` + `textContent`。
+6. 红点靠「进页面问一次 + 页面可见时每 2 分钟问一次 + 切回标签页立刻问」，
+   未登录时**一个请求都不发**；面板展开的那条被点开即已读，且**不重建列表**（重建会把展开的收起来）。
+
+两处踩过的坑（都补了回归测试）：`submissions.user_id` 没进采纳那条 SELECT（通知发不出去）；
+空库上「先查封禁/限流、后建表」导致第一个请求 500 `no such table: bans`（现在
+`isBanned` / `allowWrite` 把「表还没建」当成「没有记录」，只吞这一种错）。
 
 ## 授权 UP 主称号（2026-10-13 加）
 

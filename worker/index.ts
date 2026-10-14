@@ -58,6 +58,8 @@ import { handleVideoMeta, handleVideoThanks } from './videos';
 import {
   handleAdminAccountAction,
   handleAdminAccounts,
+  ensureSchema,
+  getSessionUser,
   handleGithubCallback,
   handleGithubStart,
   handleGithubUnbind,
@@ -68,6 +70,11 @@ import {
   handleProfile,
   handleRegister,
 } from './auth';
+import {
+  handleAdminAnnounce,
+  handleMyNotifications,
+  handleNotificationsRead,
+} from './notifications';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -125,6 +132,8 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (path === '/api/admin/adopt') return handleAdminAdopt(request, env);
     if (path === '/api/admin/unstage') return handleAdminUnstage(request, env);
     if (path === '/api/admin/ban') return handleAdminBan(request, env);
+    /* 站内公告（收件箱）：GET 看最近发过的、POST 发一条全员公告 */
+    if (path === '/api/admin/announce') return handleAdminAnnounce(request, env, url);
     /* 账号管理（P4）：看账号列表 / 停用 / 恢复 / 解锁连续输错被锁的账号 */
     if (path === '/api/admin/accounts') {
       return request.method === 'POST' ? handleAdminAccountAction(request, env) : handleAdminAccounts(request, env, url);
@@ -167,6 +176,19 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (path === '/api/login') return handleLogin(request, env, url, ipHash, clientIp(request));
   if (path === '/api/logout') return handleLogout(request, env, url);
   if (path === '/api/me') return handleMe(request, env, url);
+  /*
+   * 收件箱（2026-10-14）：登录态在这里解析好再交给 notifications.ts
+   * （那边不 import auth.ts，免得和「auth.ts 写账号类通知」循环依赖）。
+   * 未登录直接 401 —— 收件箱是账号功能，页面上的铃铛也只对登录用户显示。
+   */
+  if (path === '/api/me/notifications' || path === '/api/me/notifications/read') {
+    await ensureSchema(env);
+    const me = await getSessionUser(request, env).catch(() => null);
+    if (!me) return fail('请先登录', 401);
+    return path === '/api/me/notifications'
+      ? handleMyNotifications(env, url, me.id)
+      : handleNotificationsRead(request, env, me.id);
+  }
   if (path === '/api/password') return handlePassword(request, env, url);
   if (path === '/api/profile') return handleProfile(request, env);
   /*

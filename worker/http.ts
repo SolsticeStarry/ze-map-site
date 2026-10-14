@@ -147,9 +147,24 @@ export function dayWindow(now = Date.now()): string {
 }
 
 /**
- * 限流：同一 IP 在同一个桶里、同一时间窗内最多 limit 次。
+ * 「表还没建」这个错要单独认出来。
+ *
+ * 2026-10-14 本地用**全新 D1** 跑 E2E 时踩到：注册/登录/投稿/投票这几条路都是
+ * 「先查封禁与限流（bans / rate_limits），再 ensureSchema 建表」，
+ * 于是空库上第一个请求必然 500 `no such table: bans`。
+ * 语义上空库等于「没有任何封禁、也没有计数」，所以这两种情况按「没有记录」处理：
+ * 封禁 → 没封；限流 → 放行（紧接着的 ensureSchema 会把表建起来，之后的请求照常计数）。
+ * ⚠️ 只吞这一种错：D1 真出故障（超时、配额）必须照旧抛出去 —— 那属于「读不到，不能装作没事」。
+ */
+function isMissingTable(err: unknown): boolean {
+  return /no such table/i.test(err instanceof Error ? err.message : String(err));
+}
+
+/**
+ * 限制写入频率：同一 IP 在同一个桶里、同一时间窗内最多 limit 次。
  * 投票与投稿用不同的桶名，互不挤占额度；period 决定窗口是小时还是天。
- * 用 UPSERT + RETURNING 一条语句完成「自增并读回」，避免并发下的竞态。
+ * 桶名 + 窗口拼成主键，一条 UPSERT + RETURNING 同时完成「加一」和「读回当前值」，
+ * 一次往返、无竞态（D1 免费版按行计费，这里只有一行）。
  */
 export async function allowWrite(
   env: Env,
@@ -159,22 +174,33 @@ export async function allowWrite(
   period: 'hour' | 'day' = 'hour'
 ): Promise<boolean> {
   const window = `${bucket}:${period === 'day' ? dayWindow() : hourWindow()}`;
-  const row = await env.DB.prepare(
-    `INSERT INTO rate_limits (ip_hash, window, count) VALUES (?1, ?2, 1)
-     ON CONFLICT(ip_hash, window) DO UPDATE SET count = count + 1
-     RETURNING count`
-  )
-    .bind(ipHash, window)
-    .first<{ count: number }>();
-  return (row?.count ?? 1) <= limit;
+  try {
+    const row = await env.DB.prepare(
+      `INSERT INTO rate_limits (ip_hash, window, count) VALUES (?1, ?2, 1)
+       ON CONFLICT(ip_hash, window) DO UPDATE SET count = count + 1
+       RETURNING count`
+    )
+      .bind(ipHash, window)
+      .first<{ count: number }>();
+    return (row?.count ?? 1) <= limit;
+  } catch (err) {
+    if (isMissingTable(err)) return true;
+    throw err;
+  }
 }
 
 /** 是否被封禁 */
 export async function isBanned(env: Env, ipHash: string): Promise<boolean> {
-  const row = await env.DB.prepare(`SELECT ip_hash FROM bans WHERE ip_hash = ?1`)
-    .bind(ipHash)
-    .first<{ ip_hash: string }>();
-  return Boolean(row);
+  try {
+    const row = await env.DB.prepare(`SELECT ip_hash FROM bans WHERE ip_hash = ?1`)
+      .bind(ipHash)
+      .first<{ ip_hash: string }>();
+    return Boolean(row);
+  } catch (err) {
+    /* 空库上还没建表 = 一条封禁都没有（见 isMissingTable） */
+    if (isMissingTable(err)) return false;
+    throw err;
+  }
 }
 
 /**

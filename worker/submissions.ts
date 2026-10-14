@@ -66,6 +66,7 @@ import {
 } from './gallery';
 import { allowWrite, fail, isBanned, json, readJsonBody, type Env } from './http';
 import { ensureSchema } from './auth';
+import { pushNotification, pushNotifications } from './notifications';
 import { turnstileMessage, verifyTurnstile } from './turnstile';
 import { SLUG_RE } from './votes';
 import { accountForSubmit, recalcUserStats } from './auth';
@@ -616,6 +617,9 @@ export async function handleAdminImage(request: Request, env: Env, path: string)
 
 /* ===== 审核台接口（全部要 ADMIN_TOKEN） ===== */
 
+/** 字段的中文名（收件箱文案里用；认不出来就退回字段名本身） */
+const fieldLabel = (field: string): string => FIELD_RULES[field]?.label ?? field;
+
 /**
  * POST /api/admin/adopt —— 把某张图的「整篇草稿」采纳为人工原稿（2026-10-13 加）。
  *
@@ -633,6 +637,9 @@ export async function handleAdminImage(request: Request, env: Env, path: string)
  */
 export async function handleAdminAdopt(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') return fail('只支持 POST', 405);
+  /* 采纳要在收件箱里通知整理者，得读 submissions.user_id —— 老库可能还没这一列，先补一次表
+     （和 handleAdminQueue 同一个理由：审核台这条路以前不建表，缺列时会 500）。 */
+  await ensureSchema(env);
   const parsed = await readJsonBody(request, 4096);
   if (!parsed.ok) return parsed.response;
 
@@ -641,12 +648,19 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
 
   /* 草稿必须是**已经写回仓库**的那一篇（页面上正以「未采纳」显示），否则页面与实际不一致 */
   const row = await env.DB.prepare(
-    `SELECT id, value, submitter, reviewed_at, commit_sha FROM submissions
+    `SELECT id, value, submitter, reviewed_at, commit_sha, user_id FROM submissions
       WHERE map_slug = ?1 AND field = 'draft' AND status = 'applied'
       ORDER BY id DESC LIMIT 1`
   )
     .bind(slug)
-    .first<{ id: number; value: string; submitter: string | null; reviewed_at: number | null; commit_sha: string | null }>();
+    .first<{
+      id: number;
+      value: string;
+      submitter: string | null;
+      reviewed_at: number | null;
+      commit_sha: string | null;
+      user_id: number | null;
+    }>();
   if (!row) {
     return fail('这张图没有「已写回、待采纳」的草稿：先把它通过并写回仓库，页面上会出现「社区整理版（未采纳）」', 404);
   }
@@ -844,6 +858,20 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
       .bind(commitSha, row.id)
       .run()
       .catch(() => {});
+  }
+
+  /* 收件箱：告诉整理者「你写的那篇草稿进百科正文了」（草稿必须登录才能投，所以基本都有 user_id） */
+  if (row.user_id) {
+    await pushNotification(env, {
+      userId: row.user_id,
+      kind: 'adopt',
+      title: `你整理的《${slug}》草稿已被采纳`,
+      body:
+        `按小节合并进人工原稿：替换 ${merged.replaced.length} 节、新增 ${merged.added.length} 节、保留 ${merged.kept.length} 节。` +
+        `构建完成后正文就是这一版：https://ze-map.cn/maps/${slug}/`,
+      link: `/maps/${slug}/`,
+      submissionId: row.id,
+    });
   }
 
   return json({
@@ -1101,6 +1129,17 @@ export async function handleAdminReview(request: Request, env: Env): Promise<Res
         const meta = sub.field === 'cover' ? coverMetaOf(rejected) : galleryMetaOf(rejected);
         if (meta) await dropPendingImage(env, meta.key);
       }
+      /* 收件箱：登录用户的投稿被驳回时说一声（理由是审核员写的，原样带上） */
+      if (sub.user_id) {
+        await pushNotification(env, {
+          userId: sub.user_id,
+          kind: 'review',
+          title: `投稿被驳回：《${sub.map_slug}》`,
+          body: `字段：${fieldLabel(sub.field)}${rejectNote ? `\n理由：${rejectNote}` : ''}`,
+          link: '/account/',
+          submissionId: id,
+        });
+      }
       results.push({ id, ok: true, status: 'rejected' });
       continue;
     }
@@ -1115,6 +1154,17 @@ export async function handleAdminReview(request: Request, env: Env): Promise<Res
     )
       .bind(Date.now(), reviewer, id)
       .run();
+    /* 收件箱：通过时说一声，并讲清楚「还没上线，等写回」—— 免得他看到页面没变以为没通过 */
+    if (sub.user_id) {
+      await pushNotification(env, {
+        userId: sub.user_id,
+        kind: 'review',
+        title: `投稿已通过：《${sub.map_slug}》`,
+        body: `字段：${fieldLabel(sub.field)}\n已进入「待写回」队列，等站长写回仓库后会上线，届时再通知你一次。`,
+        link: '/account/',
+        submissionId: id,
+      });
+    }
     results.push({ id, ok: true, status: 'approved' });
   }
 
@@ -1406,6 +1456,32 @@ export async function handleAdminFlush(request: Request, env: Env): Promise<Resp
      */
     for (const userId of new Set(committedIds.map((r) => r.user_id).filter((x): x is number => Number.isInteger(x)))) {
       await recalcUserStats(env, userId).catch(() => undefined);
+    }
+    /*
+     * 收件箱：写回上线通知。**按「人 + 图」聚合成一条** —— 一次攒批可能同时写回某人的
+     * 十几条投稿（同一张图好几个字段），一条一发会刷屏，聚合后正好一句「你在《x》的 N 条已上线」。
+     */
+    const byUserMap = new Map<string, { userId: number; slug: string; fields: string[] }>();
+    for (const row of committedIds) {
+      if (!Number.isInteger(row.user_id)) continue;
+      const key = `${row.user_id}|${row.map_slug}`;
+      const hit = byUserMap.get(key) ?? { userId: row.user_id as number, slug: row.map_slug, fields: [] };
+      hit.fields.push(fieldLabel(row.field));
+      byUserMap.set(key, hit);
+    }
+    if (byUserMap.size) {
+      await pushNotifications(
+        env,
+        [...byUserMap.values()].map((g) => ({
+          userId: g.userId,
+          kind: 'flush' as const,
+          title: `投稿已上线：《${g.slug}》`,
+          body:
+            `你在《${g.slug}》的 ${g.fields.length} 条投稿已写回仓库（${[...new Set(g.fields)].join('、')}）。` +
+            `构建大约 1~2 分钟后生效：https://ze-map.cn/maps/${g.slug}/`,
+          link: `/maps/${g.slug}/`,
+        }))
+      );
     }
     for (const c of pendingImages) await dropPendingImage(env, c.key);
     await markErrors(env, skipped);

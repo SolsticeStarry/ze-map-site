@@ -74,6 +74,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
             autocomplete="off"
           />
           <button class="btn btn-ghost" id="a-reload" type="button">刷新</button>
+          {/*
+            发公告（2026-10-14）：写进所有人的收件箱（页头铃铛那里）。
+            和投稿无关，所以不放在攒批区；发之前会把最近发过的公告列出来，免得重复发。
+          */}
+          <button class="btn" id="a-announce" type="button">发公告</button>
           <label class="admin-auto">
             <input type="checkbox" id="a-auto" />
             自动刷新
@@ -355,6 +360,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     fields?: AskField[];
     /** 快捷理由：点一下填进第一个字段 */
     chips?: string[];
+    /** 输入框上面先摆一块自定义内容（例如「最近发过的公告」清单，见发公告那个按钮） */
+    body?: HTMLElement;
     confirmText?: string;
     danger?: boolean;
   }
@@ -372,6 +379,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     descEl.textContent = opts.desc ?? '';
     descEl.hidden = !opts.desc;
     bodyEl.replaceChildren();
+    if (opts.body) bodyEl.append(opts.body);
     chipsEl.replaceChildren();
     chipsEl.hidden = !opts.chips?.length;
     okBtn.textContent = opts.confirmText ?? '确定';
@@ -1524,6 +1532,56 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   $<HTMLButtonElement>('a-reload').onclick = () => reload();
   $<HTMLButtonElement>('a-flush-go').onclick = () => flush();
   $<HTMLButtonElement>('a-more-go').onclick = () => load();
+
+  /**
+   * 发公告（2026-10-14）：写进**所有账号**的收件箱（页头铃铛）。
+   * 先拉一次最近发过的（GET），摆在对话框里再让人写 —— 公告是「一条发出去就收不回」的东西，
+   * 与其发完才发现重复，不如发之前先看一眼。链接限定站内路径或 https（服务端也会再校验一次）。
+   */
+  $<HTMLButtonElement>('a-announce').onclick = async () => {
+    const recent = await api('/api/admin/announce?limit=5');
+    const box = el('div', 'admin-confirm-list');
+    if (recent.status === 200) {
+      const list: Array<{ id: number; title: string; createdAt: number }> = recent.data?.items ?? [];
+      box.append(
+        el(
+          'p',
+          'admin-note',
+          `会发给 ${recent.data?.recipients ?? 0} 个账号（登录后打开任意页面就能在收件箱看到）。` +
+            '未登录的访客看不到收件箱，重要事情请同时发在群里。'
+        )
+      );
+      if (list.length) {
+        const ul = el('ul', 'admin-confirm-maps');
+        for (const x of list) ul.append(el('li', undefined, `${new Date(x.createdAt).toLocaleDateString('zh-CN')} · ${x.title}`));
+        box.append(el('p', 'admin-note', '最近发过的公告：'), ul);
+      }
+    }
+    const r = await ask({
+      title: '发公告到所有人的收件箱',
+      desc: '',
+      body: box,
+      fields: [
+        { key: 'title', label: '标题（最多 60 字）', value: '' },
+        { key: 'body', label: '正文（最多 800 字，可空）', value: '', multiline: true },
+        { key: 'link', label: '附一个链接（可空，站内 /about/ 或 https://…）', value: '' },
+      ],
+      confirmText: '发出去',
+      danger: true,
+    });
+    if (!r) return;
+    const title = String(r.title ?? '').trim();
+    if (!title) return setStatus('公告得有标题', true);
+    const res = await api('/api/admin/announce', {
+      method: 'POST',
+      body: { title, body: String(r.body ?? '').trim(), link: String(r.link ?? '').trim() },
+    });
+    if (res.status !== 200) {
+      setStatus(`${res.data?.error ?? '公告没发出去'}（HTTP ${res.status}）`, true);
+      return;
+    }
+    setStatus(String(res.data?.message ?? '公告已发出'));
+  };
 
   for (const btn of document.querySelectorAll<HTMLButtonElement>('.admin-tab[data-status]')) {
     btn.onclick = () => {

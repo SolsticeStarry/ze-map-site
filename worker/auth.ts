@@ -19,6 +19,11 @@ import { turnstileMessage, verifyTurnstile } from './turnstile';
 import { checkNicknameContent, nicknameRejectMessage, normalizeName, parseExtraBlocklist } from '../shared/nickname-rules.mjs';
 import { loadAgreed, type AgreedUp } from './videos';
 import { listContributors } from './community';
+/*
+ * 收件箱（2026-10-14）：账号类的通知（停用/恢复/重置口令/改名/称号）在这里写。
+ * notifications.ts **不** import 本文件（登录态由 index.ts 解析后传进去），所以这条依赖是单向的。
+ */
+import { pushNotification } from './notifications';
 
 /* ===== 常量 ===== */
 
@@ -1394,6 +1399,13 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
     }
     await env.DB.prepare(`UPDATE users SET gh_names = ?1 WHERE id = ?2`).bind(logins.join(','), id).run();
     const missed = logins.filter((x) => !known.has(x.toLowerCase()));
+    await pushNotification(env, {
+      userId: id,
+      kind: 'account',
+      title: '你获得了「仓库贡献者」称号',
+      body: `本站把账号挂到了 GitHub：${hits.join('、')}（仓库提交记录里能查到）。徽章在页头账号卡片和个人主页上。`,
+      link: '/account/',
+    });
     return json({
       ok: true,
       id,
@@ -1426,6 +1438,13 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
       );
     }
     await env.DB.prepare(`UPDATE users SET up_name = ?1 WHERE id = ?2`).bind(hit.u, id).run();
+    await pushNotification(env, {
+      userId: id,
+      kind: 'account',
+      title: '你获得了「授权 UP 主」称号',
+      body: `本站已收录「${hit.u}」的 ${hit.videos} 条视频（分布在 ${hit.maps.length} 张图的页面上），徽章挂在你账号旁边。`,
+      link: '/account/',
+    });
     return json({
       ok: true,
       id,
@@ -1448,6 +1467,13 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
     await env.DB.prepare(`UPDATE submissions SET submitter = ?1 WHERE user_id = ?2 AND status IN ('pending','approved')`)
       .bind(next.value, id)
       .run();
+    await pushNotification(env, {
+      userId: id,
+      kind: 'account',
+      title: '你的昵称被站长改了',
+      body: `「${before.name}」→「${next.value}」。还没写回的投稿署名一起改了；已经进仓库的那些要另开一次提交才能改。`,
+      link: '/account/',
+    });
     return json({
       ok: true,
       id,
@@ -1459,8 +1485,22 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
   if (action === 'ban') {
     /* 停用 + 顺手清掉失败计数：解封后不会带着旧锁定 */
     await env.DB.prepare(`UPDATE users SET banned = 1, fail_count = 0, locked_until = NULL WHERE id = ?1`).bind(id).run();
+    await pushNotification(env, {
+      userId: id,
+      kind: 'account',
+      title: '账号已被停用',
+      body: '站长停用了这个账号：现在登不进来，已有的投稿也不再生效。有疑问请通过站内投稿的联系方式找站长。',
+      link: '/account/',
+    });
   } else if (action === 'unban') {
     await env.DB.prepare(`UPDATE users SET banned = 0 WHERE id = ?1`).bind(id).run();
+    await pushNotification(env, {
+      userId: id,
+      kind: 'account',
+      title: '账号已恢复',
+      body: '站长恢复了你的账号，现在可以正常登录与投稿了。',
+      link: '/account/',
+    });
   } else if (action === 'unlock') {
     await env.DB.prepare(`UPDATE users SET fail_count = 0, locked_until = NULL WHERE id = ?1`).bind(id).run();
   } else {
@@ -1471,6 +1511,16 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
     )
       .bind(hash, id)
       .run();
+    /* 收件箱：这条**不写临时口令**（口令只回给拿着 ADMIN_TOKEN 的站长，靠人转告） */
+    await pushNotification(env, {
+      userId: id,
+      kind: 'account',
+      title: '口令已被站长重置',
+      body:
+        '站长给你换了一个临时口令（他那边看得到明文），请找他要；登录后到个人主页自己改成新口令。' +
+        '重置后旧的登录状态已经失效（需要重新登录）。',
+      link: '/account/',
+    });
     return json({
       ok: true,
       id,
