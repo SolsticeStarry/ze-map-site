@@ -1,8 +1,64 @@
 {
   "v": 1,
   "slug": "ze_deadcore_r",
-  "updatedAt": "2026-10-14T12:26:39.329Z",
-  "fields": {},
+  "updatedAt": "2026-10-14T14:24:19.972Z",
+  "fields": {
+    "difficulty": {
+      "v": "火星",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:00:27.906Z",
+      "submission": 231
+    },
+    "aliases": {
+      "v": [
+        "EXG:死亡核心R"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:00:33.744Z",
+      "submission": 232
+    },
+    "tags": {
+      "v": [
+        "多关卡",
+        "跳刀",
+        "弹幕",
+        "日本作者",
+        "经典",
+        "BOSS战",
+        "CSGO移植",
+        "死亡核心"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:01:38.369Z",
+      "submission": 233
+    },
+    "authorNote": {
+      "v": "Airvulpes (作者) SIRloin 兎RB (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:00.920Z",
+      "submission": 234
+    },
+    "version": {
+      "v": "r2 (CSGO) ze_deadcore_r (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:50.908Z",
+      "submission": 235
+    },
+    "duration": {
+      "v": "50分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:04:17.508Z",
+      "submission": 236
+    },
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1rJ41197mh/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:04:29.055Z",
+      "submission": 238
+    }
+  },
   "notes": [],
   "log": [
     {
@@ -12,6 +68,83 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T12:26:10.071Z",
       "submission": 230
+    },
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "火星",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:00:27.906Z",
+      "submission": 231
+    },
+    {
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "EXG:死亡核心R"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:00:33.744Z",
+      "submission": 232
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "多关卡",
+        "跳刀",
+        "弹幕",
+        "日本作者",
+        "经典",
+        "BOSS战",
+        "CSGO移植",
+        "死亡核心"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:01:38.369Z",
+      "submission": 233
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "Airvulpes (作者) SIRloin 兎RB (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:00.920Z",
+      "submission": 234
+    },
+    {
+      "field": "version",
+      "from": null,
+      "to": "r2 (CSGO) ze_deadcore_r (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:50.908Z",
+      "submission": 235
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "50分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:04:17.508Z",
+      "submission": 236
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 1,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:59.931Z",
+      "submission": 237
+    },
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1rJ41197mh/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:04:29.055Z",
+      "submission": 238
     }
   ],
   "draft": {
@@ -20,5 +153,17 @@
     "at": "2026-10-14T12:26:10.071Z",
     "submission": 230
   },
-  "items": []
+  "items": [
+    {
+      "action": "add",
+      "name": "光炮 (人类)",
+      "cd": 5,
+      "uses": 99,
+      "note": "随时间变化的动态效果神器",
+      "intro": "释放后 在使用者前方射出能量球 能量球路径上的僵尸都将受到减速/定身效果 (神器蓄能时间越久 效果越强)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:59.931Z",
+      "submission": 237
+    }
+  ]
 }
