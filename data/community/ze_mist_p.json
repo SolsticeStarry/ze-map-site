@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_mist_p",
-  "updatedAt": "2026-10-14T13:36:06.028Z",
+  "updatedAt": "2026-10-15T10:52:09.473Z",
   "fields": {
     "aliases": {
       "v": [
@@ -56,6 +56,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T13:36:06.028Z",
       "submission": 339
+    },
+    "draft": {
+      "v": "已采纳 2026-10-15",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:52:09.473Z",
+      "submission": 341
     }
   },
   "notes": [],
@@ -143,14 +149,17 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T13:36:06.028Z",
       "submission": 341
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:52:09.473Z",
+      "submission": 341
     }
   ],
-  "draft": {
-    "text": "## 地图由 [Soft Serve] 绘制\n\n1个关卡\n\n6个人类神器\n\n两场Boss战&一场最终MG",
-    "by": "AntiLockwise",
-    "at": "2026-10-14T13:36:06.028Z",
-    "submission": 341
-  },
+  "draft": null,
   "items": [
     {
       "action": "add",

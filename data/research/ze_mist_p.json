@@ -4,5 +4,11 @@
   "summary": null,
   "tags": [],
   "videoUrls": [],
-  "confidence": "low"
+  "confidence": "medium",
+  "sections": [
+    {
+      "title": "地图由 [Soft Serve] 绘制",
+      "body": "1个关卡\n\n6个人类神器\n\n两场Boss战&一场最终MG"
+    }
+  ]
 }
