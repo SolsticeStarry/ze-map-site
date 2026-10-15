@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_conflict",
-  "updatedAt": "2026-10-14T11:43:05.896Z",
+  "updatedAt": "2026-10-15T10:46:01.497Z",
   "fields": {
     "difficulty": {
       "v": "困难",
@@ -56,6 +56,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T11:42:14.220Z",
       "submission": 185
+    },
+    "draft": {
+      "v": "已采纳 2026-10-15",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:46:01.497Z",
+      "submission": 178
     }
   },
   "notes": [],
@@ -143,13 +149,16 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T11:42:14.756Z",
       "submission": 186
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:46:01.497Z",
+      "submission": 178
     }
   ],
-  "draft": {
-    "text": "## - ze_conflict (次元战争) -\n\n地图由 [Rakka/Rio] 绘制\n\n- 2个关卡\n\n- 高难度 跳刀/天坠/MG 环节\n\n- 地图由著名音游歌曲 [Conflict] (别称:音游公交车) 改编而来\n\n- 含 MG 的触发机关环节\n\n- 地图大量使用了 [Cranky] 的歌曲",
-    "by": "AntiLockwise",
-    "at": "2026-10-14T11:42:16.335Z",
-    "submission": 178
-  },
+  "draft": null,
   "items": []
 }

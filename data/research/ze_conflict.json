@@ -4,6 +4,12 @@
   "summary": null,
   "tags": [],
   "videoUrls": [],
-  "confidence": "low",
-  "author": "咸自矜持, Rakka"
+  "confidence": "medium",
+  "author": "咸自矜持, Rakka",
+  "sections": [
+    {
+      "title": "基本信息",
+      "body": "地图由 [Rakka/Rio] 绘制\n\n- 2个关卡\n\n- 高难度 跳刀/天坠/MG 环节\n\n- 地图由著名音游歌曲 [Conflict] (别称:音游公交车) 改编而来\n\n- 含 MG 的触发机关环节\n\n- 地图大量使用了 [Cranky] 的歌曲"
+    }
+  ]
 }
