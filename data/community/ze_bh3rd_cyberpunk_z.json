@@ -1,13 +1,44 @@
 {
   "v": 1,
   "slug": "ze_bh3rd_cyberpunk_z",
-  "updatedAt": "2026-10-04T11:29:12.969Z",
+  "updatedAt": "2026-10-15T07:49:13.973Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_bh3rd_cyberpunk_z.webp",
       "by": "SiKi",
       "at": "2026-10-04T11:29:12.969Z",
       "submission": 82
+    },
+    "tags": {
+      "v": [
+        "CSGO移植",
+        "BOSS战",
+        "神器",
+        "崩坏3",
+        "KZ",
+        "单关卡"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-15T05:35:39.064Z",
+      "submission": 278
+    },
+    "author": {
+      "v": "残剑斩龙",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T05:35:39.611Z",
+      "submission": 279
+    },
+    "authorNote": {
+      "v": "残剑斩龙 (作者) 不知名的好心人/南宫紫梦 (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T05:35:40.135Z",
+      "submission": 280
+    },
+    "version": {
+      "v": "ze_bh3rd_cyberpunk_z (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T05:35:40.660Z",
+      "submission": 281
     }
   },
   "notes": [],
@@ -19,7 +50,47 @@
       "by": "SiKi",
       "at": "2026-10-04T11:29:12.969Z",
       "submission": 82
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "CSGO移植",
+        "BOSS战",
+        "神器",
+        "崩坏3",
+        "KZ",
+        "单关卡"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-15T05:35:39.064Z",
+      "submission": 278
+    },
+    {
+      "field": "author",
+      "from": null,
+      "to": "残剑斩龙",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T05:35:39.611Z",
+      "submission": 279
+    },
+    {
+      "field": "authorNote",
+      "from": null,
+      "to": "残剑斩龙 (作者) 不知名的好心人/南宫紫梦 (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T05:35:40.135Z",
+      "submission": 280
+    },
+    {
+      "field": "version",
+      "from": null,
+      "to": "ze_bh3rd_cyberpunk_z (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T05:35:40.660Z",
+      "submission": 281
     }
   ],
+  "draft": null,
   "items": []
 }
