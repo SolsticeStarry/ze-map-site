@@ -6,5 +6,11 @@
   "videoUrls": [
     "https://www.bilibili.com/video/BV1MjjKz9EKc/"
   ],
-  "confidence": "low"
+  "confidence": "medium",
+  "sections": [
+    {
+      "title": "基本信息",
+      "body": "地图由 [残剑斩龙] 绘制\n\n- 1个关卡\n\n- 1场boss战\n\n- 由著名游戏 [崩坏3rd] 改编而来"
+    }
+  ]
 }
