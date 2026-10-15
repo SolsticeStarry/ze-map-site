@@ -149,6 +149,8 @@ export const GET: APIRoute = async () => {
             field?: string | null;
             submission?: number | null;
             revisedBy?: string | null;
+            title?: string | null;
+            part?: number | null;
           },
           i: number
         ) => ({
@@ -157,6 +159,9 @@ export const GET: APIRoute = async () => {
           text: String(n?.text ?? ''),
           by: String(n?.by ?? ''),
           at: n?.at ? String(n.at) : '',
+          /* 「社区整理」的小节标题：右侧那条的说明要写成「社区整理「彩蛋与机关」· 某人」，
+             点「修订这条」也要把标题带回编辑器（2026-10-15 补上，以前只显示了字段名） */
+          ...(n?.title ? { title: String(n.title) } : {}),
           ...(n?.revisedBy ? { revisedBy: String(n.revisedBy) } : {}),
         })
       )

@@ -96,7 +96,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       {/*
         三档模式（2026-10-15 加第三档「社区整理」）：
           · 单项补充 —— 补一格（难度 / 标签 / 视频…），字段选择器在这一档里；
-          · 社区整理 —— 给这张图补一节**自己起标题**的小节（一张图最多一篇）；
+          · 社区整理 —— 给这张图补一节**自己起标题**的小节（一次最多 3 节、一图累计 6 节）；
           · 大面积整理 —— 整篇草稿，独立界面（分节编辑器）。
         后两档都**不在字段选择器里出现**（字段规则里 hidden: true），各有自己的入口与界面。
         从地图页进来时带 ?field=section / ?field=draft 直接落到对应那一档。
@@ -124,7 +124,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
             通过后会显示在条目末尾，带「社区整理」小标和你的署名 —— <strong>本站正文不会被它盖掉</strong>。
           </p>
           <p class="dc-state" id="section-cta-state">
-            规则：一张图最多一篇 · 标题 2~20 字且不能和本站小节同名 · 正文最多 4000 字 · 需要登录。
+            规则：一次最多 3 节 · 一张图累计最多 6 节 · 标题 2~20 字且不能和本站小节同名 · 每节正文最多 4000 字 · 需要登录。
           </p>
         </div>
         <div class="dc-actions">
@@ -598,7 +598,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 <script>
   /* 与 Worker 共用同一份字段规则与校验 —— 前端只是「提前告诉你哪里不对」，
      真正的权威校验在服务端（worker/submissions.ts）。 */
-  import { FIELD_RULES, isReservedSectionTitle, looksLikeBannerTitle, validateValue } from '../../../shared/submission-fields.mjs';
+  import { FIELD_RULES, MAX_SECTIONS_PER_MAP, isReservedSectionTitle, looksLikeBannerTitle, validateValue } from '../../../shared/submission-fields.mjs';
   /* 登录状态：与页头那个账号按钮共用一次请求（见 lib/account-client.ts） */
   import { ACCOUNT_EVENT, meOrThrow } from '../../lib/account-client';
   /* 人机验证（Turnstile）：放提交按钮上方；没配 site key 时不渲染 */
@@ -1577,8 +1577,10 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
   }
 
   /**
-   * 社区整理那档的状态条：没登录就直说（服务端也会拦），已经有这一节的图提示去修订。
+   * 社区整理那档的状态条：没登录就直说（服务端也会拦），已经有小节的图提示去修订。
    * 数据来自 /submit/maps.json 的 notes（构建期把已通过的社区投稿合成好的那份）。
+   * 2026-10-15 改口径：一张图不再只限一篇 —— 一次最多 3 节、累计上限 6 节
+   * （数字从 shared/submission-fields.mjs 取，别在这儿写死第二份）。
    */
   function renderSectionCta(): void {
     const state = document.getElementById('section-cta-state');
@@ -1587,9 +1589,17 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       ? ((mapInfo as Record<string, unknown>).notes as Array<Record<string, unknown>>)
       : []
     ).filter((n) => String(n.field ?? '') === 'section');
-    const base = '规则：一张图最多一篇 · 标题 2~20 字且不能和本站小节同名 · 正文最多 4000 字 · 需要登录。';
+    const once = Number(FIELD_RULES.section?.maxSections ?? 3);
+    const base =
+      `规则：一次最多 ${once} 节 · 一张图累计最多 ${MAX_SECTIONS_PER_MAP} 节 · ` +
+      '标题 2~20 字且不能和本站小节同名 · 每节正文最多 4000 字 · 需要登录。';
+    const names = notes
+      .slice(0, 4)
+      .map((n) => `「${String(n.title ?? '社区整理')}」`)
+      .join('');
     const existing = notes.length
-      ? `这张图已经有一节「${String(notes[0].title ?? '社区整理')}」（${String(notes[0].by ?? '匿名')}）—— 要改就在右侧那一条上点「修订这条」，别新开一篇。`
+      ? `这张图已经有 ${notes.length} 节社区整理：${names}${notes.length > 4 ? ' 等' : ''} —— ` +
+        '要改其中某一节，就在右侧那一条上点「修订这条」（替换，不占新名额）；想加新的一节直接写。'
       : '';
     state.textContent = existing ? `${existing}\n${base}` : base;
     void meOrThrow()

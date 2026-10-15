@@ -2507,6 +2507,144 @@ test('社区整理（自定义小节）：登录才能投、标题逐节受控�
     const reread = normalizeDoc('ze_demo9', doc);
     assert.deepEqual(reread.notes.map((n) => n.title), ['彩蛋与机关', '老玩家心得'], '重新读一遍标题必须在');
   });
+
+  /*
+   * 修订不该占新名额（2026-10-15 修，站长点的那个 bug）。
+   * 「修订这条」是**替换**：D1 里会插一条新投稿行、老行仍是 applied，
+   * 按行累加的话同一节改两次就吃掉 3 个名额 —— 页面上明明只有一节，却提示「超过上限 6 节」。
+   * 这里用真库真行跑一遍：改多少次都只算一节，配额该留的还留着。
+   */
+  await t.test('「修订这条」是替换，不占新名额：反复改同一节也不吃配额', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '来回改的人');
+
+    /* 先铺满：一次 3 节 + 一次 3 节 = 6 节（正好到顶） */
+    const a = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_revise', field: 'section', value: { sections: [1, 2, 3].map((i) => ({ title: `第一节组${i}`, text: 'x' })) } },
+    });
+    assert.equal(a.status, 200, JSON.stringify(a.data));
+    const b = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_revise', field: 'section', value: { sections: [1, 2, 3].map((i) => ({ title: `第二节组${i}`, text: 'x' })) } },
+    });
+    assert.equal(b.status, 200, JSON.stringify(b.data));
+
+    /* 到顶了：再新增一节必须被拦 */
+    const full = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_revise', field: 'section', value: { sections: [{ title: '挤不进来', text: 'x' }] } },
+    });
+    assert.equal(full.status, 409, JSON.stringify(full.data));
+    assert.match(full.data.error, /已经有 6 节/);
+
+    /* 改第 3 节（第一次）—— 替换，不该被拦 */
+    const r1 = await call('/api/submit', {
+      method: 'POST',
+      body: {
+        map: 'ze_revise',
+        field: 'section',
+        value: { sections: [{ title: '第一节组3', text: '改过一次' }], reviseOf: String(a.data.id) },
+      },
+    });
+    assert.equal(r1.status, 200, JSON.stringify(r1.data));
+
+    /* 再改同一节两次 —— 还是 6 节，仍然不该被拦（这就是修之前会 409 的那一步） */
+    for (let i = 0; i < 2; i++) {
+      const again = await call('/api/submit', {
+        method: 'POST',
+        body: {
+          map: 'ze_revise',
+          field: 'section',
+          value: { sections: [{ title: '第一节组3', text: `第 ${i + 2} 次改` }], reviseOf: String(a.data.id) },
+        },
+      });
+      assert.equal(again.status, 200, `第 ${i + 2} 次修订不该被配额拦住：${JSON.stringify(again.data)}`);
+    }
+
+    /* 但配额没被"改"掉：新增第 7 节照旧拦 */
+    const seventh = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_revise', field: 'section', value: { sections: [{ title: '第七节', text: 'x' }] } },
+    });
+    assert.equal(seventh.status, 409, JSON.stringify(seventh.data));
+    assert.match(seventh.data.error, /已经有 6 节|已经有 5 节|已经有 7 节/, `配额口径要照实报：${seventh.data.error}`);
+    assert.doesNotMatch(seventh.data.error, /已经有 8 节|已经有 9 节|已经有 10 节/, '修订不会被重复计数');
+  });
+
+  /*
+   * 多节投稿的每一节要有**各自的 id**（2026-10-15 修）。
+   * 以前一个投稿行拆成 N 条 note，N 条共用同一个 submission 编号 → id 重了，
+   * 页面上点第 2 节的「修订这条」会改到第 1 节（findNoteIndex 只认第一个匹配）。
+   * 现在多节的 id 是 `123p1 / 123p2`，单节的仍是老样子 `123`（不动已有数据）。
+   */
+  await t.test('多节投稿：每节 id 各不相同（123p1 / 123p2），修订第 2 节改的是第 2 节', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    env.GITHUB_TOKEN = 'test-gh-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '多节的人');
+
+    const sub = await call('/api/submit', {
+      method: 'POST',
+      body: {
+        map: 'ze_parts',
+        field: 'section',
+        value: {
+          sections: [
+            { title: '彩蛋与机关', text: '第一版彩蛋' },
+            { title: '老玩家心得', text: '第一版心得' },
+          ],
+        },
+      },
+    });
+    assert.equal(sub.status, 200, JSON.stringify(sub.data));
+    await call('/api/admin/review', { method: 'POST', body: { id: sub.data.id, action: 'approve' }, headers: auth });
+
+    const repo = installFakeRepo({
+      'data/community/ze_parts.json':
+        JSON.stringify({ v: 1, slug: 'ze_parts', updatedAt: null, fields: {}, notes: [], draft: null, items: [], log: [] }, null, 2) + '\n',
+    });
+    try {
+      assert.equal((await call('/api/admin/flush', { method: 'POST', body: {}, headers: auth })).status, 200);
+    } finally {
+      repo.restore();
+    }
+
+    const { notePublicId, normalizeDoc } = await import('../shared/community-doc.mjs');
+    const doc = normalizeDoc('ze_parts', JSON.parse(repo.files['data/community/ze_parts.json']));
+    assert.equal(doc.notes.length, 2);
+    const ids = doc.notes.map((n, i) => notePublicId(n, i));
+    assert.deepEqual(ids, [`${sub.data.id}p1`, `${sub.data.id}p2`], '每节一个唯一 id');
+    assert.equal(new Set(ids).size, 2, 'id 不能重（重了「修订这条」就会改错节）');
+    /* part 必须活着穿过 normalizeDoc（白名单式重建，漏掉就又重了） */
+    assert.deepEqual(doc.notes.map((n) => n.part), [1, 2]);
+
+    /* 拿第 2 节的 id 提一条修订 → 落库后在页面上该改的是「老玩家心得」 */
+    const revise = await call('/api/submit', {
+      method: 'POST',
+      body: {
+        map: 'ze_parts',
+        field: 'section',
+        value: { sections: [{ title: '老玩家心得', text: '改过的第二版心得' }], reviseOf: `${sub.data.id}p2` },
+      },
+    });
+    assert.equal(revise.status, 200, JSON.stringify(revise.data));
+    await call('/api/admin/review', { method: 'POST', body: { id: revise.data.id, action: 'approve' }, headers: auth });
+    const repo2 = installFakeRepo({ 'data/community/ze_parts.json': repo.files['data/community/ze_parts.json'] });
+    try {
+      assert.equal((await call('/api/admin/flush', { method: 'POST', body: {}, headers: auth })).status, 200);
+    } finally {
+      repo2.restore();
+    }
+    const after = normalizeDoc('ze_parts', JSON.parse(repo2.files['data/community/ze_parts.json']));
+    assert.equal(after.notes.length, 2, '仍然是两节（替换，不是新增）');
+    assert.equal(after.notes[0].text, '第一版彩蛋', '第 1 节没被动');
+    assert.equal(after.notes[1].text, '改过的第二版心得', '改的是第 2 节');
+    assert.equal(after.notes[1].revision, 1, '记了一次修订');
+  });
 });
 
 /* ===== 神器 / 道具行：能删（2026-10-14 改口径） =====

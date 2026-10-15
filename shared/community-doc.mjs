@@ -78,17 +78,34 @@ export function emptyDoc(slug) {
  * id 从哪来：note 上的 submission（= 投稿编号，老数据可能没有），
  * 没有编号的老 note 用它在数组里的位置 `i<下标>` 兜底。
  * 两边都靠 notePublicId() 算，别各写一份。
+ *
+ * 2026-10-15 补：一次投的**多节**社区整理会拆成 N 条 note，它们的 submission 是同一个编号 ——
+ * 光用编号当 id 就重了，「修订这条」会改错节（永远命中第一条）。所以多节投稿的每节再带一个
+ * `part`（1 起），id 长成 `123p2`；单节投稿不带 part，id 还是老样子 `123`（不动线上已有数据）。
  */
 
 /** 这条 note 对外暴露的 id（投稿页「修订这条」传的就是它） */
 export function notePublicId(note, index) {
   const s = note && note.submission !== undefined && note.submission !== null ? note.submission : null;
-  return s === null ? `i${index}` : String(s);
+  if (s === null) return `i${index}`;
+  const part = Number(note?.part);
+  return Number.isInteger(part) && part > 0 ? `${s}p${part}` : String(s);
 }
 
-/** 修订目标 id 是否合法（投稿编号的数字，或 `i<下标>`） */
+/** 修订目标 id 是否合法（投稿编号的数字、多节投稿的 `123p2`，或老 note 的 `i<下标>`） */
 export function isReviseId(raw) {
-  return typeof raw === 'string' && /^(?:\d{1,12}|i\d{1,5})$/.test(raw.trim());
+  return typeof raw === 'string' && /^(?:\d{1,12}(?:p\d{1,3})?|i\d{1,5})$/.test(raw.trim());
+}
+
+/**
+ * 修订目标 id → `{ submission, part }`。
+ * `part` 为 0 表示「不带节号」（老写法：整条投稿只有一节）。
+ * 解析不出来（`i3` 这种按位置兜底的老 note）返回 null。
+ */
+export function revisionTarget(raw) {
+  const m = /^(\d{1,12})(?:p(\d{1,3}))?$/.exec(String(raw ?? '').trim());
+  if (!m) return null;
+  return { submission: Number(m[1]), part: m[2] ? Number(m[2]) : 0 };
 }
 
 /**
@@ -188,6 +205,10 @@ export function normalizeDoc(slug, raw) {
            ⚠️ 这一项必须在这里显式带上 —— normalizeDoc 是白名单式重建，
            漏掉就等于每次读文件都把标题丢掉（页面上的小节名会变成默认名）。 */
         title: typeof n.title === 'string' && n.title.trim() ? n.title.trim().slice(0, 40) : null,
+        /* 一次多节投稿里的第几节（1 起；单节投稿没有这一项）。
+           和 submission 一起决定 note 的对外 id（见 notePublicId）——
+           同样是白名单重建，漏掉就会让多节的 id 又重到一起，修订会改错节。 */
+        part: Number.isInteger(n.part) && n.part > 0 ? n.part : 0,
         /* 被修订过才有：最后改这条的人与时间。署名（by）保持原作者不动，
            页面显示成「由 A 投稿（B 于 … 修订）」—— 谁写的、谁改的要分得清。 */
         revisedBy: typeof n.revisedBy === 'string' && n.revisedBy ? n.revisedBy : null,
@@ -216,6 +237,8 @@ export function normalizeDoc(slug, raw) {
 
 /**
  * 应用一条审核通过的投稿（就地修改 doc）。
+ * `sub.part`（可选，1 起）= 一次多节投稿里的第几节：写进 note 当 id 的一部分，
+ * 这样「修订这条」改的是这一节，而不是同一次投稿里的第一节。
  * @returns {{field: string, from: unknown, to: unknown}} 改动摘要，用于 git 提交信息
  */
 export function applySubmission(doc, sub) {
@@ -273,6 +296,8 @@ export function applySubmission(doc, sub) {
       submission: sub.id ?? null,
       field: sub.field,
       ...(sub.title ? { title: sub.title } : {}),
+      /* 多节投稿里的节号（见 notePublicId）：同一编号的多条 note 靠它区分 */
+      ...(Number.isInteger(sub.part) && sub.part > 0 ? { part: sub.part } : {}),
     });
     doc.log.push({ field: sub.field, from: null, to: null, by, at, submission: sub.id ?? null });
     return { field: sub.field, from: null, to: sub.value };

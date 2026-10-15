@@ -19,6 +19,7 @@ import {
   isReviseId,
   isTitledField,
   notePayload,
+  revisionTarget,
   titledReviseOf,
   titledSections,
   touch,
@@ -321,28 +322,57 @@ export async function handleSubmit(
    * 在这里用 D1 拦一道（不读 GitHub，就一次查询）：把这张图已有投稿里的节数数一遍
    * （待审 / 待写回 / 已上线都算），加上这次要投的节数，超了就退回去。
    * 为什么按「节」而不是按「条」数：一次投稿可以带 1~3 节（`{ sections: [...] }`）。
+   *
+   * ⚠️ **修订是替换，不占新名额**（2026-10-15 修，站长点的 bug）：
+   * 点「修订这条」改一节会插一条新投稿行、老行仍是 applied —— 直接按行累加的话，
+   * 同一节改两次就吃掉 3 个名额，页面上明明只有 6 节却提示「超过上限」。
+   * 口径改成「**页面上实际有几节**」：
+   *   · 普通投稿行：它有几节算几节；
+   *   · 修订行（带 reviseOf）：目标是**真实存在的普通投稿**时不计数 —— 它替换的是已有那一节；
+   *     目标没了（被删 / 被手改）时按新增算（写回时也是这个降级规则，见 applySubmission）；
+   *   · 这次要投的那一条同理：单节 + 目标在 → 不计入；多节投稿写回时一律按新增（见 flush），
+   *     所以这里也照新增算。
    */
   const sectionItem = items.find((it) => it.field === 'section');
   if (sectionItem) {
     const incoming = titledSections(sectionItem.value);
     const { results: rows } = await env.DB.prepare(
-      `SELECT value FROM submissions
+      `SELECT id, value FROM submissions
         WHERE map_slug = ?1 AND field = 'section' AND status IN ('pending','approved','applied')`
     )
       .bind(slug)
-      .all<{ value: string }>();
+      .all<{ id: number; value: string }>();
+
+    const parsed = (value: unknown): { n: number; reviseOf: string } => {
+      try {
+        const v = JSON.parse(String(value));
+        return { n: titledSections(v).length || 1, reviseOf: titledReviseOf(v) };
+      } catch {
+        return { n: 1, reviseOf: '' };
+      }
+    };
+    /** 这条投稿是不是「替换某条已有投稿」的修订（目标得是真存在、且本身不是修订行） */
+    const isReplacement = (reviseOf: string): boolean => {
+      const target = revisionTarget(reviseOf);
+      if (!target) return false;
+      const row = (rows ?? []).find((r) => Number(r.id) === target.submission);
+      return Boolean(row) && !parsed(row!.value).reviseOf;
+    };
+
     let existing = 0;
     for (const row of rows ?? []) {
-      try {
-        existing += titledSections(JSON.parse(row.value)).length || 1;
-      } catch {
-        existing += 1;
-      }
+      const { n, reviseOf } = parsed(row.value);
+      if (reviseOf && isReplacement(reviseOf)) continue; /* 替换掉的那一节：不计入（它没让页面多出一节） */
+      existing += n;
     }
-    if (existing + incoming.length > MAX_SECTIONS_PER_MAP) {
+    /* 这次要投的：单节修订且目标在 → 也是替换，不占名额；多节一律按新增算 */
+    const replaces = incoming.length === 1 && isReplacement(titledReviseOf(sectionItem.value));
+    const incomingCount = replaces ? 0 : incoming.length;
+
+    if (existing + incomingCount > MAX_SECTIONS_PER_MAP) {
       return fail(
-        `这张图已经有 ${existing} 节「社区整理」，再加 ${incoming.length} 节会超过上限 ${MAX_SECTIONS_PER_MAP} 节。` +
-          '要改已有那几节：在投稿页右侧那一条上点「修订这条」，改完再提交。',
+        `这张图已经有 ${existing} 节「社区整理」，再加 ${incomingCount} 节会超过上限 ${MAX_SECTIONS_PER_MAP} 节。` +
+          '要改已有那几节：在投稿页右侧那一条上点「修订这条」，改完再提交（替换不占名额）。',
         409
       );
     }
@@ -1099,6 +1129,9 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
     const batchId = (row as { batch?: string | null }).batch ?? '';
     /* 社区整理：可能是多节，审核台要能看到每一节的标题 */
     const titles = isTitledField(row.field) ? titledSections(value).map((s) => s.title).filter(Boolean) : [];
+    /* 「社区整理」的修订包是 `{ sections, reviseOf }`，notePayload 不认 —— 单独取一下，
+       审核台才会显示「✏️ 修订稿：通过后替换 #123p2 那一条」 */
+    const reviseOf = (isTitledField(row.field) ? titledReviseOf(value) : '') || (payload?.reviseOf ?? '');
     return {
       ...row,
       ...(batchId ? { batch: batchId, batchCount: batchCounts.get(batchId) ?? 1 } : {}),
@@ -1107,7 +1140,7 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
         : payload
           ? payload.text
           : value,
-      ...(payload?.reviseOf ? { reviseOf: payload.reviseOf } : {}),
+      ...(reviseOf ? { reviseOf } : {}),
       /* 「社区整理」的标题：审核台要能一眼看出这几节都叫什么 */
       ...(titles.length ? { title: titles[0], titles } : payload?.title ? { title: payload.title, titles: [payload.title] } : {}),
       /* 现值没取（由 /api/admin/current 按需拉）；神器 / 道具不需要「一个现值」 */
@@ -1199,8 +1232,10 @@ export async function handleAdminCurrent(request: Request, env: Env, url: URL): 
       /*
        * 正文类字段是追加 / 修订 note，没有「一个现值」。
        * 修订时把**目标那一条的原文**当成现值，审核台就能看到正常的 diff。
+       * 「社区整理」（titledtext）的包是 `{ sections, reviseOf }`，得用 titledReviseOf 取
+       * （notePayload 只认 `{ text, reviseOf }`）—— 否则审核台看不到「这是修订稿」那一条提示。
        */
-      const reviseId = notePayload(value).reviseOf;
+      const reviseId = (isTitledField(row.field) ? titledReviseOf(value) : '') || notePayload(value).reviseOf;
       const notes: Array<{ text?: string }> = doc?.notes ?? [];
       const ni = reviseId ? findNoteIndex(notes, reviseId) : -1;
       current = ni >= 0 ? (notes[ni].text ?? null) : null;
@@ -1544,7 +1579,7 @@ export async function handleAdminFlush(request: Request, env: Env): Promise<Resp
           const secs = titledSections(value);
           const reviseId = titledReviseOf(value);
           let first = true;
-          for (const sec of secs) {
+          for (const [i, sec] of secs.entries()) {
             const change = applySubmission(doc, {
               id: row.id,
               field: row.field,
@@ -1552,6 +1587,9 @@ export async function handleAdminFlush(request: Request, env: Env): Promise<Resp
               title: sec.title,
               /* 修订只带第一条（页面上点「修订这条」时也只带一节） */
               reviseOf: first && secs.length === 1 ? reviseId : '',
+              /* 多节投稿：每节记个节号，note id 才是唯一的（否则「修订这条」会改错节，
+                  见 shared/community-doc.mjs 的 notePublicId） */
+              part: secs.length > 1 ? i + 1 : 0,
               submitter: row.submitter,
               reviewedAt: row.reviewed_at ?? Date.now(),
             });

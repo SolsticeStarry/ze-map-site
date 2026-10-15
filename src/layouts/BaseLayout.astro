@@ -99,6 +99,58 @@ const preloadType = /\.webp$/i.test(preloadImage ?? '')
         if (saved) document.documentElement.dataset.theme = saved;
       })();
     </script>
+
+    {/*
+      部署后的「旧 HTML + 新产物」自愈（2026-10-16 加）。
+
+      背景：构建产物带内容哈希（/_astro/index.astro_astro_type_script_….BfxKMlTz.js），
+      每次部署只保留**当次**那一份，旧哈希的文件会被删掉；而 Cloudflare 的边缘对 HTML
+      还会留一会儿缓存（实测同一路径能取到上一次部署的 HTML）。两者撞在一起就是：
+      页面 HTML 是旧的、它引用的 /_astro/*.js 已经 404 → **整页脚本不执行**
+      （投稿表单点不动、审核台空白）。Ctrl+F5 能救，但普通访客不知道要这么做。
+
+      办法：监听资源加载失败（script / link 的 error 事件不会冒泡，所以用捕获），
+      只要是本站 /_astro/ 下的产物取不到，就**带一个一次性参数重载一次** ——
+      新参数 = 新的缓存键，拿到的一定是当前版本的 HTML。每个路径每次会话只救一次，
+      免得脚本真的没了时无限刷新（所以判断键只用 pathname，不带参数）。
+    */}
+    <script is:inline>
+      (function () {
+        var KEY = 'ze-stale-asset-guard';
+        var path = location.pathname;
+        var done = '';
+        try {
+          done = sessionStorage.getItem(KEY) || '';
+        } catch (e) {
+          /* 隐私模式下 sessionStorage 不可用：那就只靠页面内的标志位防重入 */
+        }
+        var fired = false;
+        window.addEventListener(
+          'error',
+          function (ev) {
+            if (fired || done === path) return;
+            var el = ev.target;
+            if (!el || !el.tagName) return;
+            var tag = el.tagName;
+            if (tag !== 'SCRIPT' && tag !== 'LINK') return;
+            var url = tag === 'SCRIPT' ? el.src : el.href;
+            if (!url || url.indexOf('/_astro/') === -1) return;
+            /* 只认「本站在用的产物」：外链脚本（统计、人机验证）失败不该触发重载 */
+            if (url.indexOf(location.origin) !== 0) return;
+            fired = true;
+            try {
+              sessionStorage.setItem(KEY, path);
+            } catch (e) {
+              /* 存不进去也无所谓：fired 已经挡住这一次 */
+            }
+            var next = new URL(location.href);
+            next.searchParams.set('_fresh', Date.now().toString(36));
+            location.replace(next.toString());
+          },
+          true
+        );
+      })();
+    </script>
   </head>
   <body>
     <div class="bg-grid"></div>
