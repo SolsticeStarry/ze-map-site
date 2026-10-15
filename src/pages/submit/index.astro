@@ -94,18 +94,44 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     <form class="form-card s-card s-form" id="sub-form" hidden>
 
       {/*
-        两种模式（2026-10-13 站长要求分成两件事）：
+        三档模式（2026-10-15 加第三档「社区整理」）：
           · 单项补充 —— 补一格（难度 / 标签 / 视频…），字段选择器在这一档里；
-          · 大面积整理 —— 整篇草稿，独立界面（分节编辑器），**字段选择器里不再出现它**。
-        默认单项；从地图页「📝 大面积整理」进来（?field=draft）直接落在整理档。
+          · 社区整理 —— 给这张图补一节**自己起标题**的小节（一张图最多一篇）；
+          · 大面积整理 —— 整篇草稿，独立界面（分节编辑器）。
+        后两档都**不在字段选择器里出现**（字段规则里 hidden: true），各有自己的入口与界面。
+        从地图页进来时带 ?field=section / ?field=draft 直接落到对应那一档。
       */}
       <div class="mode-tabs" role="tablist" aria-label="投稿方式">
         <button class="mode-tab is-on" type="button" id="mode-tab-single" role="tab">单项补充</button>
+        <button class="mode-tab" type="button" id="mode-tab-section" role="tab">社区整理</button>
         <button class="mode-tab" type="button" id="mode-tab-draft" role="tab">大面积整理</button>
       </div>
 
       {/* 提交成功后点「继续补充这张图的其它项」回到表单时显示（文案由脚本填） */}
       <p class="s-ok-note" id="s-ok-note" hidden />
+
+      {/*
+        社区整理（2026-10-15）：独立成块 + 独立界面（和「大面积整理」并列的第三档）。
+        它不是「补一格字段」而是「加一节自己的内容」，所以不放进字段选择器；
+        编辑器就是同一个 [data-block="section"]，这里只多一块说明与返回按钮。
+      */}
+      <section class="draft-cta is-section" id="section-cta" hidden>
+        <div class="dc-main">
+          <span class="dc-badge">社区整理</span>
+          <h2 class="dc-title">给这张图补一节（标题你自己起）</h2>
+          <p class="dc-sub">
+            放标准字段装不下的长篇见解，例如「彩蛋与机关」「老玩家心得」。
+            通过后会显示在条目末尾，带「社区整理」小标和你的署名 —— <strong>本站正文不会被它盖掉</strong>。
+          </p>
+          <p class="dc-state" id="section-cta-state">
+            规则：一张图最多一篇 · 标题 2~20 字且不能和本站小节同名 · 正文最多 4000 字 · 需要登录。
+          </p>
+        </div>
+        <div class="dc-actions">
+          <button class="btn" type="button" id="section-back">返回单项补充</button>
+          <span class="dc-note" id="section-cta-note"></span>
+        </div>
+      </section>
 
       {/*
         大面积整理（2026-10-13）：独立成块 + 独立界面。
@@ -1363,8 +1389,8 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     const box = document.getElementById('batch-list');
     const wrap = document.getElementById('batch-box');
     if (!box || !wrap) return;
-    /* 大面积整理档里不显示批量块（队列本身留着，切回单项档还在） */
-    wrap.hidden = batchQueue.length === 0 || mode === 'draft';
+    /* 社区整理 / 大面积整理档里不显示批量块（队列本身留着，切回单项档还在） */
+    wrap.hidden = batchQueue.length === 0 || mode !== 'single';
     box.textContent = '';
     batchQueue.forEach((item, i) => {
       const row = document.createElement('div');
@@ -1424,27 +1450,34 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
    * ===== 两种模式：单项补充 / 大面积整理（2026-10-13） =====
    * 「大面积整理」不再只是字段选择器里的一个选项，而是一档独立界面：
    *   · 单项档：显示第 1 步（选地图 + 选字段）与那一个字段的编辑器；
+   *   · 社区整理档（2026-10-15 加）：只显示「社区整理」那一个编辑器（标题 + 正文）；
    *   · 整理档：隐藏第 1 步与所有单项编辑器，只显示草稿的分节编辑器。
-   * ?field=draft 进来直接落在整理档；点「返回单项补充」切回去。
+   * ?field=draft / ?field=section 进来直接落在对应那一档；点「返回单项补充」切回去。
    */
-  type Mode = 'single' | 'draft';
+  type Mode = 'single' | 'section' | 'draft';
   let mode: Mode = 'single';
 
   function applyMode(next: Mode): void {
     mode = next;
     const isDraft = next === 'draft';
-    document.getElementById('mode-tab-single')?.classList.toggle('is-on', !isDraft);
+    const isSection = next === 'section';
+    document.getElementById('mode-tab-single')?.classList.toggle('is-on', next === 'single');
+    document.getElementById('mode-tab-section')?.classList.toggle('is-on', isSection);
     document.getElementById('mode-tab-draft')?.classList.toggle('is-on', isDraft);
     const pick = document.getElementById('step-pick');
-    if (pick) pick.hidden = isDraft;
+    /* 后两档都不是「补一格字段」：把第 1 步（选地图 + 选字段）收起来 */
+    if (pick) pick.hidden = isDraft || isSection;
+    const sectionCta = document.getElementById('section-cta');
+    if (sectionCta) sectionCta.hidden = !isSection;
     document.getElementById('draft-cta')!.hidden = !isDraft;
     const draftField = document.querySelector<HTMLElement>('[data-block="draft"]');
+    const sectionField = document.querySelector<HTMLElement>('[data-block="section"]');
     /*
-     * 「攒几项一起投」只在单项档有意义 —— 大面积整理本身就是一整篇，
-     * 这一档把批量那一块收起来（队列留着，切回单项档还在）。
+     * 「攒几项一起投」只在单项档有意义 —— 社区整理与大面积整理各自就是一篇，
+     * 这两档把批量那一块收起来（队列留着，切回单项档还在）。
      */
     const batchActions = document.getElementById('batch-add')?.closest<HTMLElement>('.s-actions');
-    if (batchActions) batchActions.hidden = isDraft;
+    if (batchActions) batchActions.hidden = isDraft || isSection;
     renderBatchQueue();
     if (isDraft) {
       for (const el of document.querySelectorAll<HTMLElement>('[data-block]')) {
@@ -1453,14 +1486,49 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       if (draftField) draftField.hidden = false;
       renderDraftEditor();
       draftField?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      showField(fieldSel.value);
+      return;
     }
+    if (isSection) {
+      for (const el of document.querySelectorAll<HTMLElement>('[data-block]')) {
+        el.hidden = el.dataset.block !== 'section';
+      }
+      if (sectionField) sectionField.hidden = false;
+      prefill('section');
+      renderSectionCta();
+      sectionField?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    showField(fieldSel.value);
+  }
+
+  /**
+   * 社区整理那档的状态条：没登录就直说（服务端也会拦），已经有这一节的图提示去修订。
+   * 数据来自 /submit/maps.json 的 notes（构建期把已通过的社区投稿合成好的那份）。
+   */
+  function renderSectionCta(): void {
+    const state = document.getElementById('section-cta-state');
+    if (!state) return;
+    const notes = (Array.isArray((mapInfo as Record<string, unknown> | null)?.notes)
+      ? ((mapInfo as Record<string, unknown>).notes as Array<Record<string, unknown>>)
+      : []
+    ).filter((n) => String(n.field ?? '') === 'section');
+    const base = '规则：一张图最多一篇 · 标题 2~20 字且不能和本站小节同名 · 正文最多 4000 字 · 需要登录。';
+    const existing = notes.length
+      ? `这张图已经有一节「${String(notes[0].title ?? '社区整理')}」（${String(notes[0].by ?? '匿名')}）—— 要改就在右侧那一条上点「修订这条」，别新开一篇。`
+      : '';
+    state.textContent = existing ? `${existing}\n${base}` : base;
+    void meOrThrow()
+      .then((r) => {
+        if (!r.user) state.textContent = `${existing ? `${existing}\n` : ''}还没登录：这一项需要登录后才能提交（右上角登录 / 注册，不登录照样能投其它字段）。`;
+      })
+      .catch(() => undefined);
   }
 
   document.getElementById('mode-tab-single')?.addEventListener('click', () => applyMode('single'));
+  document.getElementById('mode-tab-section')?.addEventListener('click', () => applyMode('section'));
   document.getElementById('mode-tab-draft')?.addEventListener('click', () => applyMode('draft'));
   document.getElementById('draft-back')?.addEventListener('click', () => applyMode('single'));
+  document.getElementById('section-back')?.addEventListener('click', () => applyMode('single'));
 
   /* ===== 分节编辑器 =====
      maps.json 里带着这张图现在的小节（title + body）与简介。进来时按它们生成卡片：
@@ -2247,17 +2315,23 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 
       /* ?field=items 可以直接落到某一项；?field=draft 直接落在「大面积整理」档
          （投稿指南、地图页侧栏的两个入口都靠它少点两下） */
+      /*
+       * ?field=<字段> 可以落到某一项；?field=draft / ?field=section 直接落到对应那一档
+       * （投稿指南、地图页侧栏、审核台回链都靠它少点两下）。
+       */
       const want = new URLSearchParams(location.search).get('field') ?? '';
 
       form.hidden = false;
       if (want === 'draft') {
         applyMode('draft');
+      } else if (want === 'section') {
+        applyMode('section');
       } else {
         if (want && Object.prototype.hasOwnProperty.call(FIELD_RULES, want)) fieldSel.value = want;
         applyMode('single');
       }
       renderRefPanel();
-      prefill(want === 'draft' ? 'draft' : fieldSel.value);
+      prefill(want === 'draft' ? 'draft' : want === 'section' ? 'section' : fieldSel.value);
       renderDraftCta();
     })
     .catch(() => {
@@ -2843,35 +2917,37 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
    */
   function prepareSubmission(): SubmissionPlan | null {
     /*
-     * ⚠️ 大面积整理档里**不能**读「要提交哪一项」那个下拉框：draft 是 hidden 字段，
-     * 压根不在下拉的选项里 —— 之前这里直接把 fieldSel.value 当成了要投的字段，
+     * ⚠️ 「大面积整理」与「社区整理」两档里**不能**读「要提交哪一项」那个下拉框：
+     * 这两个是 hidden 字段，压根不在下拉的选项里 —— 之前这里直接把 fieldSel.value 当成了要投的字段，
      * 于是整篇整理会被当成「当前选中的那一项」（比如难度）投出去，草稿根本没提交。
      * 谁在台上，就以谁为准。
      */
-    const inDraft = mode === 'draft';
-    const field = inDraft ? 'draft' : fieldSel.value;
+    const field = mode === 'draft' ? 'draft' : mode === 'section' ? 'section' : fieldSel.value;
     const note = (document.getElementById('f-note') as HTMLTextAreaElement).value;
     const submitter = (document.getElementById('f-submitter') as HTMLInputElement).value;
     const contact = (document.getElementById('f-contact') as HTMLInputElement).value;
     const base = {
       field,
       batchItems: [] as Array<{ field: string; value: unknown }>,
-      /* 整篇草稿不跟别的项拼批：它自己就是一整篇（队列留着，切回单项档还能投） */
-      batched: !inDraft && batchQueue.length >= 1,
+      /* 社区整理与整篇草稿都不跟别的项拼批：它们自己就是一整篇/一整节（队列留着，切回单项档还能投） */
+      batched: mode === 'single' && batchQueue.length >= 1,
       reviseOf: '',
       note,
       submitter,
       contact,
-      queuedIgnored: inDraft ? batchQueue.length : 0,
+      queuedIgnored: mode === 'single' ? 0 : batchQueue.length,
     };
 
-    /* 整篇草稿要求登录（服务端也拦，见 FIELD_RULES.draft.requireLogin）——
-       已经知道没登录就直接说清楚，别让人写完一整篇、点了确认才被退回来。
-       meLoggedIn === null 表示登录接口没通，那种情况交给服务端判断。 */
-    if (inDraft && meLoggedIn === false) {
+    /*
+     * 需要登录的两档（服务端也拦，见 FIELD_RULES 的 requireLogin）——
+     * 已经知道没登录就直接说清楚，别让人写完一整篇、点了确认才被退回来。
+     * meLoggedIn === null 表示登录接口没通，那种情况交给服务端判断。
+     */
+    if ((mode === 'draft' || mode === 'section') && meLoggedIn === false) {
       showError(
-        '整篇草稿需要登录后才能提交（大面积改写要能追到人）—— 右上角登录即可，' +
-          '没账号 10 秒能注册；不登录也照样能投其它字段。'
+        mode === 'draft'
+          ? '整篇草稿需要登录后才能提交（大面积改写要能追到人）—— 右上角登录即可，没账号 10 秒能注册；不登录也照样能投其它字段。'
+          : '「社区整理」需要登录后才能提交（长篇内容要能追到人）—— 右上角登录即可，没账号 10 秒能注册；不登录也照样能投其它字段。'
       );
       return null;
     }

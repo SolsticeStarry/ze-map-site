@@ -3464,6 +3464,13 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .dc-title { margin: 0 0 8px; font-size: 17px; font-weight: 800; color: #f3e7cd; }
+
+/*
+ * 「社区整理」那一档（2026-10-15）：和大面积整理同一套骨架，换一个青色徽章，
+ * 一眼能分清是「补一节」还是「改写整篇」，也不用再抄一份样式。
+ */
+.draft-cta.is-section .dc-badge { color: #04222a; background: linear-gradient(135deg, #7fe3f5, #22d3ee); }
+.draft-cta.is-section .dc-state { white-space: pre-line; }
 .dc-sub { margin: 0; font-size: 13px; line-height: 1.85; color: var(--muted); }
 .dc-sub code { padding: 1px 5px; border-radius: 5px; background: rgba(255, 255, 255, 0.08); font-size: 12px; }
 .dc-state { margin: 8px 0 0; font-size: 12.5px; line-height: 1.7; color: var(--muted); }
@@ -3509,6 +3516,7 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 /* 模式切换（单项补充 / 大面积整理）—— 2026-10-13 */
 .mode-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 0 0 18px;
   padding: 4px;
