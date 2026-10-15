@@ -1940,6 +1940,153 @@ test('站内收件箱：审核 / 写回 / 采纳 / 公告都进收件箱，已�
   });
 });
 
+/* ===== 邮箱页（/inbox/，2026-10-15） =====
+ *
+ * 站长的原话：「能不能单开一个邮箱标签页，里面可以查看每次的公告及个人通告之类的，
+ * 就跟正常的邮箱一样」。页面本身是静态的，功能全在这两个接口上：
+ *   GET  /api/me/notifications?folder=…  四个文件夹（全部/未读/公告/投稿/账号）+ 各自的条数
+ *   POST /api/me/notifications/read      { ids, unread: true } 标为未读（正常邮箱都有这个键）
+ * 这一组用例钉住：分类口径、条数、未读过滤、标为未读，以及「别人的信照样动不了」。
+ */
+test('邮箱页：文件夹分类、各自条数、标为未读', async (t) => {
+  await t.test('folder 分四类，counts 给各档条数（公告 / 投稿 / 账号互斥且加起来是全部）', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '收信的人');
+
+    /* 一条公告 + 一条投稿通知（审核通过）+ 一条账号事件（改名） */
+    await call('/api/admin/announce', { method: 'POST', body: { title: '站长公告一' }, headers: auth });
+    const sub = await call('/api/submit', { method: 'POST', body: submitBody({ map: 'ze_mailbox' }) });
+    await call('/api/admin/review', {
+      method: 'POST',
+      body: { id: sub.data.id, action: 'approve' },
+      headers: auth,
+    });
+    const me = await call('/api/me');
+    await call('/api/admin/accounts', {
+      method: 'POST',
+      body: { id: me.data.user.id, action: 'rename', name: '改了名的收信人' },
+      headers: auth,
+    });
+
+    const all = await call('/api/me/notifications?folder=all');
+    assert.equal(all.status, 200, JSON.stringify(all.data));
+    assert.equal(all.data.folder, 'all');
+    assert.equal(all.data.total, 3, '三封信都在「全部」里');
+    assert.equal(all.data.counts.all, 3);
+    assert.equal(all.data.counts.announce, 1, '公告 1');
+    assert.equal(all.data.counts.mine, 1, '投稿通知 1（审核通过）');
+    assert.equal(all.data.counts.account, 1, '账号事件 1（改名）');
+    assert.equal(all.data.counts.unread, 3);
+    assert.equal(
+      all.data.counts.announce + all.data.counts.mine + all.data.counts.account,
+      all.data.counts.all,
+      '三类互斥，加起来正好是全部'
+    );
+
+    const announce = await call('/api/me/notifications?folder=announce');
+    assert.equal(announce.data.total, 1);
+    assert.equal(announce.data.items[0].title, '站长公告一');
+    assert.equal(announce.data.items[0].broadcast, true);
+
+    const mine = await call('/api/me/notifications?folder=mine');
+    assert.equal(mine.data.total, 1);
+    assert.equal(mine.data.items[0].kind, 'review', '投稿通知 = 审核 / 写回 / 采纳');
+
+    const account = await call('/api/me/notifications?folder=account');
+    assert.equal(account.data.total, 1);
+    assert.equal(account.data.items[0].kind, 'account');
+
+    /* counts 是「全局」的：切到某一档时也要给全（左栏一直要画那几个数字） */
+    assert.equal(mine.data.counts.all, 3, 'counts 与当前档无关');
+    assert.equal(mine.data.counts.announce, 1);
+
+    /* 不认识的 folder 当 all，别 400 —— 前端拼错一个参数不该让整页打不开 */
+    const junk = await call('/api/me/notifications?folder=nonsense');
+    assert.equal(junk.status, 200);
+    assert.equal(junk.data.folder, 'all');
+    assert.equal(junk.data.total, 3);
+  });
+
+  await t.test('未读档：只列未读；标为已读后从这一档消失，条数跟着掉', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '未读测试');
+    for (let i = 0; i < 3; i++) {
+      await call('/api/admin/announce', { method: 'POST', body: { title: `公告 ${i + 1}` }, headers: auth });
+    }
+
+    const unreadFold = await call('/api/me/notifications?folder=unread');
+    assert.equal(unreadFold.data.total, 3);
+    const first = unreadFold.data.items[0];
+
+    await call('/api/me/notifications/read', { method: 'POST', body: { ids: [first.id] } });
+    const after = await call('/api/me/notifications?folder=unread');
+    assert.equal(after.data.total, 2, '读过的不再算未读');
+    assert.ok(
+      !after.data.items.some((x) => x.id === first.id),
+      '读过的那条不在未读档里'
+    );
+    assert.equal(after.data.counts.unread, 2);
+    assert.equal(after.data.counts.all, 3, '「全部」那档照旧三条');
+  });
+
+  await t.test('标为未读：{ ids, unread:true } 把已读的放回未读，红点重新亮起来', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '标未读的人');
+    await call('/api/admin/announce', { method: 'POST', body: { title: '一封公告' }, headers: auth });
+
+    const list = await call('/api/me/notifications');
+    const id = list.data.items[0].id;
+    await call('/api/me/notifications/read', { method: 'POST', body: { all: true } });
+    assert.equal((await call('/api/me/notifications')).data.unread, 0);
+
+    const back = await call('/api/me/notifications/read', { method: 'POST', body: { ids: [id], unread: true } });
+    assert.equal(back.status, 200, JSON.stringify(back.data));
+    assert.equal(back.data.marked, 1, '放回了一条');
+    assert.equal(back.data.unread, 1, '未读数回到 1');
+
+    const after = await call('/api/me/notifications?folder=unread');
+    assert.equal(after.data.total, 1);
+    assert.equal(after.data.items[0].read, false);
+
+    /* 幂等：再标一次不报错，也不会变成 2 条未读 */
+    const again = await call('/api/me/notifications/read', { method: 'POST', body: { ids: [id], unread: true } });
+    assert.equal(again.data.marked, 0);
+    assert.equal(again.data.unread, 1);
+
+    const noIds = await call('/api/me/notifications/read', { method: 'POST', body: { unread: true } });
+    assert.equal(noIds.status, 400, '标为未读要写 ids');
+  });
+
+  await t.test('别人的信还是动不了：folder 里看不到，标未读也标不了', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+
+    await register(call, '甲甲');
+    const sub = await call('/api/submit', { method: 'POST', body: submitBody({ map: 'ze_mailbox2' }) });
+    await call('/api/admin/review', { method: 'POST', body: { id: sub.data.id, action: 'approve' }, headers: auth });
+    const mine = await call('/api/me/notifications?folder=mine');
+    const myId = mine.data.items[0].id;
+    await call('/api/me/notifications/read', { method: 'POST', body: { ids: [myId] } });
+
+    await call('/api/logout', { method: 'POST', body: {} });
+    await register(call, '乙乙');
+    const other = await call('/api/me/notifications?folder=mine');
+    assert.equal(other.data.total, 0, '乙的「投稿通知」里没有甲的信');
+    assert.equal(other.data.counts.mine, 0);
+
+    const tryUnread = await call('/api/me/notifications/read', { method: 'POST', body: { ids: [myId], unread: true } });
+    assert.equal(tryUnread.data.marked, 0, '标不了别人的未读');
+    assert.equal(tryUnread.data.unread, 0);
+  });
+});
+
 /* ===== R2 同源回退（/terr/*）：地形分片与图集图片 =====
  *
  * 为什么值得单测：这条路是**国内部分网络下站点还能用的唯一依靠** ——

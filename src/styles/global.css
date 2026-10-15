@@ -4613,10 +4613,214 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 [data-theme="light"] .acc-level[data-lv="4"] .acc-level-name,
 [data-theme="light"] .acc-level-name[data-lv="4"] { color: #c2410c; }
 
+/* ---------- /inbox/：邮箱（2026-10-15，站长的要求：「单开一个邮箱标签页，跟正常邮箱一样」） ----------
+   三栏：左文件夹 + 个人信息 / 中列表 / 右正文。窄屏叠成一列，点开一条就只看正文（← 回到列表）。
+   页头导航那个「邮箱」标签上的红点也在这里（.nav-dot）。 */
+.main-nav a { display: inline-flex; align-items: center; gap: 6px; }
+.nav-dot {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+}
+.nav-dot[hidden] { display: none; }
+
+.mb-guest { max-width: 560px; margin: 26px auto 0; text-align: center; }
+.mb-guest .acc-actions { justify-content: center; }
+
+.mb-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+.mb-summary { margin: 0; color: var(--muted); font-size: 13px; }
+.mb-tools { display: flex; gap: 8px; }
+.mb-tools .acc-btn { margin: 0; }
+.mb-tools .acc-btn[disabled] { opacity: 0.45; cursor: default; }
+.mb-status { margin: 10px 0 0; color: var(--muted); font-size: 12.5px; }
+.mb-status.is-error { color: #fca5a5; }
+.mb-status[hidden] { display: none; }
+
+.mb-grid {
+  display: grid;
+  grid-template-columns: 196px minmax(0, 330px) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+  align-items: start;
+}
+
+/* ---- 左：文件夹 + 个人信息 ---- */
+.mb-rail { display: grid; gap: 10px; position: sticky; top: 88px; }
+.mb-folders {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.mb-folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.mb-folder:hover { color: var(--text); background: rgba(255, 255, 255, 0.03); }
+.mb-folder.is-on { color: var(--text); background: var(--panel-2); border-color: var(--border-2); }
+.mb-folder-icon { font-size: 13px; }
+.mb-folder-name { flex: 1; min-width: 0; }
+.mb-folder-n {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.mb-folder-n.is-zero { opacity: 0.45; }
+.mb-folder-n.is-hot { background: #ef4444; color: #fff; opacity: 1; }
+
+.mb-me {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 6px 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.mb-me[hidden] { display: none; }
+.mb-me-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-3));
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+}
+.mb-me-id { display: grid; gap: 1px; min-width: 0; }
+.mb-me-id b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-me-id span { color: var(--muted); font-size: 11.5px; }
+.mb-me-link { grid-column: 1 / -1; color: var(--accent-2); font-size: 12.5px; }
+
+/* ---- 中：列表 ---- */
+.mb-list-wrap { border: 1px solid var(--border); border-radius: 14px; background: var(--panel); overflow: hidden; }
+.mb-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--border);
+}
+.mb-list-head b { font-size: 13.5px; }
+.mb-list-note { color: var(--muted); font-size: 12px; }
+.mb-list { list-style: none; margin: 0; padding: 0; max-height: min(64vh, 640px); overflow-y: auto; }
+.mb-item { border-bottom: 1px solid var(--border); }
+.mb-item:last-child { border-bottom: 0; }
+.mb-item-btn { display: block; width: 100%; padding: 11px 13px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.mb-item-btn:hover { background: rgba(255, 255, 255, 0.03); }
+.mb-item.is-on .mb-item-btn { background: rgba(34, 211, 238, 0.08); }
+.mb-item-top { display: flex; align-items: center; gap: 7px; }
+.mb-item-dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-2); }
+.mb-item-dot[hidden] { display: none; }
+.mb-item-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mb-item.is-unread .mb-item-title { font-weight: 800; }
+.mb-item-time { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.mb-item-meta { display: flex; align-items: center; gap: 7px; margin-top: 5px; padding-left: 14px; }
+.mb-item-snippet {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mb-empty { padding: 22px 14px; color: var(--muted); font-size: 12.5px; line-height: 1.9; }
+
+/* 类别小标：只有公告上色（它最需要一眼认出来），其余保持安静 */
+.mb-tag {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.mb-tag.is-announce { color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.08); }
+.mb-tag.is-quiet { opacity: 0.8; }
+
+/* ---- 右：正文 ---- */
+.mb-reader { min-height: 260px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); }
+.mb-reader-empty { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.9; }
+.mb-reader-tags { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mb-reader-no { color: var(--muted); font-size: 11.5px; }
+.mb-reader-title { margin: 10px 0 6px; font-size: 20px; font-weight: 800; line-height: 1.4; }
+.mb-reader-time { margin: 0; color: var(--muted); font-size: 12px; }
+.mb-reader-body { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.mb-reader-text { margin: 0; color: var(--text); font-size: 14px; line-height: 2; white-space: pre-line; overflow-wrap: anywhere; }
+.mb-reader-text.is-quiet { color: var(--muted); }
+.mb-reader-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.mb-reader-actions .acc-btn { margin: 0; }
+.mb-back { display: none; }
+
+[data-theme="light"] .mb-folder:hover { background: rgba(0, 0, 0, 0.03); }
+[data-theme="light"] .mb-folder-n { background: rgba(0, 0, 0, 0.06); }
+[data-theme="light"] .mb-item-btn:hover { background: rgba(0, 0, 0, 0.03); }
+[data-theme="light"] .mb-item.is-on .mb-item-btn { background: rgba(8, 145, 178, 0.09); }
+
+@media (max-width: 1100px) {
+  .mb-grid { grid-template-columns: 176px minmax(0, 1fr); }
+  .mb-reader { grid-column: 1 / -1; }
+}
+
 /* ---------- 窄屏 ---------- */
 @media (max-width: 900px) {
   .acc-perks { grid-template-columns: 1fr; }
   .acc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* 邮箱：叠成一列；点开一条就只看正文，用「← 回到列表」回来（和手机上的邮箱一样） */
+  .mb-grid { grid-template-columns: minmax(0, 1fr); }
+  .mb-rail { position: static; }
+  .mb-folders { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; }
+  .mb-folder { padding: 8px 12px; }
+  .mb-folder-icon { display: none; }
+  .mb-reader { grid-column: auto; }
+  .mb-list { max-height: none; }
+  .mb-grid.is-reading .mb-list-wrap { display: none; }
+  /* 手机上一屏放不下两栏：没点开之前先只看列表，点开才换成正文 */
+  .mb-grid:not(.is-reading) .mb-reader { display: none; }
+  .mb-back { display: inline-flex; }
 }
 @media (max-width: 560px) {
   .acc-hero { padding: 42px 0 6px; }

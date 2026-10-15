@@ -1,0 +1,510 @@
+---
+/**
+ * 邮箱页 —— 站内通知的**完整版**（2026-10-15）。
+ *
+ * 站长要的原话：「能不能单开一个邮箱标签页，里面可以查看每次的公告及个人通告之类的，
+ * 就跟正常的邮箱一样」。在这之前通知只有一个页头铃铛的下拉面板（components/AccountMenu.astro）：
+ * 列表短、只能一条条展开看，翻旧公告要一直点「加载更多」。于是单开一页，按正常邮箱的规矩来：
+ *   左：文件夹（全部 / 未读 / 站长公告 / 投稿通知 / 账号）+ 各自的条数 + 一眼看到自己是谁
+ *   中：这一档的列表（未读点、标题、摘要、时间），点一条
+ *   右：正文（标题、类别、时间、全文、相关投稿号、去看看链接、标为已读 / 标为未读）
+ * 另外有「全部标为已读」「刷新」「加载更多」，↑ / ↓ 可以在列表里上下走。
+ *
+ * 三条约束和账号系统其它部分一致：
+ *   1. **页面照旧是静态的**：这里是静态 HTML + 打开时问一次 /api/me 与 /api/me/notifications，
+ *      没登录就只显示一句「要登录才能看」；
+ *   2. **不登录也能用整站**：这一页只是入口，不挡任何东西（投稿依旧不用登录）；
+ *   3. **正文一律 textContent**：通知里有地图名、审核理由这些用户填的内容，拼 HTML 等于自己开注入口子。
+ *
+ * 样式在 src/styles/global.css 的「邮箱」一节：本页一半节点是脚本动态建的，
+ * 动态节点拿不到 Astro 的作用域 class，样式写在本页里会静默失效。
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="我的邮箱 | ZE 地图资料站"
+  description="站长公告、投稿审核结果、写回上线、草稿被采纳、账号事件都在这里；按文件夹分好，点开就能看全文。"
+>
+  <section class="acc-hero mb-hero">
+    <div class="container">
+      <span class="acc-hero-badge">Community · 通知</span>
+      <h1 class="acc-hero-title">我的<span class="gradient-text">邮箱</span></h1>
+      <p class="acc-hero-sub">
+        站长公告、投稿审核结果、写回上线、草稿被采纳、账号事件都在这里。
+        左边的文件夹分好了类，点开中间一条，右边就是全文 —— 和正常邮箱一个用法。
+      </p>
+    </div>
+  </section>
+
+  <div class="container acc-wrap">
+    <p class="acc-loading" id="mb-loading">
+      <span class="acc-spin" aria-hidden="true"></span>正在读取登录状态…
+    </p>
+
+    {/* ===== 未登录：只说明怎么才能看 ===== */}
+    <div id="mb-guest" hidden>
+      <section class="acc-card mb-guest">
+        <h2 class="acc-h2">邮箱要登录才能看</h2>
+        <p class="acc-hint">
+          通知是发给具体账号的（站长公告发给所有人），得先登录才知道给谁看。
+          不登录照样能投稿 —— 这一页只是「我投过的东西有下文了没有」的地方。
+        </p>
+        <div class="acc-actions">
+          <a class="acc-btn acc-btn-primary" href="/account/" target="_self">去登录 / 注册</a>
+          <a class="acc-btn" href="/submit/" target="_self">直接去投稿</a>
+        </div>
+      </section>
+    </div>
+
+    {/* ===== 已登录：左文件夹 / 中列表 / 右正文 ===== */}
+    <div id="mb-app" hidden>
+      <div class="mb-bar">
+        <p class="mb-summary" id="mb-summary"></p>
+        <div class="mb-tools">
+          <button class="acc-btn" type="button" id="mb-refresh">刷新</button>
+          <button class="acc-btn" type="button" id="mb-all-read">全部标为已读</button>
+        </div>
+      </div>
+      <p class="mb-status" id="mb-status" hidden></p>
+
+      <div class="mb-grid" id="mb-grid">
+        <aside class="mb-rail">
+          <div class="mb-folders" id="mb-folders" role="tablist" aria-label="文件夹"></div>
+          {/* 个人信息（站长要的「可以查看个人信息」）：头像 + 昵称 + 等级，点开是个人主页 */}
+          <div class="mb-me" id="mb-me" hidden>
+            <span class="mb-me-avatar" id="mb-me-avatar">·</span>
+            <span class="mb-me-id">
+              <b id="mb-me-name">—</b>
+              <span id="mb-me-meta"></span>
+            </span>
+            <a class="mb-me-link" href="/account/" target="_self">个人主页 →</a>
+          </div>
+        </aside>
+
+        <section class="mb-list-wrap">
+          <header class="mb-list-head">
+            <b id="mb-folder-name">全部</b>
+            <span class="mb-list-note" id="mb-list-note"></span>
+          </header>
+          <ul class="mb-list" id="mb-list"></ul>
+          <button class="acc-btn acc-btn-block" type="button" id="mb-more" hidden>加载更多</button>
+        </section>
+
+        <section class="mb-reader" id="mb-reader" aria-live="polite"></section>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import {
+    meOrThrow,
+    fetchNotifications,
+    markNotificationsRead,
+    markNotificationsUnread,
+    notifyInboxChanged,
+    ACCOUNT_EVENT,
+    type AccountNotification,
+    type MailFolder,
+  } from '../lib/account-client';
+
+  /* ---------- 元素 ---------- */
+  const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+  const loading = $('mb-loading');
+  const guest = $('mb-guest');
+  const app = $('mb-app');
+  const foldersEl = $('mb-folders');
+  const listEl = $('mb-list');
+  const listNote = $('mb-list-note');
+  const folderName = $('mb-folder-name');
+  const readerEl = $('mb-reader');
+  const moreBtn = $<HTMLButtonElement>('mb-more');
+  const summaryEl = $('mb-summary');
+  const statusEl = $('mb-status');
+  const allReadBtn = $<HTMLButtonElement>('mb-all-read');
+  const refreshBtn = $<HTMLButtonElement>('mb-refresh');
+  const grid = $('mb-grid');
+  const meBox = $('mb-me');
+
+  const PAGE = 20;
+
+  /** 建节点：文本一律走 textContent（通知正文里有用户填的内容） */
+  const mk = (tag: string, cls?: string, text?: string): HTMLElement => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+
+  /**
+   * 文件夹定义：key 与 worker 的 parseFolder 一一对应。
+   * 顺序 = 界面上从上到下的顺序（未读排在最前，和邮箱一样）。
+   */
+  const FOLDERS: Array<{ key: MailFolder; label: string; icon: string; empty: string }> = [
+    { key: 'all', label: '全部', icon: '📬', empty: '邮箱还是空的。投稿通过、写回上线、草稿被采纳，或者站长发公告时，这里就会有信。' },
+    { key: 'unread', label: '未读', icon: '🔵', empty: '没有未读的信 —— 都看过了。' },
+    { key: 'announce', label: '站长公告', icon: '📢', empty: '站长还没发过公告。' },
+    { key: 'mine', label: '投稿通知', icon: '📝', empty: '还没有和你的投稿有关的信：审核结果、写回上线、草稿被采纳都会在这里。' },
+    { key: 'account', label: '账号', icon: '🔑', empty: '没有账号相关的信（改口令、挂称号之类的通知会在这里）。' },
+  ];
+
+  const KIND_LABEL: Record<string, string> = {
+    review: '审核结果',
+    flush: '写回上线',
+    adopt: '草稿被采纳',
+    account: '账号事件',
+    announce: '站长公告',
+  };
+
+  /** 「刚刚 / 12 分钟前 / 3 小时前 / 2 天前 / 2026-10-14」 */
+  function relTime(ts: number): string {
+    const diff = Date.now() - Number(ts);
+    if (!Number.isFinite(diff) || diff < 60_000) return '刚刚';
+    const min = Math.floor(diff / 60_000);
+    if (min < 60) return `${min} 分钟前`;
+    const hour = Math.floor(min / 60);
+    if (hour < 24) return `${hour} 小时前`;
+    const day = Math.floor(hour / 24);
+    if (day < 7) return `${day} 天前`;
+    return new Date(Number(ts)).toLocaleDateString('zh-CN');
+  }
+
+  /** 阅读区里的完整时间：2026-10-15 18:38 */
+  function fullTime(ts: number): string {
+    return new Date(Number(ts)).toLocaleString('zh-CN', { hour12: false });
+  }
+
+  /* ---------- 状态 ---------- */
+  let notes: AccountNotification[] = [];
+  let total = 0;
+  let unread = 0;
+  let counts: Record<MailFolder, number> = { all: 0, unread: 0, announce: 0, mine: 0, account: 0 };
+  let folder: MailFolder = 'all';
+  let selectedId: number | null = null;
+  let busy = false;
+
+  function say(msg: string, isError = false) {
+    statusEl.hidden = !msg;
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('is-error', isError);
+  }
+
+  function folderDef(key: MailFolder) {
+    return FOLDERS.find((f) => f.key === key) ?? FOLDERS[0];
+  }
+
+  /* ---------- 左：文件夹 + 个人信息 ---------- */
+  function paintFolders() {
+    foldersEl.replaceChildren();
+    for (const f of FOLDERS) {
+      const btn = mk('button', `mb-folder${f.key === folder ? ' is-on' : ''}`) as HTMLButtonElement;
+      btn.type = 'button';
+      btn.dataset.folder = f.key;
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', String(f.key === folder));
+      btn.append(mk('span', 'mb-folder-icon', f.icon));
+      btn.append(mk('span', 'mb-folder-name', f.label));
+      const n = counts[f.key] ?? 0;
+      /* 未读数单独上色：扫一眼就知道还有几封没看 */
+      const badge = mk('b', `mb-folder-n${f.key === 'unread' && n > 0 ? ' is-hot' : ''}`, String(n));
+      if (n === 0) badge.classList.add('is-zero');
+      btn.append(badge);
+      btn.onclick = () => {
+        if (busy || folder === f.key) return;
+        folder = f.key;
+        notes = [];
+        selectedId = null;
+        paintFolders();
+        void load(true);
+      };
+      foldersEl.append(btn);
+    }
+  }
+
+  /* ---------- 中：列表 ---------- */
+  function noteRow(n: AccountNotification): HTMLElement {
+    const li = mk('li', `mb-item${n.read ? '' : ' is-unread'}${n.id === selectedId ? ' is-on' : ''}`);
+    li.dataset.id = String(n.id);
+
+    const btn = mk('button', 'mb-item-btn') as HTMLButtonElement;
+    btn.type = 'button';
+    const top = mk('span', 'mb-item-top');
+    const dot = mk('i', 'mb-item-dot');
+    dot.hidden = n.read;
+    top.append(dot);
+    top.append(mk('b', 'mb-item-title', n.title));
+    top.append(mk('span', 'mb-item-time', relTime(n.createdAt)));
+
+    const meta = mk('span', 'mb-item-meta');
+    if (n.broadcast) meta.append(mk('span', 'mb-tag is-announce', '公告'));
+    else meta.append(mk('span', `mb-tag is-${n.kind}`, KIND_LABEL[n.kind] ?? '通知'));
+    /* 摘要：正文压成一行（换行也会被 CSS 吃掉） */
+    meta.append(mk('span', 'mb-item-snippet', (n.body || '').replace(/\s+/g, ' ').slice(0, 60) || '（没有正文）'));
+
+    btn.append(top, meta);
+    btn.onclick = () => openNote(n.id);
+    li.append(btn);
+    return li;
+  }
+
+  function paintList() {
+    listEl.replaceChildren();
+    if (!notes.length) {
+      listEl.append(mk('li', 'mb-empty', folderDef(folder).empty));
+      moreBtn.hidden = true;
+      return;
+    }
+    for (const n of notes) listEl.append(noteRow(n));
+    moreBtn.hidden = notes.length >= total;
+    moreBtn.textContent = `加载更多（还有 ${Math.max(0, total - notes.length)} 条）`;
+  }
+
+  function paintHead() {
+    folderName.textContent = folderDef(folder).label;
+    listNote.textContent = total ? `共 ${total} 条` : '';
+    summaryEl.textContent = counts.all
+      ? `共 ${counts.all} 条 · ${counts.unread} 条未读（公告 ${counts.announce} · 投稿 ${counts.mine} · 账号 ${counts.account}）`
+      : '';
+    allReadBtn.disabled = counts.unread === 0;
+  }
+
+  /* ---------- 右：正文 ---------- */
+  /**
+   * @param autoMark 展开就算已读（点开 / 键盘上下走时为 true）。
+   *   进页面时**默认选中**第一条也走这里，但那时传 false —— 只是打开邮箱，
+   *   不该把最新一条的红点顺手吃掉（那样用户根本来不及看）。
+   */
+  function paintReader(autoMark: boolean) {
+    readerEl.replaceChildren();
+    const n = notes.find((x) => x.id === selectedId) ?? null;
+    if (!n) {
+      readerEl.append(
+        mk('p', 'mb-reader-empty', notes.length ? '从左边挑一条看正文。' : folderDef(folder).empty)
+      );
+      return;
+    }
+
+    const head = mk('header', 'mb-reader-head');
+    const tags = mk('div', 'mb-reader-tags');
+    tags.append(mk('span', `mb-tag is-${n.broadcast ? 'announce' : n.kind}`, n.broadcast ? '站长公告' : KIND_LABEL[n.kind] ?? '通知'));
+    if (n.submissionId) tags.append(mk('span', 'mb-tag is-quiet', `投稿 #${n.submissionId}`));
+    tags.append(mk('span', 'mb-reader-no', `信 #${n.id}`));
+    head.append(tags);
+    head.append(mk('h2', 'mb-reader-title', n.title));
+    head.append(mk('p', 'mb-reader-time', `${fullTime(n.createdAt)}（${relTime(n.createdAt)}）`));
+    readerEl.append(head);
+
+    const body = mk('div', 'mb-reader-body');
+    if (n.body) body.append(mk('p', 'mb-reader-text', n.body));
+    else body.append(mk('p', 'mb-reader-text is-quiet', '（这条没有正文）'));
+    readerEl.append(body);
+
+    const actions = mk('div', 'mb-reader-actions');
+    if (n.link) {
+      const go = mk('a', 'acc-btn acc-btn-primary', '去看看 →') as HTMLAnchorElement;
+      go.href = n.link;
+      /* 站内链接用 _self（本站默认新开标签页），外链新开 */
+      if (n.link.startsWith('/')) go.target = '_self';
+      else go.rel = 'noopener';
+      actions.append(go);
+    }
+    const toggle = mk('button', 'acc-btn', n.read ? '标为未读' : '标为已读') as HTMLButtonElement;
+    toggle.type = 'button';
+    toggle.onclick = () => {
+      if (n.read) void setUnread(n.id);
+      else void markRead(n.id);
+    };
+    actions.append(toggle);
+    const back = mk('button', 'acc-btn mb-back', '← 回到列表') as HTMLButtonElement;
+    back.type = 'button';
+    back.onclick = () => {
+      grid.classList.remove('is-reading');
+      listEl.querySelector<HTMLElement>(`.mb-item[data-id="${n.id}"]`)?.scrollIntoView({ block: 'center' });
+    };
+    actions.append(back);
+    readerEl.append(actions);
+
+    /* 没读过的：点开就算读了（和正常邮箱一致）；失败只提示，不改本地状态 */
+    if (autoMark && !n.read) void markRead(n.id);
+  }
+
+  /** 选中一条并重画正文（列表本身不重建，只挪高亮） */
+  function select(id: number | null, autoMark = true) {
+    selectedId = id;
+    for (const li of listEl.querySelectorAll<HTMLElement>('.mb-item')) {
+      li.classList.toggle('is-on', Number(li.dataset.id) === id);
+    }
+    paintReader(autoMark);
+  }
+
+  /* ---------- 与接口打交道 ---------- */
+  async function markRead(id: number) {
+    const n = notes.find((x) => x.id === id);
+    if (!n || n.read) return;
+    /* 先动本地（界面立刻反应），再同步服务端；失败把未读还原，别骗人 */
+    n.read = true;
+    counts.unread = Math.max(0, counts.unread - 1);
+    unread = counts.unread;
+    if (folder === 'unread') {
+      /* 在「未读」这一档里，读完就从列表里走开（和邮箱一样） */
+      notes = notes.filter((x) => x.id !== id);
+      total = Math.max(0, total - 1);
+      paintList();
+      if (selectedId === id) select(notes[0]?.id ?? null, false);
+      else paintReader(false);
+    } else {
+      paintList();
+      select(id, false);
+    }
+    paintFolders();
+    paintHead();
+    try {
+      const r = await markNotificationsRead({ ids: [id] });
+      unread = r.unread;
+      counts.unread = r.unread;
+      paintFolders();
+      paintHead();
+      notifyInboxChanged(unread);
+    } catch {
+      n.read = false;
+      counts.unread = unread + 1;
+      paintList();
+      paintReader(false);
+      paintFolders();
+      paintHead();
+      say('「已读」没同步上（接口没通）—— 刷新一下再看看', true);
+    }
+  }
+
+  async function setUnread(id: number) {
+    const n = notes.find((x) => x.id === id);
+    if (!n || !n.read) return;
+    try {
+      const r = await markNotificationsUnread([id]);
+      n.read = false;
+      unread = r.unread;
+      counts.unread = r.unread;
+      paintList();
+      select(id, false);
+      paintFolders();
+      paintHead();
+      notifyInboxChanged(unread);
+      say('已标为未读 —— 红点会重新亮起来');
+    } catch {
+      say('标为未读失败（接口没通），稍后再试', true);
+    }
+  }
+
+  /** 点开一条：选中 + 标为已读（paintReader 里会去标） */
+  function openNote(id: number) {
+    grid.classList.add('is-reading');
+    select(id, true);
+  }
+
+  async function load(reset: boolean): Promise<void> {
+    if (busy) return;
+    busy = true;
+    say('');
+    if (reset) {
+      listEl.replaceChildren(mk('li', 'mb-empty', '读取中…'));
+      readerEl.replaceChildren(mk('p', 'mb-reader-empty', '读取中…'));
+    }
+    try {
+      const page = await fetchNotifications(reset ? 0 : notes.length, PAGE, folder);
+      notes = reset ? page.items : [...notes, ...page.items];
+      total = page.total;
+      unread = page.unread;
+      if (page.counts) counts = page.counts;
+      /* 默认选中第一条（**不**顺手标已读：只是打开页面不该把红点吃掉） */
+      if (reset) selectedId = notes.length ? notes[0].id : null;
+      paintFolders();
+      paintHead();
+      paintList();
+      /* 默认选中第一条但**不标已读**（见 paintReader 的说明） */
+      paintReader(false);
+      /* 页头铃铛 / 导航红点跟着本次结果走（读了信、标了未读都会到这儿） */
+      notifyInboxChanged(unread);
+    } catch {
+      say('邮箱没读到（接口没通），稍后重试', true);
+      listEl.replaceChildren(mk('li', 'mb-empty', '没读到 —— 点右上「刷新」再试一次。'));
+      readerEl.replaceChildren();
+      moreBtn.hidden = true;
+    } finally {
+      busy = false;
+    }
+  }
+
+  /* ---------- 个人信息（左栏底部） ---------- */
+  function paintMe(user: Awaited<ReturnType<typeof meOrThrow>>['user']) {
+    if (!user) return;
+    meBox.hidden = false;
+    $('mb-me-avatar').textContent = [...user.name.trim()][0] ?? '·';
+    $('mb-me-name').textContent = user.name;
+    $('mb-me-meta').textContent = `${user.level} · 已通过 ${user.approved} 条`;
+  }
+
+  /* ---------- 工具条 ---------- */
+  allReadBtn.onclick = async () => {
+    if (busy || counts.unread === 0) return;
+    busy = true;
+    say('正在标记…');
+    try {
+      await markNotificationsRead({ all: true });
+      busy = false;
+      await load(true);
+      say('全部标为已读了');
+    } catch {
+      busy = false;
+      say('标记失败（接口没通），稍后再试', true);
+    }
+  };
+
+  refreshBtn.onclick = () => void load(true);
+  moreBtn.onclick = () => void load(false);
+
+  /* ↑ / ↓（或 k / j）在列表里上下走；选中即打开，和邮箱一样 */
+  document.addEventListener('keydown', (e) => {
+    if (app.hidden) return;
+    const t = e.target as HTMLElement | null;
+    if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    const back = e.key === 'ArrowUp' || e.key === 'k';
+    const fwd = e.key === 'ArrowDown' || e.key === 'j';
+    if (!back && !fwd) return;
+    if (!notes.length) return;
+    e.preventDefault();
+    const idx = notes.findIndex((n) => n.id === selectedId);
+    const next = idx < 0 ? 0 : Math.min(notes.length - 1, Math.max(0, idx + (fwd ? 1 : -1)));
+    if (notes[next].id === selectedId) return;
+    openNote(notes[next].id);
+    listEl.querySelector<HTMLElement>(`.mb-item[data-id="${notes[next].id}"]`)?.scrollIntoView({ block: 'nearest' });
+  });
+
+  /* 别的地方登录 / 退出：这一页跟着切（退出就回到那句说明） */
+  document.addEventListener(ACCOUNT_EVENT, () => void boot());
+
+  async function boot(): Promise<void> {
+    let data: Awaited<ReturnType<typeof meOrThrow>>;
+    try {
+      data = await meOrThrow();
+    } catch {
+      loading.hidden = true;
+      guest.hidden = false;
+      app.hidden = true;
+      return;
+    }
+    loading.hidden = true;
+    const user = data.user;
+    guest.hidden = Boolean(user);
+    app.hidden = !user;
+    if (!user) {
+      guest.hidden = false;
+      return;
+    }
+    paintMe(user);
+    paintFolders();
+    await load(true);
+  }
+
+  void boot();
+</script>

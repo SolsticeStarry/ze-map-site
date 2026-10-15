@@ -168,8 +168,8 @@ wrangler secret put GITHUB_OAUTH_CLIENT_SECRET
 | `GET /api/me` | `{user, submissions, counts}`；未登录 `user: null`，**200 而不是 401**（前端不必分支出错态） |
 | `POST /api/password` | 旧口令 + 新口令；旧 Cookie 全部作废，给当前设备续一个新 Cookie |
 | `POST /api/profile` | 改昵称 / 联系方式；昵称只影响**以后**的署名，历史投稿不改 |
-| `GET /api/me/notifications` | 收件箱（`?limit=&offset=`）：`{items, unread, total}`；未登录 401 |
-| `POST /api/me/notifications/read` | 标已读：`{ids:[…]}` 或 `{all:true}`；返回 `{marked, unread}`，幂等 |
+| `GET /api/me/notifications` | 收件箱 / 邮箱（`?limit=&offset=&folder=`）：`{items, unread, total, folder, counts}`；未登录 401 |
+| `POST /api/me/notifications/read` | 标已读：`{ids:[…]}` 或 `{all:true}`；标未读：`{ids:[…], unread:true}`；返回 `{marked, unread}`，幂等 |
 
 `counts` 是个人页那四个数字块用的：`{pending, approved, applied, rejected}`，
 一条 SQL `GROUP BY status` 数出来。口径与 `user.approved` / `user.rejected` **不同**：
@@ -182,10 +182,33 @@ wrangler secret put GITHUB_OAUTH_CLIENT_SECRET
 `worker/index.ts` 的 `fetch` 外面包了一层 try/catch：任何没接住的异常现在回 **JSON 500**
 （以前是 Cloudflare 的 HTML 错误页，前端 `.json()` 直接报「请求失败」）。
 
-## 站内收件箱（2026-10-14 加）
+## 站内收件箱（2026-10-14 加）与邮箱页（2026-10-15 加）
 
 页头账号按钮**左边**多了一个小铃铛（登录后才有）：有未读就亮红点（数字，>9 显示 `9+`），
 点开是收件箱面板 —— 逐条点开看细节（正文 + 「去看看」链接），也能「全部已读」。
+面板最底下有「**在邮箱里打开 →**」：完整版在 **`/inbox/`**（顶栏导航里也有「邮箱」这一项，
+同样是登录后才出现，带同一个未读红点）。
+
+### 邮箱页 `/inbox/`（站长的要求：「单开一个邮箱标签页，跟正常邮箱一样」）
+
+静态页 + 两个接口，三栏：
+
+| 位置 | 内容 |
+|---|---|
+| 左 | 文件夹：**全部 / 未读 / 站长公告 / 投稿通知 / 账号**，各带条数（未读那档的数字标红）；底下一张个人信息卡（头像 + 昵称 + 等级 + 已通过条数 → 个人主页） |
+| 中 | 这一档的列表：未读圆点、标题、类别小标、摘要、相对时间；点一条看正文；底下「加载更多」 |
+| 右 | 正文：类别 + 投稿号 + 信 #id、标题、完整时间、全文（保留换行）、「去看看 →」、**标为已读 / 标为未读**、窄屏下的「← 回到列表」 |
+
+- 顶部还有「刷新」「全部标为已读」，`↑`/`↓`（或 `k`/`j`）能在列表里上下走。
+- **进页面只是选中第一条、不标已读**（否则一打开红点就没了）；真正点开才算读。
+- 在「未读」这一档里读完的信会从列表里走开（和邮箱一样），「标为未读」能把它放回来。
+- 读了信立刻广播 `NOTIFY_EVENT`（`src/lib/account-client.ts`），页头铃铛与导航红点跟着掉，
+  不用等下一个 2 分钟轮询。
+
+`folder` 的分类口径（`worker/notifications.ts` 的 `parseFolder` / `folderWhere`，SQL 片段共用一份）：
+`announce` = `user_id IS NULL`；`mine` = `kind IN ('review','flush','adopt')`；
+`account` = 其余私信；`unread` = `read_at IS NULL`（跨分类）。不认识的 `folder` 一律当 `all`（不 400）。
+`counts` 是**全局**的（与当前档无关），一条 `GROUP BY` 算出来，左栏一直有数可画。
 
 **谁往里写**（全部是服务端自动的，`worker/notifications.ts` 的 `pushNotification`）：
 

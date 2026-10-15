@@ -173,7 +173,30 @@ interface NotifRow {
 const visible = `(n.user_id = ?1 OR n.user_id IS NULL)`;
 
 /**
- * GET /api/me/notifications?limit=10&offset=0 —— 我的收件箱
+ * 邮箱（2026-10-15 加）的四个「文件夹」。全部按 kind 归类，不需要额外的表：
+ *   announce 站长公告（user_id 为空那条） / mine 投稿相关（审核结果、写回上线、草稿被采纳）
+ *   account 账号事件（停用、恢复、重置口令、改名、挂称号…） / unread 未读（跨所有分类）
+ * 用 SQL 片段而不是再查一遍：列表、计数、标已读都共用同一份定义，免得三处漂移。
+ */
+export type MailFolder = 'all' | 'unread' | 'announce' | 'mine' | 'account';
+
+const MINE_KINDS = `('review','flush','adopt')`;
+
+export function parseFolder(raw: string | null): MailFolder {
+  const v = (raw ?? '').trim();
+  return v === 'unread' || v === 'announce' || v === 'mine' || v === 'account' ? v : 'all';
+}
+
+function folderWhere(folder: MailFolder): string {
+  if (folder === 'unread') return `r.read_at IS NULL`;
+  if (folder === 'announce') return `n.user_id IS NULL`;
+  if (folder === 'mine') return `n.user_id IS NOT NULL AND n.kind IN ${MINE_KINDS}`;
+  if (folder === 'account') return `n.user_id IS NOT NULL AND n.kind NOT IN ${MINE_KINDS}`;
+  return `1 = 1`;
+}
+
+/**
+ * GET /api/me/notifications?limit=10&offset=0&folder=all —— 我的收件箱
  *
  * 登录态由调用方（worker/index.ts）先解析好再传进来：这样本文件不必 import auth.ts，
  * 避免和「auth.ts 里写账号类通知」形成循环依赖。
@@ -185,12 +208,14 @@ export async function handleMyNotifications(env: Env, url: URL, userId: number):
   const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, MAX_LIMIT) : 10;
   const offsetRaw = Number(url.searchParams.get('offset') ?? 0);
   const offset = Number.isInteger(offsetRaw) && offsetRaw > 0 ? Math.min(offsetRaw, 100000) : 0;
+  const folder = parseFolder(url.searchParams.get('folder'));
+  const scope = folderWhere(folder);
 
   const { results } = await env.DB.prepare(
     `SELECT n.id, n.user_id, n.kind, n.title, n.body, n.link, n.submission_id, n.created_at, r.read_at
        FROM notifications n
        LEFT JOIN notification_reads r ON r.notification_id = n.id AND r.user_id = ?1
-      WHERE ${visible}
+      WHERE ${visible} AND ${scope}
       ORDER BY n.created_at DESC, n.id DESC
       LIMIT ?2 OFFSET ?3`
   )
@@ -205,10 +230,31 @@ export async function handleMyNotifications(env: Env, url: URL, userId: number):
     .bind(userId)
     .first<{ n: number }>();
 
-  const totalRow = await env.DB.prepare(`SELECT COUNT(*) AS n FROM notifications n WHERE ${visible}`)
+  /* 当前这一档的总条数：翻页靠它（页头铃铛不带 folder，拿到的还是「全部」） */
+  const totalRow = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM notifications n
+       LEFT JOIN notification_reads r ON r.notification_id = n.id AND r.user_id = ?1
+      WHERE ${visible} AND ${scope}`
+  )
     .bind(userId)
     .first<{ n: number }>();
 
+  /*
+   * 邮箱左侧那几档各自的条数：一条 GROUP BY 拿全（三种情况互斥，加起来正好是全部）。
+   * 不用查四次 —— 收件箱这页一打开就要画rail，别为它打四个来回。
+   */
+  const countsRow = await env.DB.prepare(
+    `SELECT
+       COUNT(*) AS all_n,
+       SUM(CASE WHEN n.user_id IS NULL THEN 1 ELSE 0 END) AS announce,
+       SUM(CASE WHEN n.user_id IS NOT NULL AND n.kind IN ${MINE_KINDS} THEN 1 ELSE 0 END) AS mine,
+       SUM(CASE WHEN n.user_id IS NOT NULL AND n.kind NOT IN ${MINE_KINDS} THEN 1 ELSE 0 END) AS account
+     FROM notifications n WHERE ${visible}`
+  )
+    .bind(userId)
+    .first<{ all_n: number; announce: number; mine: number; account: number }>();
+
+  const unread = Number(unreadRow?.n ?? 0);
   return json({
     ok: true,
     items: (results ?? []).map((r) => ({
@@ -223,18 +269,29 @@ export async function handleMyNotifications(env: Env, url: URL, userId: number):
       createdAt: r.created_at,
       read: r.read_at !== null,
     })),
-    unread: Number(unreadRow?.n ?? 0),
+    unread,
     total: Number(totalRow?.n ?? 0),
     limit,
     offset,
+    folder,
+    counts: {
+      all: Number(countsRow?.all_n ?? 0),
+      unread,
+      announce: Number(countsRow?.announce ?? 0),
+      mine: Number(countsRow?.mine ?? 0),
+      account: Number(countsRow?.account ?? 0),
+    },
   });
 }
 
 /**
- * POST /api/me/notifications/read  body: { ids: [1,2] } 或 { all: true }
+ * POST /api/me/notifications/read  body: { ids: [1,2] } 或 { all: true } 或 { ids: [...], unread: true }
  *
  * 已读 = 在 notification_reads 里插一行（主键 user_id+notification_id，重复插是 OR IGNORE，幂等）。
  * 只能标记**自己看得到**的那些（自己的 + 公告）—— 别人的私信即使猜到 id 也插不进去。
+ *
+ * `unread: true`（2026-10-15 邮箱加）= 反过来，把这几条**删回未读**：
+ * 正常邮箱都有「标为未读」，用来提醒自己「这条还要再看一眼」。
  */
 export async function handleNotificationsRead(request: Request, env: Env, userId: number): Promise<Response> {
   const parsed = await readJsonBody(request, 4096);
@@ -243,9 +300,23 @@ export async function handleNotificationsRead(request: Request, env: Env, userId
 
   const now = Date.now();
   const all = parsed.body.all === true;
+  const toUnread = parsed.body.unread === true;
+  const ids = Array.isArray(parsed.body.ids)
+    ? [...new Set(parsed.body.ids.map((v: unknown) => Number(v)).filter((n: number) => Number.isInteger(n) && n > 0))]
+    : [];
   let marked = 0;
 
-  if (all) {
+  if (toUnread) {
+    if (!ids.length) return fail('标为未读要写 ids');
+    if (ids.length > 100) return fail('一次最多标 100 条');
+    const holes = ids.map((_, i) => `?${i + 2}`).join(',');
+    const res = await env.DB.prepare(
+      `DELETE FROM notification_reads WHERE user_id = ?1 AND notification_id IN (${holes})`
+    )
+      .bind(userId, ...ids)
+      .run();
+    marked = runMeta(res).changes;
+  } else if (all) {
     /*
      * 一条语句把「现在看得见的全部」标成已读：OR IGNORE 让已经读过的那几行保留原来的 read_at。
      * 只影响**此刻已存在**的通知（之后来的新通知照旧是未读）。
@@ -258,9 +329,6 @@ export async function handleNotificationsRead(request: Request, env: Env, userId
       .run();
     marked = runMeta(res).changes;
   } else {
-    const ids = Array.isArray(parsed.body.ids)
-      ? [...new Set(parsed.body.ids.map((v: unknown) => Number(v)).filter((n: number) => Number.isInteger(n) && n > 0))]
-      : [];
     if (!ids.length) return fail('要写 ids 或 all');
     if (ids.length > 100) return fail('一次最多标 100 条');
     const holes = ids.map((_, i) => `?${i + 2}`).join(',');

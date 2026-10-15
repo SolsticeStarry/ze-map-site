@@ -94,10 +94,22 @@ export interface AccountMe {
 /** 登录状态变了（登录 / 注册 / 退出）时广播，页面上的其它块据此重画 */
 export const ACCOUNT_EVENT = 'ze-account-changed';
 
+/**
+ * 未读数变了（2026-10-15 邮箱加）时广播。
+ * 场景：在 /inbox/ 里读了一条信，页头那个铃铛／导航「邮箱」标签上的红点得立刻跟着掉 ——
+ * 否则要等下一个 2 分钟的轮询，看着就像「读了没生效」。
+ * detail.unread 有值就直接用它（省一次请求）；没值就让页头自己去问一次。
+ */
+export const NOTIFY_EVENT = 'ze-notify-changed';
+
 export function notifyChanged(): void {
   lite = null;
   full = null;
   document.dispatchEvent(new CustomEvent(ACCOUNT_EVENT));
+}
+
+export function notifyInboxChanged(unread?: number): void {
+  document.dispatchEvent(new CustomEvent(NOTIFY_EVENT, { detail: { unread } }));
 }
 
 const EMPTY: AccountMe = {
@@ -182,14 +194,25 @@ export interface NotificationPage {
   total: number;
   limit: number;
   offset: number;
+  /** 这一页属于哪个文件夹（服务端原样回，默认 all） */
+  folder?: MailFolder;
+  /** 左侧几档各自的条数（邮箱用；收件箱面板只看 unread/total） */
+  counts?: Record<MailFolder, number>;
 }
+
+/**
+ * 邮箱的文件夹（2026-10-15 加，与 worker/notifications.ts 的 parseFolder 一一对应）：
+ *   all 全部 / unread 未读 / announce 站长公告 / mine 投稿通知 / account 账号事件
+ */
+export type MailFolder = 'all' | 'unread' | 'announce' | 'mine' | 'account';
 
 /**
  * 取收件箱的一页。**接口不通就抛**（调用方决定是显示红点还是静默）：
  * 页头铃铛只想拿 unread，所以允许 limit=1。
  */
-export async function fetchNotifications(offset = 0, limit = 10): Promise<NotificationPage> {
-  const res = await fetch(`/api/me/notifications?limit=${limit}&offset=${offset}`);
+export async function fetchNotifications(offset = 0, limit = 10, folder: MailFolder = 'all'): Promise<NotificationPage> {
+  const qs = new URLSearchParams({ limit: String(limit), offset: String(offset), folder });
+  const res = await fetch(`/api/me/notifications?${qs.toString()}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = (await res.json()) as Partial<NotificationPage>;
   return {
@@ -198,6 +221,8 @@ export async function fetchNotifications(offset = 0, limit = 10): Promise<Notifi
     total: Number(data.total ?? 0),
     limit: Number(data.limit ?? limit),
     offset: Number(data.offset ?? offset),
+    folder: data.folder ?? folder,
+    counts: data.counts,
   };
 }
 
@@ -205,6 +230,22 @@ export async function fetchNotifications(offset = 0, limit = 10): Promise<Notifi
 export async function markNotificationsRead(
   payload: { ids?: number[]; all?: boolean }
 ): Promise<{ marked: number; unread: number }> {
+  return postRead(payload);
+}
+
+/**
+ * 标为未读（2026-10-15 邮箱加）：正常邮箱都有这个键 ——
+ * 「这条我看了但还得再处理」，先放回未读，红点会重新亮起来。
+ */
+export async function markNotificationsUnread(ids: number[]): Promise<{ marked: number; unread: number }> {
+  return postRead({ ids, unread: true });
+}
+
+async function postRead(payload: {
+  ids?: number[];
+  all?: boolean;
+  unread?: boolean;
+}): Promise<{ marked: number; unread: number }> {
   const res = await fetch('/api/me/notifications/read', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

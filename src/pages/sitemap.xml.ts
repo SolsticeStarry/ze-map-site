@@ -7,6 +7,7 @@ import { getCollection } from 'astro:content';
  * 「特别感谢」（/thanks/）是 2026-10-11 加进来的：那页列着已同意收录视频的 UP 主，
  * 被收录的人多半会去搜自己的名字 —— 让搜索引擎早点拿到它。
  * 账号页（/account/）**故意不进**：对爬虫来说那是一张空壳（内容要登录才有）。
+ * 邮箱页（/inbox/，2026-10-15 加）同理，也不进 —— 它比账号页更是空壳（没登录只有一句说明）。
  */
 export const GET: APIRoute = async ({ site }) => {
   const base = (site?.href ?? 'https://ze-map.cn/').replace(/\/+$/, '');

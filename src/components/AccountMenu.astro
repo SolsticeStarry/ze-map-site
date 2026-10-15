@@ -34,6 +34,8 @@ import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
     <p class="am-inbox-hint" id="am-inbox-hint"></p>
     <div class="am-inbox-list" id="am-inbox-list"></div>
     <button class="acc-btn acc-btn-block" type="button" id="am-inbox-more" hidden>加载更多</button>
+    {/* 面板只够扫一眼：完整版在 /inbox/（左文件夹 / 中列表 / 右正文，2026-10-15 加） */}
+    <a class="am-inbox-open" href="/inbox/" target="_self">在邮箱里打开 →</a>
   </div>
 </div>
 
@@ -135,6 +137,7 @@ import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
   import {
     ACCOUNT_EVENT,
     BELL_ICON,
+    NOTIFY_EVENT,
     PERSON_ICON,
     fetchNotifications,
     markNotificationsRead,
@@ -236,6 +239,12 @@ import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
     }
     if (bellBtn) {
       bellBtn.title = noteUnread > 0 ? `收件箱（${noteUnread} 条未读）` : '收件箱';
+    }
+    /* 导航里的「邮箱」标签（2026-10-15）：同一个未读数，登录后才显示 */
+    const navDot = document.getElementById('nav-inbox-dot');
+    if (navDot) {
+      navDot.hidden = noteUnread <= 0;
+      navDot.textContent = noteUnread > 9 ? '9+' : String(noteUnread);
     }
   }
 
@@ -381,6 +390,9 @@ import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
     /* 收件箱铃铛：只有登录后才显示；退出登录时把红点与列表一起清掉 */
     logged = Boolean(user);
     if (bellWrap) bellWrap.hidden = !user;
+    /* 导航里的「邮箱」标签同一个道理：没登录时它只会是一页空的说明，不如不显示 */
+    const navInbox = document.getElementById('nav-inbox');
+    if (navInbox) navInbox.hidden = !user;
     if (!user) {
       noteUnread = 0;
       noteTotal = 0;
@@ -625,6 +637,17 @@ import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
   document.addEventListener(ACCOUNT_EVENT, () => {
     loaded = false;
     void load();
+  });
+
+  /* 邮箱页读了信：红点立刻跟着掉（detail 里带未读数就不用再问一次服务端） */
+  document.addEventListener(NOTIFY_EVENT, (e) => {
+    const n = Number((e as CustomEvent<{ unread?: number }>).detail?.unread);
+    if (Number.isFinite(n) && n >= 0) {
+      noteUnread = n;
+      paintDot();
+    } else {
+      void refreshUnread();
+    }
   });
 
   /* 进页面就先问一次：登录过的人一进来就该看到自己的头像（未登录时这一步几乎无成本） */

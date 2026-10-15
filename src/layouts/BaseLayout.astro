@@ -134,6 +134,14 @@ const preloadType = /\.webp$/i.test(preloadImage ?? '')
           <a href="/tags/">标签</a>
           <a href="/contribute/">投稿</a>
           {/*
+            邮箱（2026-10-15）：站内通知的完整版页面（左文件夹 / 中列表 / 右正文）。
+            默认 hidden —— 通知是发给账号的，没登录看了也是空的；
+            components/AccountMenu.astro 读到登录状态后把它放出来（并在这里挂未读红点）。
+          */}
+          <a href="/inbox/" id="nav-inbox" target="_self" hidden>
+            邮箱<span class="nav-dot" id="nav-inbox-dot" hidden></span>
+          </a>
+          {/*
             「账号」原来在这里当第 5 个导航项 —— 2026-10-11 改成页头最右上角的图标入口
             （components/AccountMenu.astro）：点开先是登录、没有账号再注册，
             这也更接近大家对「正常网站」的预期。导航回到 5 项。
