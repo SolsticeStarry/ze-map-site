@@ -104,10 +104,16 @@ const sizeText = typeof size === 'number' && size > 0
 const noteField = (n: { field?: string | null }) => n.field ?? 'body';
 const notesOf = (field: string) => communityNotes.filter((n: { field?: string | null }) => noteField(n) === field);
 /** 已经单独成块的字段；不在这个集合里的一律进「社区补充」 */
-const KNOWN_NOTE_FIELDS = ['summary', 'guide', 'story'];
+const KNOWN_NOTE_FIELDS = ['summary', 'guide', 'story', 'section'];
 const summaryNotes = notesOf('summary');
 const guideNotes = notesOf('guide');
 const storyNotes = notesOf('story');
+/*
+ * 「社区整理」（2026-10-15 加）：投稿人**自己起标题**的一节。
+ * 和 story / guide 一样是社区块（压不过本站正文），区别只是标题由他定；
+ * 服务端已经拦住「一张图最多一篇」，页面这层只负责渲染标题 + 署名。
+ */
+const sectionNotes = notesOf('section') as Array<NoteMeta & { text: string; title?: string | null }>;
 const otherNotes = communityNotes.filter((n: { field?: string | null }) => !KNOWN_NOTE_FIELDS.includes(noteField(n)));
 /*
  * 社区投的「简介」只在**本站还没写简介**的图上显示（hasSummary 由生成器写在 frontmatter，
@@ -391,6 +397,23 @@ const related = all
         刻意放在所有本站内容之后、同类地图之前 —— 位置本身就在说「这是备选稿，不是本站正文」；
         横幅也写死了「未采纳」，免得读者以为这就是本站结论。
       */}
+      {/*
+        社区整理（2026-10-15）：投稿人自己起标题的一节，位置固定在**其它社区块之后**、
+        「社区整理版（未采纳）」草稿之前 —— 它属于「本站条目 + 一节社区内容」，
+        不是备选稿，但仍然带「社区整理」小标，读者一眼能看出不是本站正文。
+        标题由投稿人定（服务端已禁止与本站小节重名），正文渲染规则与 story / guide 一样。
+      */}
+      {sectionNotes.map((n) => (
+        <section class="community-block is-section">
+          <h2>
+            {n.title || '社区整理'}
+            <span class="community-badge">社区整理</span>
+          </h2>
+          <GuideNote slug={entry.id} text={n.text} />
+          <p class="community-note-by">{noteBy(n)}</p>
+        </section>
+      ))}
+
       {draftParsed && (
         <section class="draft-block">
           <h2>社区整理版（未采纳）</h2>

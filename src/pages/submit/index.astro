@@ -248,6 +248,34 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
                   <p class="revise-bar" id={`revise-${f.key}`} hidden />
                   <textarea id={`f-in-${f.key}`} data-input={f.key} rows="8" />
                 </div>
+              ) : f.kind === 'titledtext' ? (
+                /*
+                  社区整理（2026-10-15）：标题 + 正文两段。标题会变成条目里一个二级小节名，
+                  所以本地先按服务端同一套规则查一遍（2~20 字、不许与本站小节重名），
+                  当场给反馈 —— 免得填完一大段才被驳回。
+                */
+                <div class="revise-wrap">
+                  <p class="revise-bar" id={`revise-${f.key}`} hidden />
+                  <div class="form-row">
+                    <label for={`f-in-${f.key}-title`}>小节标题（2~20 字，例如「彩蛋与机关」）</label>
+                    <input
+                      id={`f-in-${f.key}-title`}
+                      data-input={f.key}
+                      data-part="title"
+                      maxlength="20"
+                      autocomplete="off"
+                      placeholder="自己起一个名字"
+                    />
+                  </div>
+                  <p class="form-hint" id={`f-hint-${f.key}`} />
+                  <textarea
+                    id={`f-in-${f.key}`}
+                    data-input={f.key}
+                    data-part="text"
+                    rows="10"
+                    placeholder="这一节写什么？支持简单 Markdown（分段、列表、引用）；插图片集里的图写一行 :::figure 2"
+                  />
+                </div>
               ) : f.kind === 'tags' ? (
                 /*
                   标签：列出**全站所有标签**让他勾（默认勾上这张图现有的那些），
@@ -559,7 +587,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 <script>
   /* 与 Worker 共用同一份字段规则与校验 —— 前端只是「提前告诉你哪里不对」，
      真正的权威校验在服务端（worker/submissions.ts）。 */
-  import { FIELD_RULES, looksLikeBannerTitle, validateValue } from '../../../shared/submission-fields.mjs';
+  import { FIELD_RULES, isReservedSectionTitle, looksLikeBannerTitle, validateValue } from '../../../shared/submission-fields.mjs';
   /* 登录状态：与页头那个账号按钮共用一次请求（见 lib/account-client.ts） */
   import { ACCOUNT_EVENT, meOrThrow } from '../../lib/account-client';
   /* 人机验证（Turnstile）：放提交按钮上方；没配 site key 时不渲染 */
@@ -638,6 +666,11 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
   function formatValue(v: unknown): string {
     if (v === undefined || v === null || v === '') return '（空）';
     if (Array.isArray(v)) return v.length ? v.join('、') : '（空）';
+    /* 社区整理（titledtext）是「标题 + 正文」两段：确认框里只念标题，正文另算字数 */
+    if (typeof v === 'object' && v !== null && typeof (v as { text?: unknown }).text === 'string') {
+      const o = v as { title?: unknown; text?: string };
+      return `${o.title ? `「${String(o.title)}」` : ''}${[...String(o.text).trim()].length} 字`;
+    }
     return String(v);
   }
 
@@ -879,6 +912,8 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     }
     const extra = mapSpecificHint(key);
     hintEl.textContent = extra ? `${rules[key]?.hint ?? ''}　${extra}` : (rules[key]?.hint ?? '');
+    /* 社区整理：标题框的即时检查（和服务端同一套规则） */
+    if (rules[key]?.kind === 'titledtext') syncTitleHint(key);
   }
 
   /* ===== 修订一条已通过的社区投稿 =====
@@ -886,11 +921,52 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
      几乎一样的段落，越改越乱（2026-10-10 的反馈）。
      现在点右侧面板里那条的「修订这条」→ 正文带进左侧表单 → 提交时带上 reviseOf（那条的 id）。
      审核通过后是**替换**它的正文，署名仍是原作者，条目页另标「谁在什么时候修订的」。 */
-  type ReviseTarget = { field: string; id: string; by: string; text: string };
+  type ReviseTarget = { field: string; id: string; by: string; text: string; title?: string };
   let reviseTarget: ReviseTarget | null = null;
 
   /** 正文类字段的中文名（story → 背景故事）；从字段表取，不另写一份 */
   const fieldLabel = (key: string) => rules[key]?.label ?? '社区补充';
+
+  /**
+   * 社区整理（titledtext）的标题即时检查：和服务端同一套规则（长度 + 不许撞本站小节名），
+   * 本地先拦一道 —— 免得填完一大段正文才因为标题不合格被驳回。
+   */
+  function syncTitleHint(key: string): void {
+    const hint = document.getElementById(`f-hint-${key}`);
+    const input = document.querySelector<HTMLInputElement>(`[data-input="${key}"][data-part="title"]`);
+    if (!hint || !input) return;
+    const v = input.value.trim();
+    const len = [...v].length;
+    const minT = Number(rules[key]?.titleMin ?? 2);
+    const maxT = Number(rules[key]?.titleMax ?? 20);
+    if (!v) {
+      hint.textContent = '标题会变成条目里一个小节名，例如「彩蛋与机关」「老玩家心得」。';
+      hint.className = 'form-hint';
+      return;
+    }
+    if (len < minT) {
+      hint.textContent = `标题至少 ${minT} 个字`;
+      hint.className = 'form-hint is-bad';
+      return;
+    }
+    if (len > maxT) {
+      hint.textContent = `标题最多 ${maxT} 个字（现在 ${len} 个）`;
+      hint.className = 'form-hint is-bad';
+      return;
+    }
+    if (/[<>{}#|]/.test(v)) {
+      hint.textContent = '标题里不能出现 < > { } # |';
+      hint.className = 'form-hint is-bad';
+      return;
+    }
+    if (isReservedSectionTitle(v)) {
+      hint.textContent = `「${v}」是本站自己的小节名，换一个（例如「彩蛋与机关」）`;
+      hint.className = 'form-hint is-bad';
+      return;
+    }
+    hint.textContent = `小节名就用「${v}」，显示在条目末尾，带「社区整理」小标和你的署名。`;
+    hint.className = 'form-hint is-ok';
+  }
 
   function renderReviseBar(): void {
     for (const key of Object.keys(rules)) {
@@ -928,7 +1004,14 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     fieldSel.value = field;
     showField(field);
     prefill(field);
-    const input = document.querySelector<HTMLTextAreaElement>(`[data-input="${field}"]`);
+    /* 社区整理是「标题 + 正文」两个框：两个都要带进来（只带正文等于把标题抹了） */
+    if (rules[field]?.kind === 'titledtext') {
+      const titleInput = document.querySelector<HTMLInputElement>(`[data-input="${field}"][data-part="title"]`);
+      if (titleInput) titleInput.value = t.title ?? '';
+      syncTitleHint(field);
+    }
+    const input = document.querySelector<HTMLTextAreaElement>(`[data-input="${field}"][data-part="text"]`)
+      ?? document.querySelector<HTMLTextAreaElement>(`[data-input="${field}"]`);
     if (input) {
       input.value = t.text;
       input.focus();
@@ -995,7 +1078,7 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       const meta = document.createElement('p');
       meta.className = 'ref-note-meta';
       meta.textContent =
-        `${fieldLabel(field)} · ${who}${when ? ` · ${when}` : ''}` +
+        `${fieldLabel(field)}${n.title ? `「${String(n.title)}」` : ''} · ${who}${when ? ` · ${when}` : ''}` +
         (n.revisedBy ? ` · ${String(n.revisedBy)} 修订过` : '');
       const box = document.createElement('div');
       box.className = 'ref-text';
@@ -1006,7 +1089,13 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       btn.textContent = '修订这条';
       btn.title = `把这条正文带进左侧表单改（署名仍是 ${who}）`;
       btn.addEventListener('click', () =>
-        startRevise({ field, id, by: who, text: String(n.text ?? '') })
+        startRevise({
+          field,
+          id,
+          by: who,
+          text: String(n.text ?? ''),
+          ...(n.title ? { title: String(n.title) } : {}),
+        })
       );
       wrap.append(meta, box, btn);
       return wrap;
@@ -1260,6 +1349,11 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 
   function shortPreview(v: unknown): string {
     if (Array.isArray(v)) return v.length ? `共 ${v.length} 项：${v.slice(0, 2).map(String).join('、')}${v.length > 2 ? '…' : ''}` : '（空）';
+    /* 社区整理（titledtext）：对象是「标题 + 正文」，别念成「2 个字段」 */
+    if (v && typeof v === 'object' && typeof (v as { text?: unknown }).text === 'string') {
+      const o = v as { title?: unknown; text?: string };
+      return `${o.title ? `「${String(o.title)}」` : ''}${[...String(o.text).replace(/\s+/g, ' ').trim()].slice(0, 40).join('')}`;
+    }
     if (v && typeof v === 'object') return `${Object.keys(v as object).length} 个字段`;
     const s = String(v ?? '').replace(/\s+/g, ' ').trim();
     return s.length > 60 ? `${s.slice(0, 60)}…` : s || '（空）';
@@ -2000,6 +2094,19 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     }
 
     /*
+     * 社区整理（titledtext）：两个框都从空开始（新写一节），标题框给焦点；
+     * 「改已有那一节」走右侧面板的「修订这条」（startRevise 会把标题+正文一起带进来）。
+     */
+    if (rules[key]?.kind === 'titledtext') {
+      const title = document.querySelector<HTMLInputElement>(`[data-input="${key}"][data-part="title"]`);
+      const text = document.querySelector<HTMLTextAreaElement>(`[data-input="${key}"][data-part="text"]`);
+      if (title && !reviseTarget) title.value = '';
+      if (text && !reviseTarget) text.value = '';
+      syncTitleHint(key);
+      return;
+    }
+
+    /*
      * 整篇草稿（2026-10-13）：
      *   · 已经有别人写的草稿 → 带进框里接着改（避免两个人各写一篇、站长没法比）；
      *   · 没登录 → 显示提示条（服务端也会拦，这里提前说清楚，别让人写完了才发现）。
@@ -2075,11 +2182,20 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     if (rules[key]?.kind === 'itemlist') return collectItems();
     /* 标签来自选择器（勾选 + 新建），不是文本框 */
     if (rules[key]?.kind === 'tags') return [...tagSelected];
+    const kind = rules[key]?.kind;
+    /*
+     * 社区整理（titledtext）：一个字段两个输入框（标题 + 正文），
+     * 两个都带 data-input=<key>，用 data-part 区分 —— 服务端要的是 { title, text }。
+     */
+    if (kind === 'titledtext') {
+      const title = document.querySelector<HTMLInputElement>(`[data-input="${key}"][data-part="title"]`);
+      const text = document.querySelector<HTMLTextAreaElement>(`[data-input="${key}"][data-part="text"]`);
+      return { title: title?.value.trim() ?? '', text: text?.value.trim() ?? '' };
+    }
     const el = document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
       `[data-input="${key}"]`
     );
     if (!el) return undefined;
-    const kind = rules[key]?.kind;
     if (kind === 'int') return el.value === '' ? '' : Number(el.value);
     if (kind === 'tags' || kind === 'urlList' || kind === 'textlist') {
       return el.value
@@ -2105,6 +2221,12 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
   });
 
   document.getElementById('items-add')?.addEventListener('click', () => addItemRow());
+
+  /* 社区整理的标题框：边打边查（长度 / 撞本站小节名），当场给反馈 */
+  for (const el of document.querySelectorAll<HTMLInputElement>('[data-part="title"]')) {
+    const key = el.dataset.input ?? '';
+    el.addEventListener('input', () => syncTitleHint(key));
+  }
 
   /* 载入地图索引（构建期生成的 /submit/maps.json） */
   fetch('/submit/maps.json')    .then((r) => r.json())

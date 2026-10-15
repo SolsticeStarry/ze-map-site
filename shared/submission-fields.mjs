@@ -258,7 +258,73 @@ export const FIELD_RULES = {
       '改已完成的那一条：点右侧面板里它的「修订这条」，正文会带进下面的框里。',
     maxLen: 4000,
   },
+  /*
+   * 社区整理（自定义小节）—— 2026-10-15 加，社区朋友提的「现有标准条目 + 1 个自定义区」。
+   *
+   * 现有的长文字段（summary / story / guide / body）**标题都是站点定死的**，投稿人只能往框里灌正文。
+   * 编辑者想要「一块自己的地盘」：自己起个小节名，把标准字段装不下的长篇见解放进去。
+   *
+   * 边界（定这个字段时就写在提示里，服务端逐条兜住）：
+   *   · 一张图**最多一篇**（worker/submissions.ts 里按 field='section' 计数拦重复投）；
+   *   · 标题 2~20 字，**不许与本站自己的小节同名**（见 RESERVED_SECTION_TITLES）；
+   *   · 正文 ≤4000 字、禁 < > { }；**必须登录**（长篇要能追到人）；
+   *   · 渲染在条目末尾，挂「社区整理」小标 + 署名与日期 —— 和 story / guide 一样**压不过本站正文**，
+   *     区别只是这一节的名字由投稿人自己起。
+   */
+  section: {
+    kind: 'titledtext',
+    label: '社区整理（自定义小节）',
+    hint:
+      '给这张图补一节**本站正文里没有的**内容，标题你自己起（例如「彩蛋与机关」「老玩家心得」）。' +
+      '适合放标准字段装不下的长篇见解。' +
+      '规则：一张图最多一篇；标题 2~20 字，不能和本站自己的小节同名（基本信息 / 关卡 / 神器 / 道具 这些）；' +
+      '支持简单 Markdown、最多 4000 字，需要登录。' +
+      '通过后会以「社区整理」为标记显示在条目末尾，写上你的昵称和日期；本站正文不会被它盖掉。',
+    titleMin: 2,
+    titleMax: 20,
+    maxLen: 4000,
+    requireLogin: true,
+  },
 };
+
+/**
+ * 社区自定义小节**不能占用**的标题。
+ *
+ * 这些是本站自己会产出的二级标题（生成器的自动小节 + 人工正文的常见小节）。
+ * 撞名会出两种乱子：读者分不清哪一节是本站整理的；整篇草稿采纳时按同名替换，会跟这些节打架。
+ * 比对时先归一（去掉空格、全角斜杠、大小写），所以「神器/道具」「神器 与 道具」都算撞名。
+ */
+export const RESERVED_SECTION_TITLES = [
+  '基本信息',
+  '数据概况',
+  '数据说明',
+  '实体构成',
+  '实体预览',
+  '关卡',
+  '关卡流程',
+  '神器与道具',
+  /* 归一化会把斜杠去掉，所以「神器/道具」「神器 道具」都落在这一条上 */
+  '神器道具',
+  '神器道具更正',
+  '图片集',
+  '资料来源',
+  '攻略视频',
+  '背景故事',
+  '社区补充',
+  '社区整理',
+  '工坊页面自述',
+  '同类地图',
+  '音乐',
+  'BOSS',
+];
+
+const normTitle = (t) => String(t ?? '').replace(/[\s/／·、,，.。:：]/g, '').toLowerCase();
+
+/** 这个标题是不是本站自己的小节名（撞名就拒） */
+export function isReservedSectionTitle(title) {
+  const key = normTitle(title);
+  return RESERVED_SECTION_TITLES.some((t) => normTitle(t) === key);
+}
 
 export const FIELD_KEYS = Object.keys(FIELD_RULES);
 
@@ -375,8 +441,33 @@ export function validateValue(field, raw) {
       return { ok: true, value: v };
     }
 
-    case 'doc': {
-      /*
+    /*
+     * 社区整理（自定义小节）：值是「标题 + 正文」两段。
+     * 标题比正文更需要管 —— 它会变成页面上一个二级标题，撞上本站小节名就分不清了。
+     */
+    case 'titledtext': {
+      const obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : null;
+      if (!obj) return { ok: false, error: '格式不对（要「标题 + 正文」两段）' };
+      const title = String(obj.title ?? '').replace(/\s+/g, ' ').trim();
+      const text = String(obj.text ?? '').trim();
+      const minT = rule.titleMin ?? 2;
+      const maxT = rule.titleMax ?? 20;
+      if (!title) return { ok: false, error: '要写一个小节标题' };
+      if ([...title].length < minT) return { ok: false, error: `标题至少 ${minT} 个字` };
+      if ([...title].length > maxT) return { ok: false, error: `标题最多 ${maxT} 个字（现在 ${[...title].length} 个）` };
+      if (/[<>{}#|]/.test(title)) return { ok: false, error: '标题里不能出现 < > { } # |' };
+      if (isReservedSectionTitle(title)) {
+        return { ok: false, error: `「${title}」是本站自己的小节名，换一个（例如「彩蛋与机关」）` };
+      }
+      if (!text) return { ok: false, error: '正文不能为空' };
+      if ([...text].length > rule.maxLen) return { ok: false, error: `正文最多 ${rule.maxLen} 个字（现在 ${[...text].length}）` };
+      if (/[<>{}]/.test(text)) return { ok: false, error: '正文里不能出现 < > { } 这几个字符' };
+      /* reviseOf 的合法性由 community-doc.mjs 的 isReviseId 兜（这里只做类型清洗，避免互相 import） */
+      const reviseOf = typeof obj.reviseOf === 'string' ? obj.reviseOf.trim() : '';
+      return { ok: true, value: reviseOf ? { title, text, reviseOf } : { title, text } };
+    }
+
+    case 'doc': {      /*
        * 整篇草稿：正文本身按 longtext 的规矩校验（禁尖括号花括号、长度上限），
        * 另外**必须至少有一个 `## 小节标题`** —— 没有分节的整篇没法「按小节合并」，
        * 采纳时会退化成「整篇替换」，那正是我们想避免的粗活。

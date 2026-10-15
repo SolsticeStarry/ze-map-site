@@ -16,6 +16,7 @@ import {
   isItemField,
   isNoteField,
   isReviseId,
+  isTitledField,
   notePayload,
   touch,
 } from '../shared/community-doc.mjs';
@@ -272,7 +273,15 @@ export async function handleSubmit(
    * 非 note 字段带上 reviseOf 直接忽略：那些字段是覆盖式的，本来就等于修订。
    */
   const reviseOf = isReviseId(b.reviseOf) ? String(b.reviseOf).trim() : '';
-  const stored = isNoteField(singleField) && reviseOf ? { text: singleValue, reviseOf } : singleValue;
+  /*
+   * 「社区整理」（自定义小节，kind=titledtext）的值本来就是 { title, text }，
+   * 修订时把 reviseOf 并进同一个对象即可；普通长文本仍是 { text, reviseOf } 那个包。
+   */
+  const stored = isTitledField(singleField)
+    ? { ...(singleValue as Record<string, unknown>), ...(reviseOf ? { reviseOf } : {}) }
+    : isNoteField(singleField) && reviseOf
+      ? { text: singleValue, reviseOf }
+      : singleValue;
 
   if (await isBanned(env, ipHash)) return fail('该来源已被禁止投稿', 403);
 
@@ -292,17 +301,41 @@ export async function handleSubmit(
   const account = await accountForSubmit(request, env).catch(() => ({ id: null, name: null, trusted: false }));
 
   /*
-   * 整篇草稿（2026-10-13）：**必须登录**。
-   * 它是「大面积改写」的入口 —— 一篇草稿会顶掉整张图的正文（采纳后），必须能追到人；
-   * 匿名通道一行没动，其它字段照旧谁都能投（站长定的底线）。
+   * 需要登录的字段（`requireLogin`）：现在是「整篇草稿」（大面积改写）与「社区整理」（长文小节）。
+   * 两者都会长期留在页面上、要能追到人；匿名通道一行没动，其它字段照旧谁都能投（站长定的底线）。
    */
   const needsLogin = items.some((it) => FIELD_RULES[it.field]?.requireLogin);
   if (needsLogin && !account.id) {
-    return fail('整篇条目草稿需要先登录再提交（大面积改写要能追到人）；其它字段不登录也能投', 401);
+    const label = FIELD_RULES[items.find((it) => FIELD_RULES[it.field]?.requireLogin)!.field]?.label ?? '这一项';
+    return fail(`「${label}」需要先登录再提交（长篇内容要能追到人）；其它字段不登录也能投`, 401);
   }
 
   const finalSubmitter = account.name ?? submitter.value;
   const status = account.trusted ? 'approved' : 'pending';
+
+  /*
+   * 「社区整理」一节：**一张图最多一篇**（2026-10-15 定这个字段时的规矩）。
+   * 在这里用 D1 拦一道（不读 GitHub，代价只有一次查询）：只要这张图已经有一篇没被驳回的
+   * 社区整理（待审 / 待写回 / 已上线都算），就不再收第二篇 —— 页面上两三个「社区整理」
+   * 块会让人分不清哪一节才是最新的；想改就在已有那篇上「修订这条」。
+   */
+  if (items.some((it) => it.field === 'section')) {
+    const dup = await env.DB.prepare(
+      `SELECT id, status FROM submissions
+        WHERE map_slug = ?1 AND field = 'section' AND status IN ('pending','approved','applied')
+        ORDER BY id ASC LIMIT 1`
+    )
+      .bind(slug)
+      .first<{ id: number; status: string }>();
+    if (dup) {
+      return fail(
+        `这张图已经有一篇「社区整理」了（投稿 #${dup.id}）—— 一张图最多一篇。` +
+          '要改内容：在投稿页右侧那一节上点「修订这条」，把它带进表单里改完再提交。',
+        409
+      );
+    }
+  }
+
   /* 一批多于一項才打 batch 号：单条投稿还是老样子（队列里不受影响） */
   const batch = items.length > 1 ? `b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}` : '';
 
@@ -981,6 +1014,8 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
       ...(batchId ? { batch: batchId, batchCount: batchCounts.get(batchId) ?? 1 } : {}),
       value: payload ? payload.text : value,
       ...(payload?.reviseOf ? { reviseOf: payload.reviseOf } : {}),
+      /* 「社区整理」的标题：审核台要能一眼看出这节叫什么（渲染时才用它当二级标题） */
+      ...(payload?.title ? { title: payload.title } : {}),
       /* 现值没取（由 /api/admin/current 按需拉）；神器 / 道具不需要「一个现值」 */
       current: null,
       currentPending: row.status === 'pending' || row.status === 'approved',
@@ -1387,14 +1422,15 @@ export async function handleAdminFlush(request: Request, env: Env): Promise<Resp
           });
           touched = true;
         } else {
-          /* note 字段的修订包（{ text, reviseOf }）在这里拆开；普通投稿 notePayload
-             直接返回原文，所以两条路径共用一句 —— 拆包规则只有 shared 那一份。 */
+          /* note 字段的修订包（{ text, reviseOf }）与「社区整理」的 { title, text } 都在这里拆开；
+             普通投稿 notePayload 直接返回原文，所以几条路径共用一句 —— 拆包规则只有 shared 那一份。 */
           const payload = isNoteField(row.field) ? notePayload(value) : null;
           const change = applySubmission(doc, {
             id: row.id,
             field: row.field,
             value: payload ? payload.text : value,
             reviseOf: payload?.reviseOf ?? '',
+            ...(payload?.title ? { title: payload.title } : {}),
             submitter: row.submitter,
             reviewedAt: row.reviewed_at ?? Date.now(),
           });

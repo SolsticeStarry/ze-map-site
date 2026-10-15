@@ -43,8 +43,15 @@ export const DOC_VERSION = 1;
 /**
  * 这个字段是「正文类」吗（进 notes 而不是覆盖条目字段）。
  * 从 shared/submission-fields.mjs 的 kind 派生：加一个 longtext 字段就自动跟上。
+ * `titledtext`（社区整理：自己起标题的小节）也进 notes，它只多带一个 title。
  */
-export const isNoteField = (field) => FIELD_RULES?.[field]?.kind === 'longtext';
+export const isNoteField = (field) => ['longtext', 'titledtext'].includes(FIELD_RULES?.[field]?.kind);
+
+/**
+ * 「自己起标题的社区小节」吗（kind=titledtext）。
+ * 这类投稿的值是 `{ title, text }`，落到 notes 里多存一个 title；渲染时标题由投稿人定。
+ */
+export const isTitledField = (field) => FIELD_RULES?.[field]?.kind === 'titledtext';
 
 /** 这个字段是「神器 / 道具行」吗（进 items，由生成器逐行合并） */
 export const isItemField = (field) => FIELD_RULES?.[field]?.kind === 'itemlist';
@@ -99,16 +106,20 @@ export function findNoteIndex(notes, reviseId) {
 }
 
 /**
- * 投稿的 value 在 note 字段上的两种形态：
- *   普通投稿 → 直接是字符串；修订 → { text, reviseOf }（D1 的 value 是 JSON 一列，
- *   不想为了一个可选字段动表结构，所以塞在同一格里）。
- * 这里统一拆成 { text, reviseOf }，调用方不必关心是哪种。
+ * 投稿的 value 在 note 字段上的几种形态：
+ *   普通投稿 → 直接是字符串；修订 → { text, reviseOf }；
+ *   社区整理（titledtext）→ { title, text }（可能也带 reviseOf）。
+ * 这里统一拆成 { title, text, reviseOf }，调用方不必关心是哪种。
  */
 export function notePayload(value) {
   if (value && typeof value === 'object' && !Array.isArray(value) && typeof value.text === 'string') {
-    return { text: value.text, reviseOf: isReviseId(value.reviseOf) ? String(value.reviseOf).trim() : '' };
+    return {
+      title: typeof value.title === 'string' ? value.title.trim() : '',
+      text: value.text,
+      reviseOf: isReviseId(value.reviseOf) ? String(value.reviseOf).trim() : '',
+    };
   }
-  return { text: typeof value === 'string' ? value : String(value ?? ''), reviseOf: '' };
+  return { title: '', text: typeof value === 'string' ? value : String(value ?? ''), reviseOf: '' };
 }
 
 /**
@@ -143,6 +154,10 @@ export function normalizeDoc(slug, raw) {
         /* 投的是哪个字段（story / body / 以后新增的长文本字段）。
            老文件没有这一项 → null，页面按「社区补充」显示。 */
         field: typeof n.field === 'string' && n.field ? n.field : null,
+        /* 「社区整理」（titledtext）才有：投稿人自己起的小节标题。
+           ⚠️ 这一项必须在这里显式带上 —— normalizeDoc 是白名单式重建，
+           漏掉就等于每次读文件都把标题丢掉（页面上的小节名会变成默认名）。 */
+        title: typeof n.title === 'string' && n.title.trim() ? n.title.trim().slice(0, 40) : null,
         /* 被修订过才有：最后改这条的人与时间。署名（by）保持原作者不动，
            页面显示成「由 A 投稿（B 于 … 修订）」—— 谁写的、谁改的要分得清。 */
         revisedBy: typeof n.revisedBy === 'string' && n.revisedBy ? n.revisedBy : null,
@@ -189,6 +204,8 @@ export function applySubmission(doc, sub) {
         doc.notes[i] = {
           ...prev,
           text: sub.value,
+          /* 社区整理（titledtext）连标题一起改；普通长文本没有 title，保持原样 */
+          ...(sub.title ? { title: sub.title } : {}),
           revisedBy: by,
           revisedAt: at,
           revision: (Number.isInteger(prev.revision) ? prev.revision : 0) + 1,
@@ -214,11 +231,19 @@ export function applySubmission(doc, sub) {
         note: `修订目标 ${reviseId} 已不在，按新增处理`,
       });
     }
-    /* note 里记下**它原本投的是哪个字段**（story / body）：
+    /* note 里记下**它原本投的是哪个字段**（story / body / section…）：
        页面据此分块显示 —— 投「背景故事」的内容如果出现在「社区补充」里，
        投稿人会以为稿子丢了（2026-09-28 的反馈）。log 里本来也有这个信息，
-       但渲染只读 notes，所以得在 note 上存一份。 */
-    doc.notes.push({ text: sub.value, by, at, submission: sub.id ?? null, field: sub.field });
+       但渲染只读 notes，所以得在 note 上存一份。
+       「社区整理」（titledtext）另外带上投稿人自己起的小节标题。 */
+    doc.notes.push({
+      text: sub.value,
+      by,
+      at,
+      submission: sub.id ?? null,
+      field: sub.field,
+      ...(sub.title ? { title: sub.title } : {}),
+    });
     doc.log.push({ field: sub.field, from: null, to: null, by, at, submission: sub.id ?? null });
     return { field: sub.field, from: null, to: sub.value };
   }

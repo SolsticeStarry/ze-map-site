@@ -89,8 +89,13 @@ const maps = defineCollection({
           text: z.string(),
           by: z.string(),
           at: z.string().nullable().default(null),
-          /** 原本投的是哪个字段（story / body …）；null = 老数据，按「社区补充」显示 */
+          /** 原本投的是哪个字段（story / body / section …）；null = 老数据，按「社区补充」显示 */
           field: z.string().nullable().default(null),
+          /**
+           * 「社区整理」（field = section）才有：投稿人自己起的小节标题。
+           * 页面把它当二级标题渲染，并在旁边挂一个「社区整理」小标。
+           */
+          title: z.string().nullable().default(null),
           /**
            * 被修订过才有（谁最后改的、什么时候、改过几次）。
            * by 始终是原作者 —— 别人帮忙改个错别字不该把署名换掉。

@@ -293,6 +293,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     reject_note: string | null;
     /** 正文类字段的修订稿：要替换的那条社区投稿的 id（服务端已把 { text, reviseOf } 拆开） */
     reviseOf?: string;
+    /** 社区整理（field=section）：投稿人自己起的小节标题 */
+    title?: string;
     /** 批量投稿：同一批的批次号与条数 */
     batch?: string;
     batchCount?: number;
@@ -710,8 +712,23 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       const curBox = el('div', 'admin-current');
       curBox.dataset.current = String(item.id);
       main.append(curBox);
-    } else if (rules[item.field]?.kind === 'doc') {
-      /* 整篇草稿：不可能整篇并排比，给字数 + 小节 + 是否已有草稿 */
+    } else if (rules[item.field]?.kind === 'titledtext') {
+      /*
+       * 社区整理（2026-10-15）：标题会成为条目里一个二级小节名，审核时要先看它
+       * —— 撞上本站小节名（基本信息 / 关卡 / 神器 / 道具…）服务端已拦，但「意思重复」只有人能判断。
+       */
+      main.append(
+        el('p', 'admin-note', `社区整理小节：标题「${String(item.title ?? '（未填）')}」 · 正文 ${[...String(item.value ?? '').trim()].length} 字`)
+      );
+      main.append(el('p', 'admin-note is-quiet', '通过并写回后：这一节以该标题显示在条目末尾，带「社区整理」小标与投稿人署名'));
+      const details = el('details', 'admin-fold');
+      details.append(el('summary', undefined, '展开正文'));
+      details.append(textBlock('本次提交', String(item.value ?? ''), 'is-new'));
+      main.append(details);
+      const curBox = el('div', 'admin-current');
+      curBox.dataset.current = String(item.id);
+      main.append(curBox);
+    } else if (rules[item.field]?.kind === 'doc') {      /* 整篇草稿：不可能整篇并排比，给字数 + 小节 + 是否已有草稿 */
       main.append(el('p', 'admin-note', `草稿：${docSummary(String(item.value ?? ''))}`));
       const details = el('details', 'admin-fold');
       details.append(el('summary', undefined, '展开草稿全文'));

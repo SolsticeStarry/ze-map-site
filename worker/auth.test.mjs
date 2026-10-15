@@ -2004,6 +2004,112 @@ test('R2 同源回退：地形分片与图集图片都能取，路径不合法�
   });
 });
 
+/* ===== 社区整理：自定义小节（2026-10-15 加） =====
+ *
+ * 社区朋友要的「现有标准条目 + 1 个自定义区」：投稿人自己起个小节名，放标准字段装不下的长篇见解。
+ * 这一组用例钉住四条边界：必须登录、标题不许撞本站小节名、一张图最多一篇、写回后标题要留住
+ * （normalizeDoc 是白名单式重建，漏掉 title 就会静默变成默认名 —— 最容易踩的坑）。
+ */
+test('社区整理（自定义小节）：登录才能投、标题受控、一张图最多一篇、写回后标题不丢', async (t) => {
+  await t.test('没登录 → 401（长篇要能追到人）', async () => {
+    const { call } = await setup();
+    const r = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_flowering', field: 'section', value: { title: '彩蛋与机关', text: '正文' }, submitter: '路人' },
+    });
+    assert.equal(r.status, 401, JSON.stringify(r.data));
+    assert.match(r.data.error, /登录/);
+  });
+
+  await t.test('标题校验：撞本站小节名 / 太短 / 尖括号 / 空正文 一律拒', async () => {
+    const { validateValue } = await import('../shared/submission-fields.mjs');
+    assert.equal(validateValue('section', { title: '彩蛋与机关', text: '正文' }).ok, true);
+    for (const [title, text, want] of [
+      ['基本信息', '正文', /本站自己的小节名/],
+      ['神器/道具', '正文', /本站自己的小节名/],
+      ['彩蛋', 'a<b', /不能出现/],
+      ['a', '正文', /至少/],
+      ['正文', '', /不能为空/],
+      ['', '正文', /要写一个/],
+    ]) {
+      const r = validateValue('section', { title, text });
+      assert.equal(r.ok, false, `「${title}」本该被拒`);
+      assert.match(r.error, want);
+    }
+  });
+
+  await t.test('登录后能投，队列里带着标题；同图第二篇被 409 拦住', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '写小节的人');
+    const first = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_flowering', field: 'section', value: { title: '彩蛋与机关', text: '第三关有个隐藏开关。' } },
+    });
+    assert.equal(first.status, 200, JSON.stringify(first.data));
+
+    const dup = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_flowering', field: 'section', value: { title: '另一节', text: '再来一节' } },
+    });
+    assert.equal(dup.status, 409, JSON.stringify(dup.data));
+    assert.match(dup.data.error, /已经有一篇「社区整理」/);
+
+    /* 别的图不受影响 */
+    const other = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_other', field: 'section', value: { title: '老玩家心得', text: '别的图可以有一篇' } },
+    });
+    assert.equal(other.status, 200, JSON.stringify(other.data));
+
+    const queue = await call('/api/admin/queue?status=pending', { headers: auth });
+    const row = (queue.data.items ?? []).find((x) => x.field === 'section');
+    assert.ok(row, '队列里应当有这条');
+    assert.equal(row.title, '彩蛋与机关', '审核台要能看到小节标题');
+    assert.match(String(row.value), /隐藏开关/, '正文照旧在 value 里');
+  });
+
+  await t.test('写回仓库：社区文档里留下 { title, text, field: section }，再读一遍标题还在', async () => {
+    const { call, env } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    env.GITHUB_TOKEN = 'test-gh-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    await register(call, '写小节的人');
+    const sub = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_demo9', field: 'section', value: { title: '彩蛋与机关', text: '第三关有个隐藏开关。' } },
+    });
+    assert.equal(sub.status, 200, JSON.stringify(sub.data));
+    const ok = await call('/api/admin/review', { method: 'POST', body: { id: sub.data.id, action: 'approve' }, headers: auth });
+    assert.equal(ok.status, 200, JSON.stringify(ok.data));
+
+    const repo = installFakeRepo({
+      'data/community/ze_demo9.json':
+        JSON.stringify({ v: 1, slug: 'ze_demo9', updatedAt: null, fields: {}, notes: [], draft: null, items: [], log: [] }, null, 2) + '\n',
+    });
+    try {
+      const flush = await call('/api/admin/flush', { method: 'POST', body: {}, headers: auth });
+      assert.equal(flush.status, 200, JSON.stringify(flush.data));
+    } finally {
+      repo.restore();
+    }
+
+    const doc = JSON.parse(repo.files['data/community/ze_demo9.json']);
+    const note = (doc.notes ?? [])[0];
+    assert.ok(note, '社区文档里应当有一条 note');
+    assert.equal(note.field, 'section');
+    assert.equal(note.title, '彩蛋与机关');
+    assert.match(note.text, /隐藏开关/);
+    assert.equal(note.by, '写小节的人');
+
+    /* normalizeDoc 是白名单式重建：不带 title 的话这里会变成 null（页面上的小节名就没了） */
+    const { normalizeDoc } = await import('../shared/community-doc.mjs');
+    const reread = normalizeDoc('ze_demo9', doc);
+    assert.equal(reread.notes[0].title, '彩蛋与机关', '重新读一遍标题必须在');
+  });
+});
+
 /* ===== 神器 / 道具行：能删（2026-10-14 改口径） =====
  *
  * 站长在 ze_visualizer 上看到的怪事：服务器配置是 10 行英文名（Heal / Energy Ball…），

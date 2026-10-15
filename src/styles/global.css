@@ -2325,6 +2325,28 @@ img { max-width: 100%; display: block; }
 }
 
 /*
+ * 「社区整理」（2026-10-15）：投稿人自己起标题的一节 —— 结构上就是条目的一个二级小节，
+ * 但必须一眼看出它不是本站正文：标题旁边挂一个小标，块内留一条左侧竖线。
+ */
+.community-block.is-section {
+  margin-top: 26px;
+  padding-left: 14px;
+  border-left: 3px solid var(--border-2);
+}
+.community-badge {
+  margin-left: 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/*
  * 「简介（社区投稿）」这一块：它是**正文开头那段导语**的位置（本站还没写简介的图上），
  * 所以别让它看起来像页尾的补充说明 —— 去掉外框、字号贴近正文，只留一条细的标记线。
  */
