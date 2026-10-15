@@ -19,10 +19,25 @@
  */
 export interface GalleryImage {
   src: string;
+  /** 同源地址（`/terr/gallery/…`，Worker 从 R2 取 + 边缘缓存一年）；取不到同源时回退用 src */
+  localSrc: string;
   kind: string;
   caption: string;
   /** 投稿人昵称（玩家投稿才有） */
   by: string;
+}
+
+/**
+ * R2 直连地址 → 同源地址。
+ *
+ * 为什么优先走同源（2026-10-15 改，实测数据）：国内直连 `terr.ze-map.cn` 取一张 44 KB 的图集图，
+ * 中位 550~785 ms、最差 2.5 秒；同样的图走 `ze-map.cn/terr/gallery/…`（Worker 读 R2，
+ * 边缘缓存一年）中位 ~273 ms —— 快一倍多，而且**不受那个域在国内部分网络不通的影响**
+ * （站点自己在 worker/terr.ts 里早就为地形分片做过同源回退，图集图片一直没有）。
+ * 代价是每张图一次 Worker 调用：升级 Workers Paid 后额度是 1000 万/月，够用。
+ */
+export function sameOriginGallery(src: string): string {
+  return String(src ?? '').replace(/^https:\/\/terr\.ze-map\.cn\//, '/terr/');
 }
 
 const modules = import.meta.glob('../../data/gallery/*.json', { eager: true }) as Record<
@@ -44,6 +59,7 @@ export function galleryFor(slug: string): GalleryImage[] {
       .filter((i): i is Record<string, unknown> => Boolean(i) && typeof i === 'object')
       .map((i) => ({
         src: String(i.src ?? ''),
+        localSrc: sameOriginGallery(String(i.src ?? '')),
         kind: String(i.kind ?? 'other'),
         caption: String(i.caption ?? ''),
         by: String(i.by ?? ''),

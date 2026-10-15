@@ -59,12 +59,19 @@ const isCoverImage = (img: { kind: string }) => coverIsWorkshop && img.kind === 
           <button
             class="gallery-item"
             type="button"
-            data-src={img.src}
+            data-src={img.localSrc || img.src}
+            data-alt={img.src}
             data-caption={img.caption}
             {...(img.by ? { 'data-by': img.by } : {})}
             title={img.caption}
           >
-            <img src={img.src} alt={`${slug} · ${img.caption}`} loading="lazy" decoding="async" />
+            <img
+              src={img.localSrc || img.src}
+              data-alt={img.src}
+              alt={`${slug} · ${img.caption}`}
+              loading="lazy"
+              decoding="async"
+            />
             {isCoverImage(img) ? <em class="gallery-badge">当前封面</em> : null}
             <span class="gallery-cap">
               {img.caption}
@@ -115,26 +122,25 @@ const isCoverImage = (img: { kind: string }) => coverIsWorkshop && img.kind === 
       const grid = document.getElementById('gallery-grid');
       const box = document.getElementById('gallery-lightbox') as HTMLDialogElement | null;
       /*
-       * R2 自定义域（terr.ze-map.cn）在国内部分网络不通 —— 站点自己的文档里就记着这件事
-       * （地形分片一直有同源回退，见 worker/terr.ts）。图集图片全在那个域上，没有回退就是一片裂图。
-       * 这里给每张图挂一次 error：直连失败就换成同源的 /terr/gallery/…（Worker 从 R2 取 + 边缘缓存一年）。
+       * 图集图片**默认走同源**（`/terr/gallery/…`：Worker 读 R2 + 边缘缓存一年），
+       * 因为直连 R2 那个域（terr.ze-map.cn）在国内实测中位 550~785 ms、最差 2.5 秒，同源 ~273 ms。
+       * 反过来也要留一手：Worker 那条路真挂了（额度用尽 / R2 读失败）时，
+       * 每张图各自回退到 R2 直连地址（`data-alt` 里存着），不让图片集整块空掉。
        */
-      const sameOriginFallback = (url: string) => url.replace(/^https:\/\/terr\.ze-map\.cn\//, '/terr/');
       const guard = (el: HTMLImageElement, onFallback?: (next: string) => void) => {
         el.addEventListener('error', () => {
-          const cur = el.currentSrc || el.src;
-          const next = sameOriginFallback(cur);
-          if (!next.startsWith('/terr/') || el.dataset.r2Fallback === '1') return;
-          el.dataset.r2Fallback = '1';
-          onFallback?.(next);
-          el.src = next;
+          const direct = el.dataset.alt ?? '';
+          if (!direct || el.dataset.altTry === '1') return;
+          el.dataset.altTry = '1';
+          onFallback?.(direct);
+          el.src = direct;
         });
       };
       for (const im of grid?.querySelectorAll<HTMLImageElement>('.gallery-item img') ?? []) {
         /* 灯箱用的是同一个按钮上的 data-src：顺手也换掉，免得点开再失败一次 */
         const item = im.closest<HTMLButtonElement>('.gallery-item');
         guard(im, (next) => {
-          if (item?.dataset.src) item.dataset.src = sameOriginFallback(item.dataset.src);
+          if (item?.dataset.src) item.dataset.src = next;
         });
       }
       if (grid && box) {
@@ -198,6 +204,8 @@ const isCoverImage = (img: { kind: string }) => coverIsWorkshop && img.kind === 
           const it = items[at];
           const text = (it.dataset.caption ?? '') + (it.dataset.by ? ` · ${it.dataset.by}` : '');
           img.src = it.dataset.src ?? '';
+          /* 换图时把「R2 直连地址」也带过来 —— 同源那条路失败时，guard 用它兜底 */
+          img.dataset.alt = it.dataset.alt ?? '';
           img.alt = text;
           cap.textContent = text;
           idx.textContent = `${at + 1} / ${items.length}`;
