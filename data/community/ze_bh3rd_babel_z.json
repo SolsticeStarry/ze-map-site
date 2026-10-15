@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_bh3rd_babel_z",
-  "updatedAt": "2026-10-15T07:49:13.267Z",
+  "updatedAt": "2026-10-15T10:11:40.454Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_bh3rd_babel_z.webp",
@@ -74,7 +74,11 @@
       "by": "AntiLockwise",
       "at": "2026-10-15T05:35:36.440Z",
       "submission": 272,
-      "field": "story"
+      "field": "story",
+      "title": null,
+      "revisedBy": null,
+      "revisedAt": null,
+      "revision": 0
     }
   ],
   "log": [
@@ -175,9 +179,22 @@
       "by": "AntiLockwise",
       "at": "2026-10-15T05:35:36.440Z",
       "submission": 272
+    },
+    {
+      "field": "draft",
+      "from": null,
+      "to": "90 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:11:23.331Z",
+      "submission": 255
     }
   ],
-  "draft": null,
+  "draft": {
+    "text": "## - ze_bh3rd_babel (崩坏3rd:巴比伦塔) -\n\n地图由 [残剑斩龙] 绘制\n\n- 1个关卡\n\n- 1场boss战\n\n- 由著名游戏 [崩坏3rd] 改编而来",
+    "by": "AntiLockwise",
+    "at": "2026-10-15T10:11:23.331Z",
+    "submission": 255
+  },
   "items": [
     {
       "action": "add",
