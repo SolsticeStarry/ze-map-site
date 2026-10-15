@@ -281,16 +281,20 @@ export const FIELD_RULES = {
     hidden: true,
     hint:
       '给这张图补一节**本站正文里没有的**内容，标题你自己起（例如「彩蛋与机关」「老玩家心得」）。' +
-      '适合放标准字段装不下的长篇见解。' +
-      '规则：一张图最多一篇；标题 2~20 字，不能和本站自己的小节同名（基本信息 / 关卡 / 神器 / 道具 这些）；' +
-      '支持简单 Markdown、最多 4000 字，需要登录。' +
-      '通过后会以「社区整理」为标记显示在条目末尾，写上你的昵称和日期；本站正文不会被它盖掉。',
+      '一次可以写 1~3 节；标题 2~20 字、不能和本站小节同名，正文每节最多 4000 字，需要登录。' +
+      '通过后显示在条目末尾，带「社区整理」小标和你的署名；本站正文不会被它盖掉。',
     titleMin: 2,
     titleMax: 20,
+    /** 一次提交最多几节（每节都要有标题 + 正文） */
+    maxSections: 3,
+    /** 单节正文上限 */
     maxLen: 4000,
     requireLogin: true,
   },
 };
+
+/** 一张图最多能有几节「社区整理」（跨多次投稿累计，服务端按 D1 里的投稿算） */
+export const MAX_SECTIONS_PER_MAP = 6;
 
 /**
  * 社区自定义小节**不能占用**的标题。
@@ -447,29 +451,46 @@ export function validateValue(field, raw) {
     }
 
     /*
-     * 社区整理（自定义小节）：值是「标题 + 正文」两段。
+     * 社区整理（自定义小节）：值是「若干节」，每节 = 标题 + 正文。
+     *   新形状 `{ sections: [{title, text}, …] }`（一次 1~maxSections 节）；
+     *   老形状 `{ title, text }`（2026-10-15 第一版只收一节）照样接受，内部统一成 sections。
      * 标题比正文更需要管 —— 它会变成页面上一个二级标题，撞上本站小节名就分不清了。
      */
     case 'titledtext': {
       const obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : null;
-      if (!obj) return { ok: false, error: '格式不对（要「标题 + 正文」两段）' };
-      const title = String(obj.title ?? '').replace(/\s+/g, ' ').trim();
-      const text = String(obj.text ?? '').trim();
+      if (!obj) return { ok: false, error: '格式不对（要「标题 + 正文」）' };
+      const list = Array.isArray(obj.sections) ? obj.sections : [{ title: obj.title, text: obj.text }];
+      if (!list.length) return { ok: false, error: '至少要写一节' };
+      const maxN = rule.maxSections ?? 3;
+      if (list.length > maxN) return { ok: false, error: `一次最多 ${maxN} 节（现在 ${list.length} 节）` };
       const minT = rule.titleMin ?? 2;
       const maxT = rule.titleMax ?? 20;
-      if (!title) return { ok: false, error: '要写一个小节标题' };
-      if ([...title].length < minT) return { ok: false, error: `标题至少 ${minT} 个字` };
-      if ([...title].length > maxT) return { ok: false, error: `标题最多 ${maxT} 个字（现在 ${[...title].length} 个）` };
-      if (/[<>{}#|]/.test(title)) return { ok: false, error: '标题里不能出现 < > { } # |' };
-      if (isReservedSectionTitle(title)) {
-        return { ok: false, error: `「${title}」是本站自己的小节名，换一个（例如「彩蛋与机关」）` };
+      const out = [];
+      const seen = new Set();
+      for (const [i, rawSec] of list.entries()) {
+        const sec = rawSec && typeof rawSec === 'object' ? rawSec : {};
+        const at = list.length > 1 ? `第 ${i + 1} 节：` : '';
+        const title = String(sec.title ?? '').replace(/\s+/g, ' ').trim();
+        const text = String(sec.text ?? '').trim();
+        if (!title) return { ok: false, error: `${at}要写一个小节标题` };
+        if ([...title].length < minT) return { ok: false, error: `${at}标题至少 ${minT} 个字` };
+        if ([...title].length > maxT) return { ok: false, error: `${at}标题最多 ${maxT} 个字（现在 ${[...title].length} 个）` };
+        if (/[<>{}#|]/.test(title)) return { ok: false, error: `${at}标题里不能出现 < > { } # |` };
+        if (isReservedSectionTitle(title)) {
+          return { ok: false, error: `${at}「${title}」是本站自己的小节名，换一个（例如「彩蛋与机关」）` };
+        }
+        if (seen.has(normTitle(title))) return { ok: false, error: `${at}「${title}」和前面某一节重名了` };
+        seen.add(normTitle(title));
+        if (!text) return { ok: false, error: `${at}正文不能为空` };
+        if ([...text].length > rule.maxLen) {
+          return { ok: false, error: `${at}正文最多 ${rule.maxLen} 个字（现在 ${[...text].length}）` };
+        }
+        if (/[<>{}]/.test(text)) return { ok: false, error: `${at}正文里不能出现 < > { } 这几个字符` };
+        out.push({ title, text });
       }
-      if (!text) return { ok: false, error: '正文不能为空' };
-      if ([...text].length > rule.maxLen) return { ok: false, error: `正文最多 ${rule.maxLen} 个字（现在 ${[...text].length}）` };
-      if (/[<>{}]/.test(text)) return { ok: false, error: '正文里不能出现 < > { } 这几个字符' };
       /* reviseOf 的合法性由 community-doc.mjs 的 isReviseId 兜（这里只做类型清洗，避免互相 import） */
       const reviseOf = typeof obj.reviseOf === 'string' ? obj.reviseOf.trim() : '';
-      return { ok: true, value: reviseOf ? { title, text, reviseOf } : { title, text } };
+      return { ok: true, value: reviseOf ? { sections: out, reviseOf } : { sections: out } };
     }
 
     case 'doc': {      /*

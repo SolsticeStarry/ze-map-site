@@ -18,9 +18,11 @@ import {
   isReviseId,
   isTitledField,
   notePayload,
+  titledReviseOf,
+  titledSections,
   touch,
 } from '../shared/community-doc.mjs';
-import { FIELD_RULES, LIMITS, docSections, isField, looksLikeBannerTitle, parseDoc, validateValue } from '../shared/submission-fields.mjs';
+import { FIELD_RULES, LIMITS, MAX_SECTIONS_PER_MAP, docSections, isField, looksLikeBannerTitle, parseDoc, validateValue } from '../shared/submission-fields.mjs';
 import { mergeDraft, serializeResearch } from '../shared/draft-merge.mjs';
 import {
   GitError,
@@ -314,23 +316,32 @@ export async function handleSubmit(
   const status = account.trusted ? 'approved' : 'pending';
 
   /*
-   * 「社区整理」一节：**一张图最多一篇**（2026-10-15 定这个字段时的规矩）。
-   * 在这里用 D1 拦一道（不读 GitHub，代价只有一次查询）：只要这张图已经有一篇没被驳回的
-   * 社区整理（待审 / 待写回 / 已上线都算），就不再收第二篇 —— 页面上两三个「社区整理」
-   * 块会让人分不清哪一节才是最新的；想改就在已有那篇上「修订这条」。
+   * 「社区整理」小节（2026-10-15）：**一张图累计最多 MAX_SECTIONS_PER_MAP 节**。
+   * 在这里用 D1 拦一道（不读 GitHub，就一次查询）：把这张图已有投稿里的节数数一遍
+   * （待审 / 待写回 / 已上线都算），加上这次要投的节数，超了就退回去。
+   * 为什么按「节」而不是按「条」数：一次投稿可以带 1~3 节（`{ sections: [...] }`）。
    */
-  if (items.some((it) => it.field === 'section')) {
-    const dup = await env.DB.prepare(
-      `SELECT id, status FROM submissions
-        WHERE map_slug = ?1 AND field = 'section' AND status IN ('pending','approved','applied')
-        ORDER BY id ASC LIMIT 1`
+  const sectionItem = items.find((it) => it.field === 'section');
+  if (sectionItem) {
+    const incoming = titledSections(sectionItem.value);
+    const { results: rows } = await env.DB.prepare(
+      `SELECT value FROM submissions
+        WHERE map_slug = ?1 AND field = 'section' AND status IN ('pending','approved','applied')`
     )
       .bind(slug)
-      .first<{ id: number; status: string }>();
-    if (dup) {
+      .all<{ value: string }>();
+    let existing = 0;
+    for (const row of rows ?? []) {
+      try {
+        existing += titledSections(JSON.parse(row.value)).length || 1;
+      } catch {
+        existing += 1;
+      }
+    }
+    if (existing + incoming.length > MAX_SECTIONS_PER_MAP) {
       return fail(
-        `这张图已经有一篇「社区整理」了（投稿 #${dup.id}）—— 一张图最多一篇。` +
-          '要改内容：在投稿页右侧那一节上点「修订这条」，把它带进表单里改完再提交。',
+        `这张图已经有 ${existing} 节「社区整理」，再加 ${incoming.length} 节会超过上限 ${MAX_SECTIONS_PER_MAP} 节。` +
+          '要改已有那几节：在投稿页右侧那一条上点「修订这条」，改完再提交。',
         409
       );
     }
@@ -1009,13 +1020,19 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
     }
     const payload = isNoteField(row.field) ? notePayload(value) : null;
     const batchId = (row as { batch?: string | null }).batch ?? '';
+    /* 社区整理：可能是多节，审核台要能看到每一节的标题 */
+    const titles = isTitledField(row.field) ? titledSections(value).map((s) => s.title).filter(Boolean) : [];
     return {
       ...row,
       ...(batchId ? { batch: batchId, batchCount: batchCounts.get(batchId) ?? 1 } : {}),
-      value: payload ? payload.text : value,
+      value: isTitledField(row.field)
+        ? titledSections(value).map((s) => `## ${s.title}\n${s.text}`).join('\n\n')
+        : payload
+          ? payload.text
+          : value,
       ...(payload?.reviseOf ? { reviseOf: payload.reviseOf } : {}),
-      /* 「社区整理」的标题：审核台要能一眼看出这节叫什么（渲染时才用它当二级标题） */
-      ...(payload?.title ? { title: payload.title } : {}),
+      /* 「社区整理」的标题：审核台要能一眼看出这几节都叫什么 */
+      ...(titles.length ? { title: titles[0], titles } : payload?.title ? { title: payload.title, titles: [payload.title] } : {}),
       /* 现值没取（由 /api/admin/current 按需拉）；神器 / 道具不需要「一个现值」 */
       current: null,
       currentPending: row.status === 'pending' || row.status === 'approved',
@@ -1421,6 +1438,32 @@ export async function handleAdminFlush(request: Request, env: Env): Promise<Resp
             reviewedAt: row.reviewed_at ?? Date.now(),
           });
           touched = true;
+        } else if (isTitledField(row.field)) {
+          /*
+           * 社区整理（2026-10-15 支持一次多节）：`{ sections: [{title, text}, …] }`
+           * 拆成 N 条 note 逐节落进社区文档；修订（reviseOf）只对**单节**投稿有意义 ——
+           * 多节的一次投递按新增处理（审核台看到的就是「新增 N 节」）。
+           */
+          const secs = titledSections(value);
+          const reviseId = titledReviseOf(value);
+          let first = true;
+          for (const sec of secs) {
+            const change = applySubmission(doc, {
+              id: row.id,
+              field: row.field,
+              value: sec.text,
+              title: sec.title,
+              /* 修订只带第一条（页面上点「修订这条」时也只带一节） */
+              reviseOf: first && secs.length === 1 ? reviseId : '',
+              submitter: row.submitter,
+              reviewedAt: row.reviewed_at ?? Date.now(),
+            });
+            first = false;
+            fieldSummary.add(`${slug} 社区整理（${sec.title}）`);
+            touched = true;
+            void change;
+          }
+          if (secs.length > 1) fieldSummary.add(`${slug} 社区整理共 ${secs.length} 节`);
         } else {
           /* note 字段的修订包（{ text, reviseOf }）与「社区整理」的 { title, text } 都在这里拆开；
              普通投稿 notePayload 直接返回原文，所以几条路径共用一句 —— 拆包规则只有 shared 那一份。 */

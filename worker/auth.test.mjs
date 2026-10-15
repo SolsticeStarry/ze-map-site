@@ -2006,11 +2006,12 @@ test('R2 同源回退：地形分片与图集图片都能取，路径不合法�
 
 /* ===== 社区整理：自定义小节（2026-10-15 加） =====
  *
- * 社区朋友要的「现有标准条目 + 1 个自定义区」：投稿人自己起个小节名，放标准字段装不下的长篇见解。
- * 这一组用例钉住四条边界：必须登录、标题不许撞本站小节名、一张图最多一篇、写回后标题要留住
- * （normalizeDoc 是白名单式重建，漏掉 title 就会静默变成默认名 —— 最容易踩的坑）。
+ * 社区朋友要的「现有标准条目 + 1 个自定义区」：投稿人自己起小节名，放标准字段装不下的长篇见解。
+ * 2026-10-15 同一天扩成**一次可写 1~3 节**（站长要的「能加多个小节标题」），
+ * 一张图累计上限 6 节。这一组用例钉住：必须登录、标题逐节受控（撞本站小节名 / 同批重名 / 太短）、
+ * 累计上限、写回后每节各成一条 note 且标题不丢（normalizeDoc 是白名单式重建，最容易踩的坑）。
  */
-test('社区整理（自定义小节）：登录才能投、标题受控、一张图最多一篇、写回后标题不丢', async (t) => {
+test('社区整理（自定义小节）：登录才能投、标题逐节受控、累计有上限、写回后标题不丢', async (t) => {
   await t.test('没登录 → 401（长篇要能追到人）', async () => {
     const { call } = await setup();
     const r = await call('/api/submit', {
@@ -2023,54 +2024,96 @@ test('社区整理（自定义小节）：登录才能投、标题受控、一�
 
   await t.test('标题校验：撞本站小节名 / 太短 / 尖括号 / 空正文 一律拒', async () => {
     const { validateValue } = await import('../shared/submission-fields.mjs');
-    assert.equal(validateValue('section', { title: '彩蛋与机关', text: '正文' }).ok, true);
-    for (const [title, text, want] of [
-      ['基本信息', '正文', /本站自己的小节名/],
-      ['神器/道具', '正文', /本站自己的小节名/],
-      ['彩蛋', 'a<b', /不能出现/],
-      ['a', '正文', /至少/],
-      ['正文', '', /不能为空/],
-      ['', '正文', /要写一个/],
+    assert.equal(validateValue('section', { sections: [{ title: '彩蛋与机关', text: '正文' }] }).ok, true);
+    /* 老形状（单节 { title, text }）仍然收 —— 线上可能还有这种投稿在队列里 */
+    assert.equal(validateValue('section', { title: '老单节', text: '正文' }).ok, true);
+    for (const [sections, want] of [
+      [[{ title: '基本信息', text: '正文' }], /本站自己的小节名/],
+      [[{ title: '神器/道具', text: '正文' }], /本站自己的小节名/],
+      [[{ title: '彩蛋', text: 'a<b' }], /不能出现/],
+      [[{ title: 'a', text: '正文' }], /至少/],
+      [[{ title: '正文', text: '' }], /不能为空/],
+      [[{ title: '', text: '正文' }], /要写一个/],
+      /* 一次最多 3 节；同一批里不许重名 */
+      [[1, 2, 3, 4].map((i) => ({ title: `第${i}节`, text: 'x' })), /最多 3 节/],
+      [[{ title: '彩蛋', text: 'a' }, { title: '彩蛋', text: 'b' }], /重名/],
+      [[{ title: '彩蛋', text: 'a' }, { title: '基本信息', text: 'b' }], /第 2 节/],
     ]) {
-      const r = validateValue('section', { title, text });
-      assert.equal(r.ok, false, `「${title}」本该被拒`);
+      const r = validateValue('section', { sections });
+      assert.equal(r.ok, false, `本该被拒：${JSON.stringify(sections).slice(0, 40)}`);
       assert.match(r.error, want);
     }
+    /* 多节通过时，值是 { sections: [...] } */
+    const multi = validateValue('section', {
+      sections: [
+        { title: '彩蛋与机关', text: 'a' },
+        { title: '老玩家心得', text: 'b' },
+      ],
+    });
+    assert.equal(multi.ok, true);
+    assert.equal(multi.value.sections.length, 2);
   });
 
-  await t.test('登录后能投，队列里带着标题；同图第二篇被 409 拦住', async () => {
+  await t.test('登录后能投，队列里带着每一节的标题；同图累计超 6 节才拦', async () => {
     const { call, env } = await setup();
     env.ADMIN_TOKEN = 'test-admin-token';
     const auth = { authorization: 'Bearer test-admin-token' };
     await register(call, '写小节的人');
+
+    /* 一次投 2 节 */
     const first = await call('/api/submit', {
       method: 'POST',
-      body: { map: 'ze_flowering', field: 'section', value: { title: '彩蛋与机关', text: '第三关有个隐藏开关。' } },
+      body: {
+        map: 'ze_flowering',
+        field: 'section',
+        value: {
+          sections: [
+            { title: '彩蛋与机关', text: '第三关有个隐藏开关。' },
+            { title: '老玩家心得', text: '别在第二关贪枪。' },
+          ],
+        },
+      },
     });
     assert.equal(first.status, 200, JSON.stringify(first.data));
-
-    const dup = await call('/api/submit', {
-      method: 'POST',
-      body: { map: 'ze_flowering', field: 'section', value: { title: '另一节', text: '再来一节' } },
-    });
-    assert.equal(dup.status, 409, JSON.stringify(dup.data));
-    assert.match(dup.data.error, /已经有一篇「社区整理」/);
-
-    /* 别的图不受影响 */
-    const other = await call('/api/submit', {
-      method: 'POST',
-      body: { map: 'ze_other', field: 'section', value: { title: '老玩家心得', text: '别的图可以有一篇' } },
-    });
-    assert.equal(other.status, 200, JSON.stringify(other.data));
 
     const queue = await call('/api/admin/queue?status=pending', { headers: auth });
     const row = (queue.data.items ?? []).find((x) => x.field === 'section');
     assert.ok(row, '队列里应当有这条');
-    assert.equal(row.title, '彩蛋与机关', '审核台要能看到小节标题');
+    assert.deepEqual(row.titles, ['彩蛋与机关', '老玩家心得'], '审核台要看到每一节的标题');
     assert.match(String(row.value), /隐藏开关/, '正文照旧在 value 里');
+
+    /* 再投 3 节 → 累计 5 节，仍然允许（上限 6） */
+    const second = await call('/api/submit', {
+      method: 'POST',
+      body: {
+        map: 'ze_flowering',
+        field: 'section',
+        value: { sections: [1, 2, 3].map((i) => ({ title: `补遗${i}`, text: 'x' })) },
+      },
+    });
+    assert.equal(second.status, 200, JSON.stringify(second.data));
+
+    /* 再加 2 节 → 7 节 > 6，拦下 */
+    const third = await call('/api/submit', {
+      method: 'POST',
+      body: {
+        map: 'ze_flowering',
+        field: 'section',
+        value: { sections: [1, 2].map((i) => ({ title: `又补${i}`, text: 'x' })) },
+      },
+    });
+    assert.equal(third.status, 409, JSON.stringify(third.data));
+    assert.match(third.data.error, /上限 6 节/);
+
+    /* 别的图各自计数，不受影响 */
+    const other = await call('/api/submit', {
+      method: 'POST',
+      body: { map: 'ze_other', field: 'section', value: { sections: [{ title: '老玩家心得', text: '别的图' }] } },
+    });
+    assert.equal(other.status, 200, JSON.stringify(other.data));
   });
 
-  await t.test('写回仓库：社区文档里留下 { title, text, field: section }，再读一遍标题还在', async () => {
+  await t.test('写回仓库：多节各成一条 note，都带标题；再读一遍标题还在', async () => {
     const { call, env } = await setup();
     env.ADMIN_TOKEN = 'test-admin-token';
     env.GITHUB_TOKEN = 'test-gh-token';
@@ -2078,7 +2121,16 @@ test('社区整理（自定义小节）：登录才能投、标题受控、一�
     await register(call, '写小节的人');
     const sub = await call('/api/submit', {
       method: 'POST',
-      body: { map: 'ze_demo9', field: 'section', value: { title: '彩蛋与机关', text: '第三关有个隐藏开关。' } },
+      body: {
+        map: 'ze_demo9',
+        field: 'section',
+        value: {
+          sections: [
+            { title: '彩蛋与机关', text: '第三关有个隐藏开关。' },
+            { title: '老玩家心得', text: '别在第二关贪枪。' },
+          ],
+        },
+      },
     });
     assert.equal(sub.status, 200, JSON.stringify(sub.data));
     const ok = await call('/api/admin/review', { method: 'POST', body: { id: sub.data.id, action: 'approve' }, headers: auth });
@@ -2096,17 +2148,16 @@ test('社区整理（自定义小节）：登录才能投、标题受控、一�
     }
 
     const doc = JSON.parse(repo.files['data/community/ze_demo9.json']);
-    const note = (doc.notes ?? [])[0];
-    assert.ok(note, '社区文档里应当有一条 note');
-    assert.equal(note.field, 'section');
-    assert.equal(note.title, '彩蛋与机关');
-    assert.match(note.text, /隐藏开关/);
-    assert.equal(note.by, '写小节的人');
+    assert.equal((doc.notes ?? []).length, 2, '两节各成一条 note');
+    assert.deepEqual(doc.notes.map((n) => n.title), ['彩蛋与机关', '老玩家心得']);
+    assert.deepEqual(doc.notes.map((n) => n.field), ['section', 'section']);
+    assert.match(doc.notes[0].text, /隐藏开关/);
+    assert.equal(doc.notes[0].by, '写小节的人');
 
     /* normalizeDoc 是白名单式重建：不带 title 的话这里会变成 null（页面上的小节名就没了） */
     const { normalizeDoc } = await import('../shared/community-doc.mjs');
     const reread = normalizeDoc('ze_demo9', doc);
-    assert.equal(reread.notes[0].title, '彩蛋与机关', '重新读一遍标题必须在');
+    assert.deepEqual(reread.notes.map((n) => n.title), ['彩蛋与机关', '老玩家心得'], '重新读一遍标题必须在');
   });
 });
 

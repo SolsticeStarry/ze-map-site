@@ -276,31 +276,16 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
                 </div>
               ) : f.kind === 'titledtext' ? (
                 /*
-                  社区整理（2026-10-15）：标题 + 正文两段。标题会变成条目里一个二级小节名，
-                  所以本地先按服务端同一套规则查一遍（2~20 字、不许与本站小节重名），
-                  当场给反馈 —— 免得填完一大段才被驳回。
+                  社区整理（2026-10-15，支持一次多节）：一行 = 一节（标题 + 正文 + 删掉这一节）。
+                  标题会变成条目里一个二级小节名，所以本地先按服务端同一套规则查一遍
+                  （2~20 字、不许与本站小节重名、同一批里不许重名），当场给反馈。
                 */
                 <div class="revise-wrap">
                   <p class="revise-bar" id={`revise-${f.key}`} hidden />
-                  <div class="form-row">
-                    <label for={`f-in-${f.key}-title`}>小节标题（2~20 字，例如「彩蛋与机关」）</label>
-                    <input
-                      id={`f-in-${f.key}-title`}
-                      data-input={f.key}
-                      data-part="title"
-                      maxlength="20"
-                      autocomplete="off"
-                      placeholder="自己起一个名字"
-                    />
-                  </div>
-                  <p class="form-hint" id={`f-hint-${f.key}`} />
-                  <textarea
-                    id={`f-in-${f.key}`}
-                    data-input={f.key}
-                    data-part="text"
-                    rows="10"
-                    placeholder="这一节写什么？支持简单 Markdown（分段、列表、引用）；插图片集里的图写一行 :::figure 2"
-                  />
+                  <div id="section-rows" class="section-rows" />
+                  <button class="btn s-add-row" type="button" id="section-add">
+                    ＋ 再加一节（最多 3 节）
+                  </button>
                 </div>
               ) : f.kind === 'tags' ? (
                 /*
@@ -692,7 +677,13 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
   function formatValue(v: unknown): string {
     if (v === undefined || v === null || v === '') return '（空）';
     if (Array.isArray(v)) return v.length ? v.join('、') : '（空）';
-    /* 社区整理（titledtext）是「标题 + 正文」两段：确认框里只念标题，正文另算字数 */
+    /* 社区整理（titledtext）是「若干节」：确认框里念每节的标题与字数 */
+    if (typeof v === 'object' && v !== null && Array.isArray((v as { sections?: unknown }).sections)) {
+      const secs = (v as { sections: Array<{ title?: unknown; text?: unknown }> }).sections;
+      return secs.length
+        ? secs.map((s) => `「${String(s.title ?? '')}」${[...String(s.text ?? '').trim()].length} 字`).join(' · ')
+        : '（空）';
+    }
     if (typeof v === 'object' && v !== null && typeof (v as { text?: unknown }).text === 'string') {
       const o = v as { title?: unknown; text?: string };
       return `${o.title ? `「${String(o.title)}」` : ''}${[...String(o.text).trim()].length} 字`;
@@ -938,8 +929,6 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     }
     const extra = mapSpecificHint(key);
     hintEl.textContent = extra ? `${rules[key]?.hint ?? ''}　${extra}` : (rules[key]?.hint ?? '');
-    /* 社区整理：标题框的即时检查（和服务端同一套规则） */
-    if (rules[key]?.kind === 'titledtext') syncTitleHint(key);
   }
 
   /* ===== 修订一条已通过的社区投稿 =====
@@ -950,48 +939,132 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
   type ReviseTarget = { field: string; id: string; by: string; text: string; title?: string };
   let reviseTarget: ReviseTarget | null = null;
 
-  /** 正文类字段的中文名（story → 背景故事）；从字段表取，不另写一份 */
+  /** 正文类字段的中文名（story → 背景故事）；从字段表取,不另写一份 */
   const fieldLabel = (key: string) => rules[key]?.label ?? '社区补充';
 
-  /**
-   * 社区整理（titledtext）的标题即时检查：和服务端同一套规则（长度 + 不许撞本站小节名），
-   * 本地先拦一道 —— 免得填完一大段正文才因为标题不合格被驳回。
-   */
-  function syncTitleHint(key: string): void {
-    const hint = document.getElementById(`f-hint-${key}`);
-    const input = document.querySelector<HTMLInputElement>(`[data-input="${key}"][data-part="title"]`);
-    if (!hint || !input) return;
-    const v = input.value.trim();
+  /* ===== 社区整理的小节编辑器（2026-10-15，一次可写 1~3 节） =====
+     一行 = 一节：标题 + 正文 + 「删掉这一节」。和神器表那个行编辑器同一个路子，
+     只是字段少、每行还多一个即时校验提示（标题撞本站小节名会当场变红）。 */
+  const MAX_SECTION_ROWS = Number(rules.section?.maxSections ?? 3);
+
+  function sectionRowCount(): number {
+    return document.querySelectorAll('#section-rows .section-row').length;
+  }
+
+  function syncSectionAddBtn(): void {
+    const btn = document.getElementById('section-add') as HTMLButtonElement | null;
+    if (!btn) return;
+    const n = sectionRowCount();
+    btn.hidden = n >= MAX_SECTION_ROWS;
+    btn.textContent = `＋ 再加一节（${n}/${MAX_SECTION_ROWS}）`;
+  }
+
+  /** 新开一节（preset 用来在「修订这条」时把已有的标题 + 正文带进来） */
+  function addSectionRow(preset?: { title?: string; text?: string }): void {
+    const box = document.getElementById('section-rows');
+    if (!box) return;
+    if (sectionRowCount() >= MAX_SECTION_ROWS) return;
+
+    const row = document.createElement('div');
+    row.className = 'section-row';
+
+    const head = document.createElement('div');
+    head.className = 'section-row-head';
+    const label = document.createElement('span');
+    label.className = 'section-row-label';
+    const title = document.createElement('input');
+    title.className = 'section-row-title';
+    title.maxLength = Number(rules.section?.titleMax ?? 20);
+    title.placeholder = '小节标题（例如「彩蛋与机关」）';
+    title.value = preset?.title ?? '';
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'btn';
+    del.textContent = '✕';
+    del.title = '删掉这一节';
+    del.addEventListener('click', () => {
+      row.remove();
+      renderSectionRows();
+    });
+    head.append(label, title, del);
+
+    const text = document.createElement('textarea');
+    text.className = 'section-row-text';
+    text.rows = 8;
+    text.placeholder = '这一节写什么？支持简单 Markdown（分段、列表、引用）；插图片集里的图写一行 :::figure 2';
+    text.value = preset?.text ?? '';
+
+    const hint = document.createElement('p');
+    hint.className = 'form-hint section-row-hint';
+
+    row.append(head, text, hint);
+    box.append(row);
+
+    const sync = () => syncSectionHint(row);
+    title.addEventListener('input', sync);
+    text.addEventListener('input', sync);
+    syncSectionHint(row);
+    renderSectionRows();
+    return;
+  }
+
+  /** 每节前面那个「第 N 节」标记 + 提示、以及「＋ 再加一节」的可用状态 */
+  function renderSectionRows(): void {
+    document.querySelectorAll<HTMLElement>('#section-rows .section-row').forEach((row, i) => {
+      const label = row.querySelector<HTMLElement>('.section-row-label');
+      if (label) label.textContent = `第 ${i + 1} 节`;
+      /* 只剩一节时不给删 —— 空列表提交上去只会被服务端退回 */
+      const del = row.querySelector<HTMLButtonElement>('button');
+      if (del) del.disabled = sectionRowCount() <= 1;
+    });
+    syncSectionAddBtn();
+  }
+
+  /** 这一节的标题检查：和服务端同一套规则（长度 / 禁字符 / 撞本站小节名 / 同批重名） */
+  function syncSectionHint(row: HTMLElement): void {
+    const hint = row.querySelector<HTMLElement>('.section-row-hint');
+    const titleEl = row.querySelector<HTMLInputElement>('.section-row-title');
+    const textEl = row.querySelector<HTMLTextAreaElement>('.section-row-text');
+    if (!hint || !titleEl || !textEl) return;
+    const v = titleEl.value.trim();
     const len = [...v].length;
-    const minT = Number(rules[key]?.titleMin ?? 2);
-    const maxT = Number(rules[key]?.titleMax ?? 20);
+    const minT = Number(rules.section?.titleMin ?? 2);
+    const maxT = Number(rules.section?.titleMax ?? 20);
+    const bad = (msg: string) => {
+      hint.textContent = msg;
+      hint.className = 'form-hint section-row-hint is-bad';
+    };
+    const good = (msg: string) => {
+      hint.textContent = msg;
+      hint.className = 'form-hint section-row-hint is-ok';
+    };
     if (!v) {
       hint.textContent = '标题会变成条目里一个小节名，例如「彩蛋与机关」「老玩家心得」。';
-      hint.className = 'form-hint';
+      hint.className = 'form-hint section-row-hint';
       return;
     }
-    if (len < minT) {
-      hint.textContent = `标题至少 ${minT} 个字`;
-      hint.className = 'form-hint is-bad';
-      return;
-    }
-    if (len > maxT) {
-      hint.textContent = `标题最多 ${maxT} 个字（现在 ${len} 个）`;
-      hint.className = 'form-hint is-bad';
-      return;
-    }
-    if (/[<>{}#|]/.test(v)) {
-      hint.textContent = '标题里不能出现 < > { } # |';
-      hint.className = 'form-hint is-bad';
-      return;
-    }
-    if (isReservedSectionTitle(v)) {
-      hint.textContent = `「${v}」是本站自己的小节名，换一个（例如「彩蛋与机关」）`;
-      hint.className = 'form-hint is-bad';
-      return;
-    }
-    hint.textContent = `小节名就用「${v}」，显示在条目末尾，带「社区整理」小标和你的署名。`;
-    hint.className = 'form-hint is-ok';
+    if (len < minT) return bad(`标题至少 ${minT} 个字`);
+    if (len > maxT) return bad(`标题最多 ${maxT} 个字（现在 ${len} 个）`);
+    if (/[<>{}#|]/.test(v)) return bad('标题里不能出现 < > { } # |');
+    if (isReservedSectionTitle(v)) return bad(`「${v}」是本站自己的小节名，换一个（例如「彩蛋与机关」）`);
+    const dup = [...document.querySelectorAll<HTMLInputElement>('#section-rows .section-row-title')].filter(
+      (el) => el !== titleEl && el.value.trim() === v
+    ).length;
+    if (dup) return bad(`「${v}」和上面某一节重名了`);
+    const chars = [...textEl.value.trim()].length;
+    good(`共 ${chars} 字${chars > Number(rules.section?.maxLen ?? 4000) ? ` —— 超过上限 ${rules.section?.maxLen} 字，得删一些` : ''}`);
+  }
+
+  /**
+   * 社区整理那一档的编辑器行数由脚本管：进入这一档时保证至少有一节、清掉上一张图残留的内容。
+   * @param keep 留着的预设（「修订这条」用）：只保留这一节
+   */
+  function resetSectionRows(preset?: { title?: string; text?: string }): void {
+    const box = document.getElementById('section-rows');
+    if (!box) return;
+    box.textContent = '';
+    addSectionRow(preset);
+    renderSectionRows();
   }
 
   function renderReviseBar(): void {
@@ -1030,11 +1103,9 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     fieldSel.value = field;
     showField(field);
     prefill(field);
-    /* 社区整理是「标题 + 正文」两个框：两个都要带进来（只带正文等于把标题抹了） */
+    /* 社区整理：把要修订的那一节带进编辑器（只留这一节） */
     if (rules[field]?.kind === 'titledtext') {
-      const titleInput = document.querySelector<HTMLInputElement>(`[data-input="${field}"][data-part="title"]`);
-      if (titleInput) titleInput.value = t.title ?? '';
-      syncTitleHint(field);
+      resetSectionRows({ title: t.title ?? '', text: t.text });
     }
     const input = document.querySelector<HTMLTextAreaElement>(`[data-input="${field}"][data-part="text"]`)
       ?? document.querySelector<HTMLTextAreaElement>(`[data-input="${field}"]`);
@@ -1375,7 +1446,11 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 
   function shortPreview(v: unknown): string {
     if (Array.isArray(v)) return v.length ? `共 ${v.length} 项：${v.slice(0, 2).map(String).join('、')}${v.length > 2 ? '…' : ''}` : '（空）';
-    /* 社区整理（titledtext）：对象是「标题 + 正文」，别念成「2 个字段」 */
+    /* 社区整理（titledtext）：对象是「若干节」，别念成「2 个字段」 */
+    if (v && typeof v === 'object' && Array.isArray((v as { sections?: unknown }).sections)) {
+      const secs = (v as { sections: Array<{ title?: unknown }> }).sections;
+      return secs.length ? `${secs.length} 节：${secs.map((s) => `「${String(s.title ?? '')}」`).join(' ')}` : '（空）';
+    }
     if (v && typeof v === 'object' && typeof (v as { text?: unknown }).text === 'string') {
       const o = v as { title?: unknown; text?: string };
       return `${o.title ? `「${String(o.title)}」` : ''}${[...String(o.text).replace(/\s+/g, ' ').trim()].slice(0, 40).join('')}`;
@@ -2162,15 +2237,12 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     }
 
     /*
-     * 社区整理（titledtext）：两个框都从空开始（新写一节），标题框给焦点；
-     * 「改已有那一节」走右侧面板的「修订这条」（startRevise 会把标题+正文一起带进来）。
+     * 社区整理（2026-10-15 起支持一次多节）：编辑器是「一行一节」，
+     * 新写的时候保证有一行空的；改已有那一节走右侧面板的「修订这条」。
      */
     if (rules[key]?.kind === 'titledtext') {
-      const title = document.querySelector<HTMLInputElement>(`[data-input="${key}"][data-part="title"]`);
-      const text = document.querySelector<HTMLTextAreaElement>(`[data-input="${key}"][data-part="text"]`);
-      if (title && !reviseTarget) title.value = '';
-      if (text && !reviseTarget) text.value = '';
-      syncTitleHint(key);
+      if (!reviseTarget) resetSectionRows();
+      else if (!sectionRowCount()) resetSectionRows();
       return;
     }
 
@@ -2252,13 +2324,18 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     if (rules[key]?.kind === 'tags') return [...tagSelected];
     const kind = rules[key]?.kind;
     /*
-     * 社区整理（titledtext）：一个字段两个输入框（标题 + 正文），
-     * 两个都带 data-input=<key>，用 data-part 区分 —— 服务端要的是 { title, text }。
+     * 社区整理（titledtext）：一行一节，收成 `{ sections: [{title, text}, …] }`；
+     * 整行都空的（标题和正文都没写）直接丢掉 —— 加了行又不用是常态。
      */
     if (kind === 'titledtext') {
-      const title = document.querySelector<HTMLInputElement>(`[data-input="${key}"][data-part="title"]`);
-      const text = document.querySelector<HTMLTextAreaElement>(`[data-input="${key}"][data-part="text"]`);
-      return { title: title?.value.trim() ?? '', text: text?.value.trim() ?? '' };
+      const sections: Array<{ title: string; text: string }> = [];
+      for (const row of document.querySelectorAll<HTMLElement>('#section-rows .section-row')) {
+        const title = row.querySelector<HTMLInputElement>('.section-row-title')?.value.trim() ?? '';
+        const text = row.querySelector<HTMLTextAreaElement>('.section-row-text')?.value.trim() ?? '';
+        if (!title && !text) continue;
+        sections.push({ title, text });
+      }
+      return { sections };
     }
     const el = document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
       `[data-input="${key}"]`
@@ -2290,11 +2367,10 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 
   document.getElementById('items-add')?.addEventListener('click', () => addItemRow());
 
-  /* 社区整理的标题框：边打边查（长度 / 撞本站小节名），当场给反馈 */
-  for (const el of document.querySelectorAll<HTMLInputElement>('[data-part="title"]')) {
-    const key = el.dataset.input ?? '';
-    el.addEventListener('input', () => syncTitleHint(key));
-  }
+  /* 社区整理：＋ 再加一节 */
+  document.getElementById('section-add')?.addEventListener('click', () => addSectionRow());
+  /* 第一屏就先摆一节空的（后面 prefill('section') 还会按需重置） */
+  if (document.getElementById('section-rows')) resetSectionRows();
 
   /* 载入地图索引（构建期生成的 /submit/maps.json） */
   fetch('/submit/maps.json')    .then((r) => r.json())

@@ -108,8 +108,9 @@ export function findNoteIndex(notes, reviseId) {
 /**
  * 投稿的 value 在 note 字段上的几种形态：
  *   普通投稿 → 直接是字符串；修订 → { text, reviseOf }；
- *   社区整理（titledtext）→ { title, text }（可能也带 reviseOf）。
+ *   社区整理（titledtext）→ { sections: [{title, text}, …] }（老数据是单节的 { title, text }）。
  * 这里统一拆成 { title, text, reviseOf }，调用方不必关心是哪种。
+ * ⚠️ 多节的社区整理要用 titledSections() 拆成 N 节，那个在下面。
  */
 export function notePayload(value) {
   if (value && typeof value === 'object' && !Array.isArray(value) && typeof value.text === 'string') {
@@ -120,6 +121,35 @@ export function notePayload(value) {
     };
   }
   return { title: '', text: typeof value === 'string' ? value : String(value ?? ''), reviseOf: '' };
+}
+
+/**
+ * 社区整理的投稿值 → 节列表（2026-10-15 支持一次多节）。
+ * 兼容老的单节形状 `{ title, text }` —— 线上可能已经有这种投稿在队列里。
+ * @returns {Array<{title: string, text: string}>}
+ */
+export function titledSections(value) {
+  const v = value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+  if (!v) return [];
+  if (Array.isArray(v.sections)) {
+    return v.sections
+      .map((s) => ({
+        title: String(s && typeof s === 'object' ? (s.title ?? '') : '').trim(),
+        text: String(s && typeof s === 'object' ? (s.text ?? '') : '').trim(),
+      }))
+      .filter((s) => s.title || s.text);
+  }
+  if (typeof v.text === 'string') {
+    return [{ title: typeof v.title === 'string' ? v.title.trim() : '', text: v.text.trim() }];
+  }
+  return [];
+}
+
+/** 社区整理投稿里的修订目标 id（没有就返回空串） */
+export function titledReviseOf(value) {
+  const v = value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+  const raw = v && typeof v.reviseOf === 'string' ? v.reviseOf.trim() : '';
+  return isReviseId(raw) ? raw : '';
 }
 
 /**
