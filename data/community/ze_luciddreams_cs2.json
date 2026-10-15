@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_luciddreams_cs2",
-  "updatedAt": "2026-10-14T11:57:48.822Z",
+  "updatedAt": "2026-10-15T10:47:12.855Z",
   "fields": {
     "aliases": {
       "v": [
@@ -61,6 +61,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T11:51:34.912Z",
       "submission": 212
+    },
+    "draft": {
+      "v": "已采纳 2026-10-15",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:47:12.855Z",
+      "submission": 198
     }
   },
   "notes": [],
@@ -155,14 +161,17 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T11:51:34.912Z",
       "submission": 212
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:47:12.855Z",
+      "submission": 198
     }
   ],
-  "draft": {
-    "text": "## - ze_luciddreams (清醒的白日梦) -\n\n地图由 [R.] 绘制\n\n- 1个关卡\n\n- 高难度跳刀/弹幕\n\n- 随音乐演出的弹幕/跳刀\n\n- 超现实风格",
-    "by": "AntiLockwise",
-    "at": "2026-10-14T11:51:54.417Z",
-    "submission": 198
-  },
+  "draft": null,
   "items": [
     {
       "action": "add",
