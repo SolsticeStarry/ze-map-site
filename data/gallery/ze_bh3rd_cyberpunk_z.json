@@ -1,11 +1,29 @@
 {
   "slug": "ze_bh3rd_cyberpunk_z",
-  "count": 1,
+  "count": 4,
   "images": [
     {
       "src": "https://terr.ze-map.cn/gallery/ze_bh3rd_cyberpunk_z/u274.webp",
       "kind": "user",
       "caption": "道中1",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_bh3rd_cyberpunk_z/u275.webp",
+      "kind": "user",
+      "caption": "道中2",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_bh3rd_cyberpunk_z/u276.webp",
+      "kind": "user",
+      "caption": "道中3",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_bh3rd_cyberpunk_z/u277.webp",
+      "kind": "user",
+      "caption": "BOSS战1",
       "by": "AntiLockwise"
     }
   ]
