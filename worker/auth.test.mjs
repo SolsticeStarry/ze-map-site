@@ -2004,6 +2004,207 @@ test('R2 同源回退：地形分片与图集图片都能取，路径不合法�
   });
 });
 
+/* ===== 审核台「整篇草稿」那一档（2026-10-15） =====
+ *
+ * 站长的原话：「找整篇条目草稿太麻烦，审核好的全都堆叠在一块，很难采纳为原稿」。
+ * 于是队列加了 `field` 过滤 + `fieldCounts`（草稿档那几个小标签的计数）。
+ * 这一组用例钉住：只看 draft、不串别的字段、字段不合法要拒、现值回的是「草稿状态对象」。
+ */
+test('审核台整篇草稿档：field 过滤 + 计数 + 草稿现值（采纳过没有）', async (t) => {
+  await t.test('field=draft 只回草稿；fieldCounts 给出各状态条数', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    const ins = db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter)
+       VALUES (?,?,?,'h',?,?, '某人')`
+    );
+    ins.run('ze_drafts', 'draft', JSON.stringify('## 关卡\n第一关：跳刀。\n'), 'applied', 1000);
+    ins.run('ze_drafts2', 'draft', JSON.stringify('## 关卡\n另一篇。\n'), 'applied', 2000);
+    ins.run('ze_drafts3', 'draft', JSON.stringify('## 关卡\n待审的。\n'), 'pending', 3000);
+    ins.run('ze_other', 'difficulty', JSON.stringify('困难'), 'applied', 4000);
+
+    const all = await call('/api/admin/queue?status=applied', { headers: auth });
+    assert.equal(all.data.items.length, 3, '不筛字段时：两条草稿 + 一条难度');
+
+    const drafts = await call('/api/admin/queue?status=applied&field=draft', { headers: auth });
+    assert.equal(drafts.status, 200, JSON.stringify(drafts.data));
+    assert.equal(drafts.data.items.length, 2, '只回整篇草稿');
+    assert.ok(drafts.data.items.every((x) => x.field === 'draft'), '不混别的字段');
+    assert.equal(drafts.data.total, 2);
+    assert.equal(drafts.data.field, 'draft');
+    assert.equal(drafts.data.fieldCounts.applied, 2, '待采纳 2 条');
+    assert.equal(drafts.data.fieldCounts.pending, 1, '待审 1 条');
+
+    const bad = await call('/api/admin/queue?status=applied&field=nope', { headers: auth });
+    assert.equal(bad.status, 400, '不认识的字段要拒');
+  });
+
+  /*
+   * 采纳过的草稿要从「待采纳」里走开（2026-10-15 加）。
+   * 站长的原话是「审核好的全都堆叠在一块我怎么找」—— 光按字段分开还不够：
+   * 采纳完的草稿仍留在那一档里，攒上十几条又变成一堆翻不完的存货，
+   * 而且它们其实已经进正文了、点「采纳为原稿」只会撞 409。
+   * 现在采纳时往 submissions.adopted_at 记一笔，队列默认把它们排除（adopted=1 才列）。
+   */
+  await t.test('采纳过的草稿不再列在「待采纳」里（adopted=1 才看得到）', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    env.GITHUB_TOKEN = 'test-gh-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    const ins = db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter)
+       VALUES (?,?,?,'h','applied',?, '整理者')`
+    );
+    ins.run('ze_adopt1', 'draft', JSON.stringify('## 基本信息\n\n甲篇内容\n'), 1000);
+    ins.run('ze_adopt2', 'draft', JSON.stringify('## 基本信息\n\n乙篇内容\n'), 2000);
+    ins.run('ze_adopt3', 'difficulty', JSON.stringify('困难'), 3000);
+
+    const before = await call('/api/admin/queue?status=applied&field=draft', { headers: auth });
+    assert.equal(before.data.items.length, 2, '两条草稿都还等着采纳');
+    assert.equal(before.data.fieldCounts.applied, 2);
+    assert.equal(before.data.adoptedCount, 0, '还没采纳过');
+    assert.ok(
+      before.data.items.every((x) => x.adopted_at == null),
+      '待采纳的条目不带采纳时间'
+    );
+
+    /* 真走一遍采纳（假仓库 + 假 GitHub），看 adopted_at 有没有落下 */
+    const repo = installFakeRepo({
+      'data/research/ze_adopt1.json':
+        JSON.stringify({ sections: [{ title: '基本信息', body: '旧的一节' }], confidence: 'low' }, null, 2) + '\n',
+      'data/community/ze_adopt1.json':
+        JSON.stringify({ v: 1, slug: 'ze_adopt1', updatedAt: null, fields: {}, notes: [], draft: null, items: [], log: [] }, null, 2) + '\n',
+    });
+    try {
+      const adopted = await call('/api/admin/adopt', { method: 'POST', body: { slug: 'ze_adopt1' }, headers: auth });
+      assert.equal(adopted.status, 200, JSON.stringify(adopted.data));
+    } finally {
+      repo.restore();
+    }
+    const row = db.prepare(`SELECT adopted_at, commit_sha FROM submissions WHERE map_slug='ze_adopt1'`).get();
+    assert.ok(Number(row.adopted_at) > 0, '采纳后必须记下采纳时间（审核台靠它排掉已采纳的）');
+    assert.ok(row.commit_sha, '顺手记下提交号');
+
+    const after = await call('/api/admin/queue?status=applied&field=draft', { headers: auth });
+    assert.equal(after.data.items.length, 1, '已采纳的从待采纳里走开');
+    assert.equal(after.data.items[0].map_slug, 'ze_adopt2', '留下的是还没采纳的那条');
+    assert.equal(after.data.fieldCounts.applied, 1, '「待采纳」计数要跟着掉');
+    assert.equal(after.data.adoptedCount, 1, '另给一句「已采纳 1 篇」');
+
+    const adoptedOnly = await call('/api/admin/queue?status=applied&field=draft&adopted=1', { headers: auth });
+    assert.equal(adoptedOnly.data.items.length, 1, 'adopted=1 时只看已采纳的');
+    assert.equal(adoptedOnly.data.items[0].map_slug, 'ze_adopt1');
+    assert.ok(Number(adoptedOnly.data.items[0].adopted_at) > 0);
+
+    /* 别的字段不受影响：difficulty 那条照旧列出来（它没有「采纳」这一步） */
+    const other = await call('/api/admin/queue?status=applied&field=difficulty', { headers: auth });
+    assert.equal(other.data.items.length, 1, '难度的队列不该被采纳标记影响');
+    assert.equal(other.data.adoptedCount, 0, '非草稿字段没有「已采纳」这回事');
+  });
+
+  /*
+   * 同一张图攒下多条「已写回」草稿时，只列最新的一条（2026-10-15 加）。
+   * 作者改一版就重投一次，老的那几条既采纳不到（服务端取的是 ORDER BY id DESC LIMIT 1），
+   * 内容又跟真正会合并进去的那篇不一样 —— 列出来只会让「待采纳」重新变长、还容易看错。
+   */
+  await t.test('同一张图多条已写回草稿：待采纳只列最新那条，计数同口径', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    const ins = db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter)
+       VALUES (?,?,?,'h',?,?, '整理者')`
+    );
+    ins.run('ze_dup', 'draft', JSON.stringify('## 基本信息\n第一版\n'), 'applied', 1000);
+    ins.run('ze_dup', 'draft', JSON.stringify('## 基本信息\n第二版（最新）\n'), 'applied', 2000);
+    ins.run('ze_dup', 'draft', JSON.stringify('## 基本信息\n第三版还在审\n'), 'pending', 3000);
+    ins.run('ze_other2', 'draft', JSON.stringify('## 基本信息\n别的图\n'), 'applied', 4000);
+    const newest = db.prepare(`SELECT MAX(id) AS id FROM submissions WHERE map_slug='ze_dup' AND status='applied'`).get();
+
+    const q = await call('/api/admin/queue?status=applied&field=draft', { headers: auth });
+    assert.equal(q.data.items.length, 2, '一张图一条 + 另一张图一条');
+    const dup = q.data.items.find((x) => x.map_slug === 'ze_dup');
+    assert.equal(dup.id, newest.id, '留下的是最新那版');
+    assert.match(String(dup.value), /第二版/);
+    assert.equal(q.data.fieldCounts.applied, 2, '角标数跟列表条数一致（不是 3）');
+
+    /* 别的状态档不受这条规则影响：待审那版照样列出来 */
+    const p = await call('/api/admin/queue?status=pending&field=draft', { headers: auth });
+    assert.equal(p.data.items.length, 1, '待审档该有几条是几条');
+    assert.match(String(p.data.items[0].value), /第三版/);
+    assert.equal(p.data.fieldCounts.pending, 1);
+  });
+
+  await t.test('草稿现值：没采纳时给字数与整理者；采纳后给「已采纳」标记', async () => {
+    const { call, env, db } = await setup();
+    env.ADMIN_TOKEN = 'test-admin-token';
+    env.GITHUB_TOKEN = 'test-gh-token';
+    const auth = { authorization: 'Bearer test-admin-token' };
+    db.prepare(
+      `INSERT INTO submissions (map_slug, field, value, ip_hash, status, created_at, submitter)
+       VALUES ('ze_draftcur','draft',?,'h','applied',?, '整理者')`
+    ).run(JSON.stringify('## 关卡\n第一关：跳刀。\n'), 1000);
+    const row = db.prepare(`SELECT id FROM submissions WHERE map_slug='ze_draftcur'`).get();
+
+    /* 页面上正挂着草稿（没采纳） */
+    const repo = installFakeRepo({
+      'data/community/ze_draftcur.json':
+        JSON.stringify(
+          {
+            v: 1,
+            slug: 'ze_draftcur',
+            updatedAt: null,
+            fields: {},
+            notes: [],
+            draft: { text: '## 关卡\n第一关：跳刀。\n', by: '整理者', at: '2026-10-15T00:00:00.000Z', submission: row.id },
+            items: [],
+            log: [],
+          },
+          null,
+          2
+        ) + '\n',
+    });
+    try {
+      const cur = await call(`/api/admin/current?ids=${row.id}`, { headers: auth });
+      assert.equal(cur.status, 200, JSON.stringify(cur.data));
+      const info = cur.data.current[String(row.id)];
+      assert.equal(info.adopted, null, '还没采纳');
+      assert.equal(info.draftBy, '整理者');
+      assert.ok(info.draftChars > 5, `草稿字数要算出来（实际 ${info.draftChars}）`);
+    } finally {
+      repo.restore();
+    }
+
+    /* 采纳之后：草稿位清空、fields.draft 记「已采纳」 */
+    const repo2 = installFakeRepo({
+      'data/community/ze_draftcur.json':
+        JSON.stringify(
+          {
+            v: 1,
+            slug: 'ze_draftcur',
+            updatedAt: null,
+            fields: { draft: { v: '已采纳 2026-10-15', by: '整理者', at: '2026-10-15T02:00:00.000Z', submission: row.id } },
+            notes: [],
+            draft: null,
+            items: [],
+            log: [],
+          },
+          null,
+          2
+        ) + '\n',
+    });
+    try {
+      const cur = await call(`/api/admin/current?ids=${row.id}`, { headers: auth });
+      const info = cur.data.current[String(row.id)];
+      assert.equal(info.adopted, '已采纳 2026-10-15', '审核台要能看出这条已经采纳过');
+      assert.equal(info.draftChars, 0, '采纳后草稿位是空的');
+    } finally {
+      repo2.restore();
+    }
+  });
+});
+
 /* ===== 社区整理：自定义小节（2026-10-15 加） =====
  *
  * 社区朋友要的「现有标准条目 + 1 个自定义区」：投稿人自己起小节名，放标准字段装不下的长篇见解。

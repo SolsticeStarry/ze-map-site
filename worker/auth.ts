@@ -814,6 +814,18 @@ export async function ensureSchema(env: Env): Promise<void> {
     if (!(cols.results ?? []).some((c) => c.name === 'batch')) {
       await step('submissions.batch', () => env.DB.prepare(`ALTER TABLE submissions ADD COLUMN batch TEXT`).run());
     }
+    /*
+     * submissions.adopted_at：这条整篇草稿**已经被采纳为原稿**的时间（2026-10-15 加）。
+     * 以前只把「已采纳」记在社区文档（data/community/<slug>.json 的 fields.draft）里，
+     * D1 完全不知情 —— 于是审核台的「整篇草稿 · 待采纳」里，采纳过的草稿会一直堆着，
+     * 越攒越多、又没法从列表里排掉（站长报的就是这个）。现在采纳时顺手记一笔，
+     * 队列按它把已采纳的从「待采纳」里排除（要看得显式带 adopted=1）。
+     */
+    if (!(cols.results ?? []).some((c) => c.name === 'adopted_at')) {
+      await step('submissions.adopted_at', () =>
+        env.DB.prepare(`ALTER TABLE submissions ADD COLUMN adopted_at INTEGER`).run()
+      );
+    }
     await step('idx_sub_user', () =>
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_sub_user ON submissions(user_id, created_at)`).run()
     );

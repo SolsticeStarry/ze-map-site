@@ -14,6 +14,7 @@ import {
   emptyDoc,
   findNoteIndex,
   isItemField,
+  isDocField,
   isNoteField,
   isReviseId,
   isTitledField,
@@ -896,13 +897,14 @@ export async function handleAdminAdopt(request: Request, env: Env): Promise<Resp
     return fail(`写回仓库失败：${err instanceof Error ? err.message : String(err)}`, 502);
   }
 
-  /* 记一笔提交号，方便日后对账（这条投稿本身仍是 applied） */
-  if (commitSha) {
-    await env.DB.prepare(`UPDATE submissions SET commit_sha = ?1 WHERE id = ?2`)
-      .bind(commitSha, row.id)
-      .run()
-      .catch(() => {});
-  }
+  /* 记一笔提交号，方便日后对账（这条投稿本身仍是 applied）。
+     adopted_at 一起落下：审核台靠它把「已经采纳过」的草稿从「待采纳」里排除，
+     不然采纳完的还堆在那一档里，攒多了又变成翻不完的存货。
+     （提交号拿不到也照样落 adopted_at —— 合并已经写进仓库了，别让列表骗人。） */
+  await env.DB.prepare(`UPDATE submissions SET commit_sha = COALESCE(?1, commit_sha), adopted_at = ?2 WHERE id = ?3`)
+    .bind(commitSha || null, Date.now(), row.id)
+    .run()
+    .catch(() => {});
 
   /* 收件箱：告诉整理者「你写的那篇草稿进百科正文了」（草稿必须登录才能投，所以基本都有 user_id） */
   if (row.user_id) {
@@ -959,6 +961,21 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
   const qRaw = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
   const mapRaw = (url.searchParams.get('map') ?? '').trim();
   const mapFilter = SLUG_RE.test(mapRaw) ? mapRaw : '';
+  /*
+   * field：按字段筛（2026-10-15 加）。直接原因是审核台要一个**只看整篇草稿**的入口 ——
+   * 草稿混在所有字段里，站长很难找到「已写回、等着采纳」的那几条。
+   */
+  const fieldRaw = (url.searchParams.get('field') ?? '').trim();
+  if (fieldRaw && !isField(fieldRaw)) return fail('字段不合法');
+  const fieldFilter = fieldRaw;
+  /*
+   * adopted：整篇草稿里「已经采纳为原稿」的那些要不要一起列（2026-10-15 加）。
+   * 默认**不列** —— 「待采纳」这一档的意义就是「还等着我按采纳的」，
+   * 采纳过的留在里面只会重新变成一堆翻不完的存货（站长报的痛点）。
+   * 想看已采纳的（比如怀疑哪篇被采纳后又手工回滚了）就显式带 adopted=1。
+   */
+  const adoptedRaw = (url.searchParams.get('adopted') ?? '').trim();
+  const adoptedOnly = adoptedRaw === '1' || adoptedRaw === 'true';
 
   const where: string[] = ['status = ?1'];
   const binds: unknown[] = [status];
@@ -977,6 +994,27 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
     binds.push(mapFilter);
     where.push(`map_slug = ?${binds.length}`);
   }
+  if (fieldFilter) {
+    binds.push(fieldFilter);
+    where.push(`field = ?${binds.length}`);
+    /* 只有整篇草稿有「采纳」这一步；别的字段照旧全列 */
+    if (fieldFilter === 'draft') {
+      where.push(adoptedOnly ? 'adopted_at IS NOT NULL' : 'adopted_at IS NULL');
+      /*
+       * 「待采纳」里每张图只留**最新的一条**已写回草稿。
+       * 同一张图可以攒下好几条 applied 草稿（作者改一版重投一次），而采纳时服务端取的是
+       * `ORDER BY id DESC LIMIT 1` —— 老的那几条既采纳不到、内容还跟真正会合并的那篇不一样，
+       * 列出来只会让「待采纳」重新变长、还容易照着旧文本做判断。
+       * 只对 applied 生效：待审 / 待写回 / 已驳回那几档该有几条是几条。
+       */
+      if (!adoptedOnly && status === 'applied') {
+        where.push(
+          `id = (SELECT MAX(s2.id) FROM submissions s2
+                  WHERE s2.map_slug = submissions.map_slug AND s2.field = 'draft' AND s2.status = 'applied')`
+        );
+      }
+    }
+  }
   const whereSql = where.join(' AND ');
 
   const totalRow = await env.DB.prepare(`SELECT COUNT(*) AS n FROM submissions WHERE ${whereSql}`)
@@ -985,11 +1023,11 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
 
   const { results } = await env.DB.prepare(
     `SELECT id, map_slug, field, value, note, submitter, contact, status, created_at,
-            reviewed_at, reviewer, reject_note, commit_sha, error, batch
+            reviewed_at, reviewer, reject_note, commit_sha, error, batch, adopted_at
      FROM submissions WHERE ${whereSql} ORDER BY created_at ASC LIMIT ?${binds.length + 1} OFFSET ?${binds.length + 2}`
   )
     .bind(...binds, limit, offset)
-    .all<SubmissionRow & { batch?: string | null }>();
+    .all<SubmissionRow & { batch?: string | null; adopted_at?: number | null }>();
 
   /* 批量投稿的「同批还有几条」：审核台据此知道这几条要一起看（一次整理，别只通过一半） */
   const batchCounts = new Map<string, number>();
@@ -1001,6 +1039,45 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
   const counts = await env.DB.prepare(
     `SELECT status, COUNT(*) AS n FROM submissions GROUP BY status`
   ).all<{ status: string; n: number }>();
+
+  /* 指定字段时另给一份「这个字段各状态几条」——审核台的「整篇草稿」标签靠它显示待采纳数 */
+  const fieldCounts = fieldFilter
+    ? (Object.fromEntries(
+        (
+          await env.DB.prepare(
+            `SELECT status, COUNT(*) AS n FROM submissions WHERE field = ?1 AND adopted_at IS NULL GROUP BY status`
+          )
+            .bind(fieldFilter)
+            .all<{ status: string; n: number }>()
+        ).results?.map((r) => [r.status, r.n]) ?? []
+      ) as Record<string, number>)
+    : null;
+  /*
+   * 「待采纳」的计数必须跟列表同一个口径（上面列表只列每张图最新的一条已写回草稿）——
+   * 否则角标说 3 条、点进去只有 1 条，审核员会以为漏了。
+   */
+  if (fieldCounts && fieldFilter === 'draft') {
+    const dedup = await env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM submissions
+        WHERE field = 'draft' AND status = 'applied' AND adopted_at IS NULL
+          AND id = (SELECT MAX(s2.id) FROM submissions s2
+                     WHERE s2.map_slug = submissions.map_slug AND s2.field = 'draft' AND s2.status = 'applied')`
+    ).first<{ n: number }>();
+    fieldCounts.applied = Number(dedup?.n ?? 0);
+  }
+  /*
+   * 草稿档还要一句「已经采纳了几条」（它们不在上面那份计数里）。
+   * 光看「待采纳 0」会让人以为草稿没了 —— 说清楚只是采纳完了。
+   */
+  const adoptedCount = fieldFilter
+    ? Number(
+        (
+          await env.DB.prepare(`SELECT COUNT(*) AS n FROM submissions WHERE field = ?1 AND adopted_at IS NOT NULL`)
+            .bind(fieldFilter)
+            .first<{ n: number }>()
+        )?.n ?? 0
+      )
+    : 0;
 
   /*
    * ⚠️ 这里**不再**顺手去读每张图的社区文档（2026-10-13 改）。
@@ -1045,10 +1122,13 @@ export async function handleAdminQueue(request: Request, env: Env, url: URL): Pr
     items,
     q: qRaw,
     map: mapFilter,
+    field: fieldFilter,
     limit,
     offset,
     total: Number(totalRow?.n ?? 0),
     counts: Object.fromEntries((counts.results ?? []).map((r) => [r.status, r.n])),
+    fieldCounts,
+    adoptedCount,
     gitReady: Boolean(env.GITHUB_TOKEN),
   });
 }
@@ -1095,7 +1175,24 @@ export async function handleAdminCurrent(request: Request, env: Env, url: URL): 
     }
 
     let current: unknown = null;
-    if (isItemField(row.field)) {
+    if (isDocField(row.field)) {
+      /*
+       * 整篇草稿（2026-10-15）：审核台要能一眼看出「这篇采纳过没有」。
+       * 光看 D1 看不出来 —— 采纳的痕迹只写在社区文档里（`fields.draft = 已采纳 …`，同时 doc.draft 清空）。
+       * 所以这里回一个小对象：页面上挂着的那篇草稿（字数 / 谁整理的）+ 有没有采纳过。
+       * 审核台据此把已采纳的标出来，免得对着同一条反复点「采纳为原稿」。
+       */
+      const draft = doc?.draft && typeof doc.draft === 'object' ? doc.draft : null;
+      const adopted = doc?.fields?.draft;
+      current = {
+        draftChars: draft?.text ? [...String(draft.text)].length : 0,
+        draftBy: draft?.by ?? null,
+        draftAt: draft?.at ?? null,
+        adopted: typeof adopted?.v === 'string' && adopted.v ? adopted.v : null,
+        adoptedAt: adopted?.at ?? null,
+        adoptedBy: adopted?.by ?? null,
+      };
+    } else if (isItemField(row.field)) {
       /* 神器 / 道具的「现值」是社区文档里已有的行，不是 fields 里的某个值 */
       current = doc?.items ?? [];
     } else if (isNoteField(row.field)) {

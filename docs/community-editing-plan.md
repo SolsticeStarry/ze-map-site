@@ -191,7 +191,7 @@ CREATE TABLE bans (
 | `POST` | `/api/vote` | 公开 + Turnstile | 难度投票 |
 | `GET` | `/api/stats?map=<slug>` | 公开 | 投票分布（可缓存 60s） |
 | `POST` | `/api/submit` | 公开 + Turnstile | 提交改动，进队列 |
-| `GET` | `/api/admin/queue` | **Access 保护** | 待审列表 |
+| `GET` | `/api/admin/queue` | **Access 保护** | 待审列表。参数：`status` / `q` / `map` / `limit` / `offset`，另有 `field=<字段>`（2026-10-15 加，审核台「整篇草稿」标签用它只看 `draft`，并附带 `fieldCounts`＝该字段各状态条数 + `adoptedCount`＝已采纳条数）与 `adopted=1`（只在 `field=draft` 时有意义：默认**不列**已采纳的草稿，带上它才只看已采纳的） |
 | `POST` | `/api/admin/review` | **Access 保护** | `{id, action: approve\|reject, rejectNote}` |
 | `POST` | `/api/admin/ban` | **Access 保护** | 封禁 ip_hash |
 

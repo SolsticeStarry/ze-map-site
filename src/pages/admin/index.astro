@@ -60,6 +60,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           <button class="admin-tab" type="button" role="tab" data-status="applied">已上线<b class="tab-n">0</b></button>
           <button class="admin-tab" type="button" role="tab" data-status="rejected">已驳回<b class="tab-n">0</b></button>
           {/*
+            「整篇草稿」（2026-10-15 加）：站长的原话是「找整篇条目草稿太麻烦，审核好的全都堆叠在一块，
+            很难采纳为原稿」。这一档只看 field=draft 的投稿，默认停在**待采纳**（已写回、页面上正挂着），
+            每条都摆着「采纳为原稿」，不再跟难度 / 标签那些混在一起。
+          */}
+          <button class="admin-tab" type="button" role="tab" id="a-tab-drafts">
+            整篇草稿<b class="tab-n" id="a-drafts-n">0</b>
+          </button>
+          {/*
             「账号」标签：看账号列表 + 停用 / 恢复 / 解锁 / 重置口令 / 挂称号。
             做它的直接原因：`users.banned` 这一列和检查一直都在，但**以前没有任何入口能改它**。
           */}
@@ -86,6 +94,31 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           <button class="btn btn-ghost admin-forget" id="a-forget" type="button">清除密钥</button>
         </div>
       </header>
+
+      {/*
+        「整篇草稿」那一档的状态切换（只在那一档显示）：
+        默认「待采纳」= 已写回、页面上正挂着「社区整理版（未采纳）」的那几条 —— 也就是要动手采纳的。
+      */}
+      <div class="admin-drafts-bar" id="a-drafts-bar" hidden>
+        <span class="admin-drafts-label">整篇草稿</span>
+        <div class="admin-drafts-tabs" id="a-drafts-tabs" role="tablist" aria-label="草稿状态">
+          <button class="admin-chip is-on" type="button" role="tab" data-draft-status="applied">待采纳<b class="tab-n">0</b></button>
+          <button class="admin-chip" type="button" role="tab" data-draft-status="pending">待审<b class="tab-n">0</b></button>
+          <button class="admin-chip" type="button" role="tab" data-draft-status="approved">待写回<b class="tab-n">0</b></button>
+          <button class="admin-chip" type="button" role="tab" data-draft-status="rejected">已驳回<b class="tab-n">0</b></button>
+        </div>
+        <span class="admin-hint">
+          「待采纳」= 已经写回仓库、页面上正以「社区整理版（未采纳）」显示的那几篇 —— 点「采纳为原稿」按小节合并进正文。
+          采纳过的会从这一档移走（<b id="a-drafts-adopted">已采纳 0 篇</b>）。
+        </span>
+        {/*
+          「翻看已采纳的」：采纳过的草稿默认不列（不然又攒成一堆存货）。
+          但偶尔要看 —— 比如怀疑某篇采纳完又被人手工改回原稿了。
+        */}
+        <button class="btn btn-ghost admin-drafts-adopted-btn" type="button" id="a-drafts-adopted-btn">
+          翻看已采纳的
+        </button>
+      </div>
 
       <p class="admin-counts" id="a-counts"></p>
       <p class="admin-status" id="a-panel-status"></p>
@@ -226,6 +259,18 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   let token = localStorage.getItem('ze-admin-token') ?? '';
   let reviewer = localStorage.getItem('ze-admin-reviewer') ?? '';
   let currentStatus = 'pending';
+  /*
+   * 「整篇草稿」那一档（2026-10-15）：draftsOnly=true 时请求固定带 field=draft，
+   * 状态用 draftStatus（默认 applied = 已写回、等着采纳）；切回别的标签就关掉。
+   */
+  let draftsOnly = false;
+  let draftStatus = 'applied';
+  /* 「翻看已采纳的」：true 时草稿档带 adopted=1（只看采纳过的）；默认只看还没采纳的 */
+  let adoptedView = false;
+  /* 草稿各状态的计数（服务端 fieldCounts）：缓存一份，切标签时先按它画，别闪成 0 */
+  let draftCounts: Record<string, number> = {};
+  /** 已经采纳为原稿的草稿条数（服务端 adoptedCount）——「待采纳」里看不到它们 */
+  let adoptedCount = 0;
 
   /* 列表状态（改版后带筛选与分页）：q / map 由服务端过滤，offset 追加式加载 */
   const PAGE_SIZE = 50;
@@ -298,6 +343,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     /** 批量投稿：同一批的批次号与条数 */
     batch?: string;
     batchCount?: number;
+    /** 整篇草稿：已经被采纳为原稿的时间（ms）。默认不在「待采纳」里列出来 */
+    adopted_at?: number | null;
     /** 现值是否已经取过（列表不再顺手取，见 loadCurrents） */
     currentLoaded?: boolean;
     /** 现值还没取（待审 / 待写回才有意义） */
@@ -339,7 +386,18 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     return { status: res.status, data };
   }
 
+  /*
+   * 最近一次写状态提示的时间。
+   * 用来挡一件事：做完操作（采纳 / 审核 / 写回）后代码里会 `await reload()`，
+   * 而 load() 里有一句 `setStatus('')` —— 于是「已采纳：…」这种提示刚打出来就被擦掉，
+   * 审核员只看到一片空白，不知道到底成没成（E2E 就是这么发现状态栏是空的）。
+   * 现在 load() 只在提示已经凉了（超过 STATUS_KEEP_MS）时才清。
+   */
+  const STATUS_KEEP_MS = 8000;
+  let statusAt = 0;
+
   function setStatus(text: string, isError = false) {
+    statusAt = Date.now();
     /* 面板开着就写在面板里（看得见），否则写在登录卡上 */
     const target = panel.hidden ? statusEl : panelStatusEl;
     target.textContent = text;
@@ -822,7 +880,29 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
      * （同名替换、新节追加、没提到的不动，见 shared/draft-merge.mjs 与 docs/admin-guide.md）。
      * 采纳是单独一次提交（不进攒批），所以不依赖「写回仓库」那一键。
      */
-    if (item.field === 'draft' && item.status === 'applied') {
+    if (item.field === 'draft' && item.status === 'applied' && item.adopted_at) {
+      /* 已采纳：不再摆「采纳为原稿」（再点只会撞 409）。只留一句话说明它已经进正文了 */
+      actions.append(
+        el(
+          'span',
+          'admin-chip is-adopted',
+          `已采纳${item.adopted_at ? `　${new Date(Number(item.adopted_at)).toLocaleString('zh-CN', { hour12: false })}` : ''}`
+        )
+      );
+      const again = el('button', 'btn btn-ghost', '再合并一次') as HTMLButtonElement;
+      again.type = 'button';
+      /* 真要再合一遍（例如采纳后又手工改回原稿了）也留个口子，但得先确认 */
+      again.onclick = async () => {
+        const yes = await ask({
+          title: '这篇草稿已经采纳过了',
+          desc: '再合并一遍会用它覆盖原稿里同名的小节（没写到的小节保留）。多半不需要 —— 确认原稿确实要按这份草稿重来，再点。',
+          confirmText: '仍然再合并一次',
+          danger: true,
+        });
+        if (yes) await adoptDraft(item.map_slug, { force: true });
+      };
+      actions.append(again);
+    } else if (item.field === 'draft' && item.status === 'applied') {
       const adopt = el('button', 'btn btn-primary', '采纳为原稿') as HTMLButtonElement;
       adopt.type = 'button';
       adopt.onclick = async () => {
@@ -951,12 +1031,39 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
             if (holder) holder.replaceChildren(tagsBlock(item));
           }
         } else if (kind === 'doc') {
-          const text = current === null || current === undefined ? '' : String(current);
-          box.append(
-            text
-              ? el('p', 'admin-note', `这张图现在已有草稿：${docSummary(text)}`)
-              : el('p', 'admin-note is-quiet', '这张图现在还没有草稿（通过了就是第一篇）')
-          );
+          /*
+           * 整篇草稿：服务端回的是个小对象（页面上挂着的那篇 + 有没有采纳过），不是一段文本。
+           * 以前这里按字符串处理，未采纳的草稿会显示成「还没有草稿」，看着像没写回来 —— 2026-10-15 修。
+           */
+          const info = (current && typeof current === 'object' ? current : null) as
+            | { draftChars?: number; draftBy?: string | null; adopted?: string | null; adoptedAt?: string | null; adoptedBy?: string | null }
+            | null;
+          if (info?.adopted) {
+            box.append(
+              el(
+                'p',
+                'admin-note is-warn',
+                `✅ 这篇已经采纳过了：${info.adopted}` +
+                  `${info.adoptedAt ? `（${String(info.adoptedAt).slice(0, 10)}）` : ''}` +
+                  '—— 想再合并一遍，得点「再合并一次」（或「采纳为原稿」）再确认一次才会真的重合并'
+              )
+            );
+            /* 卡片头上挂个「已采纳」小标，扫一眼列表就知道哪几条不用再动 */
+            listEl
+              .querySelector<HTMLElement>(`.admin-item[data-id="${id}"] .admin-item-head`)
+              ?.append(el('span', 'admin-chip is-adopted', '已采纳'));
+          } else if (info?.draftChars) {
+            box.append(
+              el(
+                'p',
+                'admin-note',
+                `页面上正挂着这篇草稿（${info.draftChars} 字${info.draftBy ? `，${info.draftBy} 整理` : ''}）` +
+                  '—— 还没采纳；点「采纳为原稿」会按小节合并进正文'
+              )
+            );
+          } else {
+            box.append(el('p', 'admin-note is-quiet', '社区文档里没有待采纳的草稿（可能已经采纳过，或还没写回）'));
+          }
         } else {
           box.append(textBlock('现在的值', fmt(current), 'is-old'));
         }
@@ -1005,7 +1112,16 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     await loadTagVocabulary();
     await refreshCounts();
 
-    const params = new URLSearchParams({ status: currentStatus, limit: String(PAGE_SIZE), offset: String(items.length) });
+    const params = new URLSearchParams({
+      status: draftsOnly ? draftStatus : currentStatus,
+      limit: String(PAGE_SIZE),
+      offset: String(items.length),
+    });
+    /* 整篇草稿那一档只看 field=draft（服务端过滤，不跟其它字段混在一起） */
+    if (draftsOnly) {
+      params.set('field', 'draft');
+      if (adoptedView) params.set('adopted', '1');
+    }
     if (keyword.trim()) {
       /* 中文名命中唯一一张图 → 转成 map 过滤（库里只有 slug，中文名搜不到） */
       const byTitle = mapOnly || resolveMapFromKeyword(keyword);
@@ -1030,7 +1146,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     }
     panel.hidden = false;
     loginCard.hidden = true;
-    setStatus(data.gitReady ? '' : '⚠️ 服务端还没配 GITHUB_TOKEN，写回会失败');
+    /* 没配 token 的话必须一直挂着；否则只在提示已经凉了的时候才清（刚做完操作的提示别擦） */
+    if (!data.gitReady) setStatus('⚠️ 服务端还没配 GITHUB_TOKEN，写回会失败');
+    else if (Date.now() - statusAt > STATUS_KEEP_MS) setStatus('');
+    /* 草稿档的小标签计数（待采纳 / 待审 / 待写回 / 已驳回） */
+    if (draftsOnly && data.fieldCounts) {
+      paintDraftCounts(data.fieldCounts as Record<string, number>, Number(data.adoptedCount ?? 0));
+    }
 
     const page: QueueItem[] = data.items ?? [];
     items = items.concat(page);
@@ -1062,9 +1184,48 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
   function emptyText(): string {
     if (keyword.trim() || mapOnly) return '没有匹配的投稿 —— 换个关键词，或清空搜索框';
+    if (draftsOnly) {
+      if (adoptedView) {
+        if (draftStatus === 'applied') return '还没有采纳过任何整篇草稿 —— 采纳过的会出现在这里';
+        return '这一档里没有已采纳的草稿（已采纳的都是「已上线」状态）';
+      }
+      if (draftStatus === 'applied') {
+        return adoptedCount
+          ? `没有等着采纳的整篇草稿了 🎉（已采纳 ${adoptedCount} 篇，点右边「翻看已采纳的」能看到）`
+          : '没有等着采纳的整篇草稿 —— 写完回并写回后，这里会出现「采纳为原稿」';
+      }
+      if (draftStatus === 'pending') return '没有待审的整篇草稿';
+      if (draftStatus === 'approved') return '没有待写回的整篇草稿（写回后才会出现在「待采纳」里）';
+      return '没有已驳回的整篇草稿';
+    }
     if (currentStatus === 'pending') return '没有待审投稿 🎉';
     if (currentStatus === 'approved') return '没有待写回的投稿';
     return '暂无记录';
+  }
+
+  /** 草稿档那几个小标签上的计数（服务端 fieldCounts） */
+  function paintDraftCounts(fieldCounts: Record<string, number>, adopted?: number): void {
+    draftCounts = fieldCounts;
+    for (const btn of document.querySelectorAll<HTMLButtonElement>('#a-drafts-tabs [data-draft-status]')) {
+      const n = fieldCounts[btn.dataset.draftStatus ?? ''] ?? 0;
+      const badge = btn.querySelector<HTMLElement>('.tab-n');
+      if (badge) badge.textContent = String(n);
+      btn.classList.toggle('is-on', btn.dataset.draftStatus === draftStatus);
+    }
+    const tabBadge = document.getElementById('a-drafts-n');
+    if (tabBadge) tabBadge.textContent = String(fieldCounts.applied ?? 0);
+    /* 「已采纳 N 篇」：采纳过的不在「待采纳 N」里，得说一句不然像丢了 */
+    if (adopted !== undefined) adoptedCount = adopted;
+    const adoptedEl = document.getElementById('a-drafts-adopted');
+    if (adoptedEl) adoptedEl.textContent = `已采纳 ${adoptedCount} 篇`;
+    const btn = document.getElementById('a-drafts-adopted-btn');
+    if (btn) {
+      btn.textContent = adoptedView ? '← 回到待采纳' : '翻看已采纳的';
+      btn.classList.toggle('is-on', adoptedView);
+      btn.hidden = !draftsOnly || (!adoptedCount && !adoptedView);
+    }
+    const bar = document.getElementById('a-drafts-bar');
+    if (bar) bar.hidden = !draftsOnly;
   }
 
   function updateMore(): void {
@@ -1076,8 +1237,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
   /** 标签页上的计数（顺带把「待写回」标出来 —— 那是要记得写回的存货） */
   async function refreshCounts(): Promise<void> {
-    const { status, data } = await api('/api/admin/queue?status=pending&limit=1');
+    /* 顺手带上 field=draft：服务端就会多给一份 fieldCounts，
+       「整篇草稿」标签上的待采纳数才能一进审核台就显示（不用先切进去）。 */
+    const { status, data } = await api('/api/admin/queue?status=pending&field=draft&limit=1');
     if (status !== 200) return;
+    if (data.fieldCounts) paintDraftCounts(data.fieldCounts as Record<string, number>, Number(data.adoptedCount ?? 0));
     const c = data.counts ?? {};
     for (const tab of document.querySelectorAll<HTMLElement>('.admin-tab[data-status]')) {
       const key = tab.dataset.status ?? '';
@@ -1603,7 +1767,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   for (const btn of document.querySelectorAll<HTMLButtonElement>('.admin-tab[data-status]')) {
     btn.onclick = () => {
       currentStatus = btn.dataset.status as string;
+      draftsOnly = false;
+      adoptedView = false;
       for (const other of document.querySelectorAll('.admin-tab')) other.classList.toggle('is-on', other === btn);
+      const bar = document.getElementById('a-drafts-bar');
+      if (bar) bar.hidden = true;
       keyword = '';
       mapOnly = '';
       $<HTMLInputElement>('a-q').value = '';
@@ -1612,6 +1780,54 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       void load();
     };
   }
+
+  /*
+   * 「整篇草稿」标签（2026-10-15）：只拉 field=draft，默认落在「待采纳」。
+   * 站长原来的痛点：草稿跟难度 / 标签混在「已上线」里，一次写回十几条之后根本找不着，
+   * 想点「采纳为原稿」得一条条翻。
+   */
+  $<HTMLButtonElement>('a-tab-drafts').onclick = () => {
+    draftsOnly = true;
+    adoptedView = false;
+    draftStatus = 'applied';
+    currentStatus = 'applied';
+    for (const other of document.querySelectorAll('.admin-tab')) {
+      other.classList.toggle('is-on', other.id === 'a-tab-drafts');
+    }
+    const bar = document.getElementById('a-drafts-bar');
+    if (bar) bar.hidden = false;
+    paintDraftCounts(draftCounts);
+    keyword = '';
+    mapOnly = '';
+    $<HTMLInputElement>('a-q').value = '';
+    items = [];
+    picked.clear();
+    void load();
+  };
+
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('#a-drafts-tabs [data-draft-status]')) {
+    btn.onclick = () => {
+      draftStatus = btn.dataset.draftStatus ?? 'applied';
+      currentStatus = draftStatus;
+      /* 已采纳的草稿状态都是「已上线」：点别的档就顺手回到「待采纳」视图，免得不明白为什么空的 */
+      if (adoptedView && draftStatus !== 'applied') adoptedView = false;
+      items = [];
+      picked.clear();
+      paintDraftCounts(draftCounts);
+      void load();
+    };
+  }
+
+  /* 「翻看已采纳的」/「← 回到待采纳」：在「还没采纳」和「已采纳」两份列表之间切 */
+  $<HTMLButtonElement>('a-drafts-adopted-btn').onclick = () => {
+    adoptedView = !adoptedView;
+    draftStatus = 'applied';
+    currentStatus = 'applied';
+    items = [];
+    picked.clear();
+    paintDraftCounts(draftCounts);
+    void load();
+  };
 
   /* 搜索：防抖 300ms，回车立即搜；点了地图 slug 说明要只看这张图，输入框里会带上 slug */
   let searchTimer: number | undefined;
