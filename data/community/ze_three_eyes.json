@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_three_eyes",
-  "updatedAt": "2026-10-14T12:26:39.329Z",
+  "updatedAt": "2026-10-15T10:47:48.203Z",
   "fields": {
     "difficulty": {
       "v": "火星",
@@ -67,6 +67,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T12:25:57.610Z",
       "submission": 229
+    },
+    "draft": {
+      "v": "已采纳 2026-10-15",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:47:48.203Z",
+      "submission": 213
     }
   },
   "notes": [],
@@ -161,13 +167,16 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T12:25:57.610Z",
       "submission": 229
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:47:48.203Z",
+      "submission": 213
     }
   ],
-  "draft": {
-    "text": "## - ze_three_eyes (三眼) -\n\n地图由 [Lv.100 Crobat] 绘制\n\n- 4个关卡\n\n- 关底跳刀/弹幕\n\n- 4场boss战\n\n- 困难的防守地形\n\n- 大量使用了电子风/音游类型的音乐",
-    "by": "AntiLockwise",
-    "at": "2026-10-14T12:22:27.468Z",
-    "submission": 213
-  },
+  "draft": null,
   "items": []
 }
