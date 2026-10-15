@@ -1,0 +1,382 @@
+{
+  "v": 1,
+  "slug": "ze_forhidden_slicoo_cs2",
+  "updatedAt": "2026-10-15T07:54:27.988Z",
+  "fields": {
+    "title": {
+      "v": "禁地:斯迪科",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:05.545Z",
+      "submission": 375
+    },
+    "tags": {
+      "v": [
+        "神器",
+        "BOSS战",
+        "大图",
+        "CSGO移植",
+        "长征图",
+        "剧情",
+        "岩图"
+      ],
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.076Z",
+      "submission": 376
+    },
+    "duration": {
+      "v": "普通28分钟 EX36分钟",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:07.209Z",
+      "submission": 378
+    },
+    "players": {
+      "v": "64",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:07.748Z",
+      "submission": 379
+    },
+    "videoUrls": {
+      "v": [
+        "https://www.bilibili.com/video/BV1rVPXeUEWn",
+        "https://www.bilibili.com/video/BV1nk9xYUEjf",
+        "https://www.bilibili.com/video/BV1x9dzYvEmo",
+        "https://www.bilibili.com/video/BV1LnojYXEsK",
+        "https://www.bilibili.com/video/BV1Hh5qzZEVV",
+        "https://www.bilibili.com/video/BV1Bqa5zKEUP"
+      ],
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:08.277Z",
+      "submission": 380
+    },
+    "difficulty": {
+      "v": "火星",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:09.363Z",
+      "submission": 382
+    }
+  },
+  "notes": [
+    {
+      "text": "剧情讲述由玩家扮演的人类救世军在前传地图禁地虚空遗迹中击败最终boss后传送到了此地讨伐原初之煌恶魔——拉法库巴的故事",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:08.817Z",
+      "submission": 381,
+      "field": "story"
+    }
+  ],
+  "log": [
+    {
+      "field": "title",
+      "from": null,
+      "to": "禁地:斯迪科",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:05.545Z",
+      "submission": 375
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "神器",
+        "BOSS战",
+        "大图",
+        "CSGO移植",
+        "长征图",
+        "剧情",
+        "岩图"
+      ],
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.076Z",
+      "submission": 376
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 21,
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "field": "duration",
+      "from": null,
+      "to": "普通28分钟 EX36分钟",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:07.209Z",
+      "submission": 378
+    },
+    {
+      "field": "players",
+      "from": null,
+      "to": "64",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:07.748Z",
+      "submission": 379
+    },
+    {
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1rVPXeUEWn",
+        "https://www.bilibili.com/video/BV1nk9xYUEjf",
+        "https://www.bilibili.com/video/BV1x9dzYvEmo",
+        "https://www.bilibili.com/video/BV1LnojYXEsK",
+        "https://www.bilibili.com/video/BV1Hh5qzZEVV",
+        "https://www.bilibili.com/video/BV1Bqa5zKEUP"
+      ],
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:08.277Z",
+      "submission": 380
+    },
+    {
+      "field": "story",
+      "from": null,
+      "to": null,
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:08.817Z",
+      "submission": 381
+    },
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "火星",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:09.363Z",
+      "submission": 382
+    }
+  ],
+  "draft": null,
+  "items": [
+    {
+      "action": "add",
+      "name": "寒风",
+      "cd": 60,
+      "uses": null,
+      "note": "",
+      "intro": "环形跟随风 持续7s",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "治疗",
+      "cd": 60,
+      "uses": null,
+      "note": "",
+      "intro": "范围奶 持续8s 使用者小幅提高移速",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "暴雪",
+      "cd": 140,
+      "uses": null,
+      "note": "",
+      "intro": "大范围减速 持续18s 前摇2s （可被生命分离冲破）",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "冰剑",
+      "cd": 30,
+      "uses": null,
+      "note": "",
+      "intro": "直线小减速 持续5s 烤火可解锁2技能球（48scd右键放）",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "冰墙",
+      "cd": 30,
+      "uses": null,
+      "note": "",
+      "intro": "一个冰墙（可用于触发）持续10s",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "护盾",
+      "cd": 120,
+      "uses": null,
+      "note": "",
+      "intro": "大范围脱手盾 持续120s（特别注意在展开前一秒无效果）",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "重力弓",
+      "cd": 5,
+      "uses": null,
+      "note": "",
+      "intro": "小范围定身 持续2.5s",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "精灵",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "太多了看教学视频去吧",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "生命分离",
+      "cd": 60,
+      "uses": null,
+      "note": "",
+      "intro": "僵尸ZM中范围群体加速 持续10s",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "冰环",
+      "cd": 60,
+      "uses": null,
+      "note": "",
+      "intro": "僵尸ZM延迟1s向前弧形跳 之后自己定身2s后保持弧形跳的移速向前飞，附带小范围强定身减速可低伤害",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "冰锥",
+      "cd": 30,
+      "uses": null,
+      "note": "",
+      "intro": "向准星方向射出可冰冻人类的子弹 可存5发（冰可被人类子弹打碎，普通250 ex350）",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "诅咒",
+      "cd": 22,
+      "uses": null,
+      "note": "",
+      "intro": "彩蛋神器-前俩次是脱手范围奶 第三次之后都是范围伤害",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "契约",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "彩蛋神器-自身免抓18s并随机处死附近的僵尸（僵尸ZM不可以）之后使用者死亡",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "黑岩",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "彩蛋皮肤 5%概率开局刷新 区来的",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "小萝莉法师",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "EX小皮肤 带一次免抓 有技能 二期EX赞助者有二技能",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "红发法师",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "一期赞助皮肤 有奶",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "手杖怪",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "一期赞助僵尸皮 有伤害有加速",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "枪兵",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "个人皮",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "比安卡",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "个人皮",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "盾勇",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "个人皮",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    },
+    {
+      "action": "add",
+      "name": "刹那",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": "个人皮",
+      "by": "koyun-OvO",
+      "at": "2026-10-15T07:54:06.693Z",
+      "submission": 377
+    }
+  ]
+}
