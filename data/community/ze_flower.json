@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_flower",
-  "updatedAt": "2026-10-14T12:26:36.385Z",
+  "updatedAt": "2026-10-15T10:46:32.468Z",
   "fields": {
     "aliases": {
       "v": [
@@ -49,6 +49,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T12:21:22.864Z",
       "submission": 193
+    },
+    "draft": {
+      "v": "已采纳 2026-10-15",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:46:32.468Z",
+      "submission": 187
     }
   },
   "notes": [],
@@ -119,13 +125,16 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T12:21:22.864Z",
       "submission": 193
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:46:32.468Z",
+      "submission": 187
     }
   ],
-  "draft": {
-    "text": "## - ze_flower (花之声) -\n\n地图由 [Karon] 绘制\n\n- 1个关卡\n\n- 高难度的最终/弹幕/跳刀环节\n\n- 随音乐变化的场景/弹幕/跳刀演出",
-    "by": "AntiLockwise",
-    "at": "2026-10-14T12:19:38.382Z",
-    "submission": 187
-  },
+  "draft": null,
   "items": []
 }
