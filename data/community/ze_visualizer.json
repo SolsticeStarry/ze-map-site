@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_visualizer",
-  "updatedAt": "2026-10-14T14:57:58.944Z",
+  "updatedAt": "2026-10-15T10:52:38.727Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_visualizer.webp",
@@ -68,6 +68,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T14:57:49.502Z",
       "submission": 356
+    },
+    "draft": {
+      "v": "已采纳 2026-10-15",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:52:38.727Z",
+      "submission": 347
     }
   },
   "notes": [],
@@ -171,14 +177,17 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T14:57:49.502Z",
       "submission": 356
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:52:38.727Z",
+      "submission": 347
     }
   ],
-  "draft": {
-    "text": "## 地图由 [M4dara] 绘制\n\n6 个关卡\n\n6 个人类神器 & 4 个僵尸神器\n\n一场 Boss 战 & 三场 最终MG",
-    "by": "AntiLockwise",
-    "at": "2026-10-14T14:24:26.011Z",
-    "submission": 347
-  },
+  "draft": null,
   "items": [
     {
       "action": "add",

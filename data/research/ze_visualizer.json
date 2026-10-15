@@ -4,6 +4,12 @@
   "summary": null,
   "tags": [],
   "videoUrls": [],
-  "confidence": "low",
-  "author": "m4dara, @Seth."
+  "confidence": "medium",
+  "author": "m4dara, @Seth.",
+  "sections": [
+    {
+      "title": "地图由 [M4dara] 绘制",
+      "body": "6 个关卡\n\n6 个人类神器 & 4 个僵尸神器\n\n一场 Boss 战 & 三场 最终MG"
+    }
+  ]
 }
