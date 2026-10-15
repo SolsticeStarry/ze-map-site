@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_grau_p",
-  "updatedAt": "2026-10-14T13:36:02.741Z",
+  "updatedAt": "2026-10-15T10:51:27.508Z",
   "fields": {
     "author": {
       "v": "Kune",
@@ -55,6 +55,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T13:36:02.741Z",
       "submission": 327
+    },
+    "draft": {
+      "v": "已采纳 2026-10-15",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:51:27.508Z",
+      "submission": 340
     }
   },
   "notes": [],
@@ -141,14 +147,17 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T13:36:02.741Z",
       "submission": 340
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:51:27.508Z",
+      "submission": 340
     }
   ],
-  "draft": {
-    "text": "## 地图由 [Kune] 绘制\n\n3+1（RTV）个关卡\n\n1 个人类神器 & 2 个僵尸神器\n\n一场 Boss 战 & 一场最终 MG\n\n由知名游戏《创世E》改编而来",
-    "by": "AntiLockwise",
-    "at": "2026-10-14T13:36:02.741Z",
-    "submission": 340
-  },
+  "draft": null,
   "items": [
     {
       "action": "add",
