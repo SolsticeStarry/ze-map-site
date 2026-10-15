@@ -4,5 +4,11 @@
   "summary": null,
   "tags": [],
   "videoUrls": [],
-  "confidence": "low"
+  "confidence": "medium",
+  "sections": [
+    {
+      "title": "基本信息",
+      "body": "地图由 [残剑斩龙] 绘制\n\n- 1个关卡\n\n- 3个人类神器\n\n- 地图基于著名游戏 [崩坏3rd] 制作"
+    }
+  ]
 }

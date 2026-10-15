@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_bh3rd_cyberpunk_z",
-  "updatedAt": "2026-10-15T10:11:40.454Z",
+  "updatedAt": "2026-10-15T10:49:40.635Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_bh3rd_cyberpunk_z.webp",
@@ -53,6 +53,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-15T07:53:53.708Z",
       "submission": 284
+    },
+    "draft": {
+      "v": "已采纳 2026-10-15",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:49:40.635Z",
+      "submission": 273
     }
   },
   "notes": [
@@ -157,14 +163,17 @@
       "by": "AntiLockwise",
       "at": "2026-10-15T10:11:23.862Z",
       "submission": 273
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:49:40.635Z",
+      "submission": 273
     }
   ],
-  "draft": {
-    "text": "## - ze_bh3rd_cyberpunk (崩坏3rd:天穹市) -\n\n地图由 [残剑斩龙] 绘制\n\n- 1个关卡\n\n- 3个人类神器\n\n- 地图基于著名游戏 [崩坏3rd] 制作",
-    "by": "AntiLockwise",
-    "at": "2026-10-15T10:11:23.862Z",
-    "submission": 273
-  },
+  "draft": null,
   "items": [
     {
       "action": "add",
