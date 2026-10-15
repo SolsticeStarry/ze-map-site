@@ -375,15 +375,15 @@
     },
     "ze_bh3rd_babel_z": {
       "added": "2026-09-23",
-      "updated": "2026-10-04"
+      "updated": "2026-10-15"
     },
     "ze_bh3rd_cyberpunk_z": {
       "added": "2026-09-23",
-      "updated": "2026-10-04"
+      "updated": "2026-10-15"
     },
     "ze_bh3rd_nagazoracity_z": {
       "added": "2026-09-23",
-      "updated": "2026-10-04"
+      "updated": "2026-10-15"
     },
     "ze_bigboo_n64": {
       "added": "2026-09-23"
@@ -1002,7 +1002,8 @@
       "added": "2026-09-23"
     },
     "ze_forhidden_slicoo_cs2": {
-      "added": "2026-09-23"
+      "added": "2026-09-23",
+      "updated": "2026-10-15"
     },
     "ze_forhidden_void": {
       "added": "2026-09-23"
@@ -1394,7 +1395,8 @@
       "added": "2026-09-23"
     },
     "ze_light_shadow_cs2": {
-      "added": "2026-10-09"
+      "added": "2026-10-09",
+      "updated": "2026-10-15"
     },
     "ze_lightnight_v1": {
       "added": "2026-10-09"

@@ -77,7 +77,12 @@ function communityWhat(field: string, from: unknown, to: unknown, revised: boole
     case 'sources':
       return `资料来源 +${listOf(to).length} 条`;
     case 'items':
-      return `神器 / 道具 ${listOf(to).length} 件`;
+      /*
+       * ⚠️ 神器 / 道具这条 log 的 `to` 是**数字**（这一批落库了几行），不是数组 ——
+       * 以前这里一律走 listOf(to).length，于是线上显示成「神器 / 道具 0 件」
+       * （实际那批落了 21 行，2026-10-15 首页上看得见）。数字就照数字念。
+       */
+      return `神器 / 道具 ${typeof to === 'number' ? to : listOf(to).length} 件`;
     default:
       /* 正文类（背景故事 / 攻略讲解 / 补充说明）：修订和新增要分清 */
       return revised ? `修订了${label}` : `新增${label}`;
@@ -171,6 +176,38 @@ function researchItems(): FeedItem[] {
       src: '本站整理',
     });
   }
+  return out;
+}
+
+/**
+ * 「最近改动」和「最新更新」两块的口径其实差一层，这里补上对齐用的数据（2026-10-15）。
+ *
+ * 背景（站长 2026-10-15 的疑问）：「最近更新」和「最近改动」怎么地图不一样？
+ *   · 「最近改动」= 逐条流水（community log + research-changes）→ **构建期直接读文件，永远最新**；
+ *   · 「最新更新」= 一图一行，日期来自 `data/map-dates.json` —— 那份清单只能由**有完整 git 历史**
+ *     的本地构建重算（脚本遇到浅克隆重会主动跳过，线上 CI 就是浅克隆），
+ *     而社区写回只提交 `data/community/<slug>.json`……
+ *     于是「刚被社区改过的图」会先出现在「最近改动」里，「最新更新」还停在上一份清单位置。
+ *
+ * 这个函数把两层 feed 里每张图**最新的改动日期**算出来（不带 400 条上限），
+ * 让 getUpdatedMaps 取「清单日期 和 它」里更晚的那个 —— 两块立刻一致，且不需要动 git 历史逻辑。
+ *
+ * @returns Map<slug, 'YYYY-MM-DD'>
+ */
+export function latestChangeByMap(): Map<string, string> {
+  const out = new Map<string, string>();
+  const put = (slug: string | null | undefined, at: string | null | undefined) => {
+    if (!slug || typeof at !== 'string' || !at) return;
+    const day = at.slice(0, 10);
+    const prev = out.get(slug);
+    if (!prev || day > prev) out.set(slug, day);
+  };
+  for (const it of communityItems()) {
+    put(it.slug, it.at);
+    /* 封面那种聚合条目的明细里也带着 slug（一次更新几十张图） */
+    for (const e of it.extra ?? []) put(e.slug, it.at);
+  }
+  for (const it of researchItems()) put(it.slug, it.at);
   return out;
 }
 

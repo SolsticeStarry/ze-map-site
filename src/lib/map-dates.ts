@@ -1,5 +1,6 @@
 import type { CollectionEntry } from 'astro:content';
 import { getMaps } from './maps';
+import { latestChangeByMap } from './update-feed';
 import manifest from '../../data/map-dates.json';
 
 /**
@@ -62,11 +63,26 @@ export async function getNewMaps(windowDays = WINDOW_DAYS): Promise<DatedMap[]> 
   );
 }
 
-/** 最新更新：本站资料最近 windowDays 天被改过的图（来自 git 历史） */
+/**
+ * 最新更新：本站资料最近 windowDays 天被改过的图。
+ *
+ * 日期取**两个来源里更晚的那个**（2026-10-15 修）：
+ *   ① `data/map-dates.json` —— 由本地构建从 git 历史算好、随提交入库的清单；
+ *   ② 「最近改动」那份 feed 里每张图的最新一条改动日期。
+ * 为什么必须合：清单只能由**有完整 git 历史**的本地构建重算（脚本遇到浅克隆重会跳过，
+ * 线上 CI 正是浅克隆），而社区写回只提交 `data/community/<slug>.json` ——
+ * 只认清单的话，「刚被社区改过的图」会先出现在「最近改动」里，这一栏却还停在上一份清单，
+ * 两块的地图对不上（站长 2026-10-15 提的疑问）。feed 是构建期直接读文件的，永远最新。
+ */
 export async function getUpdatedMaps(windowDays = WINDOW_DAYS): Promise<DatedMap[]> {
   const maps = await getMaps();
+  const fromFeed = latestChangeByMap();
   return collect(
-    maps.map((m) => ({ map: m, date: dates[m.id]?.updated ?? null })),
+    maps.map((m) => {
+      const a = dates[m.id]?.updated ?? null;
+      const b = fromFeed.get(m.id) ?? null;
+      return { map: m, date: a && b ? (a > b ? a : b) : (a ?? b) };
+    }),
     windowDays
   );
 }
