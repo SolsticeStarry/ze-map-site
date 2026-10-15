@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_deadcore_r",
-  "updatedAt": "2026-10-14T14:24:19.972Z",
+  "updatedAt": "2026-10-15T10:48:13.344Z",
   "fields": {
     "difficulty": {
       "v": "火星",
@@ -57,6 +57,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T14:04:29.055Z",
       "submission": 238
+    },
+    "draft": {
+      "v": "已采纳 2026-10-15",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:48:13.344Z",
+      "submission": 230
     }
   },
   "notes": [],
@@ -145,14 +151,17 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T14:04:29.055Z",
       "submission": 238
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:48:13.344Z",
+      "submission": 230
     }
   ],
-  "draft": {
-    "text": "## - ze_deadcore_r (死亡核心R版) -\n\n地图由 [Airvulpes] 绘制 [兎RB/SIRloin] 将其高清重置并移植到CS2\n\n- 4个常规关卡+3个额外关卡\n\n- 4场boss战\n\n- 1个人类神器\n\n- 大量使用了电子/Artcore风格的音乐\n\n- 难度极高的跳刀/弹幕/boss战环节\n\n- 基于著名游戏 [Deadcore Redux] 为蓝本制作",
-    "by": "AntiLockwise",
-    "at": "2026-10-14T12:26:10.071Z",
-    "submission": 230
-  },
+  "draft": null,
   "items": [
     {
       "action": "add",
