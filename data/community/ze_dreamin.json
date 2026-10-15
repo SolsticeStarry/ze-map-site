@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_dreamin",
-  "updatedAt": "2026-10-14T11:43:05.896Z",
+  "updatedAt": "2026-10-15T10:45:22.972Z",
   "fields": {
     "difficulty": {
       "v": "火星",
@@ -28,6 +28,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T04:45:25.301Z",
       "submission": 146
+    },
+    "draft": {
+      "v": "已采纳 2026-10-15",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:45:22.972Z",
+      "submission": 141
     }
   },
   "notes": [],
@@ -81,14 +87,17 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T11:42:16.853Z",
       "submission": 141
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:45:22.972Z",
+      "submission": 141
     }
   ],
-  "draft": {
-    "text": "## - ze_dreamin(梦想) -\n\n地图由 Reflelia 绘制\n\n- 3+1(rtv)个关卡\n\n- 4场终点跳刀\n\n- 3场boss战\n\n- 4个人类神器&4个僵尸神器\n\n- 优美的音乐",
-    "by": "AntiLockwise",
-    "at": "2026-10-14T11:42:16.853Z",
-    "submission": 141
-  },
+  "draft": null,
   "items": [
     {
       "action": "add",
