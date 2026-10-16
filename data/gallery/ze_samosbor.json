@@ -1,11 +1,59 @@
 {
   "slug": "ze_samosbor",
-  "count": 1,
+  "count": 9,
   "images": [
     {
       "src": "https://terr.ze-map.cn/gallery/ze_samosbor/05-workshop.webp",
       "kind": "workshop",
       "caption": "工坊预览图（作者上传）"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u383.webp",
+      "kind": "user",
+      "caption": "开局主电梯",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u384.webp",
+      "kind": "user",
+      "caption": "开局电梯门",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u385.webp",
+      "kind": "user",
+      "caption": "开局切换模式投票点",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u386.webp",
+      "kind": "user",
+      "caption": "工厂",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u387.webp",
+      "kind": "user",
+      "caption": "迷宫",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u388.webp",
+      "kind": "user",
+      "caption": "风扇工厂",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u389.webp",
+      "kind": "user",
+      "caption": "双层双梯",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u390.webp",
+      "kind": "user",
+      "caption": "复合结构",
+      "by": "SiKi"
     }
   ]
 }
