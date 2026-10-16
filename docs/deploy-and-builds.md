@@ -13,6 +13,19 @@ ze-map.cn                   ← Cloudflare 缓存 HTML（Ctrl+F5 强制刷新）
 
 一次正常的构建：本地 `astro build` 约 50 秒，CI 里装依赖 + Pagefind 通常 **2~4 分钟**。
 
+## 部署后的那一小段：旧 HTML + 已下线的产物（2026-10-16 加的自愈）
+
+构建产物带内容哈希（`/_astro/index.astro_astro_type_script_….BfxKMlTz.js`），每次部署**只保留当次那一份**，
+上一次的文件会被删掉；而 Cloudflare 边缘对 HTML 还会留一会儿缓存（实测：部署后同一个路径仍能取到上一版的 HTML，
+而它引用的 js 已经 404）。两者撞在一起就是**整页脚本不执行**（投稿表单点不动、审核台空白），
+普通访客只会觉得「这网站坏了」。
+
+`src/layouts/BaseLayout.astro` 里有一段 `is:inline` 的自愈守卫：本站 `/_astro/` 产物加载失败（script / link 的
+error 事件，捕获阶段监听）就**带一个一次性参数 `_fresh` 重载一次** —— 新参数 = 新缓存键，拿到的必定是当前版本的
+HTML。每个路径每次会话只救一次（判断键只用 `pathname`，所以不会无限刷新）。
+
+真遇到「刷新还是旧的」：Ctrl+F5；改完后要确认线上是新版，别只看 `dist/`（`npm run deploy:check` 只看构建状态）。
+
 ## 判据：提交上有没有 `Workers Builds` 这条 check-run
 
 推送后先跑：

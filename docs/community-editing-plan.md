@@ -198,7 +198,11 @@ CREATE TABLE bans (
 约定：
 - 全部返回 JSON；错误统一 `{ ok: false, error: "<人话>" }`；
 - **服务端必须重新校验一遍 schema**（不能信前端）。枚举、长度、URL 白名单、标签词表都在 Worker 里做，并且**与 `src/content.config.ts` 共用同一份枚举定义**（抽成一个 `shared/schema.mjs`，构建期与 Worker 都引它，避免两边漂移）；
-- Turnstile token 校验失败 → 400；限流命中 → 429。
+- Turnstile token 校验失败 → 400；限流命中 → 429；
+- **`/api/stats` 的票数聚合从 2026-10-16 起走边缘缓存（20 秒）**，按 IP 的 `myVote` 不进缓存、
+  逐次现查，所以「我刚投完票」永远是准的；`POST /api/vote` 写完后会**当场作废那份聚合**
+  （`worker/cache.ts` 的 `cacheDelete`），所以投票人自己看到的分布也是新的，
+  别人看到的差别最多 20 秒。响应头带 `no-store`（里面有个性化的 myVote，不许任何中间层缓存）。
 
 ---
 

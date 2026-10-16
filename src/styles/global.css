@@ -769,6 +769,31 @@ img { max-width: 100%; display: block; }
   gap: 22px;
 }
 
+/*
+ * 大列表的「跳过屏幕外渲染」（2026-10-16 加）。
+ * 地图库一页塞着 954 张卡（/maps/ 与 /tags/<标签>/ 都是 id="map-grid"），
+ * 首屏虽然只显示 60 张，但浏览器仍会把它们全部参与样式计算与布局。
+ * content-visibility: auto 让屏幕外的卡片**不渲染**，滚到了再算 ——
+ * DOM、链接、Ctrl+F 页面内查找、SEO、站内搜索索引全都不变（这是它敢用的原因）。
+ *
+ * contain-intrinsic-size 是给「还没渲染过的卡片」一个占位高度，免得滚动条乱跳：
+ * 这里填的是**实测值**（桌面 3 列 421~443px、平板 2 列 371~420px、手机 1 列 348~394px），
+ * `auto` 关键字让浏览器记住真实高度，第二次滚动起就完全准确。
+ * 不支持的浏览器忽略这两行，退回现在的表现。
+ */
+#map-grid > .map-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 430px;
+}
+
+@media (max-width: 900px) {
+  #map-grid > .map-card { contain-intrinsic-size: auto 390px; }
+}
+
+@media (max-width: 560px) {
+  #map-grid > .map-card { contain-intrinsic-size: auto 360px; }
+}
+
 /* ===== 地图卡片 ===== */
 .map-card {
   display: block;

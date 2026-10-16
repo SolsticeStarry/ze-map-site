@@ -20,8 +20,11 @@
  *
  * 性能：整份索引按 isolate 缓存在内存里（TTL 10 分钟），一次 R2 读取服务 N 个请求；
  * 一页最多问 24 个编号，一次请求答完。
+ * 2026-10-16 又加了一层**边缘缓存**（worker/cache.ts）：同一组编号在全站范围内只算一次，
+ * 连「索引里没有、去问 B 站也没问到」的负结果也缓存 —— 那种一次 0.5~1.2 秒，最不该反复付。
  */
 
+import { cacheGet, cachePut } from './cache';
 import { fail, type Env, type R2Like } from './http';
 
 /** BV 号：BV + 10 位左右；av 号；YouTube 的 11 位 id */
@@ -35,6 +38,9 @@ const AGREED_KEY = 'video-meta/agreed.json';
 const MAX_IDS = 24;
 /** 索引在内存里放多久（每个 isolate 自己算） */
 const INDEX_TTL_MS = 10 * 60 * 1000;
+/** 边缘缓存：全从索引答出来时放多久 / 有回源（含问不到的）时放多久（2026-10-16 加） */
+const VIDEO_TTL_S = 3600;
+const VIDEO_MISS_TTL_S = 600;
 const CONCURRENCY = 4;
 const TIMEOUT_MS = 6000;
 
@@ -164,6 +170,24 @@ export async function handleVideoMeta(request: Request, env: Env, url: URL): Pro
   if (bad) return fail(`不认识的视频编号：${bad.slice(0, 24)}`);
 
   const debug = url.searchParams.get('debug') === '1';
+  /*
+   * 边缘缓存（2026-10-16 加）：同一页问的编号组合固定，命中的话连 R2 和回源都省了。
+   * 负结果（索引里没有、回源也没拿到）**同样缓存** —— 那正是最贵的一种：
+   * 每次访问都去问一次 B 站（国内实测 0.5~1.2 秒，还可能撞风控）。
+   * 键按**排过序的编号列表**拼，[A,B] 与 [B,A] 共用一份。
+   * debug=1 是排查用的，必须看真实现场，所以绕过缓存。
+   */
+  const cacheName = `video-meta?bvs=${[...ids].sort().join(',')}`;
+  const cached = debug ? null : await cacheGet<{ items: Record<string, VideoMeta> }>(cacheName, VIDEO_TTL_S);
+  if (cached) {
+    return new Response(JSON.stringify({ ok: true, items: cached.items, cached: true }), {
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'public, max-age=3600',
+      },
+    });
+  }
+
   const [index, agreed] = await Promise.all([loadIndex(env.TERR), loadAgreed(env.TERR)]);
   /* 已同意的 UP 主集合：给视频条目挂 `ok: true`，页面据此显示「已获授权」 */
   const agreedSet = new Set(agreed.ups.map((x) => String(x.u).trim()));
@@ -190,6 +214,13 @@ export async function handleVideoMeta(request: Request, env: Env, url: URL): Pro
     }
   }
 
+  /*
+   * 缓存多久：全都从索引里答出来（没有回源）→ 长缓存；有回源（含问不到的）
+   * → 短缓存，过十分钟再试一次 —— 新视频刚发布时索引里还没有，别让它一辈子显示不出来。
+   */
+  const ttl = misses.length ? VIDEO_MISS_TTL_S : VIDEO_TTL_S;
+  if (!debug) await cachePut(cacheName, { items }, ttl);
+
   const body: Record<string, unknown> = { ok: true, items };
   if (debug) {
     body.diag = {
@@ -202,8 +233,8 @@ export async function handleVideoMeta(request: Request, env: Env, url: URL): Pro
   return new Response(JSON.stringify(body), {
     headers: {
       'content-type': 'application/json; charset=utf-8',
-      /* 浏览器侧也缓存一小时：同一页来回翻不用反复问 */
-      'cache-control': 'public, max-age=3600',
+      /* 浏览器侧也缓存：命中索引的一小时，含回源结果的短一些（同边缘的 TTL 口径） */
+      'cache-control': `public, max-age=${misses.length ? VIDEO_MISS_TTL_S : 3600}`,
     },
   });
 }

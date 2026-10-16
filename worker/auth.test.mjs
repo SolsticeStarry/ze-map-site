@@ -39,8 +39,14 @@ process.on('exit', () => fs.rmSync(BUNDLE, { force: true }));
 
 /* ===== D1 替身（node:sqlite，语句都是真跑的） ===== */
 
-/** 线上 0001：限流表 */
+/** 线上 0001：难度投票表 + 限流表（原来这里只建了 rate_limits，
+ *  /api/vote 一直没被测过；2026-10-16 加边缘缓存时补上，投票这条路才跑得起来） */
 const SCHEMA_0001 = `
+CREATE TABLE IF NOT EXISTS difficulty_votes (
+  map_slug TEXT NOT NULL, value TEXT NOT NULL, ip_hash TEXT NOT NULL, created_at INTEGER NOT NULL,
+  PRIMARY KEY (map_slug, ip_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_votes_map ON difficulty_votes (map_slug);
 CREATE TABLE IF NOT EXISTS rate_limits (
   ip_hash TEXT NOT NULL, window TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (ip_hash, window)
@@ -2717,6 +2723,169 @@ test('神器表：反馈「本图没有这件」时整行从表里去掉（不�
     assert.equal(row.uses, 5);
     assert.equal(visibleItemRows(r.rows).length, 1, '更正过的行当然还在表里');
     assert.equal(ITEM_ACTIONS.remove, '删除', '审核台显示的动作名');
+  });
+});
+
+/* ===== 边缘缓存（worker/cache.ts，2026-10-16 加） =====
+ *
+ * 两处「所有访客算出来都一样」的活挪进了 caches.default：
+ *   · /api/stats 的票数聚合（按 IP 的 myVote **不进缓存**，投完票自己立刻能看到）
+ *   · /api/video-meta 的整份响应（含回源失败的负结果 —— 那种一次 0.5~1.2 秒，最不该反复付）
+ *
+ * Node 里没有 Cloudflare 的 caches.default，用一张 Map 当缓存替身。替身顺带给了两个能力，
+ * 让断言不必依赖时间：**直接把条目塞进缓存**（证明命中时不再碰数据库 / R2 / 回源）、
+ * **把条目的时间戳改老**（等价于等过了 TTL，不用真 sleep 20 秒）。
+ */
+const CACHE_PREFIX = 'https://edge-cache.ze-map.internal/';
+/** @type {Map<string, Response>} */
+let fakeCache;
+
+function installFakeCache() {
+  fakeCache = new Map();
+  globalThis.caches = {
+    default: {
+      /* 每次返回一份**新的克隆**：Response 的 body 只能读一次，不克隆的话第二次就是空的 */
+      match: async (req) => {
+        const hit = fakeCache.get(new Request(req).url);
+        return hit ? hit.clone() : undefined;
+      },
+      put: async (req, res) => {
+        fakeCache.set(new Request(req).url, res.clone());
+      },
+      /* 作废（投票后要把聚合缓存删掉）也要有 —— 少这个方法的话 cacheDelete 会静默失败 */
+      delete: async (req) => fakeCache.delete(new Request(req).url),
+    },
+  };
+}
+
+async function seedCache(name, data, ageSec = 0) {
+  fakeCache.set(
+    CACHE_PREFIX + name,
+    new Response(JSON.stringify({ at: Date.now() - ageSec * 1000, data }), {
+      headers: { 'content-type': 'application/json' },
+    })
+  );
+}
+
+test('边缘缓存：票数聚合缓存 20 秒、myVote 逐次现查、投票后立刻作废、过期后重算', async (t) => {
+  await t.test('/api/stats：缓存期内不重算聚合，自己那一票永远最新', async () => {
+    const { call, db } = await setup();
+    installFakeCache();
+
+    /* 先让甲投一票（这一步顺带把 difficulty_votes 建出来） */
+    const voter = { ip: '203.0.113.10' };
+    const firstVote = await call('/api/vote', { method: 'POST', body: { map: 'ze_cache', value: '困难' }, ...voter });
+    assert.equal(firstVote.status, 200, JSON.stringify(firstVote.data));
+    assert.equal(firstVote.data.total, 1);
+    assert.equal(firstVote.data.myVote, '困难');
+
+    /* 另一个人来看：拿到的是缓存里的聚合，他自己没有票 */
+    const other = { ip: '203.0.113.11' };
+    const seen = await call('/api/stats?map=ze_cache', other);
+    assert.equal(seen.status, 200, JSON.stringify(seen.data));
+    assert.equal(seen.data.total, 1);
+    assert.equal(seen.data.myVote, null, '这个 IP 还没投过');
+
+    /* 绕开接口直接插一票：缓存期内不该被看见（聚合没重算） */
+    db.prepare(`INSERT INTO difficulty_votes (map_slug, value, ip_hash, created_at) VALUES (?,?,?,?)`).run(
+      'ze_cache',
+      '简单',
+      'h-direct',
+      Date.now()
+    );
+    const stillCached = await call('/api/stats?map=ze_cache', other);
+    assert.equal(stillCached.data.total, 1, '20 秒内走缓存，聚合没有重算');
+
+    /* 但投票接口会当场作废缓存：投完这一票，所有人立刻看到新分布 */
+    const secondVote = await call('/api/vote', { method: 'POST', body: { map: 'ze_cache', value: '简单' }, ip: '203.0.113.12' });
+    assert.equal(secondVote.data.total, 3, '投票后聚合作废并重算：1（甲）+ 1（直插）+ 1（这一票）');
+    const afterVote = await call('/api/stats?map=ze_cache', voter);
+    assert.equal(afterVote.data.total, 3, '别人也立刻看到新分布');
+    assert.equal(afterVote.data.myVote, '困难', 'myVote 不进缓存，各自算各自的');
+
+    /* 把缓存条目的时间戳改老 1 小时 → 下一次等于过了 TTL，必须重算 */
+    await seedCache('stats?map=ze_cache', { total: 1, counts: { 困难: 1 } }, 3600);
+    const fresh = await call('/api/stats?map=ze_cache', other);
+    assert.equal(fresh.data.total, 3, '过期后重算（缓存里那份被换掉了）');
+
+    /* 另一张图有自己的缓存条目，不串味 */
+    const otherVote = await call('/api/vote', { method: 'POST', body: { map: 'ze_cache2', value: '入土' }, ip: '203.0.113.13' });
+    assert.equal(otherVote.status, 200, JSON.stringify(otherVote.data));
+    const otherMap = await call('/api/stats?map=ze_cache2', other);
+    assert.equal(otherMap.data.total, 1);
+    assert.equal(otherMap.data.counts['入土'], 1);
+  });
+
+  await t.test('/api/video-meta：命中缓存时连 R2 都不读；负结果也缓存（不再反复回源）', async () => {
+    const { call, env } = await setup();
+    installFakeCache();
+    let r2Reads = 0;
+    env.TERR = {
+      get: async (key) => {
+        r2Reads++;
+        if (key === 'video-meta/index.json') {
+          return {
+            body: new Response(
+              JSON.stringify({ BV1indexed001: { t: '索引里的标题', u: '索引UP' }, BV1indexed002: { t: '第二部', u: '索引UP2' } })
+            ).body,
+            size: 80,
+          };
+        }
+        if (key === 'video-meta/agreed.json') {
+          return { body: new Response(JSON.stringify({ updatedAt: '', ups: [] })).body, size: 20 };
+        }
+        return null;
+      },
+    };
+
+    /* ① 缓存里已经有一条（模拟「别人刚问过」）：这次连 R2 都不该读 */
+    await seedCache('video-meta?bvs=BV1seeded0001', { items: { BV1seeded0001: { t: '缓存里的标题', u: '缓存UP' } } });
+    const hit = await call('/api/video-meta?bvs=BV1seeded0001');
+    assert.equal(hit.status, 200, JSON.stringify(hit.data));
+    assert.equal(hit.data.items.BV1seeded0001.t, '缓存里的标题', '直接吃缓存');
+    assert.equal(hit.data.cached, true, '响应里标了 cached（便于核对）');
+    assert.equal(r2Reads, 0, '命中缓存时 R2 一次都不读');
+
+    /* ② 没缓存：走 R2 索引，并且把结果写进缓存 */
+    const cold = await call('/api/video-meta?bvs=BV1indexed001');
+    assert.equal(cold.data.items.BV1indexed001.u, '索引UP');
+    assert.ok(r2Reads > 0, '冷启动要读 R2');
+    const warm = await call('/api/video-meta?bvs=BV1indexed001');
+    assert.equal(warm.data.cached, true, '第二次是缓存里来的');
+
+    /* ③ 同一组编号、只是顺序不同 → 共用同一份缓存（键按排序后的列表拼） */
+    const pairCold = await call('/api/video-meta?bvs=BV1indexed001,BV1indexed002');
+    assert.equal(pairCold.data.cached, undefined, '这组编号第一次问，没缓存');
+    assert.equal(pairCold.data.items.BV1indexed002.t, '第二部');
+    const pairWarm = await call('/api/video-meta?bvs=BV1indexed002,BV1indexed001');
+    assert.equal(pairWarm.data.cached, true, '[A,B] 与 [B,A] 同一份缓存');
+    assert.equal(pairWarm.data.items.BV1indexed001.u, '索引UP');
+
+    /* ④ 回源（含问到没有的）也缓存：第二次不再打上游 */
+    const realFetch = globalThis.fetch;
+    let upstream = 0;
+    globalThis.fetch = async () => {
+      upstream++;
+      return new Response(
+        JSON.stringify({ code: 0, data: { title: '回源标题', owner: { name: '回源UP', mid: 42 } } }),
+        { headers: { 'content-type': 'application/json' } }
+      );
+    };
+    try {
+      const a = await call('/api/video-meta?bvs=BV1upstream01');
+      assert.equal(a.data.items.BV1upstream01.t, '回源标题', JSON.stringify(a.data));
+      assert.equal(upstream, 1, '第一次回源问了一次');
+      const b = await call('/api/video-meta?bvs=BV1upstream01');
+      assert.equal(b.data.cached, true);
+      assert.equal(upstream, 1, '第二次走缓存，不再回源');
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+
+    /* ⑤ debug=1 绕开缓存：排查时要看真实现场 */
+    const dbg = await call('/api/video-meta?bvs=BV1indexed001&debug=1');
+    assert.equal(dbg.data.cached, undefined, 'debug 模式不吃缓存');
+    assert.ok(dbg.data.diag, 'debug 模式带诊断信息');
   });
 });
 

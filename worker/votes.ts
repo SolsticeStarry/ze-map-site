@@ -3,6 +3,7 @@
  */
 
 import { DIFFICULTIES, isDifficulty, normalizeDifficulty } from '../shared/difficulty.mjs';
+import { cacheDelete, cacheWrap } from './cache';
 import { allowWrite, fail, json, readJsonBody, type Env } from './http';
 
 /** 地图 slug 形如 ze_flowering —— 与 src/content/maps/*.mdx 的文件名一致 */
@@ -11,13 +12,22 @@ export const SLUG_RE = /^[a-z0-9][a-z0-9_]{0,63}$/;
 /** 每个 IP 每小时最多写多少次（投票 + 改票都算） */
 const WRITE_LIMIT_PER_HOUR = 30;
 
+/**
+ * 聚合票数在边缘缓存多少秒（2026-10-16 加）。
+ * 为什么是这个量级：投票分布晚十几秒更新，除了刚投完票的本人**没人会察觉**；
+ * 而本人那一票走的是「POST /api/vote 的返回」与**逐次查的 myVote**，永远是新的。
+ * 换来的是每次 GET 少一次 D1 聚合查询（实测国内 ~550 ms → 命中缓存后只剩网络往返）。
+ */
+const COUNTS_TTL_S = 20;
+
 export interface Stats {
   total: number;
   counts: Record<string, number>;
   myVote: string | null;
 }
 
-export async function readStats(env: Env, slug: string, ipHash: string): Promise<Stats> {
+/** 票数聚合（所有人一样，可缓存） */
+async function readCounts(env: Env, slug: string): Promise<{ total: number; counts: Record<string, number> }> {
   const { results } = await env.DB.prepare(
     `SELECT value, COUNT(*) AS n FROM difficulty_votes WHERE map_slug = ?1 GROUP BY value`
   )
@@ -37,14 +47,19 @@ export async function readStats(env: Env, slug: string, ipHash: string): Promise
     counts[key] = (counts[key] ?? 0) + row.n;
     total += row.n;
   }
+  return { total, counts };
+}
 
-  const mine = await env.DB.prepare(
-    `SELECT value FROM difficulty_votes WHERE map_slug = ?1 AND ip_hash = ?2`
-  )
-    .bind(slug, ipHash)
-    .first<{ value: string }>();
+export async function readStats(env: Env, slug: string, ipHash: string): Promise<Stats> {
+  /* 聚合走缓存、myVote 每次现查：投完票自己立刻能看到，别人最多晚 20 秒 */
+  const [agg, mine] = await Promise.all([
+    cacheWrap(`stats?map=${slug}`, COUNTS_TTL_S, () => readCounts(env, slug)),
+    env.DB.prepare(`SELECT value FROM difficulty_votes WHERE map_slug = ?1 AND ip_hash = ?2`)
+      .bind(slug, ipHash)
+      .first<{ value: string }>(),
+  ]);
 
-  return { total, counts, myVote: mine?.value ? normalizeDifficulty(mine.value) : null };
+  return { total: agg.total, counts: agg.counts, myVote: mine?.value ? normalizeDifficulty(mine.value) : null };
 }
 
 /** GET /api/stats?map=<slug> */
@@ -88,6 +103,12 @@ export async function handleVote(
   )
     .bind(slug, value, ipHash, Date.now())
     .run();
+
+  /*
+   * 投完票把聚合缓存作废（2026-10-16）：不然投票人自己会看到「我投了但分布没动」——
+   * 下面这次 readStats 会顺手把新的聚合算好再写回缓存，所以只多一次查询，别人也立刻看到。
+   */
+  await cacheDelete(`stats?map=${slug}`);
 
   return json({ ok: true, map: slug, ...(await readStats(env, slug, ipHash)) });
 }
