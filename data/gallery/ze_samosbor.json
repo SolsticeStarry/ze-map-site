@@ -1,6 +1,6 @@
 {
   "slug": "ze_samosbor",
-  "count": 9,
+  "count": 13,
   "images": [
     {
       "src": "https://terr.ze-map.cn/gallery/ze_samosbor/05-workshop.webp",
@@ -53,6 +53,30 @@
       "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u390.webp",
       "kind": "user",
       "caption": "复合结构",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u391.webp",
+      "kind": "user",
+      "caption": "玩家截图",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u392.webp",
+      "kind": "user",
+      "caption": "外场",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u393.webp",
+      "kind": "user",
+      "caption": "数字公寓",
+      "by": "SiKi"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_samosbor/u394.webp",
+      "kind": "user",
+      "caption": "后世水池",
       "by": "SiKi"
     }
   ]
