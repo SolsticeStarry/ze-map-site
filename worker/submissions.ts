@@ -57,6 +57,7 @@ import {
   GALLERY_PENDING_PREFIX,
   GALLERY_PER_FLUSH,
   GALLERY_PER_MAP_MAX,
+  GALLERY_PER_REQUEST_MAX,
   checkGalleryBytes,
   galleryEntryName,
   galleryEntryUrl,
@@ -563,7 +564,7 @@ export async function handleSubmitCover(
  * 以前一次请求只收一张，投稿页就逐张发 —— 而 Turnstile 的 token 是**一次性**的，
  * 于是第 1 张成功、第 2 张必被判「人机验证没通过」（社区朋友传 10 多张时正好撞上，
  * 原话是「图片太多的话每张图片都要人机验证一遍，然后又容易卡验证，导致不能批量化」）。
- * 现在一次请求最多收 GALLERY_PER_MAP_MAX 张，**一次请求只验一次人机**，
+ * 现在一次请求最多收 GALLERY_PER_REQUEST_MAX 张，**一次请求只验一次人机**，
  * 每张仍旧各成一条投稿（审核台照旧一张一张看），返回值里带每张的结果。
  */
 export async function handleSubmitGallery(
@@ -575,12 +576,12 @@ export async function handleSubmitGallery(
   if (request.method !== 'POST') return fail('只支持 POST', 405);
 
   /*
-   * 一批最多 24 张、每张最多 1.5 MB，multipart 还有开销 —— 给到 40 MB 上限。
-   * （线上 Worker 的请求体上限是 100 MB，留足余量；超过就是有人在乱发。）
+   * 一批最多 GALLERY_PER_REQUEST_MAX 张（与单图上限解耦：单图上限 2026-10-16 提到 36，
+   * 但一次请求仍只收 24 —— 24 × 1.5 MB ≈ 36 MB，配 48 MB 的请求体上限刚好）。
    */
   const declared = Number(request.headers.get('content-length') ?? 0);
-  if (declared && declared > 40 * 1024 * 1024) {
-    return fail(`上传内容过大（一次最多 ${GALLERY_PER_MAP_MAX} 张、每张 1.5 MB）`, 413);
+  if (declared && declared > 48 * 1024 * 1024) {
+    return fail(`上传内容过大（一次最多 ${GALLERY_PER_REQUEST_MAX} 张、每张 1.5 MB）`, 413);
   }
 
   let form: FormData;
@@ -595,8 +596,8 @@ export async function handleSubmitGallery(
 
   const files = form.getAll('image').filter((f): f is File => f instanceof File || f instanceof Blob);
   if (!files.length) return fail('没有收到图片文件');
-  if (files.length > GALLERY_PER_MAP_MAX) {
-    return fail(`一次最多传 ${GALLERY_PER_MAP_MAX} 张（这次收到 ${files.length} 张），请分几次传`, 413);
+  if (files.length > GALLERY_PER_REQUEST_MAX) {
+    return fail(`一次最多传 ${GALLERY_PER_REQUEST_MAX} 张（这次收到 ${files.length} 张），请分几次传`, 413);
   }
 
   /* 说明按顺序对齐：第 i 个 caption 对应第 i 张图（少给的当空） */

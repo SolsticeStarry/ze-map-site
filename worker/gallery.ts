@@ -41,8 +41,17 @@ export const GALLERY_EXTS = ['webp', 'jpg', 'png'];
 export const GALLERY_CAPTION_MAX = 60;
 /** 一次写回最多处理几张图片集投稿：每张都要读 KV、写 R2、改清单，占子请求额度 */
 export const GALLERY_PER_FLUSH = 8;
-/** 单张地图的图片集上限：超了页面太长，也不该由一个人塞满（审核台会拒） */
-export const GALLERY_PER_MAP_MAX = 24;
+/*
+ * 单张地图的图片集上限（**玩家投稿**张数；工坊预览图不算）：定义搬到了
+ * shared/submission-fields.mjs —— 投稿页要显示「还能再收几张」，两边必须是同一个数。
+ * 这里 re-export 一次，worker 内部照旧从本题 import（2026-10-16 由 24 提到 36）。
+ */
+export { GALLERY_PER_MAP_MAX } from '../shared/submission-fields.mjs';
+/**
+ * **一次请求**最多收几张（与单图上限解耦）：24 × 1.5 MB ≈ 36 MB，
+ * 配 48 MB 的请求体上限刚好；投稿页那边是 8 张一批，永远够用。
+ */
+export const GALLERY_PER_REQUEST_MAX = 24;
 
 /** 存进 submissions.value 的图片集元数据 */
 export interface GalleryMeta {

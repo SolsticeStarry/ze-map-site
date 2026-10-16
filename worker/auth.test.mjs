@@ -281,11 +281,20 @@ test('图片集投稿：一批多张只验一次人机，单张不合格不拖�
     assert.match(badOne.data.error, /480/);
   });
 
-  await t.test('一批超过上限要拒：最多 24 张', async () => {
+  await t.test('一批超过上限要拒：一次请求最多 24 张（与单图上限解耦）', async () => {
     const many = Array.from({ length: 25 }, () => ({ bytes: fakePng(800, 600) }));
     const r = await postGallery(many, { map: 'ze_gallerytoomany' });
     assert.equal(r.status, 413, JSON.stringify(r.data));
     assert.match(r.data.error, /一次最多传 24 张/);
+  });
+
+  await t.test('单图上限与提示文案是同一个数（改常量忘了改文案就会被这条逮住）', async () => {
+    const { FIELD_RULES, GALLERY_PER_MAP_MAX } = await import('../shared/submission-fields.mjs');
+    assert.equal(GALLERY_PER_MAP_MAX, 36, '单图图片集上限（2026-10-16 由 24 提到 36）');
+    assert.ok(
+      String(FIELD_RULES.gallery.hint).includes(`最多收 ${GALLERY_PER_MAP_MAX} 张`),
+      `字段提示里要写着 ${GALLERY_PER_MAP_MAX} 张，实际：${FIELD_RULES.gallery.hint}`
+    );
   });
 
   await t.test('投稿人昵称与说明的超长校验一批也只报一次错', async () => {

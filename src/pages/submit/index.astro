@@ -598,7 +598,14 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
 <script>
   /* 与 Worker 共用同一份字段规则与校验 —— 前端只是「提前告诉你哪里不对」，
      真正的权威校验在服务端（worker/submissions.ts）。 */
-  import { FIELD_RULES, MAX_SECTIONS_PER_MAP, isReservedSectionTitle, looksLikeBannerTitle, validateValue } from '../../../shared/submission-fields.mjs';
+  import {
+    FIELD_RULES,
+    GALLERY_PER_MAP_MAX,
+    MAX_SECTIONS_PER_MAP,
+    isReservedSectionTitle,
+    looksLikeBannerTitle,
+    validateValue,
+  } from '../../../shared/submission-fields.mjs';
   /* 登录状态：与页头那个账号按钮共用一次请求（见 lib/account-client.ts） */
   import { ACCOUNT_EVENT, meOrThrow } from '../../lib/account-client';
   /* 人机验证（Turnstile）：放提交按钮上方；没配 site key 时不渲染 */
@@ -2602,20 +2609,32 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     return { blob, ext, w: outW, h: outH };
   }
 
+  /**
+   * 这张图还能收几张玩家投稿（上限来自 shared/submission-fields.mjs，与写回那份是同一个数）。
+   * 表单里的 `galleryUser` 是**玩家投稿**张数（工坊预览不算），所以减去它才是名额。
+   * 注意这只是构建期的快照：别人同时也在投，真正的闸在写回时，这里只负责别让人白忙。
+   */
+  const galleryLeft = () => Math.max(0, GALLERY_PER_MAP_MAX - Number(mapInfo?.galleryUser ?? 0));
+
   function updateGalleryStatus(): void {
     if (!galleryStatus) return;
     const has = Number(mapInfo?.galleryCount ?? 0);
-    const base = has ? `《${mapInfo?.title}》现在的图片集有 ${has} 张。` : '';
+    const left = galleryLeft();
+    const base = has ? `《${mapInfo?.title}》现在的图片集有 ${has} 张（还能再收 ${left} 张玩家投稿）。` : '';
     if (!galleryItems.length) {
       galleryStatus.textContent =
         base + '还没选图。可一次选多张：会自动压成 webp 再上传，每张上传后可以单独写说明。';
       return;
     }
     const total = galleryItems.reduce((n, i) => n + i.blob.size, 0);
+    /* 选超了先提醒（不硬拦）：审核时超出的那几张写不进去，白投一趟不划算 */
+    const over = galleryItems.length > left;
     galleryStatus.textContent =
       base +
       `已压好 ${galleryItems.length} 张，共 ${Math.round(total / 1024)} KB` +
-      ` —— 提交后一张一条投稿，都要过审。`;
+      (over
+        ? ` —— ⚠️ 超过这张图还能收的 ${left} 张，超出的部分审核时写不进去，建议先删掉几张。`
+        : ' —— 提交后一张一条投稿，都要过审。');
   }
 
   /** 把选中的图标出来：缩略图 + 说明输入框 + 移除按钮 */

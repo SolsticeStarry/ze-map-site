@@ -77,9 +77,13 @@ export const GET: APIRoute = async () => {
     if (d.sources?.length) row.sources = d.sources;
     /* 封面：投稿表单要显示「当前封面」缩略图（换封面时好对比） */
     if (d.cover) row.cover = d.cover;
-    /* 图片集已有几张：投稿表单用它说明「现在有几张图」，免得重复投同一张 */
-    const galleryCount = galleryFor(m.id).length;
-    if (galleryCount) row.galleryCount = galleryCount;
+    /* 图片集已有几张：投稿表单用它说明「现在有几张图」，免得重复投同一张。
+       另外给出**玩家投稿**的张数（`galleryUser`）：上限 36 张数的是这一种，
+       工坊预览那张不算 —— 表单要能算出「还剩几个名额」。 */
+    const galleryImages = galleryFor(m.id);
+    if (galleryImages.length) row.galleryCount = galleryImages.length;
+    const galleryUser = galleryImages.filter((i) => i.kind === 'user').length;
+    if (galleryUser) row.galleryUser = galleryUser;
 
     /* 神器 / 道具现状：手写表 + 服务器配置打底 + 社区已通过的更正。
        字段用短键 —— 1700 多行，键名能省下十几 KB。
