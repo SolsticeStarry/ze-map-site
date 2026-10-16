@@ -552,11 +552,19 @@ export async function handleSubmitCover(
 
 /**
  * POST /api/submit-gallery —— multipart/form-data
- *   map / caption / submitter / contact / note / turnstileToken + 文件字段 image
+ *   map / submitter / contact / note / turnstileToken + **一个或多个** 文件字段 image
+ *   + 每个 image 对应一个 caption（重复字段，按顺序对齐；少给的当空）
  *
  * 与封面接口的差别只有三点：不裁 16:9（截图本来就该保持原样）、上限放到 1.5 MB、
  * 通过后进的是 R2 的 `gallery/` 前缀而不是仓库里的二进制（见 worker/gallery.ts）。
  * 限流桶、封禁、人机校验与文本 / 封面投稿完全共用。
+ *
+ * ⚠️ **一批可以带多张**（2026-10-16 改，社区反馈的真 bug）：
+ * 以前一次请求只收一张，投稿页就逐张发 —— 而 Turnstile 的 token 是**一次性**的，
+ * 于是第 1 张成功、第 2 张必被判「人机验证没通过」（社区朋友传 10 多张时正好撞上，
+ * 原话是「图片太多的话每张图片都要人机验证一遍，然后又容易卡验证，导致不能批量化」）。
+ * 现在一次请求最多收 GALLERY_PER_MAP_MAX 张，**一次请求只验一次人机**，
+ * 每张仍旧各成一条投稿（审核台照旧一张一张看），返回值里带每张的结果。
  */
 export async function handleSubmitGallery(
   request: Request,
@@ -566,9 +574,14 @@ export async function handleSubmitGallery(
 ): Promise<Response> {
   if (request.method !== 'POST') return fail('只支持 POST', 405);
 
-  /* 1.5 MB 的图 base64 之后也没多大，但 body 里还有 multipart 开销，留一倍余量 */
+  /*
+   * 一批最多 24 张、每张最多 1.5 MB，multipart 还有开销 —— 给到 40 MB 上限。
+   * （线上 Worker 的请求体上限是 100 MB，留足余量；超过就是有人在乱发。）
+   */
   const declared = Number(request.headers.get('content-length') ?? 0);
-  if (declared && declared > 4 * 1024 * 1024) return fail('上传内容过大', 413);
+  if (declared && declared > 40 * 1024 * 1024) {
+    return fail(`上传内容过大（一次最多 ${GALLERY_PER_MAP_MAX} 张、每张 1.5 MB）`, 413);
+  }
 
   let form: FormData;
   try {
@@ -580,15 +593,18 @@ export async function handleSubmitGallery(
   const slug = typeof form.get('map') === 'string' ? String(form.get('map')).trim() : '';
   if (!SLUG_RE.test(slug)) return fail('地图参数不合法');
 
-  const file = form.get('image');
-  if (!(file instanceof File) && !(file instanceof Blob)) return fail('没有收到图片文件');
-  const bytes = new Uint8Array(await (file as Blob).arrayBuffer());
+  const files = form.getAll('image').filter((f): f is File => f instanceof File || f instanceof Blob);
+  if (!files.length) return fail('没有收到图片文件');
+  if (files.length > GALLERY_PER_MAP_MAX) {
+    return fail(`一次最多传 ${GALLERY_PER_MAP_MAX} 张（这次收到 ${files.length} 张），请分几次传`, 413);
+  }
 
-  const check = checkGalleryBytes(bytes);
-  if (!check.ok || !check.format) return fail(check.error ?? '图片不合法');
+  /* 说明按顺序对齐：第 i 个 caption 对应第 i 张图（少给的当空） */
+  const captions = form.getAll('caption').map((c) => (typeof c === 'string' ? c : ''));
+  const captionChecks = files.map((_, i) => optString(captions[i] ?? '', GALLERY_CAPTION_MAX, '图片说明'));
+  const badCaption = captionChecks.find((c) => !c.ok);
+  if (badCaption) return fail(badCaption.error);
 
-  const caption = optString(form.get('caption'), GALLERY_CAPTION_MAX, '图片说明');
-  if (!caption.ok) return fail(caption.error);
   const submitter = optString(form.get('submitter'), LIMITS.submitter, '昵称');
   if (!submitter.ok) return fail(submitter.error);
   const contact = optString(form.get('contact'), LIMITS.contact, '联系方式');
@@ -598,57 +614,90 @@ export async function handleSubmitGallery(
 
   if (await isBanned(env, ipHash)) return fail('该来源已被禁止投稿', 403);
 
+  /* 人机验证**一次请求验一次**（不是每张一次）—— 这正是这次改动的目的 */
   const human = await verifyTurnstile(env, form.get('turnstileToken'), rawIp, { required: false });
   if (!human.ok) return fail(turnstileMessage(human.reason), 400);
 
   const quota = await submissionQuota(env, ipHash);
   if (quota) return quota;
 
-  /* 先写 KV 再写 D1（同封面）：反过来 D1 里会留下指向不存在图片的记录 */
-  const key = pendingImageKey(GALLERY_PENDING_PREFIX, check.format);
-  try {
-    await putPendingImage(env, key, bytes, check.format);
-  } catch (err) {
-    const e = err as GitError;
-    return fail(e?.message || '图片暂存失败', typeof e?.status === 'number' ? e.status : 500);
+  /* 账号（P4）：登录了的图片集投稿同样挂到账号上（署名也用账号昵称）—— 一批只查一次 */
+  const account = await accountForSubmit(request, env).catch(() => ({ id: null, name: null, trusted: false }));
+
+  interface GalleryItemResult {
+    /** 在这一批里的下标（从 0 开始），前端据此对上「第几张」 */
+    index: number;
+    ok: boolean;
+    id?: number;
+    error?: string;
+  }
+  const items: GalleryItemResult[] = [];
+  const ids: number[] = [];
+
+  for (const [i, file] of files.entries()) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const check = checkGalleryBytes(bytes);
+    if (!check.ok || !check.format) {
+      /* 单张不合格**不拖累整批**：把它标出来，其余照收（旧行为是整批 400） */
+      items.push({ index: i, ok: false, error: check.error ?? '图片不合法' });
+      continue;
+    }
+
+    /* 先写 KV 再写 D1（同封面）：反过来 D1 里会留下指向不存在图片的记录 */
+    const key = pendingImageKey(GALLERY_PENDING_PREFIX, check.format);
+    try {
+      await putPendingImage(env, key, bytes, check.format);
+    } catch (err) {
+      const e = err as GitError;
+      items.push({ index: i, ok: false, error: e?.message || '图片暂存失败' });
+      continue;
+    }
+
+    const meta = {
+      key,
+      ext: check.format,
+      bytes: bytes.length,
+      width: check.width ?? 0,
+      height: check.height ?? 0,
+      caption: captionChecks[i].value,
+    };
+
+    try {
+      const { id } = await insertSubmission(env, {
+        slug,
+        field: 'gallery',
+        value: meta,
+        note: note.value,
+        submitter: account.name ?? submitter.value,
+        contact: contact.value,
+        ipHash,
+        status: account.trusted ? 'approved' : 'pending',
+        userId: account.id,
+      });
+      items.push({ index: i, ok: true, id });
+      ids.push(id);
+    } catch (err) {
+      await dropPendingImage(env, key); // 回滚：别留下没人认领的图片
+      items.push({ index: i, ok: false, error: err instanceof Error ? err.message : '入库失败' });
+    }
   }
 
-  const meta = {
-    key,
-    ext: check.format,
-    bytes: bytes.length,
-    width: check.width ?? 0,
-    height: check.height ?? 0,
-    caption: caption.value,
-  };
-
-  try {
-    /* 账号（P4）：登录了的图片集投稿同样挂到账号上（署名也用账号昵称） */
-    const account = await accountForSubmit(request, env).catch(() => ({ id: null, name: null, trusted: false }));
-    const { id } = await insertSubmission(env, {
-      slug,
-      field: 'gallery',
-      value: meta,
-      note: note.value,
-      submitter: account.name ?? submitter.value,
-      contact: contact.value,
-      ipHash,
-      status: account.trusted ? 'approved' : 'pending',
-      userId: account.id,
-    });
-
-    return json({
-      ok: true,
-      id,
-      width: meta.width,
-      height: meta.height,
-      bytes: meta.bytes,
-      message: '已收到图片，审核通过后会出现在条目的「图片集」里',
-    });
-  } catch (err) {
-    await dropPendingImage(env, key); // 回滚：别留下没人认领的图片
-    throw err;
+  /* 一张都没成：按失败回（老页面单张时读 data.error，语义与以前一致） */
+  if (!ids.length) {
+    return fail(items[0]?.error ?? '图片不合法', 400);
   }
+
+  return json({
+    ok: true,
+    /* id = 第一张的编号：老页面（单张）读的就是它，保持兼容 */
+    id: ids[0],
+    ids,
+    /** 这一批收到几张 / 成功几张 */
+    total: files.length,
+    count: ids.length,
+    items,
+    message: `已收到 ${ids.length} 张图片，审核通过后会出现在条目的「图片集」里`,
+  });
 }
 
 /**

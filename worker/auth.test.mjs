@@ -166,6 +166,147 @@ async function setup(opts = {}) {
   return { worker, env, db, call, rows, one, jar };
 }
 
+/* ===== 图片集投稿：**一批多张、一次请求只验一次人机**（2026-10-16 修的真 bug） =====
+ *
+ * 社区朋友传十几张截图时撞上的：投稿页以前逐张发请求、**共用同一枚 Turnstile token**，
+ * 而 token 是一次性的 —— 第 1 张成功、第 2 张必被判「人机验证没通过」，
+ * 原话「图片太多的话每张图片都要人机验证一遍，然后又容易卡验证，导致不能批量化」。
+ * 现在一次请求收一批（每张仍各成一条投稿），这里钉住：多张一张请求能收下、
+ * 某张不合格不拖累其余、单张老格式仍兼容、超过一批上限要拒。
+ */
+
+/** 造一张「头部合法」的 PNG：校验只看文件头（宽度写在 IHDR 里），不用真去解码 */
+function fakePng(w, h) {
+  const bytes = new Uint8Array(64);
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  const dv = new DataView(bytes.buffer);
+  dv.setUint32(16, w);
+  dv.setUint32(20, h);
+  return bytes;
+}
+
+test('图片集投稿：一批多张只验一次人机，单张不合格不拖累其余', async (t) => {
+  const { worker, env, db, call } = await setup();
+  /* 假 KV：待审图片要能存取（真实现见 worker/images.ts / http.ts 的 KVLike） */
+  const kv = new Map();
+  env.UPLOADS = {
+    put: async (key, value) => {
+      kv.set(key, value);
+    },
+    get: async (key) => kv.get(key) ?? null,
+    getWithMetadata: async (key) => ({ value: kv.get(key) ?? null, metadata: null }),
+    delete: async (key) => {
+      kv.delete(key);
+    },
+  };
+  env.ADMIN_TOKEN = 'test-admin-token';
+  const auth = { authorization: 'Bearer test-admin-token' };
+
+  /** 发一批图片（multipart）：images = [{ name, bytes, caption }] */
+  const postGallery = async (images, extra = {}) => {
+    const fd = new FormData();
+    fd.append('map', extra.map ?? 'ze_gallerybatch');
+    fd.append('submitter', extra.submitter ?? '传图的人');
+    fd.append('contact', '');
+    fd.append('note', extra.note ?? '');
+    if (extra.token) fd.append('turnstileToken', extra.token);
+    for (const img of images) {
+      fd.append('image', new Blob([img.bytes], { type: 'image/png' }), img.name ?? 'gallery.png');
+      fd.append('caption', img.caption ?? '');
+    }
+    const res = await worker.fetch(
+      new Request(HOST + '/api/submit-gallery', {
+        method: 'POST',
+        headers: { origin: HOST, 'cf-connecting-ip': '203.0.113.7' },
+        body: fd,
+      }),
+      env
+    );
+    return { status: res.status, data: await res.json().catch(() => null) };
+  };
+
+  await t.test('一次请求 3 张 → 3 条投稿、3 个编号，说明也按顺序对上', async () => {
+    const r = await postGallery([
+      { bytes: fakePng(800, 600), caption: '第一张' },
+      { bytes: fakePng(1280, 720), caption: '第二张' },
+      { bytes: fakePng(1920, 1080), caption: '第三张' },
+    ]);
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.equal(r.data.count, 3);
+    assert.equal(r.data.ids.length, 3, '三张各一个编号');
+    assert.equal(r.data.id, r.data.ids[0], 'id 保持老格式（= 第一张）');
+    assert.ok(r.data.items.every((x) => x.ok), '每张都有结果');
+
+    const rows = db
+      .prepare(`SELECT id, value FROM submissions WHERE map_slug='ze_gallerybatch' ORDER BY id`)
+      .all();
+    assert.equal(rows.length, 3, '三张各成一条投稿（审核台照旧一张一张看）');
+    const caps = rows.map((x) => JSON.parse(x.value).caption);
+    assert.deepEqual(caps, ['第一张', '第二张', '第三张'], '说明按顺序对齐');
+    const sizes = rows.map((x) => JSON.parse(x.value).width);
+    assert.deepEqual(sizes, [800, 1280, 1920]);
+  });
+
+  await t.test('某张不合格只标出那一张：其余照收（旧行为是整批 400）', async () => {
+    const r = await postGallery(
+      [
+        { bytes: fakePng(800, 600), caption: '合格的' },
+        { bytes: fakePng(320, 240), caption: '太窄的' },
+        { bytes: fakePng(1024, 768), caption: '也合格的' },
+      ],
+      { map: 'ze_gallerymix' }
+    );
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.equal(r.data.count, 2, '两张收下');
+    assert.equal(r.data.total, 3, '一共收到三张');
+    const bad = r.data.items.find((x) => !x.ok);
+    assert.equal(bad.index, 1, '第 2 张（下标 1）是不合格的那张');
+    assert.match(bad.error, /480/, `要说清为什么：${bad.error}`);
+    assert.deepEqual(
+      r.data.items.map((x) => x.ok),
+      [true, false, true]
+    );
+    const kept = db.prepare(`SELECT COUNT(*) AS n FROM submissions WHERE map_slug='ze_gallerymix'`).get();
+    assert.equal(kept.n, 2);
+  });
+
+  await t.test('单张（老页面格式）仍然照旧：返回 data.id 与 data.error', async () => {
+    const okOne = await postGallery([{ bytes: fakePng(900, 600), caption: '就一张' }], { map: 'ze_galleryone' });
+    assert.equal(okOne.status, 200);
+    assert.equal(typeof okOne.data.id, 'number', '老页面读的就是 data.id');
+    assert.equal(okOne.data.count, 1);
+
+    const badOne = await postGallery([{ bytes: fakePng(200, 200) }], { map: 'ze_galleryone' });
+    assert.equal(badOne.status, 400, '单张全是坏的 → 按失败回（老页面的语义）');
+    assert.match(badOne.data.error, /480/);
+  });
+
+  await t.test('一批超过上限要拒：最多 24 张', async () => {
+    const many = Array.from({ length: 25 }, () => ({ bytes: fakePng(800, 600) }));
+    const r = await postGallery(many, { map: 'ze_gallerytoomany' });
+    assert.equal(r.status, 413, JSON.stringify(r.data));
+    assert.match(r.data.error, /一次最多传 24 张/);
+  });
+
+  await t.test('投稿人昵称与说明的超长校验一批也只报一次错', async () => {
+    const r = await postGallery([{ bytes: fakePng(800, 600), caption: 'x'.repeat(61) }], { map: 'ze_gallerycap' });
+    assert.equal(r.status, 400);
+    assert.match(r.data.error, /说明/);
+  });
+
+  /* 审核台写回时仍然一张一条（与批上传无关），这里只确认它们真的进了队列 */
+  await t.test('这批量会出现在待审队列里（每张一条，带图）', async () => {
+    const queue = await call('/api/admin/queue?status=pending', { headers: auth });
+    assert.equal(queue.status, 200, JSON.stringify(queue.data));
+    const mine = (queue.data.items ?? []).filter((x) => x.map_slug === 'ze_gallerybatch');
+    assert.equal(mine.length, 3, '三张都在待审队列里');
+    assert.ok(
+      mine.every((x) => x.field === 'gallery'),
+      '字段都是 gallery'
+    );
+  });
+});
+
 const submitBody = (extra = {}) => ({
   map: 'ze_flowering',
   field: 'difficulty',

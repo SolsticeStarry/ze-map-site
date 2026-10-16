@@ -45,8 +45,8 @@ export const LIMITS = {
  *   urlList  链接数组
  *   image    图片文件（**不走这里的 text 校验**：由 /api/submit-cover 以 multipart 上传，
  *            校验与落盘在 worker/covers.ts；这里只用于表单控件与审核台标签）
- *   gallery  图片集图片（**同 image**：由 /api/submit-gallery 一次一张上传，
- *            校验在 worker/gallery.ts，图片进 R2、通过的清单写进 data/gallery/<slug>.json）
+ *   gallery  图片集图片（**同 image**：由 /api/submit-gallery 上传，一批最多 24 张、
+ *            每张各成一条投稿；校验在 worker/gallery.ts，图片进 R2、通过的清单写进 data/gallery/<slug>.json）
  *   longtext 多行正文（**正文类字段不做条目字段覆盖，而是进「社区补充」区块的笔记** ——
  *            见 shared/community-doc.mjs 的 applySubmission 与 isNoteField）
  *   itemlist 神器 / 道具行（**逐行合并**，不整表替换：见 shared/items.mjs 的 mergeItems；
@@ -172,7 +172,7 @@ export const FIELD_RULES = {
       '只传你自己截的、或者作者公开允许传播的图：别人的作品请先问过再传；' +
       '图片版权归原作者，作者要求撤下我们会立刻删。',
     /* 图片上限与落盘在 worker/gallery.ts（单张 1.5 MB、宽至少 480px、每图最多 24 张）；
-       说明上限 60 字；接口是 /api/submit-gallery（multipart，一次一张） */
+       说明上限 60 字；接口是 /api/submit-gallery（multipart，一批最多 24 张，一次请求只验一次人机） */
     maxCaption: 60,
   },
   /*
@@ -638,7 +638,7 @@ export function validateValue(field, raw) {
       return { ok: false, error: '封面请用表单里的图片上传控件（接口是 /api/submit-cover）' };
 
     case 'gallery':
-      /* 同理：图片集走 multipart 到 /api/submit-gallery，一次一张，落盘在 worker/gallery.ts */
+      /* 同理：图片集走 multipart 到 /api/submit-gallery（一批多张），落盘在 worker/gallery.ts */
       return { ok: false, error: '图片集请用表单里的图片上传控件（接口是 /api/submit-gallery）' };
 
     case 'urlList': {

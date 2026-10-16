@@ -2544,6 +2544,12 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
   const GALLERY_MAX_BYTES = 1500 * 1024; // 与 worker/gallery.ts 保持一致
   const GALLERY_MAX_EDGE = 1600;
   const GALLERY_CAPTION_MAX = 60;
+  /**
+   * 一批发几张（2026-10-16 加）。**不是一个请求只发一张**：Turnstile 的 token 一次性，
+   * 逐张发就等于逐张验一次人机，社区朋友传十几张时第 2 张就卡住了。
+   * 取 8 = 服务端写回时一批处理的张数（GALLERY_PER_FLUSH），一次请求体最多约 12 MB。
+   */
+  const GALLERY_BATCH = 8;
 
   type GalleryItem = {
     blob: Blob;
@@ -3094,12 +3100,119 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
     return { ...base, value: checked.value, batchItems, reviseOf };
   }
 
+  /**
+   * 图片集提交（2026-10-16 抽出来 + 改成按批上传）。
+   *
+   * 为什么不是「一张一条请求」：Turnstile 的 token 是**一次性**的，逐张发就等于逐张验一次人机 ——
+   * 社区朋友传十几张时，第 1 张成功、第 2 张必被判「人机验证没通过」（原话：
+   * 「图片太多的话每张图片都要人机验证一遍，然后又容易卡验证，导致不能批量化」）。
+   * 现在每批最多 GALLERY_BATCH 张、**一批一个 token**；服务端一次请求也只验一次人机，
+   * 每张仍各成一条投稿（审核台照旧一张一张看），某张不合格只标出那一张、其余照收。
+   */
+  async function submitGallery(opts: {
+    note: string;
+    submitter: string;
+    contact: string;
+    backLink: string;
+  }): Promise<void> {
+    const { note, submitter, contact, backLink } = opts;
+    if (!galleryItems.length) return showError('先选图片，等它们压好之后再提交。');
+
+    submitBtn.disabled = true;
+    const ids: number[] = [];
+    const failed: string[] = [];
+    /* 先拍一份快照再发：下面要按「成功的」从真实列表里挪走，边发边改下标会乱 */
+    const queue = [...galleryItems];
+    const done = new Set<GalleryItem>();
+    /** 成功的从待传列表里挪走（失败的留着，用户可以重试或删掉） */
+    const dropDone = () => {
+      for (let i = galleryItems.length - 1; i >= 0; i--) {
+        if (!done.has(galleryItems[i])) continue;
+        URL.revokeObjectURL(galleryItems[i].url);
+        galleryItems.splice(i, 1);
+      }
+      renderGalleryList();
+      updateGalleryStatus();
+    };
+
+    try {
+      for (let start = 0; start < queue.length; start += GALLERY_BATCH) {
+        const chunk = queue.slice(start, start + GALLERY_BATCH);
+        /* 每个请求取一枚**新的** token（上一枚已经在上一批用掉了） */
+        const { token, blocked } = await takeTurnstileToken(tsBox);
+        if (blocked) throw new Error(turnstileHint());
+
+        submitBtn.textContent = `上传中…（${start + 1}–${start + chunk.length} / ${queue.length}）`;
+        if (galleryStatus) {
+          galleryStatus.textContent = `正在上传第 ${start + 1}~${start + chunk.length} 张（共 ${queue.length} 张）…`;
+        }
+
+        const fd = new FormData();
+        fd.append('map', slug);
+        /* 同一字段名重复 append：服务端 getAll('image') 拿到一整批，caption 按顺序对齐 */
+        for (const item of chunk) {
+          fd.append('image', item.blob, `gallery.${item.ext}`);
+          fd.append('caption', item.caption);
+        }
+        fd.append('note', note);
+        fd.append('submitter', submitter);
+        fd.append('contact', contact);
+        if (token) fd.append('turnstileToken', token);
+
+        const res = await fetch('/api/submit-gallery', { method: 'POST', body: fd });
+        const data = (await res.json()) as {
+          ok?: boolean;
+          ids?: number[];
+          items?: Array<{ index: number; ok: boolean; id?: number; error?: string }>;
+          error?: string;
+        };
+        if (!data.ok) throw new Error(data.error || '上传失败');
+
+        for (const item of data.items ?? []) {
+          if (item.ok) {
+            if (item.id) ids.push(item.id);
+            done.add(chunk[item.index]);
+          } else {
+            failed.push(`第 ${start + item.index + 1} 张：${item.error ?? '没成功'}`);
+          }
+        }
+        resetTurnstile(tsBox); // 下一批要用新的一枚
+      }
+
+      dropDone();
+      if (!ids.length) throw new Error(failed[0] ?? '上传失败，请稍后再试');
+      if (failed.length) {
+        showError(
+          `已成功 ${ids.length} 张（编号 ${ids.join('、')}）已进审核队列；` +
+            `${failed.length} 张没成功：${failed.slice(0, 3).join('；')}` +
+            (failed.length > 3 ? ` 等 ${failed.length} 项` : '')
+        );
+        return;
+      }
+      showSuccess(ids, `审核通过后这些图会出现在《${mapInfo?.title}》条目底部的「图片集」里。${backLink}`, 'gallery');
+    } catch (err) {
+      /* 请求级失败（人机验证没过 / 网络断了）：已经成功的也挪走，免得再点一次重复投 */
+      dropDone();
+      showError(
+        (ids.length ? `已成功的 ${ids.length} 张（编号 ${ids.join('、')}）已进审核队列；` : '') +
+          (err instanceof Error && err.message ? err.message : '上传失败，请稍后再试')
+      );
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '提交';
+    }
+  }
+
   /** 真正提交（原来那段逻辑）：人机验证 → 发请求 → 成功页 */
   async function runSubmit(p: SubmissionPlan): Promise<void> {
     const { field, note, submitter, contact } = p;
     const backLink =
       `站长审核通过后会随下一批一起写回仓库并自动重建，通常几分钟内就会出现在 ` +
       `<a href="/maps/${slug}/">《${mapInfo?.title}》的条目</a> 里。`;
+
+    /* 图片集自己按批取 token（一批一枚）—— 所以放在下面取 token 之前先分流，
+       免得白白消耗一枚用不上的（token 一次性，取了不用也是浪费）。 */
+    if (field === 'gallery') return submitGallery({ note, submitter, contact, backLink });
 
     /* 人机验证：先等最多 3 秒（自动通过通常 <1 秒，别让手快的人白跑一趟），
        token 是一次性的，失败后 reset（见各分支的 catch）。
@@ -3127,53 +3240,6 @@ const pickerFields = fields.filter((f, i) => !(FIELD_RULES as Record<string, any
       } catch (err) {
         resetTurnstile(tsBox);
         showError(err instanceof Error && err.message ? err.message : '上传失败，请稍后再试');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '提交';
-      }
-      return;
-    }
-
-    /* 图片集走 multipart，**一张一条投稿**：中途失败就停下，把已经成功的那些从列表里挪走，
-       免得再点提交时重复投一遍（重复投不会出错，但会在队列里多出一条一样的）。 */
-    if (field === 'gallery') {
-      if (!galleryItems.length) return showError('先选图片，等它们压好之后再提交。');
-      submitBtn.disabled = true;
-      const ids: number[] = [];
-      try {
-        for (let i = 0; i < galleryItems.length; i++) {
-          const item = galleryItems[i];
-          submitBtn.textContent = `上传中…（${i + 1}/${galleryItems.length}）`;
-          if (galleryStatus) galleryStatus.textContent = `正在上传第 ${i + 1}/${galleryItems.length} 张…`;
-          const fd = new FormData();
-          fd.append('map', slug);
-          fd.append('image', item.blob, `gallery.${item.ext}`);
-          fd.append('caption', item.caption);
-          fd.append('note', note);
-          fd.append('submitter', submitter);
-          fd.append('contact', contact);
-          if (tsToken) fd.append('turnstileToken', tsToken);
-          const res = await fetch('/api/submit-gallery', { method: 'POST', body: fd });
-          const data = (await res.json()) as { ok?: boolean; id?: number; error?: string };
-          if (!data.ok) throw new Error(`第 ${i + 1} 张没成功：${data.error || '上传失败'}`);
-          ids.push(Number(data.id));
-        }
-        showSuccess(
-          ids,
-          `审核通过后这些图会出现在《${mapInfo?.title}》条目底部的「图片集」里。${backLink}`,
-          'gallery'
-        );
-      } catch (err) {
-        for (let i = ids.length - 1; i >= 0; i--) {
-          URL.revokeObjectURL(galleryItems[i].url);
-          galleryItems.splice(i, 1);
-        }
-        renderGalleryList();
-        updateGalleryStatus();
-        showError(
-          (ids.length ? `已成功的 ${ids.length} 张（编号 ${ids.join('、')}）已进审核队列；` : '') +
-            (err instanceof Error && err.message ? err.message : '上传失败，请稍后再试')
-        );
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = '提交';
