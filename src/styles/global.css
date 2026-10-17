@@ -46,7 +46,15 @@ html { overflow-x: clip; }
 body {
   min-height: 100vh;
   position: relative;
-  overflow-x: hidden;
+  /*
+   * 2026-10-17：这里的 overflow-x 从 hidden 改成 clip。
+   * 原因：body 上写 `overflow-x: hidden` 会让 body 变成**滚动容器**，
+   * 于是页面里所有 `position: sticky`（地图页的「本页目录」、吸顶工具条）全部失效 ——
+   * sticky 会相对一个"永远不会滚动的 body 滚动框"定位，滚页面它就不动了（实测滚到 1500px 时
+   * 目录的 top 已经是 -993，完全没跟上）。`clip` 只做裁剪、不产生滚动容器，横向溢出照样裁掉。
+   * html 上那条 overflow-x: clip 保持原样。
+   */
+  overflow-x: clip;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -1175,6 +1183,170 @@ img { max-width: 100%; display: block; }
 
 /* ===== 侧栏 ===== */
 .map-sidebar { min-width: 0; }
+
+/* ---------- 地图页：本页目录 + 手机底部抽屉（2026-10-17） ----------
+   桌面：侧栏顶部 sticky 目录，滚动时高亮当前块。
+   手机：侧栏整体变成右侧抽屉（只在 body.has-mapbar 时生效，脚本没跑就不变），
+        目录和基本信息都从底部工具条打开。
+   锚点都留了 scroll-margin-top，免得跳过去被吸顶的站点导航挡住。 */
+main [id],
+.map-main > section[id] { scroll-margin-top: 96px; }
+
+.map-toc {
+  position: sticky;
+  top: 88px;
+  margin-bottom: 16px;
+  padding: 14px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+.map-toc-title {
+  margin: 0 0 8px;
+  padding-left: 4px;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.map-toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.map-toc a,
+.map-drawer .md-list a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  border-left: 2px solid transparent;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.map-toc a:hover,
+.map-drawer .md-list a:hover { color: var(--text); background: rgba(255, 255, 255, 0.05); }
+.map-toc a.is-active,
+.map-drawer .md-list a.is-active {
+  color: var(--text);
+  background: rgba(34, 211, 238, 0.1);
+  border-left-color: var(--accent-2);
+}
+.map-toc li.is-sub a, .map-drawer li.is-sub a { padding-left: 20px; font-size: 12.5px; }
+.map-toc b, .map-drawer .md-list b {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* 手机底部工具条：默认隐藏，JS 确认有侧栏后才显出来 */
+.map-mobile-bar { display: none; }
+.map-sidebar-backdrop { display: none; }
+
+@media (max-width: 900px) {
+  /* 目录列表在手机上不占侧栏位置（改从底部抽屉看） */
+  .map-toc { display: none; }
+
+  body.has-mapbar .map-mobile-bar {
+    display: flex;
+    gap: 8px;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 90;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: rgba(6, 7, 11, 0.94);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  body.has-mapbar .map-mobile-bar button {
+    flex: 1 1 0;
+    padding: 9px 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  body.has-mapbar .map-mobile-bar button:active { background: var(--panel-2); }
+
+  /* 底部条会盖住内容：给页面留出同等高度 */
+  body.has-mapbar .map-layout { padding-bottom: 84px; }
+
+  /* 侧栏 = 右侧抽屉（仅 JS 加了 has-mapbar 时） */
+  body.has-mapbar .map-sidebar {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(92vw, 380px);
+    z-index: 96;
+    margin: 0;
+    padding: 16px 14px calc(20px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+    box-shadow: -18px 0 40px rgba(0, 0, 0, 0.45);
+    transform: translateX(102%);
+    transition: transform 0.24s ease;
+    visibility: hidden;
+  }
+  body.has-mapbar.sidebar-open .map-sidebar { transform: none; visibility: visible; }
+  body.has-mapbar .map-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  body.has-mapbar .map-sidebar-backdrop[hidden] { display: none; }
+
+  main [id], .map-main > section[id] { scroll-margin-top: 82px; }
+}
+
+/* 目录抽屉：桌面也用同一套样式（只是桌面没有入口） */
+.map-drawer {
+  width: min(94vw, 460px);
+  max-height: 78vh;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  color: var(--text);
+  overscroll-behavior: contain;
+}
+.map-drawer::backdrop { background: rgba(0, 0, 0, 0.6); }
+.map-drawer .md-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+}
+.map-drawer .md-head button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.map-drawer .md-list {
+  list-style: none;
+  margin: 0;
+  padding: 10px 10px 16px;
+  display: grid;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: calc(78vh - 56px);
+}
+.map-drawer .md-list a { font-size: 14px; padding: 9px 10px; }
 
 .sidebar-card {
   background: var(--panel);

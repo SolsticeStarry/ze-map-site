@@ -26,7 +26,7 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
-const { Content } = await render(entry);
+const { Content, headings } = await render(entry);
 
 /*
  * 这些值**已经由 content loader 合并过社区覆盖**（见 src/content.config.ts 的
@@ -225,6 +225,57 @@ const related = all
   )
   .slice(0, 3)
   .map((x) => x.m);
+
+/*
+ * ===== 本页目录（2026-10-17 加） =====
+ *
+ * 站长的要求：「像其他百科网站一样每张地图一个快速索引目录，点击可以跳到相关地方」，
+ * 并且要**随内容自动更新**、手机上也好用。
+ *
+ * 为什么是构建期生成：目录 = 「这一页真实存在的块」，内容改了（有人加了一节、采纳了草稿、
+ * 上传了图片集）→ 写回仓库 → 自动重建 → 目录跟着变，**不需要维护第二份清单**。
+ * 三种来源拼起来，顺序按页面上的真实先后：
+ *   1. 模板块（视频 / 简介）在正文之前；
+ *   2. 正文小节来自 render(entry).headings（MDX 已生成中文 id，锚点直接可用）；
+ *      「图片集」不是标题而是组件，所以按 <MapGallery /> 标记在正文里的位置插进去；
+ *   3. 社区块 / 草稿 / 同类地图在正文之后。
+ * 块没渲染就不进目录（没视频的图不会出现「攻略视频」）。
+ */
+type TocItem = { id: string; label: string; count?: number; sub?: boolean };
+const toc: TocItem[] = [];
+const pushToc = (id: string, label: string, count?: number) => toc.push({ id, label, ...(count ? { count } : {}) });
+
+if (!bodyHasVideo && (videoUrls ?? []).length > 0) pushToc('videos', '攻略视频', (videoUrls ?? []).length);
+if (showSummaryNote) pushToc('intro', '简介（社区投稿）');
+
+/* 正文小节：headings 与 body 里的 ##/### 顺序一一对应，用位置信息把「图片集」插到它真正出现的地方 */
+const bodySource = String(entry.body ?? '');
+const bodyHeadingMatches = [...bodySource.matchAll(/^(#{2,3})[ \t]+(.+)$/gm)];
+const galleryAt = bodySource.indexOf('<MapGallery');
+const bodyToc: Array<{ at: number; id: string; label: string; sub: boolean }> = headings.map((h, i) => ({
+  at: bodyHeadingMatches[i]?.index ?? Number.MAX_SAFE_INTEGER,
+  id: h.slug,
+  label: h.text,
+  sub: h.depth >= 3,
+}));
+const galleryTotal = galleryFor(entry.id).length;
+if (galleryTotal > 0) {
+  bodyToc.push({ at: galleryAt >= 0 ? galleryAt : Number.MAX_SAFE_INTEGER, id: 'gallery', label: '图片集', sub: false });
+}
+bodyToc.sort((a, b) => a.at - b.at);
+for (const h of bodyToc) {
+  toc.push({ id: h.id, label: h.label, ...(h.id === 'gallery' && galleryTotal ? { count: galleryTotal } : {}), ...(h.sub ? { sub: true } : {}) });
+}
+
+if (guideNotes.length > 0) pushToc('guide-notes', '攻略 / 神器讲解（社区投稿）');
+if (storyNotes.length > 0) pushToc('story-notes', '背景故事（社区投稿）');
+if (otherNotes.length > 0) pushToc('extra-notes', '社区补充');
+if (sectionNotes.length > 0) pushToc('community-sections', '社区整理', sectionNotes.length);
+if (draftParsed) pushToc('community-draft', '社区整理版（未采纳）');
+if (related.length > 0) pushToc('similar', '同类地图');
+
+/** 目录太短就不显示（比如只有 1~2 项时纯属噪音） */
+const showToc = toc.length >= 3;
 ---
 
 <BaseLayout
@@ -305,7 +356,7 @@ const related = all
         videoUrls 仍然照常渲染在那些页面的正文里。
       */}
       {!bodyHasVideo && (videoUrls ?? []).length > 0 && (
-        <section class="video-block">
+        <section class="video-block" id="videos">
           <h2>攻略视频{(videoUrls ?? []).length > 1 ? `（${(videoUrls ?? []).length}）` : ''}</h2>
           {(videoUrls ?? []).slice(0, VIDEOS_SHOWN).map((url: string) => (
             <VideoEmbed url={url} kind={kindOfVideo(url)} />
@@ -331,7 +382,7 @@ const related = all
         有本站简介的图不显示（投稿页也会拦住这类稿子），避免两份导语打架。
       */}
       {showSummaryNote && (
-        <section class="community-block is-lead">
+        <section class="community-block is-lead" id="intro">
           <h2>简介（社区投稿）</h2>
           {summaryNotes.map((n: NoteMeta & { text: string }) => (
             <div class="community-note">
@@ -357,7 +408,7 @@ const related = all
         区块仍然与本站整理的正文分开，并逐条署名 —— 不覆盖正文本就是有意的设计。
       */}
       {guideNotes.length > 0 && (
-        <section class="community-block">
+        <section class="community-block" id="guide-notes">
           <h2>攻略 / 神器讲解（社区投稿）</h2>
           {guideNotes.map((n: NoteMeta & { text: string }) => (
             <div class="community-note">
@@ -369,7 +420,7 @@ const related = all
       )}
 
       {storyNotes.length > 0 && (
-        <section class="community-block">
+        <section class="community-block" id="story-notes">
           <h2>背景故事（社区投稿）</h2>
           {storyNotes.map((n: NoteMeta & { text: string }) => (
             <div class="community-note">
@@ -381,7 +432,7 @@ const related = all
       )}
 
       {otherNotes.length > 0 && (
-        <section class="community-block">
+        <section class="community-block" id="extra-notes">
           <h2>社区补充</h2>
           {otherNotes.map((n: NoteMeta & { text: string }) => (
             <div class="community-note">
@@ -403,8 +454,8 @@ const related = all
         不是备选稿，但仍然带「社区整理」小标，读者一眼能看出不是本站正文。
         标题由投稿人定（服务端已禁止与本站小节重名），正文渲染规则与 story / guide 一样。
       */}
-      {sectionNotes.map((n) => (
-        <section class="community-block is-section">
+      {sectionNotes.map((n, i) => (
+        <section class="community-block is-section" {...(i === 0 ? { id: 'community-sections' } : {})}>
           <h2>
             {n.title || '社区整理'}
             <span class="community-badge">社区整理</span>
@@ -415,7 +466,7 @@ const related = all
       ))}
 
       {draftParsed && (
-        <section class="draft-block">
+        <section class="draft-block" id="community-draft">
           <h2>社区整理版（未采纳）</h2>
           <p class="draft-banner">
             这是社区志愿者整理的**整篇**草稿，<strong>尚未被本站采纳</strong>：上面的正文仍以本站整理为准。
@@ -436,7 +487,7 @@ const related = all
       )}
 
       {related.length > 0 && (
-        <section>
+        <section id="similar">
           <h2>同类地图</h2>
           <div class="map-grid">
             {related.map((m) => <MapCard map={m} />)}
@@ -446,6 +497,31 @@ const related = all
     </main>
 
     <aside class="map-sidebar">
+      {/*
+        本页目录（2026-10-17）：侧栏顶部 sticky，构建期生成（见上面 toc 那段）。
+        手机上这个列表隐藏，挪进底部的「目录」抽屉（同一份数据渲染两遍，纯静态）。
+      */}
+      {showToc && (
+        <nav class="map-toc" aria-label="本页目录">
+          <p class="map-toc-title">本页目录</p>
+          <ol>
+            {toc.map((t) => (
+              <li class={t.sub ? 'is-sub' : undefined}>
+                {/*
+                  ⚠️ target="_self" 不能省：BaseLayout 里有 `<base target="_blank">`，
+                  全站链接默认新开标签页 —— 不写它，点目录会在新标签里打开同一个页面再跳锚点。
+                  （和 contribute.astro 里的「向下滚动」是同一个坑，注释见 BaseLayout 第 60 行附近。）
+                */}
+                <a href={`#${t.id}`} target="_self">
+                  <span>{t.label}</span>
+                  {t.count ? <b>{t.count}</b> : null}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
+
       {previewUrl ? (
         <a class="entity-cta" href={previewUrl} target="_blank" rel="noopener" title="在新标签页打开实体预览">
           <span class="ec-t">🧊 实体预览</span>
@@ -576,5 +652,127 @@ const related = all
       </div>
     </aside>
   </div>
+
+  {/*
+    手机上的页内导航（2026-10-17）：底部一条小工具栏 + 两个抽屉。
+    · 「目录」：半屏抽屉，列法和侧栏那份一样（点一项关抽屉并滚过去）；
+    · 「基本信息」：把右侧栏（基本信息 / 实体预览 / 投稿按钮 / 投票）从页面最底部
+      变成随手可点的抽屉 —— 以前手机用户得滚到底才看得到难度和关卡数；
+    · 「顶部」：长页面回到开头。
+    全部是 JS 增强：脚本没跑，这条栏不显示（hidden），侧栏仍在文末照常可读。
+  */}
+  <div class="map-mobile-bar" id="map-mobile-bar" hidden>
+    <button type="button" data-bar="toc" aria-label="打开本页目录">☰ 目录</button>
+    <button type="button" data-bar="info" aria-label="打开基本信息">ⓘ 基本信息</button>
+    <button type="button" data-bar="top" aria-label="回到顶部">↑ 顶部</button>
+  </div>
+  <div class="map-sidebar-backdrop" id="map-sidebar-backdrop" hidden></div>
+
+  {showToc && (
+    <dialog class="map-drawer" id="map-toc-dialog" aria-label="本页目录">
+      <div class="md-head">
+        <b>目录</b>
+        <button type="button" data-close aria-label="关闭">✕</button>
+      </div>
+      <ol class="md-list">
+        {toc.map((t) => (
+          <li class={t.sub ? 'is-sub' : undefined}>
+            {/* 同侧栏目录：必须 target="_self"，否则被 <base target="_blank"> 带去新标签页 */}
+            <a href={`#${t.id}`} target="_self">
+              <span>{t.label}</span>
+              {t.count ? <b>{t.count}</b> : null}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </dialog>
+  )}
+
+  <script>
+    /*
+     * 地图页的页内导航（2026-10-17）。三件事：
+     *   1. 手机底部工具栏：显出来，并给 body 加 has-mapbar ——**侧栏变抽屉只在这个类存在时生效**，
+     *      所以脚本没跑（被插件挡 / 老浏览器）时侧栏仍旧留在文末，页面不会残废；
+     *   2. 目录抽屉 / 基本信息抽屉的开关；
+     *   3. 滚动高亮：算「当前视口顶部上方最近的那个块」，两侧目录同时标亮。
+     * 不用 IntersectionObserver 是有意的：它只在进出视口时回调，夹在中间的块反而算不准。
+     */
+    const bar = document.getElementById('map-mobile-bar');
+    const sidebar = document.querySelector<HTMLElement>('.map-sidebar');
+    const backdrop = document.getElementById('map-sidebar-backdrop');
+    const tocDialog = document.getElementById('map-toc-dialog') as HTMLDialogElement | null;
+
+    const setSidebar = (open: boolean) => {
+      document.body.classList.toggle('sidebar-open', open);
+      if (backdrop) backdrop.hidden = !open;
+    };
+
+    if (bar) {
+      if (sidebar) {
+        bar.hidden = false;
+        document.body.classList.add('has-mapbar');
+      }
+      bar.addEventListener('click', (e) => {
+        const hit = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-bar]');
+        const what = hit?.dataset.bar;
+        if (what === 'toc') tocDialog?.showModal();
+        else if (what === 'info') setSidebar(true);
+        else if (what === 'top') window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    backdrop?.addEventListener('click', () => setSidebar(false));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setSidebar(false);
+    });
+    /* 侧栏抽屉里点了任何链接（去投稿 / 去实体预览）就收起，别挡着页面 */
+    sidebar?.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement | null)?.closest('a')) setSidebar(false);
+    });
+
+    /* 目录项：先关抽屉再滚（modal 打开时滚动会被它吃掉） */
+    tocDialog?.addEventListener('click', (e) => {
+      const a = (e.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href^="#"]');
+      if (!a) return;
+      e.preventDefault();
+      const id = decodeURIComponent(a.getAttribute('href')!.slice(1));
+      const target = document.getElementById(id);
+      tocDialog.close();
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      /* 地址栏也带上锚点：想分享「直接翻到神器表」的链接时有用 */
+      history.replaceState(null, '', '#' + id);
+    });
+    tocDialog?.querySelectorAll('[data-close]').forEach((btn) => {
+      btn.addEventListener('click', () => tocDialog.close());
+    });
+
+    /* 滚动高亮：取「离视口顶部最近、但已经滚过判定位」的那一块 */
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('.map-toc a, .map-drawer a')];
+    const targets = [...new Set(links.map((a) => decodeURIComponent(a.getAttribute('href')!.slice(1))))]
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => Boolean(el));
+
+    if (targets.length) {
+      let raf = 0;
+      const paint = () => {
+        raf = 0;
+        const line = 120; /* 吸顶导航 + 一点余量：超过这条线的块算「正在看」 */
+        let current = targets[0];
+        for (const el of targets) {
+          if (el.getBoundingClientRect().top - line <= 0) current = el;
+          else break;
+        }
+        const id = current?.id ?? '';
+        for (const a of links) a.classList.toggle('is-active', a.getAttribute('href') === '#' + id);
+      };
+      const onScroll = () => {
+        if (!raf) raf = requestAnimationFrame(paint);
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll);
+      paint();
+    }
+  </script>
 
 </BaseLayout>

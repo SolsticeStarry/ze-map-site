@@ -47,7 +47,7 @@ const isCoverImage = (img: { kind: string }) => coverIsWorkshop && img.kind === 
 
 {
   images.length > 0 && (
-    <section class="gallery-block">
+    <section class="gallery-block" id="gallery">
       <h2>图片集{images.length > 1 ? `（${images.length}）` : ''}</h2>
       <p class="gallery-hint">
         工坊预览图由地图作者上传，其余来自玩家投稿。点开可看大图，滚轮 / 双击 / 双指缩放，拖动平移；
