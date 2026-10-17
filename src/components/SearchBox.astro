@@ -51,7 +51,7 @@
 </div>
 
 <script>
-  type MapRow = { s: string; t: string; e: string; d: string; g?: string[]; a?: string; u?: string };
+  type MapRow = { s: string; t: string; e: string; d: string; g?: string[]; a?: string; u?: string; al?: string[] };
   type TagRow = { n: string; c: number };
   type Index = { maps: MapRow[]; tags: TagRow[] };
 
@@ -122,25 +122,35 @@
      * 为什么不用加权总分：单值打分很容易倒挂 —— 试过「标签完全相同 60 分」vs
      * 「标题包含 52 分」，结果搜「后室」时「池塘」（只是打了 后室 标签）排在
      * 「逃离后室」（标题里就写着）前面（2026-10-07 截图里就是这个顺序，用户直接看出来了）。
-     * 层级排序的规则一句话说得清：**中文名 > 英文名 > 作者 > 上传者 > 标签**，
+     * 层级排序的规则一句话说得清：**中文名 > 其他叫法 > 英文名 > 作者 > 上传者 > 标签**，
      * 同一层里 完全相同 > 开头 > 包含。
      *
      * 作者排在前面的理由：搜「Waffel」的人想找的是**他的图**，不是「正文里提过 Waffel」
      * 的页面 —— 上传者（工坊条目上传人，常是搬运/移植者）放作者后面。
+     *
+     * 「其他叫法」排第二（2026-10-17 加）：地图页上本来就列着这行，但索引里没带，
+     * 于是「指环王：米那斯提力斯」改名成「魔戒：米那斯提力斯」以后，老玩家搜「指环王」
+     * 在页头什么也搜不到 —— 那是名字，只是不是现在的名字，理应紧跟中文名。
      */
-    function hitRank(
-      m: MapRow,
-      q: string
-    ): { rank: number; match: number; tag?: string; by?: 'author' | 'uploader' } | null {
-      let best: { rank: number; match: number; tag?: string; by?: 'author' | 'uploader' } | null = null;
-      const consider = (rank: number, value: string, extra?: { tag?: string; by?: 'author' | 'uploader' }) => {
+    type Hit = {
+      rank: number;
+      match: number;
+      tag?: string;
+      by?: 'author' | 'uploader' | 'alias';
+      alias?: string;
+    };
+
+    function hitRank(m: MapRow, q: string): Hit | null {
+      let best: Hit | null = null;
+      const consider = (rank: number, value: string, extra?: { tag?: string; by?: Hit['by']; alias?: string }) => {
         const match = scoreOf(value, q);
         if (match <= 0) return;
         if (!best || rank > best.rank || (rank === best.rank && match > best.match)) {
           best = { rank, match, ...(extra ?? {}) };
         }
       };
-      consider(5, norm(m.t));
+      consider(6, norm(m.t));
+      for (const al of m.al ?? []) consider(5, norm(al), { by: 'alias', alias: al });
       consider(4, norm(m.e));
       if (m.a) consider(3, norm(m.a), { by: 'author' });
       if (m.u) consider(2, norm(m.u), { by: 'uploader' });
@@ -152,8 +162,8 @@
       const out: HTMLElement[] = [];
       if (!index) return out;
 
-      /* --- 地图：中文名 / 英文名 / 作者 / 上传者 / 标签，都只认连续子串 --- */
-      const maps: Array<{ m: MapRow; rank: number; match: number; tag?: string; by?: 'author' | 'uploader' }> = [];
+      /* --- 地图：中文名 / 其他叫法 / 英文名 / 作者 / 上传者 / 标签，都只认连续子串 --- */
+      const maps: Array<{ m: MapRow } & Hit> = [];
       for (const m of index.maps) {
         const hit = hitRank(m, q);
         if (hit) maps.push({ m, ...hit });
@@ -163,7 +173,7 @@
           b.rank - a.rank || b.match - a.match || String(a.m.t).localeCompare(String(b.m.t), 'zh')
       );
 
-      for (const { m, tag, by } of maps.slice(0, MAX_MAPS)) {
+      for (const { m, tag, by, alias } of maps.slice(0, MAX_MAPS)) {
         const a = document.createElement('a');
         a.className = 'sbox-row';
         a.href = `/maps/${m.s}/`;
@@ -180,6 +190,7 @@
            否则一列图名看完也不知道凭什么是这几张 */
         if (by === 'author' && m.a) markInto(sub, m.a, q);
         else if (by === 'uploader' && m.u) markInto(sub, m.u, q);
+        else if (by === 'alias' && alias) markInto(sub, alias, q);
         else sub.textContent = m.e;
         a.append(sub);
 
@@ -187,6 +198,7 @@
         if (tag) a.append(badge(`#${tag}`, 'tag'));
         if (by === 'author') a.append(badge('作者', 'by'));
         else if (by === 'uploader') a.append(badge('上传者', 'by'));
+        else if (by === 'alias') a.append(badge('叫法', 'by'));
         out.push(a);
       }
 

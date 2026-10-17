@@ -315,7 +315,7 @@ const DATA_KINDS = ['已有攻略资料', '资料待补充'];
     }
 
     /**
-     * 命中排名：**先看命中在哪个字段（中文名 5 > 英文名 4 > 作者 3 > 上传者 2 > 标签 1），
+     * 命中排名：**先看命中在哪个字段（中文名 6 > 其他叫法 5 > 英文名 4 > 作者 3 > 上传者 2 > 标签 1），
      * 再看命中方式**（完全相同 3 > 开头 2 > 包含 1）。返回 null = 都没连续命中。
      *
      * 为什么用两层而不是加权总分：单值打分容易倒挂 —— 试过「标签完全相同 60 分」压过
@@ -325,17 +325,22 @@ const DATA_KINDS = ['已有攻略资料', '资料待补充'];
      * 作者 / 上传者是 2026-10-10 加的：以前搜作者只能靠 Pagefind 全文碰运气（侧栏的作者
      * 恰好被索引了），结果与「正文里提过这个名字」的页面混在一起、也不标原因。
      * 现在按作者搜会整组置顶并标「作者：xxx」。
+     *
+     * 「其他叫法」是 2026-10-17 加的（和页头联想同步）：地图页上本来就列着这行，
+     * 改名（指环王 → 魔戒）以后老玩家搜旧名也该找得到，且仅次于中文名。
      */
     function hitRank(m, q) {
       var best = null;
-      var consider = function (rank, value, tag, by) {
+      var consider = function (rank, value, tag, by, alias) {
         var match = scoreOf(value, q);
         if (match <= 0) return;
         if (!best || rank > best.rank || (rank === best.rank && match > best.match)) {
-          best = { rank: rank, match: match, tag: tag || '', by: by || '' };
+          best = { rank: rank, match: match, tag: tag || '', by: by || '', alias: alias || '' };
         }
       };
-      consider(5, normalize(m.t));
+      consider(6, normalize(m.t));
+      var al = m.al || [];
+      for (var j = 0; j < al.length; j++) consider(5, normalize(al[j]), '', 'alias', al[j]);
       consider(4, normalize(m.e));
       if (m.a) consider(3, normalize(m.a), '', 'author');
       if (m.u) consider(2, normalize(m.u), '', 'uploader');
@@ -354,7 +359,7 @@ const DATA_KINDS = ['已有攻略资料', '资料待补充'];
       for (var i = 0; i < MAP_INDEX.length; i++) {
         var m = MAP_INDEX[i];
         var hit = hitRank(m, nq);
-        if (hit) maps.push({ m: m, rank: hit.rank, match: hit.match, tag: hit.tag, by: hit.by });
+        if (hit) maps.push({ m: m, rank: hit.rank, match: hit.match, tag: hit.tag, by: hit.by, alias: hit.alias });
       }
       maps.sort(function (a, b) {
         return (
@@ -393,8 +398,15 @@ const DATA_KINDS = ['已有攻略资料', '资料待补充'];
 
       var path = document.createElement('div');
       path.className = 'pf-result-path';
-      /* 命中作者 / 上传者时，把那行副标题换成命中的那个名字 —— 一列图名看完也知道凭什么 */
-      var sub = hit.by === 'author' && it.a ? it.a : hit.by === 'uploader' && it.u ? it.u : it.e;
+      /* 命中作者 / 上传者 / 其他叫法时，把那行副标题换成命中的那个名字 —— 一列图名看完也知道凭什么 */
+      var sub =
+        hit.by === 'author' && it.a
+          ? it.a
+          : hit.by === 'uploader' && it.u
+            ? it.u
+            : hit.by === 'alias' && hit.alias
+              ? hit.alias
+              : it.e;
       path.textContent = url + (sub ? '　·　' + sub : '');
       row.appendChild(path);
 
@@ -407,9 +419,11 @@ const DATA_KINDS = ['已有攻略资料', '资料待补充'];
           ? '作者：' + it.a
           : hit.by === 'uploader'
             ? '上传者：' + it.u
-            : hit.tag
-              ? '标签「' + hit.tag + '」'
-              : '图名匹配';
+            : hit.by === 'alias'
+              ? '叫法「' + hit.alias + '」'
+              : hit.tag
+                ? '标签「' + hit.tag + '」'
+                : '图名匹配';
       badges.appendChild(mark);
       if (it.d) {
         var b = document.createElement('span');

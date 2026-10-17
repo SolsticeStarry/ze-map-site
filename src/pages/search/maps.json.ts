@@ -14,7 +14,7 @@
  *    子串匹配，正好补上这一块。
  *
  * 结构（键名刻意短，这份文件每次搜索都要拉）：
- *   maps[]: s=slug  t=中文名  e=英文名  d=难度  g=标签[]  a=作者  u=工坊上传者
+ *   maps[]: s=slug  t=中文名  e=英文名  d=难度  g=标签[]  a=作者  u=工坊上传者  al=其他叫法[]
  *   tags[]: n=标签名  c=该标签的地图数
  *
  * 页头搜索框只在这些字段里做**连续子串**匹配，所以「后室」不会命中「后…室」。
@@ -49,6 +49,13 @@ export const GET: APIRoute = async () => {
     if (author) row.a = author;
     const uploader = String(m.data.uploader ?? '').trim();
     if (uploader) row.u = uploader;
+    /*
+     * 其他叫法 / 旧称（2026-10-17 加）：地图页上本来就列着「其他叫法」，
+     * 但页头搜索以前不认它们 —— 比如「指环王：米那斯提力斯」改名成「魔戒：米那斯提力斯」之后，
+     * 老玩家搜「指环王」应该还能找到这张图。全站目前只有 4 张图有叫法（11 条），体积可以忽略。
+     */
+    const aliases = ((m.data.aliases ?? []) as unknown[]).map((x) => String(x ?? '').trim()).filter(Boolean);
+    if (aliases.length) row.al = aliases;
     return row;
   });
 
