@@ -12,6 +12,7 @@
     "build:inputs": "node scripts/content/check-build-inputs.mjs",
     "changes:build": "node scripts/content/build-research-changes.mjs",
     "data:catalog": "node scripts/entity-data/build-catalog.mjs",
+    "data:workshop-dates": "node scripts/content/sync-workshop-dates.mjs",
     "search:index": "pagefind --site dist",
     "preview": "astro preview",
     "astro": "astro",

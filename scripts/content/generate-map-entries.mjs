@@ -169,6 +169,26 @@ function workshopIdOf(rec, research) {
 /** 读这张图的工坊详情（含覆盖），renderEntry 与两个调用点共用同一个口径 */
 const workshopFor = (rec, research) => loadWorkshop(workshopIdOf(rec, research));
 
+/*
+ * 公开的工坊版本记录（2026-10-17 接入）。
+ *
+ * 为什么需要它：Steam Web API 那边只有**我们上次抓取时**的 time_updated，
+ * 抓完之后作者再更新，站里就一直是旧日期；而那份追踪记录每次工坊有变动就更新一次，
+ * manifest.json 里的 publishDate 就是条目最近一次发布的时间，比我们的快照新。
+ *
+ * 数据由 scripts/content/sync-workshop-dates.mjs 生成（键 = 工坊条目 id）。
+ * ⚠️ 站上不写来源（对外统一叫「历史服务端实体快照」），页面文案里别出现组织名。
+ */
+const TRACK_FILE = path.join(ROOT, 'data/workshop-updates.json');
+const trackDates = fs.existsSync(TRACK_FILE) ? (readJson(TRACK_FILE).dates ?? {}) : {};
+
+/** 取几个日期里最新的那个（YYYY-MM-DD 比较字符串即可），全都没有就返回 null */
+const latestDay = (...values) => {
+  const days = values.map((v) => String(v ?? '').slice(0, 10)).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  return days.length ? days[days.length - 1] : null;
+};
+
+
 /* 工坊上传者昵称映射（scripts/content/fetch-creators.ps1 产出） */
 const CREATORS_FILE = path.join(ROOT, 'data/creators.json');
 const creators = fs.existsSync(CREATORS_FILE) ? readJson(CREATORS_FILE) : {};
@@ -531,8 +551,22 @@ function renderEntry(rec, research, wsRec, gfl) {
   const researchDiff = normalizeDifficulty(research?.difficulty);
   const diff = isDifficulty(researchDiff) ? researchDiff : '未知';
   // 发布日期优先用工坊 API 的权威时间
-  const released = wsRec?.timeCreated || rec.d;
-  const updated = wsRec?.timeUpdated || rec.d || (baked ? null : catalog.meta.legacyBuilt.slice(0, 10));
+  /*
+   * 发布 / 更新日期（2026-10-17 改口径）
+   *
+   * 以前 `updated` 的兜底是 rec.d（历史实体快照里那次 dump 的日期）和
+   * catalog.meta.legacyBuilt（实体库构建时间）—— 这两个都不是工坊日期，
+   * 却被写成「工坊最近更新」：125 张显示 2025-07-07、111 张显示实体库构建那天，
+   * 全是假的（对照那份工坊版本记录，真实的 publishDate 与它们差了几百天）。
+   *
+   * 现在只认两个真实来源，取较新的那个：
+   *   · Steam Web API 的 time_updated（我们抓取时的值，可能滞后）
+   *   · 工坊版本记录里的发布日（一直在更新，通常更准）
+   * 两边都没有就不写这一行 —— 宁缺勿假，页面自己会隐藏。
+   */
+  const tracked = trackDates[String(wsId)] || trackDates[pageSlug];
+  const released = wsRec?.timeCreated || null;
+  const updated = latestDay(wsRec?.timeUpdated, tracked);
   const desc = wsRec?.result === 1 ? (wsRec.description || '').trim() : '';
   /*
    * 有「人写的内容」就不算数据条目：summary 是普通图的写法，sections 是手写小节图的写法
@@ -707,7 +741,7 @@ function renderEntry(rec, research, wsRec, gfl) {
     uploader ? `| 工坊上传者 | ${uploader} |` : null,
     `| 适用游戏 | CS2 |`,
     released ? `| 工坊发布 | ${released} |` : null,
-    wsRec?.timeUpdated ? `| 工坊最近更新 | ${wsRec.timeUpdated} |` : null,
+    updated ? `| 工坊最近更新 | ${updated} |` : null,
     subs ? `| 工坊订阅数 | ${n(subs)} |` : null,
     wsRec?.views ? `| 工坊浏览量 | ${n(wsRec.views)} |` : null,
     noEntity ? null : `| 实体总数 | ${n(rec.n)} |`,
@@ -1070,6 +1104,15 @@ if (variantReport.length) {
 
 let created = 0, updated = 0, enriched = 0;
 const usedSlugs = new Set(existing.keys());
+/*
+ * 主循环**这次**认领了哪些页面名（2026-10-17 加）。
+ *
+ * 第二轮（有原稿、没分片）原来用 usedSlugs 判断「这个名字归主循环管」，但 usedSlugs
+ * 一开始就装了所有已存在的页面 → 那个判断对已存在的页面恒为真，于是第二轮从第二遍起
+ * 再也改不动这些页：108 张的「工坊最近更新」一直停在 2026-09-23（实体库构建日），
+ * 署名也一直是旧的匿名写法。现在改用这个集合，只记主循环本次真正处理的 slug。
+ */
+const mainLoopSlugs = new Set();
 const stageFix = [];
 /** 主循环用掉了哪些原稿 —— 第二轮靠它找出「有原稿、没分片」的图 */
 const usedResearch = new Set();
@@ -1082,6 +1125,7 @@ for (const rec of pageMaps) {
   if (!prev && usedSlugs.has(slug)) slug = `${rec.m}-${rec.f}`; // 同名不同版本，用工坊 ID 区分
 
   const research = researchFiles.get(slug) || researchFiles.get(rec.m) || researchFiles.get(rec.s) || null;
+  mainLoopSlugs.add(slug);
   const stageInfo = stageCountFromEntities(rec.s, rec.st || 0);
   /*
    * 关卡数：资料里写了就以资料为准（手写图实际有几关，人工最清楚），
@@ -1132,7 +1176,7 @@ for (const research of new Set(researchFiles.values())) {
     claimedEntities.has(mapName) ||
     entityAlias.has(mapName) ||
     entityNames.has(mapName) ||
-    usedSlugs.has(mapName)
+    mainLoopSlugs.has(mapName)
   ) continue;
   const prev = existing.get(mapName);
   const stageCount = Number.isFinite(research.stages) ? research.stages : 0;

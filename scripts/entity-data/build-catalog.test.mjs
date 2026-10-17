@@ -36,7 +36,7 @@ test('reconciles baked shards, preserves historical metadata, and indexes new ma
   shard(root, '2001-ze_new-456', { m: 'ze_new', f: '456', n: 1, b: [0, 0, 0, 1, 1, 1], e: [[0, 0, 0, 0, 0]] }, BAKED);
   shard(root, '2002-ttt_legacy-789', { m: 'ttt_legacy', f: '789', n: 5, b: [0, 0, 0, 1, 1, 1], e: [[0, 0, 0, 0, 0], [1, 0, 0, 0, 0]], bg: [0, 1] }, LEGACY);
 
-  assert.deepEqual(buildCatalog(root), { maps: 3, baked: 2, added: 1 });
+  assert.deepEqual(buildCatalog(root), { maps: 3, alts: 0, baked: 2, added: 1, dupReport: [] });
   const first = fs.readFileSync(indexFile, 'utf8');
   const index = JSON.parse(first);
   assert.equal(index.meta.entities_all, 9);
@@ -52,7 +52,7 @@ test('reconciles baked shards, preserves historical metadata, and indexes new ma
   assert.equal(index.maps[2].source, LEGACY);
   assert.equal(index.maps[2].sourceBuilt, '2026-09-23 13:04');
   assert.equal(index.maps[2].c.tele, 1);
-  assert.deepEqual(buildCatalog(root), { maps: 3, baked: 2, added: 0 });
+  assert.deepEqual(buildCatalog(root), { maps: 3, alts: 0, baked: 2, added: 0, dupReport: [] });
   assert.equal(fs.readFileSync(indexFile, 'utf8'), first);
 });
 
