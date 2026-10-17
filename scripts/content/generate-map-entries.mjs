@@ -1133,7 +1133,7 @@ for (const rec of pageMaps) {
   if (!prev && usedSlugs.has(slug)) slug = `${rec.m}-${rec.f}`; // 同名不同版本，用工坊 ID 区分
 
   const research = researchFiles.get(slug) || researchFiles.get(rec.m) || researchFiles.get(rec.s) || null;
-  mainLoopSlugs.add(slug);
+  mainLoopSlugs.add(String(slug).toLowerCase());
   const stageInfo = stageCountFromEntities(rec.s, rec.st || 0);
   /*
    * 关卡数：资料里写了就以资料为准（手写图实际有几关，人工最清楚），
@@ -1173,18 +1173,25 @@ let noEntityCreated = 0;
  *   entityNames —— 名字就是某个实体分片的内部名，说明它归主循环管，不该走这条路；
  *   usedSlugs —— 主循环这次已经生成过同名页面。
  */
-const entityNames = new Set(zeMaps.map((r) => r.m));
+const entityNames = new Set(zeMaps.map((r) => r.m.toLowerCase()));
+/* 下面几处判断一律按小写比（2026-10-17 踩过）：research 的 slug 里有的写 `ZE_baboon_escape_cs2`，
+   catalog 里是 `ze_baboon_escape_cs2`，大小写不一致时上面的排除全落空，
+   第二轮就会用大写名重写同一个小写页面 —— Windows 上还是同一个文件，
+   结果把带实体数据的正常页覆盖成了「暂无实体数据」。 */
+const claimedLower = new Set([...claimedEntities].map((x) => String(x).toLowerCase()));
+const aliasLower = new Set([...entityAlias.keys()].map((x) => String(x).toLowerCase()));
 for (const research of new Set(researchFiles.values())) {
   if (usedResearch.has(research)) continue;
   const m = /^(\d+)-([a-zA-Z0-9_]+)-(\d+)$/.exec(String(research.slug || ''));
   if (!m) continue;
   const [, group, mapName, wsId] = m;
+  const key = mapName.toLowerCase();
   if (
     group !== '2001' ||
-    claimedEntities.has(mapName) ||
-    entityAlias.has(mapName) ||
-    entityNames.has(mapName) ||
-    mainLoopSlugs.has(mapName)
+    claimedLower.has(key) ||
+    aliasLower.has(key) ||
+    entityNames.has(key) ||
+    mainLoopSlugs.has(key)
   ) continue;
   const prev = existing.get(mapName);
   const stageCount = Number.isFinite(research.stages) ? research.stages : 0;
