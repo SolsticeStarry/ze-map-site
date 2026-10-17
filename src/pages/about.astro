@@ -74,7 +74,12 @@ const bakedMaps = catalog.maps.filter((m) => m.source === BAKED_SOURCE && !m.alt
           <b>实体数据</b>：{bakedMaps} 张从 Steam 创意工坊地图包解析；其余保留已入库的历史服务端实体快照。
           坐标为 Source 单位；有模型碰撞壳的实体使用真实包围盒，无包围盒的实体使用典型尺寸。
         </li>
-        <li><b>工坊信息</b>：Steam Web API（发布时间、订阅数、作者自述正文摘录），更新时间以公开的工坊版本记录为准。</li>
+        <li>
+          <b>工坊信息</b>：Steam Web API（发布时间、订阅数、作者自述正文摘录）；「工坊最近更新」取自
+          <b>风云社（FYS）</b>的
+          <a href="https://github.com/fyscs/MapTracking-CS2" target="_blank" rel="noopener">MapTracking-CS2</a>
+          版本记录 —— 那边一直在追踪创意工坊的每次更新，比我们抓的 Steam 快照新；两边都有就取较新的日期，都没有就不写。
+        </li>
         <li>
           <b>难度</b>：分档（入门 / 简单 / 普通 / 困难 / 火星 / 入土）与取值<b>源于 FYS（风云社）</b>的服务器地图列表，
           已获社区同意标注来源；不同服务器的口径可能不同，若有出入以对应服务器为准。
@@ -121,6 +126,13 @@ const bakedMaps = catalog.maps.filter((m) => m.source === BAKED_SOURCE && !m.alt
           <b>Source2Viewer（s2v）</b>——开源的 Source 2 资源解析工具。
           本站的实体预览与 3D 地形，靠它从创意工坊地图包里解出实体定义、模型与真实碰撞壳；
           没有这个工具，这两块功能都无从谈起。
+        </p>
+        <p>
+          <b>风云社（FYS）</b>与他们的
+          <a href="https://github.com/fyscs/MapTracking-CS2" target="_blank" rel="noopener">MapTracking-CS2</a>
+          —— 一张地图在创意工坊每次更新，那边的机器人都会记一笔。条目页的「工坊最近更新」就是读它的版本记录；
+          以前我们只有自己抓 Steam 时的旧日期，很多图挂着一年前的时间，就是靠这份数据才对上的。
+          谢谢风云社愿意把它公开出来，这份数据以后也会一直用，这份谢意不是客套。
         </p>
         <p style="margin-bottom:0;">
           另外，本站建站早期入库过一份第三方公开的服务端实体 dump，这部分历史数据至今原样保留，

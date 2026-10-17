@@ -567,6 +567,11 @@ function renderEntry(rec, research, wsRec, gfl) {
   const tracked = trackDates[String(wsId)] || trackDates[pageSlug];
   const released = wsRec?.timeCreated || null;
   const updated = latestDay(wsRec?.timeUpdated, tracked);
+  /*
+   * 这一行的日期到底是谁给的 —— 只有取自那份追踪记录时才在「数据说明」里署名。
+   * 站长的话：实体那份 dump 不署名，但追踪机器人这份要谢，而且重点感谢风云社。
+   */
+  const updatedFromTracking = Boolean(tracked) && (!wsRec?.timeUpdated || tracked > String(wsRec.timeUpdated).slice(0, 10));
   const desc = wsRec?.result === 1 ? (wsRec.description || '').trim() : '';
   /*
    * 有「人写的内容」就不算数据条目：summary 是普通图的写法，sections 是手写小节图的写法
@@ -864,6 +869,9 @@ function renderEntry(rec, research, wsRec, gfl) {
     '## 数据说明',
     '',
     `- 实体数据来源：${provenance}。`,
+    updatedFromTracking
+      ? '- 工坊最近更新时间取自风云社（FYS）的 [MapTracking-CS2](https://github.com/fyscs/MapTracking-CS2) 版本记录（比 Steam API 快照新）。'
+      : null,
     noEntity
       ? '- 本图没有实体数据，因此没有实体预览与关卡分层；原因见页面侧栏「实体预览」的说明。'
       : baked
