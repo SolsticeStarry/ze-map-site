@@ -1194,14 +1194,29 @@ main [id],
 
 .map-toc {
   position: sticky;
-  top: 88px;
+  /* 贴着站点导航（72px）下沿留 4px：不给上面的卡片留一条"露头"的缝 */
+  top: 76px;
+  /*
+   * z-index 不能省（2026-10-17 修）：侧栏里的 `.sidebar-card` 是 position:relative，
+   * 后面的兄弟节点会在绘制顺序上**盖住**这个吸顶目录 —— 站长实机看到的
+   * 「滑下去目录就被盖住、只剩最底下几条露在外面」就是这个。
+   * 给一个 z-index 让它稳定压在卡片上面（仍低于站点导航的 100）。
+   */
+  z-index: 5;
   margin-bottom: 16px;
   padding: 14px 12px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
-  max-height: calc(100vh - 120px);
+  /*
+   * 高度也要收着：手写条目（如 ze_ffvii_mako_reactor）有十几节，目录实测能到 712px，
+   * 占掉大半个屏幕。现在最多 54vh / 460px，超出部分在目录内部滚动。
+   */
+  max-height: min(54vh, 460px);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
 }
 .map-toc-title {
   margin: 0 0 8px;
