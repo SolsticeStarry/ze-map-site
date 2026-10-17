@@ -1,0 +1,60 @@
+{
+  "v": 1,
+  "slug": "ze_depths",
+  "updatedAt": "2026-10-17T16:00:21.815Z",
+  "fields": {
+    "difficulty": {
+      "v": "火星",
+      "by": "时轩",
+      "at": "2026-10-17T16:00:10.839Z",
+      "submission": 395
+    },
+    "aliases": {
+      "v": [
+        "冥城：深入地下城"
+      ],
+      "by": "时轩",
+      "at": "2026-10-17T16:00:11.400Z",
+      "submission": 396
+    }
+  },
+  "notes": [
+    {
+      "text": "Story:\nA number of people all across the globe has been infected with a mysterious disease. Scientists rumoured this was caused by the aura of an ancient temple. Your squad was sent to explore the temple located on a long lost island far away from civilization. As your squad approached the island, the powerful aura of the temple infected some of your squad members with the disease. Your task is to explore the deepest depths of this temple, uncover its secrets and make it out alive.\n\n故事：世界各地的许多人都感染了一种神秘的疾病。\n科学家们谣传这是由一座古庙的光环造成的。\n你的小队被派去探索位于一个远离文明的失落岛屿上的寺庙。\n当你的小队接近岛屿时，神庙的强大光环感染了你的一些小队成员。\n你的任务是探索这座寺庙的最深处，揭开它的秘密，并活着出来。",
+      "by": "时轩",
+      "at": "2026-10-17T16:00:11.951Z",
+      "submission": 397,
+      "field": "story"
+    }
+  ],
+  "log": [
+    {
+      "field": "difficulty",
+      "from": null,
+      "to": "火星",
+      "by": "时轩",
+      "at": "2026-10-17T16:00:10.839Z",
+      "submission": 395
+    },
+    {
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "冥城：深入地下城"
+      ],
+      "by": "时轩",
+      "at": "2026-10-17T16:00:11.400Z",
+      "submission": 396
+    },
+    {
+      "field": "story",
+      "from": null,
+      "to": null,
+      "by": "时轩",
+      "at": "2026-10-17T16:00:11.951Z",
+      "submission": 397
+    }
+  ],
+  "draft": null,
+  "items": []
+}
