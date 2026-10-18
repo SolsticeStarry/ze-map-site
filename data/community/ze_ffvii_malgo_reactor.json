@@ -1,0 +1,42 @@
+{
+  "v": 1,
+  "slug": "ze_ffvii_malgo_reactor",
+  "updatedAt": "2026-10-18T04:18:57.973Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "多关卡",
+        "跳刀",
+        "大图",
+        "神器",
+        "BOSS战",
+        "音乐",
+        "最终幻想"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:56.185Z",
+      "submission": 429
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "多关卡",
+        "跳刀",
+        "大图",
+        "神器",
+        "BOSS战",
+        "音乐",
+        "最终幻想"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:56.185Z",
+      "submission": 429
+    }
+  ],
+  "draft": null,
+  "items": []
+}

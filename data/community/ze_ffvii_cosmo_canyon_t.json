@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "slug": "ze_ffvii_cosmo_canyon_t",
+  "updatedAt": "2026-10-18T04:18:57.973Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "神器",
+        "热门",
+        "跳刀",
+        "最终幻想",
+        "BOSS战"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:53.950Z",
+      "submission": 433
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "神器",
+        "热门",
+        "跳刀",
+        "最终幻想",
+        "BOSS战"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:53.950Z",
+      "submission": 433
+    }
+  ],
+  "draft": null,
+  "items": []
+}

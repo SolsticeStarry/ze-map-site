@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "slug": "ze_ffvii_snow_cosmo",
+  "updatedAt": "2026-10-18T04:18:57.973Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "多关卡",
+        "跳刀",
+        "神器",
+        "BOSS战",
+        "最终幻想"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:54.494Z",
+      "submission": 432
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "多关卡",
+        "跳刀",
+        "神器",
+        "BOSS战",
+        "最终幻想"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:54.494Z",
+      "submission": 432
+    }
+  ],
+  "draft": null,
+  "items": []
+}
