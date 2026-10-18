@@ -26,5 +26,8 @@
     "https://readonly.wiki/w/Luffaren"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1hR1LYnE9Z": "通关视频"
+  }
 }

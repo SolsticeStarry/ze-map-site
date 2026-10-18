@@ -33,5 +33,12 @@
     "https://bbs.moeub.cn/thread-12685-1-4.html"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1Ri41zzEDz": "通关视频",
+    "BV1z3QDBBEGN": "通关视频",
+    "BV1enGH6HESP": "通关视频",
+    "BV14NDxBkEFw": "通关视频",
+    "BV1kyArz5EQQ": "通关视频"
+  }
 }

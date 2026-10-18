@@ -8,5 +8,9 @@
     "https://www.bilibili.com/video/BV1s9HJ6WEPy/"
   ],
   "confidence": "low",
-  "author": "Stepanof, Lolop"
+  "author": "Stepanof, Lolop",
+  "videoKinds": {
+    "BV17ztJ6xEYK": "通关视频",
+    "BV1s9HJ6WEPy": "通关视频"
+  }
 }

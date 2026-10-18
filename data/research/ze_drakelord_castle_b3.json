@@ -6,5 +6,8 @@
   "videoUrls": [
     "https://www.bilibili.com/video/BV1Zctg68E57/"
   ],
-  "confidence": "low"
+  "confidence": "low",
+  "videoKinds": {
+    "BV1Zctg68E57": "通关视频"
+  }
 }

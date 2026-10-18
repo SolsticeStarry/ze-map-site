@@ -11,5 +11,8 @@
   "title": "上古卷轴5：天际（i 版）",
   "sources": [
     "https://www.bilibili.com/video/BV1VS421o7bc/"
-  ]
+  ],
+  "videoKinds": {
+    "BV1VS421o7bc": "通关视频"
+  }
 }

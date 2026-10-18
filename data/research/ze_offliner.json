@@ -8,5 +8,9 @@
     "https://www.bilibili.com/video/BV1e1bj6mEiD/"
   ],
   "confidence": "low",
-  "author": "7ychu5, m4dara"
+  "author": "7ychu5, m4dara",
+  "videoKinds": {
+    "BV1cmh261EAZ": "通关视频",
+    "BV1e1bj6mEiD": "通关视频"
+  }
 }

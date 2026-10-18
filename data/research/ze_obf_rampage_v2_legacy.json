@@ -11,5 +11,13 @@
     "https://www.bilibili.com/video/BV1Sj6BB4Eb6/",
     "https://www.bilibili.com/video/BV1qHEb6xEK6/"
   ],
-  "confidence": "low"
+  "confidence": "low",
+  "videoKinds": {
+    "BV1STt468EL3": "通关视频",
+    "BV13F4D68EEa": "老司机经验",
+    "BV1GfQmY8EQy": "通关视频",
+    "BV13wYzzcE8T": "通关视频",
+    "BV1Sj6BB4Eb6": "通关视频",
+    "BV1qHEb6xEK6": "通关视频"
+  }
 }

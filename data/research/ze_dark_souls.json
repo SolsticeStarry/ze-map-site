@@ -5,7 +5,16 @@
   "difficulty": "入土",
   "author": "原作 cs:s 版 ze_Dark_Soul 由 Headshooter.SC、HaRyDe、Batnik_Ref 制作；CS2 版工坊条目未署名作者（作者自称 VISral 团队，另有 Brunelazo343 制作自定义皮肤）",
   "duration": "约 20–30 分钟",
-  "tags": ["僵尸逃跑", "CS2", "长征", "BOSS", "闯关", "神器", "多结局", "黑暗之魂"],
+  "tags": [
+    "僵尸逃跑",
+    "CS2",
+    "长征",
+    "BOSS",
+    "闯关",
+    "神器",
+    "多结局",
+    "黑暗之魂"
+  ],
   "videoUrls": [
     "https://www.bilibili.com/video/BV1yQqaBtEdA/",
     "https://www.bilibili.com/video/BV1CqEPzEEbL/",
@@ -22,5 +31,13 @@
     "https://www.bilibili.com/video/BV1Nx411M73S/"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1yQqaBtEdA": "通关视频",
+    "BV1CqEPzEEbL": "通关视频",
+    "BV135hk6QEWh": "通关视频",
+    "BV1MeEbztE51": "通关视频",
+    "BV1cBJhz4EQZ": "通关视频",
+    "BV1KfJwznEJc": "通关视频"
+  }
 }

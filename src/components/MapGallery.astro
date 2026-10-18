@@ -54,7 +54,7 @@ const isCoverImage = (img: { kind: string }) => coverIsWorkshop && img.kind === 
         手上也有这张图的截图？<a href={`/submit/?map=${slug}&field=gallery`}>投稿图片</a>
         —— 通过后会出现在这里，并署上你的昵称。
       </p>
-      <div class="gallery-grid" id="gallery-grid">
+      <div class={`gallery-grid${images.length > 9 ? ' is-collapsed' : ''}`} id="gallery-grid">
         {images.map((img) => (
           <button
             class="gallery-item"
@@ -80,6 +80,15 @@ const isCoverImage = (img: { kind: string }) => coverIsWorkshop && img.kind === 
           </button>
         ))}
       </div>
+      {/*
+        折叠（2026-10-19 站长要求）：图片集一多会占掉整屏，先把前 9 张（3×3）露出来，
+        其余的收在按钮后面。灯箱仍然能翻全部图片 —— 折叠只是 display:none，不动 DOM。
+      */}
+      {images.length > 9 && (
+        <button class="gallery-more" id="gallery-more" type="button" aria-expanded="false" aria-controls="gallery-grid">
+          展开全部 {images.length} 张 ↓
+        </button>
+      )}
     </section>
   )
 }
@@ -121,6 +130,16 @@ const isCoverImage = (img: { kind: string }) => coverIsWorkshop && img.kind === 
     <script>
       const grid = document.getElementById('gallery-grid');
       const box = document.getElementById('gallery-lightbox') as HTMLDialogElement | null;
+      /* 图片集折叠：只切 class，灯箱仍然拿全部 .gallery-item */
+      const moreBtn = document.getElementById('gallery-more') as HTMLButtonElement | null;
+      if (grid && moreBtn) {
+        const total = grid.querySelectorAll('.gallery-item').length;
+        moreBtn.addEventListener('click', () => {
+          const collapsed = grid.classList.toggle('is-collapsed');
+          moreBtn.setAttribute('aria-expanded', String(!collapsed));
+          moreBtn.textContent = collapsed ? `展开全部 ${total} 张 ↓` : '收起图片集 ↑';
+        });
+      }
       /*
        * 图集图片**默认走同源**（`/terr/gallery/…`：Worker 读 R2 + 边缘缓存一年），
        * 因为直连 R2 那个域（terr.ze-map.cn）在国内实测中位 550~785 ms、最差 2.5 秒，同源 ~273 ms。

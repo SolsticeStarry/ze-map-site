@@ -9,5 +9,10 @@
     "https://www.bilibili.com/video/BV1ctsyzgEms/"
   ],
   "confidence": "low",
-  "author": "咸自矜持"
+  "author": "咸自矜持",
+  "videoKinds": {
+    "BV1dSZDY9Eo1": "通关视频",
+    "BV15FYTzGEte": "通关视频",
+    "BV1ctsyzgEms": "通关视频"
+  }
 }

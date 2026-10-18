@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1NeGQzNExv/"
   ],
   "confidence": "low",
-  "author": "吃饭睡觉打豆豆"
+  "author": "吃饭睡觉打豆豆",
+  "videoKinds": {
+    "BV1NeGQzNExv": "通关视频"
+  }
 }

@@ -6,5 +6,8 @@
   "videoUrls": [
     "https://www.bilibili.com/video/BV18Bez6JEeF/"
   ],
-  "confidence": "low"
+  "confidence": "low",
+  "videoKinds": {
+    "BV18Bez6JEeF": "相关视频"
+  }
 }

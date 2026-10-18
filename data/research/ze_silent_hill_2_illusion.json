@@ -24,5 +24,10 @@
     "https://bbs.zombieden.cn/thread-79016-1-1.html"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1qw4m1k7o7": "通关视频",
+    "BV1Qs421T7N1": "彩蛋触发",
+    "BV1emcgeyEjs": "通关视频"
+  }
 }

@@ -23,5 +23,9 @@
     "https://cdn.jsdelivr.net/gh/gflze/CS2-ZE-Configs@main/musicname/ze_celestial_ops.jsonc"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1fw4m1y7u4": "通关视频",
+    "BV1opruBXE3C": "通关视频"
+  }
 }

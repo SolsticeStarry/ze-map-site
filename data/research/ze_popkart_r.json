@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1W48R6MEnw/"
   ],
   "confidence": "low",
-  "author": "皮皮猫233, 佐小贺"
+  "author": "皮皮猫233, 佐小贺",
+  "videoKinds": {
+    "BV1W48R6MEnw": "通关视频"
+  }
 }

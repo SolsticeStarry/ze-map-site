@@ -20,5 +20,8 @@
     "https://bbs.moeub.cn/thread-15158-1-1.html"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1d68R6bEtg": "通关视频"
+  }
 }

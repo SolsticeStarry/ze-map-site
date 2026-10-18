@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1tqoSB8E3u/"
   ],
   "confidence": "low",
-  "author": "buzzo"
+  "author": "buzzo",
+  "videoKinds": {
+    "BV1tqoSB8E3u": "通关视频"
+  }
 }

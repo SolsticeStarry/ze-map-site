@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1w55bzqEaw/"
   ],
   "confidence": "low",
-  "author": "kagel"
+  "author": "kagel",
+  "videoKinds": {
+    "BV1w55bzqEaw": "通关视频"
+  }
 }

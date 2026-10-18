@@ -9,7 +9,8 @@
     "多关卡",
     "隐藏结局",
     "触发解谜",
-    "BOSS战"
+    "BOSS战",
+    "彩蛋"
   ],
   "videoUrls": [
     "https://www.bilibili.com/video/BV1wYgy6REmb",
@@ -29,5 +30,13 @@
     "https://www.bilibili.com/video/BV1pd7s6XELe"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1wYgy6REmb": "通关视频",
+    "BV1BWJj68EC5": "彩蛋触发",
+    "BV1pd7s6XEgy": "触发攻略",
+    "BV1pd7s6XELe": "触发攻略",
+    "BV1TYtt6aEHr": "老司机经验",
+    "BV1qsJN6FERR": "通关视频"
+  }
 }

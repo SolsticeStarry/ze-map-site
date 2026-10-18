@@ -334,6 +334,7 @@ import QqGroup from '../components/QqGroup.astro';
       approved: { label: '待写回', note: '已过审，等下一批一起写回仓库' },
       applied: { label: '已通过', note: '' },
       rejected: { label: '已驳回', note: '' },
+      withdrawn: { label: '已撤回', note: '你自己撤回了，没有进审核队列' },
     };
     /** 等级 → 配色档位（CSS 里 .acc-level[data-lv="n"]） */
     const LV: Record<string, number> = {
@@ -520,6 +521,77 @@ import QqGroup from '../components/QqGroup.astro';
             ? `已写回提交 ${s.commit_sha.slice(0, 8)}`
             : st.note;
         if (note) body.append(el('p', 'acc-row-note', note));
+
+        /*
+         * 改 / 撤回（2026-10-19 站长要求）：只对「待审核 / 已驳回」开放。
+         * 撤回 = 软删除（status=withdrawn），行还留着；改 = 重新走一遍审核，
+         * 以前要作者再投一条或者找站长，现在自己就能收尾。
+         */
+        if (s.status === 'pending' || s.status === 'rejected') {
+          const acts = el('div', 'acc-row-acts');
+          const editable =
+            typeof s.value === 'string' && s.value.trim() && !/^[[{]/.test(s.value.trim());
+          if (editable) {
+            const editBtn = el('button', 'acc-btn acc-btn-small', '修改');
+            editBtn.type = 'button';
+            editBtn.addEventListener('click', () => {
+              if (acts.querySelector('.acc-edit')) return;
+              const box = el('div', 'acc-edit');
+              const ta = document.createElement('textarea');
+              ta.value = String(s.value);
+              ta.rows = 4;
+              ta.maxLength = 6000;
+              const save = el('button', 'acc-btn acc-btn-small acc-btn-primary', '保存并重新提交');
+              save.type = 'button';
+              const cancel = el('button', 'acc-btn acc-btn-small', '取消');
+              cancel.type = 'button';
+              const msg = el('p', 'acc-row-note', '');
+              save.addEventListener('click', async () => {
+                save.disabled = true;
+                msg.textContent = '提交中…';
+                try {
+                  const res = await fetch('/api/my-submission/edit', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ id: s.id, value: ta.value }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok || !data.ok) throw new Error(data.error || '保存失败');
+                  msg.textContent = '已重新提交，等审核。';
+                  await refresh();
+                } catch (e) {
+                  msg.textContent = e instanceof Error ? e.message : '保存失败';
+                  save.disabled = false;
+                }
+              });
+              cancel.addEventListener('click', () => box.remove());
+              box.append(ta, save, cancel, msg);
+              body.append(box);
+            });
+            acts.append(editBtn);
+          }
+          const delBtn = el('button', 'acc-btn acc-btn-small', '撤回');
+          delBtn.type = 'button';
+          delBtn.addEventListener('click', async () => {
+            if (!confirm('确定撤回这条投稿？撤回后不会再进入审核队列。')) return;
+            delBtn.disabled = true;
+            try {
+              const res = await fetch('/api/my-submission/withdraw', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ id: s.id }),
+              });
+              const data = await res.json();
+              if (!res.ok || !data.ok) throw new Error(data.error || '撤回失败');
+              await refresh();
+            } catch (e) {
+              alert(e instanceof Error ? e.message : '撤回失败');
+              delBtn.disabled = false;
+            }
+          });
+          acts.append(delBtn);
+          body.append(acts);
+        }
 
         li.append(thumbWrap, body);
         list.append(li);

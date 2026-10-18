@@ -18,5 +18,8 @@
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3604824218"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1pmUaBnErS": "通关视频"
+  }
 }

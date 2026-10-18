@@ -9,5 +9,10 @@
     "https://www.bilibili.com/video/BV1mobW6pEJV/"
   ],
   "confidence": "low",
-  "author": "m4dara, @Seth."
+  "author": "m4dara, @Seth.",
+  "videoKinds": {
+    "BV15ofZBiEnE": "通关视频",
+    "BV1PH4o6zEnu": "通关视频",
+    "BV1mobW6pEJV": "通关视频"
+  }
 }

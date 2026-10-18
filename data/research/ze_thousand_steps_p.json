@@ -7,5 +7,9 @@
     "https://www.bilibili.com/video/BV1fJsQzoEZn/",
     "https://www.bilibili.com/video/BV1Z5e56ZEmj/"
   ],
-  "confidence": "low"
+  "confidence": "low",
+  "videoKinds": {
+    "BV1fJsQzoEZn": "通关视频",
+    "BV1Z5e56ZEmj": "通关视频"
+  }
 }

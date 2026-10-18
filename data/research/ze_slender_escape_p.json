@@ -24,5 +24,11 @@
     "https://www.bilibili.com/video/BV1AzTT6LEfi/"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1N4421977j": "老司机经验",
+    "BV1AzTT6LEfi": "通关视频",
+    "BV1mx8m6REYD": "通关视频",
+    "BV1XyHy6iEy4": "通关视频"
+  }
 }

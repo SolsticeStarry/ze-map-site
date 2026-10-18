@@ -21,5 +21,8 @@
     "https://www.bilibili.com/video/BV1cz42167PW"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1cz42167PW": "通关视频"
+  }
 }

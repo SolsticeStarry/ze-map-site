@@ -5,7 +5,20 @@
   "difficulty": "火星",
   "author": "Waffel、kondik",
   "duration": "单局约 19–44 分钟（据 B 站实况录像推算，非官方）",
-  "tags": ["Samosbor", "KLETKA", "笼子", "苏联", "巨型赫鲁晓夫楼", "随机生成", "肉鸽", "迷宫", "双结局", "隐藏结局", "人类与僵尸道具", "赛事获奖"],
+  "tags": [
+    "Samosbor",
+    "KLETKA",
+    "笼子",
+    "苏联",
+    "巨型赫鲁晓夫楼",
+    "随机生成",
+    "肉鸽",
+    "迷宫",
+    "双结局",
+    "隐藏结局",
+    "人类与僵尸道具",
+    "赛事获奖"
+  ],
   "videoUrls": [
     "https://www.bilibili.com/video/BV19cWPzrEWr/",
     "https://www.bilibili.com/video/BV19bfXBJESu/",
@@ -26,5 +39,13 @@
     "https://steamcommunity.com/profiles/76561198370596138/?xml=1"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV19cWPzrEWr": "通关视频",
+    "BV19bfXBJESu": "通关视频",
+    "BV1AGB4BCExA": "通关视频",
+    "BV1TVdKBPEHW": "通关视频",
+    "BV1ML4LzkEFT": "通关视频",
+    "BV19Mpe65Eyt": "通关视频"
+  }
 }

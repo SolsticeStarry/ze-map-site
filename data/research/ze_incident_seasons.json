@@ -9,5 +9,10 @@
     "https://www.bilibili.com/video/BV1joTR6MEXv/"
   ],
   "confidence": "low",
-  "author": "こねこ大あほたれ, Misakaaaaa, 气流"
+  "author": "こねこ大あほたれ, Misakaaaaa, 气流",
+  "videoKinds": {
+    "BV1hAVKzQEgF": "通关视频",
+    "BV1NpLu6VEpQ": "通关视频",
+    "BV1joTR6MEXv": "通关视频"
+  }
 }

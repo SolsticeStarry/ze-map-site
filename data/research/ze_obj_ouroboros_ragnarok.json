@@ -17,5 +17,8 @@
     "https://www.bilibili.com/video/BV1cVwTzyEUW"
   ],
   "confidence": "low",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1D7mBB3E5F": "通关视频"
+  }
 }

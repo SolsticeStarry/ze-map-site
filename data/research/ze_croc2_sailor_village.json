@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1eaVa6mE8w/"
   ],
   "confidence": "low",
-  "author": "[CZE] мя. ξмıиεм, ODM"
+  "author": "[CZE] мя. ξмıиεм, ODM",
+  "videoKinds": {
+    "BV1eaVa6mE8w": "通关视频"
+  }
 }

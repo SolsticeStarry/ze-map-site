@@ -27,5 +27,9 @@
     "https://cdn.jsdelivr.net/gh/gflze/CS2-ZE-Configs@main/entwatch/ze_jurassic_park_story_p.jsonc"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1uyS9BdE5z": "通关视频",
+    "BV1NLqWYrE4b": "通关视频"
+  }
 }

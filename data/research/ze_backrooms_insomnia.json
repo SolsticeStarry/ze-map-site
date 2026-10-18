@@ -27,5 +27,9 @@
     "https://bbs.moeub.cn/thread-15657-1-1.html"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1QhmUBGEhf": "通关视频",
+    "BV1Sx3R6PELC": "通关视频"
+  }
 }

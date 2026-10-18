@@ -10,7 +10,8 @@
     "皮肤技能",
     "大乱斗",
     "载具",
-    "跳刀"
+    "跳刀",
+    "彩蛋"
   ],
   "videoUrls": [
     "https://www.bilibili.com/video/BV1W84y1c7MM/",
@@ -27,5 +28,9 @@
     "https://bbs.upkk.com/threadx-43608-1-3.html"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1W84y1c7MM": "通关视频",
+    "BV1Xz421175a": "彩蛋触发"
+  }
 }

@@ -83,6 +83,39 @@ const kindOfVideo = (url: string): string => {
   const bv = /BV[0-9A-Za-z]+/.exec(url)?.[0];
   return (bv && videoKinds[bv]) || '';
 };
+
+/*
+ * 视频分栏（2026-10-19 站长要求）：以前所有视频挤在一个「攻略视频」里，
+ * 全流程、神器操作、触发教程、彩蛋、音乐、指挥视角混在一起，新手看不出该点哪个。
+ * 现在按类别分块，每块自己的锚点，目录里也是分开的：
+ *   通关视频   ← 全流程 / 指挥视角 / 实况（没写关键词的实况也归这里）
+ *   老司机经验 ← 神器 / 僵尸操作 / 教学 / 进阶技巧
+ *   触发攻略   ← 触发、机关讲解
+ *   彩蛋触发   ← 彩蛋（这些图会自动带上「彩蛋」标签）
+ *   音乐       ← BGM / OST / 歌单
+ *   相关视频   ← 拿不准的
+ * 只有真的存在该类视频才渲染，顺序固定（先「怎么打」再「细节」）。
+ */
+const VIDEO_GROUPS = [
+  ['通关视频', 'videos-run'],
+  ['老司机经验', 'videos-veteran'],
+  ['触发攻略', 'videos-trigger'],
+  ['彩蛋触发', 'videos-easter'],
+  ['音乐', 'videos-music'],
+  ['相关视频', 'videos-other'],
+] as const;
+const bvOfUrl = (url: string): string => /BV[0-9A-Za-z]{10}/.exec(url)?.[0] ?? '';
+const hasVideoKinds = Boolean(videoKinds && Object.keys(videoKinds).length);
+const videoGroups = VIDEO_GROUPS.map(([label, id]) => ({
+  label,
+  id,
+  urls: (videoUrls ?? []).filter((u: string) => kindOfVideo(u) === label),
+}));
+/* 没有分类信息的旧数据 / 分类对不上的，统一回到「相关视频」，一个视频都不丢 */
+const knownCats = new Set<string>(VIDEO_GROUPS.map(([label]) => label));
+const looseUrls = (videoUrls ?? []).filter((u: string) => !knownCats.has(kindOfVideo(u)));
+if (looseUrls.length) videoGroups[VIDEO_GROUPS.length - 1].urls.push(...looseUrls);
+const visibleGroups = videoGroups.filter((g) => g.urls.length > 0);
 /*
  * 体积（MB → 人话）：数值来自 data/map-sizes.json（s2ze/Ruby Bot 的公开地图数据，
  * 见 docs/data-sources.md），带「~」是因为那是工坊分包的体积、和实际下载量可能略有出入。
@@ -245,7 +278,13 @@ type TocItem = { id: string; label: string; count?: number; sub?: boolean };
 const toc: TocItem[] = [];
 const pushToc = (id: string, label: string, count?: number) => toc.push({ id, label, ...(count ? { count } : {}) });
 
-if (!bodyHasVideo && (videoUrls ?? []).length > 0) pushToc('videos', '攻略视频', (videoUrls ?? []).length);
+if (!bodyHasVideo && (videoUrls ?? []).length > 0) {
+  if (hasVideoKinds && visibleGroups.length > 0) {
+    for (const g of visibleGroups) pushToc(g.id, g.label, g.urls.length);
+  } else {
+    pushToc('videos', '攻略视频', (videoUrls ?? []).length);
+  }
+}
 if (showSummaryNote) pushToc('intro', '简介（社区投稿）');
 
 /* 正文小节：headings 与 body 里的 ##/### 顺序一一对应，用位置信息把「图片集」插到它真正出现的地方 */
@@ -356,24 +395,43 @@ const showToc = toc.length >= 3;
         videoUrls 仍然照常渲染在那些页面的正文里。
       */}
       {!bodyHasVideo && (videoUrls ?? []).length > 0 && (
-        <section class="video-block" id="videos">
-          <h2>攻略视频{(videoUrls ?? []).length > 1 ? `（${(videoUrls ?? []).length}）` : ''}</h2>
-          {(videoUrls ?? []).slice(0, VIDEOS_SHOWN).map((url: string) => (
-            <VideoEmbed url={url} kind={kindOfVideo(url)} />
-          ))}
-          {(videoUrls ?? []).length > VIDEOS_SHOWN && (
-            /*
-              40 张图的视频超过 3 个（最多 9 个）。全铺在最前面会把「关卡 / 神器」又挤下去，
-              所以只默认露出前两个，其余折起来 —— 想看的点一下展开，不想看的直接往下读。
-            */
-            <details class="video-more">
-              <summary>展开另外 {(videoUrls ?? []).length - VIDEOS_SHOWN} 个视频</summary>
-              {(videoUrls ?? []).slice(VIDEOS_SHOWN).map((url: string) => (
-                <VideoEmbed url={url} kind={kindOfVideo(url)} />
+        hasVideoKinds && visibleGroups.length > 0 ? (
+          visibleGroups.map((g) => (
+            <section class="video-block" id={g.id}>
+              <h2>{g.label}{g.urls.length > 1 ? `（${g.urls.length}）` : ''}</h2>
+              {g.urls.slice(0, VIDEOS_SHOWN).map((url: string) => (
+                <VideoEmbed url={url} />
               ))}
-            </details>
-          )}
-        </section>
+              {g.urls.length > VIDEOS_SHOWN && (
+                <details class="video-more">
+                  <summary>展开另外 {g.urls.length - VIDEOS_SHOWN} 个视频</summary>
+                  {g.urls.slice(VIDEOS_SHOWN).map((url: string) => (
+                    <VideoEmbed url={url} />
+                  ))}
+                </details>
+              )}
+            </section>
+          ))
+        ) : (
+          <section class="video-block" id="videos">
+            <h2>攻略视频{(videoUrls ?? []).length > 1 ? `（${(videoUrls ?? []).length}）` : ''}</h2>
+            {(videoUrls ?? []).slice(0, VIDEOS_SHOWN).map((url: string) => (
+              <VideoEmbed url={url} kind={kindOfVideo(url)} />
+            ))}
+            {(videoUrls ?? []).length > VIDEOS_SHOWN && (
+              /*
+                40 张图的视频超过 3 个（最多 9 个）。全铺在最前面会把「关卡 / 神器」又挤下去，
+                所以只默认露出前两个，其余折起来 —— 想看的点一下展开，不想看的直接往下读。
+              */
+              <details class="video-more">
+                <summary>展开另外 {(videoUrls ?? []).length - VIDEOS_SHOWN} 个视频</summary>
+                {(videoUrls ?? []).slice(VIDEOS_SHOWN).map((url: string) => (
+                  <VideoEmbed url={url} kind={kindOfVideo(url)} />
+                ))}
+              </details>
+            )}
+          </section>
+        )
       )}
 
       {/*

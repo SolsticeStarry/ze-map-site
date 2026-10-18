@@ -9,5 +9,10 @@
     "https://www.bilibili.com/video/BV1uVGVzNEUt/"
   ],
   "confidence": "low",
-  "author": "oVo捏~, Nishiki Asumi"
+  "author": "oVo捏~, Nishiki Asumi",
+  "videoKinds": {
+    "BV15bPFeZENU": "通关视频",
+    "BV1puuDzQEkS": "通关视频",
+    "BV1uVGVzNEUt": "通关视频"
+  }
 }

@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1Q1KSz4EXn/"
   ],
   "confidence": "low",
-  "author": "reed23, 飞翔丶也是翔"
+  "author": "reed23, 飞翔丶也是翔",
+  "videoKinds": {
+    "BV1Q1KSz4EXn": "通关视频"
+  }
 }

@@ -26,5 +26,11 @@
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3164817189"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1ZKayebEkR": "彩蛋触发",
+    "BV1YxpweVEqj": "通关视频",
+    "BV12immY6EeR": "通关视频",
+    "BV1e1e4zKEjv": "相关视频"
+  }
 }

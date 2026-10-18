@@ -7,5 +7,9 @@
     "https://www.bilibili.com/video/BV1TyZBY6EkP/",
     "https://www.bilibili.com/video/BV1dmYR6eEkG/"
   ],
-  "confidence": "low"
+  "confidence": "low",
+  "videoKinds": {
+    "BV1TyZBY6EkP": "老司机经验",
+    "BV1dmYR6eEkG": "通关视频"
+  }
 }

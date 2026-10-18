@@ -19,5 +19,8 @@
     "https://zombieescape.fandom.com/wiki/Ze_Biohazard_Manor"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1LnM668EfW": "通关视频"
+  }
 }

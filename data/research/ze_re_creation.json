@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1UNo3YtE2R/"
   ],
   "confidence": "low",
-  "author": "Ak-12❀, Ēxter"
+  "author": "Ak-12❀, Ēxter",
+  "videoKinds": {
+    "BV1UNo3YtE2R": "通关视频"
+  }
 }

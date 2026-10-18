@@ -8,5 +8,9 @@
     "https://www.bilibili.com/video/BV1yhSXB1EYL/"
   ],
   "confidence": "low",
-  "author": "Shana❀, 离殇"
+  "author": "Shana❀, 离殇",
+  "videoKinds": {
+    "BV1QtmZBKESA": "通关视频",
+    "BV1yhSXB1EYL": "通关视频"
+  }
 }

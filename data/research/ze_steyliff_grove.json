@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1U42wBvEfD/"
   ],
   "confidence": "low",
-  "author": "Eugen, ヰ.e"
+  "author": "Eugen, ヰ.e",
+  "videoKinds": {
+    "BV1U42wBvEfD": "通关视频"
+  }
 }

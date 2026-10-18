@@ -23,5 +23,8 @@
     "https://music.163.com/djradio?id=527355589"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1teXRBAEZr": "通关视频"
+  }
 }

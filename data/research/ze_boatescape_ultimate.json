@@ -3,6 +3,11 @@
   "difficulty": "入门",
   "summary": null,
   "tags": [],
-  "videoUrls": ["https://www.bilibili.com/video/BV1eDVcz5EyX/"],
-  "confidence": "low"
+  "videoUrls": [
+    "https://www.bilibili.com/video/BV1eDVcz5EyX/"
+  ],
+  "confidence": "low",
+  "videoKinds": {
+    "BV1eDVcz5EyX": "通关视频"
+  }
 }

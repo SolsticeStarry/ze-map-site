@@ -24,5 +24,8 @@
     "https://bbs.moeub.cn/forum.php?mod=viewthread&action=printable&tid=11984"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1HZEM63EwW": "通关视频"
+  }
 }

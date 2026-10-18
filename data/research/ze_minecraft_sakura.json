@@ -24,5 +24,13 @@
     "https://bbs.moeub.cn/thread-11443-1-1.html"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1VK5xzLE3A": "通关视频",
+    "BV11m57z5Eyv": "彩蛋触发",
+    "BV1HZu86EEm6": "通关视频",
+    "BV11oV7z5EnJ": "彩蛋触发",
+    "BV1vej3z2EpW": "彩蛋触发",
+    "BV1rJ4D61EpX": "通关视频"
+  }
 }

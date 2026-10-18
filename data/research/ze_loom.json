@@ -26,5 +26,12 @@
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3164817189"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1PcYnezEaG": "通关视频",
+    "BV1yg7s6WERE": "通关视频",
+    "BV1ZYVP6VEpb": "通关视频",
+    "BV1kMhuzoERS": "通关视频",
+    "BV14uRnBuEGZ": "通关视频"
+  }
 }

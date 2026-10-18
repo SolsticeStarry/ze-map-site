@@ -23,5 +23,8 @@
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3368481687"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1Xuei6rEn4": "老司机经验"
+  }
 }

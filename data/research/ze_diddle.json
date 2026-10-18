@@ -9,5 +9,10 @@
     "https://www.bilibili.com/video/BV19PHW6VEca/"
   ],
   "confidence": "low",
-  "author": "Ayano"
+  "author": "Ayano",
+  "videoKinds": {
+    "BV1eKtH6dETK": "通关视频",
+    "BV1f4eX6PEhz": "通关视频",
+    "BV19PHW6VEca": "通关视频"
+  }
 }

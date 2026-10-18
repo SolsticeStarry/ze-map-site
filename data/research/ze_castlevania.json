@@ -9,5 +9,10 @@
     "https://www.bilibili.com/video/BV1fseX6vE2a/"
   ],
   "confidence": "low",
-  "author": "Waffel, Luffaren, NiceShot"
+  "author": "Waffel, Luffaren, NiceShot",
+  "videoKinds": {
+    "BV1oL5o6bEop": "通关视频",
+    "BV1DUbW6ZEbc": "通关视频",
+    "BV1fseX6vE2a": "通关视频"
+  }
 }

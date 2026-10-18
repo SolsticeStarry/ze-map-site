@@ -8,5 +8,9 @@
     "https://www.bilibili.com/video/BV1MzDyBAEx4/"
   ],
   "confidence": "low",
-  "author": "oblivious, 早坂あかね"
+  "author": "oblivious, 早坂あかね",
+  "videoKinds": {
+    "BV1WiNhzoE1X": "通关视频",
+    "BV1MzDyBAEx4": "通关视频"
+  }
 }

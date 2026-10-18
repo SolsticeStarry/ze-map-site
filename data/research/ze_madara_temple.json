@@ -8,5 +8,9 @@
     "https://www.bilibili.com/video/BV1pFFuz5Ee5/"
   ],
   "confidence": "low",
-  "author": "Smurf, m4dara"
+  "author": "Smurf, m4dara",
+  "videoKinds": {
+    "BV1gXgczAEuR": "通关视频",
+    "BV1pFFuz5Ee5": "通关视频"
+  }
 }

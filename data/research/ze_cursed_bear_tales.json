@@ -9,5 +9,10 @@
     "https://www.bilibili.com/video/BV1Mwet6LEv7/"
   ],
   "confidence": "low",
-  "author": "Raphi"
+  "author": "Raphi",
+  "videoKinds": {
+    "BV11u3h6oEag": "老司机经验",
+    "BV1Vgeb6ZEVF": "通关视频",
+    "BV1Mwet6LEv7": "通关视频"
+  }
 }

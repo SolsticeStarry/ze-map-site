@@ -9,5 +9,10 @@
     "https://www.bilibili.com/video/BV1pE8j6FEMc/"
   ],
   "confidence": "low",
-  "author": "koyo, BlackRock"
+  "author": "koyo, BlackRock",
+  "videoKinds": {
+    "BV1RKEE6dESR": "通关视频",
+    "BV1w6YmzTETg": "通关视频",
+    "BV1pE8j6FEMc": "通关视频"
+  }
 }

@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1QcQ2YJEEx/"
   ],
   "confidence": "low",
-  "author": "我是初音未来"
+  "author": "我是初音未来",
+  "videoKinds": {
+    "BV1QcQ2YJEEx": "通关视频"
+  }
 }

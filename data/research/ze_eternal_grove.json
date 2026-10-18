@@ -9,5 +9,10 @@
     "https://www.bilibili.com/video/BV1U3tB64Ehi/"
   ],
   "confidence": "low",
-  "author": "Waffel, Luffaren"
+  "author": "Waffel, Luffaren",
+  "videoKinds": {
+    "BV17TR9BSEzm": "通关视频",
+    "BV1eCHv6jEu4": "通关视频",
+    "BV1U3tB64Ehi": "通关视频"
+  }
 }

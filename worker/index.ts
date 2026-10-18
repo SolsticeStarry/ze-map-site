@@ -55,6 +55,8 @@ import {
 import { handleStats, handleVote } from './votes';
 import { handleTerr } from './terr';
 import { handleVideoMeta, handleVideoThanks } from './videos';
+/* 「改/撤回自己的投稿」（2026-10-19）：登录用户的自助操作，见 worker/my-submissions.ts */
+import { handleMySubmissionEdit, handleMySubmissionWithdraw } from './my-submissions';
 import {
   handleAdminAccountAction,
   handleAdminAccounts,
@@ -165,6 +167,18 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (path === '/api/submit-cover') return handleSubmitCover(request, env, ipHash, clientIp(request));
   if (path === '/api/submit-gallery') return handleSubmitGallery(request, env, ipHash, clientIp(request));
   if (path === '/api/submission') return handleSubmissionStatus(request, env, url);
+  /*
+   * 改 / 撤回自己的投稿（2026-10-19）：必须登录，且只能动自己那条、
+   * 且只在「待审 / 被驳回」时能改 —— 已写回仓库的内容要走重新投稿 + 审核。
+   */
+  if (path === '/api/my-submission/edit') {
+    await ensureSchema(env);
+    return handleMySubmissionEdit(request, env);
+  }
+  if (path === '/api/my-submission/withdraw') {
+    await ensureSchema(env);
+    return handleMySubmissionWithdraw(request, env);
+  }
   /* 视频标题 / UP 主名：只读、带 R2 索引。不写 D1（见 videos.ts 顶部的取舍说明） */
   if (path === '/api/video-meta') return handleVideoMeta(request, env, url);
   /* 「特别感谢」名单（已同意收录的 UP 主），/thanks/ 页面读它 */

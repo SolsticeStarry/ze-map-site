@@ -20,5 +20,8 @@
     "https://www.9game.cn/news/9503261.html"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV13jfvBvEXY": "通关视频"
+  }
 }

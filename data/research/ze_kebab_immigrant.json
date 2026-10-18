@@ -8,5 +8,9 @@
     "https://www.bilibili.com/video/BV1rL2HByEQr/"
   ],
   "confidence": "low",
-  "author": "Smurf, Nostar"
+  "author": "Smurf, Nostar",
+  "videoKinds": {
+    "BV1ufG16CEK5": "通关视频",
+    "BV1rL2HByEQr": "通关视频"
+  }
 }

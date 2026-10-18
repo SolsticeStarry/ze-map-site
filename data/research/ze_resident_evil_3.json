@@ -21,5 +21,9 @@
     "https://csm.dev/threads/resident-evil-3-source-zombie_escape_map.39794/"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1ZaYU6nEsh": "通关视频",
+    "BV1S2Y26AEzT": "通关视频"
+  }
 }

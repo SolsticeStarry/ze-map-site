@@ -26,5 +26,11 @@
     "https://www.bilibili.com/video/BV1Ff6xBgEhK"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1Ff6xBgEhK": "相关视频",
+    "BV15DG7zxEGN": "通关视频",
+    "BV1xrgezUE1m": "通关视频",
+    "BV1ggC8BgEFP": "通关视频"
+  }
 }

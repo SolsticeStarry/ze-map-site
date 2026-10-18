@@ -86,5 +86,8 @@
   "sources": [
     "https://zombieescape.fandom.com/wiki/Ze_FFVII_Mako_Reactor"
   ],
-  "confidence": "high"
+  "confidence": "high",
+  "videoKinds": {
+    "BV1ZRau6uEHr": "通关视频"
+  }
 }

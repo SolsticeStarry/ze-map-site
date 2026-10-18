@@ -19,5 +19,8 @@
     "https://bbs.moeub.cn/forum.php?mod=viewthread&tid=355&page=1&authorid=229"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV16UmgBjEt5": "通关视频"
+  }
 }

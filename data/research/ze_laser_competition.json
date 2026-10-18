@@ -9,5 +9,8 @@
   "confidence": "low",
   "sources": [
     "https://www.bilibili.com/video/BV1rYcFz9EVy/"
-  ]
+  ],
+  "videoKinds": {
+    "BV1rYcFz9EVy": "相关视频"
+  }
 }

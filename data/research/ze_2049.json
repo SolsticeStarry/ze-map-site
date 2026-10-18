@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1jWVC6XE46/"
   ],
   "confidence": "low",
-  "author": "Ayano, m4dara, nutwoomy"
+  "author": "Ayano, m4dara, nutwoomy",
+  "videoKinds": {
+    "BV1jWVC6XE46": "通关视频"
+  }
 }

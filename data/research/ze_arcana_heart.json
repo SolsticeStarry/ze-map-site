@@ -31,5 +31,13 @@
     "https://bbs.moeub.cn/forum.php?mod=viewthread&action=printable&tid=6969"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1HT421a7Rb": "通关视频",
+    "BV1gukVYYEc4": "通关视频",
+    "BV16L41127mu": "通关视频",
+    "BV12q7C6mEBC": "音乐",
+    "BV1Ni421a7aM": "通关视频",
+    "BV17kLszRE7V": "通关视频"
+  }
 }

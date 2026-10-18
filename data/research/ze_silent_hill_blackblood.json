@@ -29,5 +29,11 @@
     "https://zegraph.xyz/servers/colateam/maps/ze_silent_hill_blackblood/"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1yZ4y1p7cY": "通关视频",
+    "BV1JM4m1m7Gu": "彩蛋触发",
+    "BV13fhk6QEA4": "彩蛋触发",
+    "BV1NtHj6yEra": "通关视频"
+  }
 }

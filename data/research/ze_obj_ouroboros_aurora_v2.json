@@ -15,5 +15,8 @@
     "https://steamcommunity.com/sharedfiles/filedetails/?id=3694558819",
     "https://www.bilibili.com/video/BV13itF6dE2Q/"
   ],
-  "confidence": "high"
+  "confidence": "high",
+  "videoKinds": {
+    "BV13itF6dE2Q": "老司机经验"
+  }
 }

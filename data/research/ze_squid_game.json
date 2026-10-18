@@ -20,5 +20,9 @@
     "https://bbs.moeub.cn/thread-5323-1-1.html"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1btibBWE11": "通关视频",
+    "BV1iuaz6HEMq": "通关视频"
+  }
 }

@@ -22,5 +22,10 @@
     "https://www.s2ze.net/winners.html"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1Wo2ZBpEpH": "通关视频",
+    "BV1JGe26nEc5": "相关视频",
+    "BV1tabp6DE9F": "通关视频"
+  }
 }

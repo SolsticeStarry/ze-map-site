@@ -6,5 +6,8 @@
   "videoUrls": [
     "https://www.bilibili.com/video/BV16pGXzhEp1/"
   ],
-  "confidence": "low"
+  "confidence": "low",
+  "videoKinds": {
+    "BV16pGXzhEp1": "老司机经验"
+  }
 }

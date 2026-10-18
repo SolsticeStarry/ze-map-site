@@ -2,11 +2,18 @@
   "_说明": "改这个文件就行。difficulty 只能填：入门/简单/普通/困难/火星/入土/未知；summary 写介绍正文（分段就在段与段之间打 \\n\\n）；tags 是标签数组，例如 [\"神器\", \"多关卡\"]；videoUrls 放视频链接。改完点页面下面的 Commit changes 提交即可。",
   "difficulty": "简单",
   "summary": null,
-  "tags": [],
+  "tags": [
+    "彩蛋"
+  ],
   "videoUrls": [
     "https://www.bilibili.com/video/BV1a7F9ecEfU/",
     "https://www.bilibili.com/video/BV1w8ruYzEy6/",
     "https://www.bilibili.com/video/BV1DGLRzoEEu/"
   ],
-  "confidence": "low"
+  "confidence": "low",
+  "videoKinds": {
+    "BV1a7F9ecEfU": "彩蛋触发",
+    "BV1w8ruYzEy6": "通关视频",
+    "BV1DGLRzoEEu": "通关视频"
+  }
 }

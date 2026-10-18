@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1Z5ae6kEGm/"
   ],
   "confidence": "low",
-  "author": "Charta, 花澪墨音❀"
+  "author": "Charta, 花澪墨音❀",
+  "videoKinds": {
+    "BV1Z5ae6kEGm": "通关视频"
+  }
 }

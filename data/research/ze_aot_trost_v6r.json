@@ -24,5 +24,10 @@
     "https://bbs.moeub.cn/thread-1691-1-1.html"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV15Y3966EPe": "音乐",
+    "BV1cAfZBCEzf": "音乐",
+    "BV1Tb3R6wEDN": "音乐"
+  }
 }

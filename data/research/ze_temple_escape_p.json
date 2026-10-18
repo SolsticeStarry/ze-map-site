@@ -6,5 +6,8 @@
   "videoUrls": [
     "https://www.bilibili.com/video/BV12tLmzYEua/"
   ],
-  "confidence": "low"
+  "confidence": "low",
+  "videoKinds": {
+    "BV12tLmzYEua": "通关视频"
+  }
 }

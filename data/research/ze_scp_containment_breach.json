@@ -8,5 +8,9 @@
     "https://www.bilibili.com/video/BV1ikRLB3Esg/"
   ],
   "confidence": "low",
-  "author": "Pohmian, stellaaa"
+  "author": "Pohmian, stellaaa",
+  "videoKinds": {
+    "BV1cvGLzZERQ": "通关视频",
+    "BV1ikRLB3Esg": "通关视频"
+  }
 }

@@ -10,7 +10,8 @@
     "神器",
     "触发机关",
     "躲猫猫",
-    "CS2原创"
+    "CS2原创",
+    "彩蛋"
   ],
   "videoUrls": [
     "https://www.bilibili.com/video/BV1R44TzwESh/",
@@ -26,5 +27,13 @@
     "https://www.bilibili.com/video/BV1HBxfzQEV5/"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1R44TzwESh": "触发攻略",
+    "BV1HBxfzQEV5": "通关视频",
+    "BV1mb5X6PEKd": "彩蛋触发",
+    "BV1in3L6NED9": "通关视频",
+    "BV1RwtdziE51": "通关视频",
+    "BV1PdHh6QEDP": "通关视频"
+  }
 }

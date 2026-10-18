@@ -2340,6 +2340,35 @@ main [id],
   gap: 10px;
 }
 
+/*
+ * 图片集折叠（2026-10-19 站长要求）：默认只露前 9 张，其余用按钮展开。
+ * 只是 display:none，DOM 里还在 —— 灯箱照样能翻到全部图片。
+ */
+.gallery-grid.is-collapsed .gallery-item:nth-child(n + 10) {
+  display: none;
+}
+
+.gallery-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.gallery-more:hover {
+  border-color: var(--border-2);
+  color: var(--text);
+  background: var(--panel-2);
+}
+
+
 .gallery-item {
   position: relative;
   padding: 0;
@@ -4736,6 +4765,42 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 .acc-chip.is-quiet { border-color: transparent; background: none; opacity: 0.72; }
 .acc-row-date { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .acc-row-note { margin: 7px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+
+/* 「改 / 撤回自己的投稿」（2026-10-19） */
+.acc-row-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.acc-btn-small {
+  padding: 5px 12px;
+  font-size: 12.5px;
+  border-radius: 8px;
+}
+.acc-edit {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  width: 100%;
+}
+.acc-edit textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.acc-edit textarea:focus {
+  outline: none;
+  border-color: var(--accent-2);
+}
 
 .acc-empty {
   display: grid;

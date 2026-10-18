@@ -8,5 +8,9 @@
     "https://www.bilibili.com/video/BV1aQSDBWEvt/"
   ],
   "confidence": "low",
-  "author": "骇人鲸"
+  "author": "骇人鲸",
+  "videoKinds": {
+    "BV1kUuA6zEE5": "通关视频",
+    "BV1aQSDBWEvt": "通关视频"
+  }
 }

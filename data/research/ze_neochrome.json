@@ -8,5 +8,9 @@
     "https://www.bilibili.com/video/BV1Qche6bEBj/"
   ],
   "confidence": "low",
-  "author": "nutwoomy, Smurf"
+  "author": "nutwoomy, Smurf",
+  "videoKinds": {
+    "BV18apJ6aEPZ": "通关视频",
+    "BV1Qche6bEBj": "通关视频"
+  }
 }

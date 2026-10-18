@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1q5SsB9EJV/"
   ],
   "confidence": "low",
-  "author": "Rakka, SIRloin"
+  "author": "Rakka, SIRloin",
+  "videoKinds": {
+    "BV1q5SsB9EJV": "通关视频"
+  }
 }

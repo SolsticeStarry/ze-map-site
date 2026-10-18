@@ -29,5 +29,13 @@
     "https://www.bilibili.com/video/BV1rc336hEze"
   ],
   "confidence": "high",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV14HBmYmECp": "通关视频",
+    "BV1258nzbE1x": "通关视频",
+    "BV1g34o6jEA6": "通关视频",
+    "BV1qG6FYKE92": "老司机经验",
+    "BV1rc336hEze": "通关视频",
+    "BV1jBY8zyEpN": "通关视频"
+  }
 }

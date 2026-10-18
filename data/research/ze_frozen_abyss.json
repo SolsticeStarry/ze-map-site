@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1FddGYJENB/"
   ],
   "confidence": "low",
-  "author": "m4dara, @Seth."
+  "author": "m4dara, @Seth.",
+  "videoKinds": {
+    "BV1FddGYJENB": "通关视频"
+  }
 }

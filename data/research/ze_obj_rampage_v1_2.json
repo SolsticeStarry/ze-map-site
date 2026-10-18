@@ -8,5 +8,10 @@
     "https://www.bilibili.com/video/BV19FKTemEe1/",
     "https://www.bilibili.com/video/BV1dW8G6gEpv/"
   ],
-  "confidence": "low"
+  "confidence": "low",
+  "videoKinds": {
+    "BV1sXzgBNEi1": "通关视频",
+    "BV19FKTemEe1": "通关视频",
+    "BV1dW8G6gEpv": "通关视频"
+  }
 }

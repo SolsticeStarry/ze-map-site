@@ -1178,7 +1178,10 @@ export async function handleMe(request: Request, env: Env, url: URL): Promise<Re
   await recalcUserStats(env, user.id);
   const fresh = await env.DB.prepare(`SELECT * FROM users WHERE id = ?1`).bind(user.id).first<UserRow>();
   const { results } = await env.DB.prepare(
-    `SELECT id, map_slug, field, status, created_at, reviewed_at, reject_note, commit_sha
+    /* value 只给「待审 / 被驳回」的行：个人页要用它做「改自己的投稿」的预填。
+       已写回仓库（applied）的不返回内容，避免页面把线上内容当成待改稿。 */
+    `SELECT id, map_slug, field, status, created_at, reviewed_at, reject_note, commit_sha,
+            CASE WHEN status IN ('pending','rejected') THEN value ELSE NULL END AS value
      FROM submissions WHERE user_id = ?1 ORDER BY created_at DESC LIMIT 50`
   )
     .bind(user.id)
@@ -1191,6 +1194,7 @@ export async function handleMe(request: Request, env: Env, url: URL): Promise<Re
       reviewed_at: number | null;
       reject_note: string | null;
       commit_sha: string | null;
+      value: string | null;
     }>();
 
   /*

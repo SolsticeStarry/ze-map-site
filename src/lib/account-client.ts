@@ -71,6 +71,8 @@ export interface AccountSubmission {
   reviewed_at: number | null;
   reject_note: string | null;
   commit_sha: string | null;
+  /** 待审 / 被驳回的行带内容，供「改自己的投稿」预填；其它状态是 null（见 worker/auth.ts 的查询） */
+  value?: string | null;
 }
 
 export interface AccountCounts {

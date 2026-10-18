@@ -3,7 +3,10 @@
   "title": "行动代号：孤注一掷",
   "difficulty": "入土",
   "summary": "《行动代号：孤注一掷》又称湮灭计划，是行动代号(OBJ)系列的一张单关剧情图,国内中文ZE社区通常直接叫它孤。难度在入土及绝境等级(地图分级均来源于各大社区),本张地图对萌新的要求难度很大，存在一定量的KZ点和部分卡脚点，路线较绕认路成本很大，全图流程在50分钟左右是典型的火力长征图，对于团队的配合以及火力道具的要求很大，此类地图均以长征火力著称",
-  "tags": ["行动代号", "OBJ"],
+  "tags": [
+    "行动代号",
+    "OBJ"
+  ],
   "videoUrls": [
     "https://www.bilibili.com/video/BV1TESqBzEyt/",
     "https://www.bilibili.com/video/BV1ma3w6EE49/",
@@ -16,5 +19,10 @@
     "https://www.bilibili.com/video/BV1py1CB3E3U/"
   ],
   "confidence": "medium",
-  "verified": true
+  "verified": true,
+  "videoKinds": {
+    "BV1TESqBzEyt": "通关视频",
+    "BV1ma3w6EE49": "通关视频",
+    "BV1py1CB3E3U": "通关视频"
+  }
 }

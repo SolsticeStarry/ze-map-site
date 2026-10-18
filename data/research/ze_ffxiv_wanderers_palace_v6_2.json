@@ -8,5 +8,9 @@
     "https://www.bilibili.com/video/BV1uQaY6bEEU/"
   ],
   "confidence": "low",
-  "author": "Waffel, 离殇, Dakotec, Tianli"
+  "author": "Waffel, 离殇, Dakotec, Tianli",
+  "videoKinds": {
+    "BV1r4dnY3EKq": "通关视频",
+    "BV1uQaY6bEEU": "通关视频"
+  }
 }

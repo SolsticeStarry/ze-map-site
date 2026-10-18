@@ -9,5 +9,10 @@
     "https://www.bilibili.com/video/BV1uQaY6bEEU/"
   ],
   "confidence": "low",
-  "author": "Altima, Ayano, 早坂あかね"
+  "author": "Altima, Ayano, 早坂あかね",
+  "videoKinds": {
+    "BV1PoYq6vE2B": "通关视频",
+    "BV1r4dnY3EKq": "通关视频",
+    "BV1uQaY6bEEU": "通关视频"
+  }
 }

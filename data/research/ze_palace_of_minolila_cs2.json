@@ -7,5 +7,8 @@
     "https://www.bilibili.com/video/BV1CEZHYpEko/"
   ],
   "confidence": "low",
-  "author": "Misakaaaaa, koyo"
+  "author": "Misakaaaaa, koyo",
+  "videoKinds": {
+    "BV1CEZHYpEko": "通关视频"
+  }
 }

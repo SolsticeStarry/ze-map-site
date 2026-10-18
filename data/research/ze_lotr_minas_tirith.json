@@ -81,5 +81,8 @@
   "sources": [
     "https://gamebanana.com/maps/157492"
   ],
-  "confidence": "high"
+  "confidence": "high",
+  "videoKinds": {
+    "BV1TAb76KENa": "相关视频"
+  }
 }

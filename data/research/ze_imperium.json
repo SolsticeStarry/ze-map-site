@@ -10,5 +10,11 @@
     "https://www.bilibili.com/video/BV11N4U67EVe/"
   ],
   "confidence": "low",
-  "author": "Raphi, Hichatu"
+  "author": "Raphi, Hichatu",
+  "videoKinds": {
+    "BV18rNU6TEan": "通关视频",
+    "BV1W5Hh6SEVc": "老司机经验",
+    "BV1MKen6bEmb": "通关视频",
+    "BV11N4U67EVe": "通关视频"
+  }
 }
