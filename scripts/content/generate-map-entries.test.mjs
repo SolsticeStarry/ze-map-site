@@ -302,3 +302,72 @@ test('社区文档：一批投稿（字段 + 背景故事 + 神器行）能一�
   assert.deepEqual(contributors(doc), ['甲', '乙', '丙']);
   assert.equal(doc.updatedAt, null, 'updatedAt 由调用方 touch()，applySubmission 不自己写时间');
 });
+
+test('社区文档：作者申请删除（remove）—— 故事 / 神器 / 字段三种都能撤掉', () => {
+  const doc = emptyDoc('ze_demo');
+  const at = Date.parse('2026-10-19T00:00:00Z');
+
+  /* 先有内容：一条故事、一件神器、一个标签覆盖 */
+  applySubmission(doc, { id: 21, field: 'story', value: '作者自己写的故事。', submitter: '甲', reviewedAt: at });
+  applySubmission(doc, {
+    id: 22,
+    field: 'items',
+    value: [{ action: 'add', name: '气泵', cd: 60, uses: null, note: '' }],
+    submitter: '甲',
+    reviewedAt: at,
+  });
+  applySubmission(doc, { id: 23, field: 'tags', value: ['彩蛋'], submitter: '甲', reviewedAt: at });
+  assert.equal(doc.notes.length, 1);
+  assert.equal(doc.items.length, 1);
+  assert.deepEqual(doc.fields.tags.v, ['彩蛋']);
+
+  /* 故事：按 reviseOf（note 公开 id = 原投稿 id）删 */
+  const r1 = applySubmission(doc, {
+    id: 31,
+    field: 'story',
+    value: '作者自己写的故事。',
+    reviseOf: '21',
+    remove: true,
+    submitter: '甲',
+    reviewedAt: at,
+  });
+  assert.equal(r1.removed, true);
+  assert.equal(doc.notes.length, 0, '故事那条要真的被删掉');
+
+  /* 神器：按行名删 */
+  const r2 = applySubmission(doc, {
+    id: 32,
+    field: 'items',
+    value: [{ name: '气泵' }],
+    remove: true,
+    submitter: '甲',
+    reviewedAt: at,
+  });
+  assert.equal(r2.removed, true);
+  assert.equal(doc.items.length, 0, '神器行要真的被删掉');
+
+  /* 普通字段：移除社区覆盖 */
+  const r3 = applySubmission(doc, {
+    id: 33,
+    field: 'tags',
+    value: ['彩蛋'],
+    remove: true,
+    submitter: '甲',
+    reviewedAt: at,
+  });
+  assert.equal(r3.removed, true);
+  assert.equal(doc.fields.tags, undefined, '字段覆盖要整条移除');
+
+  /* 目标已经不在：不静默，log 里说明 */
+  const r4 = applySubmission(doc, {
+    id: 34,
+    field: 'story',
+    value: 'x',
+    reviseOf: '999',
+    remove: true,
+    submitter: '甲',
+    reviewedAt: at,
+  });
+  assert.equal(r4.removed, false);
+  assert.match(String(doc.log.at(-1)?.note ?? ''), /删除目标/);
+});

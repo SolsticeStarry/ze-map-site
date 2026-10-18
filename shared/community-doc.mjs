@@ -245,6 +245,66 @@ export function applySubmission(doc, sub) {
   const at = new Date(sub.reviewedAt ?? Date.now()).toISOString();
   const by = sub.submitter || '匿名';
 
+  /*
+   * 作者申请删除（2026-10-19 站长要求）：作者对**自己已上线**的内容点「申请删除」，
+   * 审核通过后走到这里 —— 把那条内容从社区文件里移除。
+   *   · note 字段：按 reviseOf（note 的公开 id 就是原投稿 id）定位并删掉那一条；
+   *   · 神器 / 道具：按行名删掉作者投的那些行；
+   *   · 整篇草稿：删掉草稿本身；
+   *   · 其它字段（标签 / 难度 / 人数 / 别名 / 视频…）：移除社区覆盖，回到资料原值。
+   * 找不到目标时不静默：log 记一笔，审核台能看出为什么没变化。
+   */
+  if (sub.remove) {
+    if (isNoteField(sub.field)) {
+      const reviseId = isReviseId(sub.reviseOf) ? String(sub.reviseOf).trim() : '';
+      const i = reviseId ? findNoteIndex(doc.notes, reviseId) : -1;
+      if (i >= 0) {
+        const [gone] = doc.notes.splice(i, 1);
+        doc.log.push({
+          field: sub.field,
+          from: gone?.text ?? null,
+          to: null,
+          by,
+          at,
+          submission: sub.id ?? null,
+          removed: true,
+        });
+        return { field: sub.field, from: gone?.text ?? null, to: null, removed: true };
+      }
+      doc.log.push({
+        field: sub.field,
+        from: null,
+        to: null,
+        by,
+        at,
+        submission: sub.id ?? null,
+        note: `删除目标 ${reviseId || '(空)'} 已不在，未改动`,
+      });
+      return { field: sub.field, removed: false };
+    }
+    if (isItemField(sub.field)) {
+      const names = new Set(
+        (Array.isArray(sub.value) ? sub.value : [])
+          .map((row) => itemKey(row?.name))
+          .filter(Boolean)
+      );
+      const before = Array.isArray(doc.items) ? doc.items.length : 0;
+      doc.items = (Array.isArray(doc.items) ? doc.items : []).filter((row) => !names.has(itemKey(row?.name)));
+      doc.log.push({ field: sub.field, from: before, to: doc.items.length, by, at, submission: sub.id ?? null, removed: true });
+      return { field: sub.field, from: before, to: doc.items.length, removed: true };
+    }
+    if (isDocField(sub.field)) {
+      const prev = doc.draft ?? null;
+      doc.draft = null;
+      doc.log.push({ field: sub.field, from: prev?.by ?? null, to: null, by, at, submission: sub.id ?? null, removed: true });
+      return { field: sub.field, from: prev?.text ?? null, to: null, removed: true };
+    }
+    const prev = doc.fields?.[sub.field]?.v ?? null;
+    if (doc.fields) delete doc.fields[sub.field];
+    doc.log.push({ field: sub.field, from: prev, to: null, by, at, submission: sub.id ?? null, removed: true });
+    return { field: sub.field, from: prev, to: null, removed: true };
+  }
+
   if (isNoteField(sub.field)) {
     /* 修订：把目标那条的正文换掉（署名仍然是原作者，另记是谁在什么时候改的）。
        找不到目标（投稿人提交后这一条被别人删了 / 文件被手改过）就**降级为追加**：

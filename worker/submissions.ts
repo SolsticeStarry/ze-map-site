@@ -94,6 +94,9 @@ interface SubmissionRow {
   error: string | null;
   /** 账号 id（P4）：登录后投稿才有；匿名投稿为 null */
   user_id: number | null;
+  /** 作者自助修订（2026-10-19）：指向原投稿 id；delete_request=1 表示「申请删除」 */
+  revise_of: number | null;
+  delete_request: number | null;
 }
 
 /* ===== 小工具 ===== */
@@ -1653,11 +1656,18 @@ export async function handleAdminFlush(request: Request, env: Env): Promise<Resp
           /* note 字段的修订包（{ text, reviseOf }）与「社区整理」的 { title, text } 都在这里拆开；
              普通投稿 notePayload 直接返回原文，所以几条路径共用一句 —— 拆包规则只有 shared 那一份。 */
           const payload = isNoteField(row.field) ? notePayload(value) : null;
+          /*
+           * 作者申请删除（2026-10-19）：delete_request=1 的行不按普通内容写回，
+           * 交给 applySubmission 的 remove 分支：note 按 reviseOf 删、神器按行名删、
+           * 其它字段移除社区覆盖。
+           */
+          const isRemove = Number(row.delete_request ?? 0) === 1;
           const change = applySubmission(doc, {
             id: row.id,
             field: row.field,
             value: payload ? payload.text : value,
-            reviseOf: payload?.reviseOf ?? '',
+            reviseOf: isRemove ? String(row.revise_of ?? '') : payload?.reviseOf ?? '',
+            remove: isRemove,
             ...(payload?.title ? { title: payload.title } : {}),
             submitter: row.submitter,
             reviewedAt: row.reviewed_at ?? Date.now(),

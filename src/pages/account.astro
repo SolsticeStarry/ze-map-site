@@ -523,16 +523,18 @@ import QqGroup from '../components/QqGroup.astro';
         if (note) body.append(el('p', 'acc-row-note', note));
 
         /*
-         * 改 / 撤回（2026-10-19 站长要求）：只对「待审核 / 已驳回」开放。
-         * 撤回 = 软删除（status=withdrawn），行还留着；改 = 重新走一遍审核，
-         * 以前要作者再投一条或者找站长，现在自己就能收尾。
+         * 改 / 撤回（2026-10-19 站长要求，当晚补充「已上线也能改」）：
+         *   · 待审核 / 已驳回：直接改原行、重新排队；撤回 = 软删除。
+         *   · 已上线：不直接改线上内容，而是提交一条**待审修订**（审核通过后替换）；
+         *     「申请删除」同理 —— 审核通过后由写回逻辑把这条内容从条目里移除。
          */
-        if (s.status === 'pending' || s.status === 'rejected') {
+        const canAct = s.status === 'pending' || s.status === 'rejected' || s.status === 'applied';
+        if (canAct) {
           const acts = el('div', 'acc-row-acts');
           const editable =
             typeof s.value === 'string' && s.value.trim() && !/^[[{]/.test(s.value.trim());
           if (editable) {
-            const editBtn = el('button', 'acc-btn acc-btn-small', '修改');
+            const editBtn = el('button', 'acc-btn acc-btn-small', s.status === 'applied' ? '申请修改' : '修改');
             editBtn.type = 'button';
             editBtn.addEventListener('click', () => {
               if (acts.querySelector('.acc-edit')) return;
@@ -541,7 +543,7 @@ import QqGroup from '../components/QqGroup.astro';
               ta.value = String(s.value);
               ta.rows = 4;
               ta.maxLength = 6000;
-              const save = el('button', 'acc-btn acc-btn-small acc-btn-primary', '保存并重新提交');
+              const save = el('button', 'acc-btn acc-btn-small acc-btn-primary', s.status === 'applied' ? '提交修订' : '保存并重新提交');
               save.type = 'button';
               const cancel = el('button', 'acc-btn acc-btn-small', '取消');
               cancel.type = 'button';
@@ -557,7 +559,7 @@ import QqGroup from '../components/QqGroup.astro';
                   });
                   const data = await res.json();
                   if (!res.ok || !data.ok) throw new Error(data.error || '保存失败');
-                  msg.textContent = '已重新提交，等审核。';
+                  msg.textContent = data.mode === 'revision' ? '修订已提交，审核通过后替换原内容。' : '已重新提交，等审核。';
                   await refresh();
                 } catch (e) {
                   msg.textContent = e instanceof Error ? e.message : '保存失败';
@@ -570,10 +572,10 @@ import QqGroup from '../components/QqGroup.astro';
             });
             acts.append(editBtn);
           }
-          const delBtn = el('button', 'acc-btn acc-btn-small', '撤回');
+          const delBtn = el('button', 'acc-btn acc-btn-small', s.status === 'applied' ? '申请删除' : '撤回');
           delBtn.type = 'button';
           delBtn.addEventListener('click', async () => {
-            if (!confirm('确定撤回这条投稿？撤回后不会再进入审核队列。')) return;
+            if (!confirm(s.status === 'applied' ? '确定申请删除这条已上线的内容？会进入审核，通过后从条目里移除。' : '确定撤回这条投稿？撤回后不会再进入审核队列。')) return;
             delBtn.disabled = true;
             try {
               const res = await fetch('/api/my-submission/withdraw', {
@@ -582,10 +584,10 @@ import QqGroup from '../components/QqGroup.astro';
                 body: JSON.stringify({ id: s.id }),
               });
               const data = await res.json();
-              if (!res.ok || !data.ok) throw new Error(data.error || '撤回失败');
+              if (!res.ok || !data.ok) throw new Error(data.error || '操作失败');
               await refresh();
             } catch (e) {
-              alert(e instanceof Error ? e.message : '撤回失败');
+              alert(e instanceof Error ? e.message : '操作失败');
               delBtn.disabled = false;
             }
           });

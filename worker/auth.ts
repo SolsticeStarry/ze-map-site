@@ -826,6 +826,22 @@ export async function ensureSchema(env: Env): Promise<void> {
         env.DB.prepare(`ALTER TABLE submissions ADD COLUMN adopted_at INTEGER`).run()
       );
     }
+    /*
+     * 作者自助修订（2026-10-19 站长要求）：已经写回仓库的内容，作者也能自己发起修改/删除，
+     * 但**仍然要过审核**。做法是插一条新的待审行：
+     *   revise_of      指向原投稿 id（审核台据此标成「作者修订 #123」）
+     *   delete_request 1 = 作者申请删除这条内容（审核通过后从社区文件里移除）
+     */
+    if (!(cols.results ?? []).some((c) => c.name === 'revise_of')) {
+      await step('submissions.revise_of', () =>
+        env.DB.prepare(`ALTER TABLE submissions ADD COLUMN revise_of INTEGER`).run()
+      );
+    }
+    if (!(cols.results ?? []).some((c) => c.name === 'delete_request')) {
+      await step('submissions.delete_request', () =>
+        env.DB.prepare(`ALTER TABLE submissions ADD COLUMN delete_request INTEGER NOT NULL DEFAULT 0`).run()
+      );
+    }
     await step('idx_sub_user', () =>
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_sub_user ON submissions(user_id, created_at)`).run()
     );
@@ -1178,10 +1194,10 @@ export async function handleMe(request: Request, env: Env, url: URL): Promise<Re
   await recalcUserStats(env, user.id);
   const fresh = await env.DB.prepare(`SELECT * FROM users WHERE id = ?1`).bind(user.id).first<UserRow>();
   const { results } = await env.DB.prepare(
-    /* value 只给「待审 / 被驳回」的行：个人页要用它做「改自己的投稿」的预填。
-       已写回仓库（applied）的不返回内容，避免页面把线上内容当成待改稿。 */
+    /* value 只给「待审 / 被驳回 / 已上线」的行：个人页要用它做「改自己的投稿」的预填。
+       已上线的内容作者也能自己发起修订（审核后生效），所以要能看到原值。 */
     `SELECT id, map_slug, field, status, created_at, reviewed_at, reject_note, commit_sha,
-            CASE WHEN status IN ('pending','rejected') THEN value ELSE NULL END AS value
+            CASE WHEN status IN ('pending','rejected','applied') THEN value ELSE NULL END AS value
      FROM submissions WHERE user_id = ?1 ORDER BY created_at DESC LIMIT 50`
   )
     .bind(user.id)
