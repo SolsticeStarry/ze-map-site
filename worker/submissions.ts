@@ -63,6 +63,7 @@ import {
   galleryEntryUrl,
   galleryManifestPath,
   galleryMetaOf,
+  galleryObjectKey,
   parseManifest,
   putGalleryImage,
   serializeManifest,
@@ -1541,6 +1542,42 @@ export async function handleAdminFlush(request: Request, env: Env): Promise<Resp
             continue;
           }
           const meta = galleryMetaOf(value);
+          /*
+           * 作者申请删除图片集里的某一张（2026-10-19 站长要求）：
+           * 审核通过后**真删** —— 清单里去掉那一条，R2 对象也删掉（站长明确说「真没了也无所谓」）。
+           * 用文件名 `u<投稿id>.<ext>` 反查是哪一条投稿，所以不会误删别人或工坊预览图。
+           */
+          if (Number(row.delete_request ?? 0) === 1) {
+            const targetId = Number(row.revise_of ?? 0);
+            const keep: GalleryEntry[] = [];
+            const removed: string[] = [];
+            for (const im of gal.manifest.images) {
+              const file = decodeURIComponent(String(im.src).split('/').pop() ?? '');
+              const m = /^u(\d+)\./i.exec(file);
+              if (im.kind === 'user' && m && Number(m[1]) === targetId) {
+                removed.push(file);
+                continue;
+              }
+              keep.push(im);
+            }
+            if (!removed.length) {
+              skipped.push({ id: row.id, reason: '图片集里找不到这条投稿的图片（可能已经删过）' });
+              continue;
+            }
+            gal.manifest = { ...gal.manifest, images: keep, count: keep.length };
+            gal.dirty = true;
+            /* R2 删除失败不阻塞写回：清单已经不再引用它，最坏留下一张孤儿图（下一轮人工清） */
+            for (const name of removed) {
+              try {
+                await env.TERR?.delete(galleryObjectKey(slug, name));
+              } catch (err) {
+                console.error(`删除 R2 图片失败 ${slug}/${name}：` + (err instanceof Error ? err.message : String(err)));
+              }
+            }
+            fieldSummary.add(`${slug} 图片集 -${removed.length}`);
+            if (row.submitter) authors.add(row.submitter);
+            continue;
+          }
           if (!meta) {
             skipped.push({ id: row.id, reason: '缺少图片信息' });
             continue;

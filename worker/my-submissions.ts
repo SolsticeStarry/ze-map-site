@@ -100,11 +100,22 @@ export async function handleMySubmissionWithdraw(request: Request, env: Env): Pr
   }
 
   if (row.status === 'applied') {
-    if (row.field === 'cover' || row.field === 'gallery') {
-      return fail('封面 / 图片集请到「我的投稿」里对该条目单独申请，或联系站长处理');
+    if (row.field === 'cover') {
+      return fail('封面请找站长处理（删封面要回退到工坊预览图，属于另一条流程）');
     }
+    /*
+     * 图片集：只删自己投的那一张。写回时按 revise_of（原投稿 id）去清单里找
+     * 文件名 `u<id>.<ext>` 的那一条，所以这里不需要额外指定图片。
+     */
+    const originalValue = (() => {
+      try {
+        return JSON.parse(row.value);
+      } catch {
+        return null;
+      }
+    })();
     const newId = await queueAuthorAction(env, row, me, {
-      value: JSON.parse(row.value),
+      value: originalValue,
       note: `作者申请删除原投稿 #${row.id}`,
       deleteRequest: true,
     });
@@ -113,7 +124,10 @@ export async function handleMySubmissionWithdraw(request: Request, env: Env): Pr
       id: newId,
       status: 'pending',
       mode: 'delete-request',
-      message: '删除申请已提交，审核通过后会从条目里移除',
+      message:
+        row.field === 'gallery'
+          ? '删除申请已提交，审核通过后会从图片集里移除并删掉原图'
+          : '删除申请已提交，审核通过后会从条目里移除',
     });
   }
 
