@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_santassination_p",
-  "updatedAt": "2026-10-04T11:27:22.775Z",
+  "updatedAt": "2026-10-18T04:18:23.282Z",
   "fields": {
     "difficulty": {
       "v": "火星",
@@ -14,6 +14,18 @@
       "by": "SiKi",
       "at": "2026-10-04T11:27:22.775Z",
       "submission": 76
+    },
+    "tags": {
+      "v": [
+        "多关卡",
+        "长征图",
+        "卤粉图",
+        "BOSS战",
+        "热门"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:43.842Z",
+      "submission": 402
     }
   },
   "notes": [],
@@ -33,7 +45,22 @@
       "by": "SiKi",
       "at": "2026-10-04T11:27:22.775Z",
       "submission": 76
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "多关卡",
+        "长征图",
+        "卤粉图",
+        "BOSS战",
+        "热门"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:43.842Z",
+      "submission": 402
     }
   ],
+  "draft": null,
   "items": []
 }

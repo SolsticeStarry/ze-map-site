@@ -1,0 +1,58 @@
+{
+  "v": 1,
+  "slug": "ze_atos",
+  "updatedAt": "2026-10-18T04:18:23.282Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "可破坏物",
+        "传送门多",
+        "危险区多",
+        "多关卡",
+        "跳刀",
+        "神器",
+        "移植图"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:42.281Z",
+      "submission": 399
+    }
+  },
+  "notes": [
+    {
+      "text": "阿托斯是一个梦幻世界\n这里有许多有趣的神器\n戴上耳机好好享受旅程",
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:42.795Z",
+      "submission": 400,
+      "field": "story"
+    }
+  ],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "可破坏物",
+        "传送门多",
+        "危险区多",
+        "多关卡",
+        "跳刀",
+        "神器",
+        "移植图"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:42.281Z",
+      "submission": 399
+    },
+    {
+      "field": "story",
+      "from": null,
+      "to": null,
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:42.795Z",
+      "submission": 400
+    }
+  ],
+  "draft": null,
+  "items": []
+}

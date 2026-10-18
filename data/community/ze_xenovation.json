@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "slug": "ze_xenovation",
+  "updatedAt": "2026-10-18T04:18:23.282Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "跳刀",
+        "长征图",
+        "多结局",
+        "CS·GO移植",
+        "弹幕"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:43.335Z",
+      "submission": 401
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "跳刀",
+        "长征图",
+        "多结局",
+        "CS·GO移植",
+        "弹幕"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:43.335Z",
+      "submission": 401
+    }
+  ],
+  "draft": null,
+  "items": []
+}

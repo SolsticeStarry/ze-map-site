@@ -1,0 +1,34 @@
+{
+  "v": 1,
+  "slug": "ze_offliner",
+  "updatedAt": "2026-10-18T04:18:23.282Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "跳刀",
+        "单关卡",
+        "弹幕"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:44.487Z",
+      "submission": 403
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "跳刀",
+        "单关卡",
+        "弹幕"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:44.487Z",
+      "submission": 403
+    }
+  ],
+  "draft": null,
+  "items": []
+}

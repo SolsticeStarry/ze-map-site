@@ -1,0 +1,48 @@
+{
+  "v": 1,
+  "slug": "ze_the_curse_of_blackwater",
+  "updatedAt": "2026-10-18T04:18:23.282Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "机关图",
+        "大图",
+        "热门",
+        "恐怖",
+        "多关卡",
+        "BOSS战",
+        "钥匙搜寻",
+        "原作改编",
+        "CS·GO移植",
+        "冷门"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:41.739Z",
+      "submission": 398
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "机关图",
+        "大图",
+        "热门",
+        "恐怖",
+        "多关卡",
+        "BOSS战",
+        "钥匙搜寻",
+        "原作改编",
+        "CS·GO移植",
+        "冷门"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:41.739Z",
+      "submission": 398
+    }
+  ],
+  "draft": null,
+  "items": []
+}
