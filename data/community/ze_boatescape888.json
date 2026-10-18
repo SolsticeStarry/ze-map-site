@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_boatescape888",
-  "updatedAt": "2026-10-18T15:34:18.610Z",
+  "updatedAt": "2026-10-18T17:32:10.450Z",
   "fields": {
     "difficulty": {
       "v": "入门",
@@ -54,6 +54,12 @@
       "by": "AntiLockwise",
       "at": "2026-10-18T15:34:18.610Z",
       "submission": 463
+    },
+    "draft": {
+      "v": "已采纳 2026-10-18",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:32:10.450Z",
+      "submission": 456
     }
   },
   "notes": [],
@@ -131,13 +137,16 @@
       "by": "AntiLockwise",
       "at": "2026-10-18T15:34:18.610Z",
       "submission": 463
+    },
+    {
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:32:10.450Z",
+      "submission": 456
     }
   ],
-  "draft": {
-    "text": "## 地图由 [Tenshi] 绘制\n\n- 1个关卡\n\n- 结尾弹幕 (可逃课)\n\n- 弹幕连关模式",
-    "by": "AntiLockwise",
-    "at": "2026-10-18T15:34:18.610Z",
-    "submission": 456
-  },
+  "draft": null,
   "items": []
 }
