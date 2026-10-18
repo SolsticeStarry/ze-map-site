@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_obj_redemption_v2",
-  "updatedAt": "2026-09-30T11:30:35.606Z",
+  "updatedAt": "2026-10-18T04:18:51.873Z",
   "fields": {
     "difficulty": {
       "v": "火星",
@@ -14,6 +14,19 @@
       "by": "SiKi",
       "at": "2026-09-30T11:30:35.606Z",
       "submission": 49
+    },
+    "tags": {
+      "v": [
+        "大图",
+        "长征图",
+        "OBJ",
+        "热门",
+        "单关卡",
+        "多结局"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:58.809Z",
+      "submission": 424
     }
   },
   "notes": [],
@@ -41,7 +54,23 @@
       "by": "SiKi",
       "at": "2026-09-30T11:30:35.606Z",
       "submission": 49
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "大图",
+        "长征图",
+        "OBJ",
+        "热门",
+        "单关卡",
+        "多结局"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:58.809Z",
+      "submission": 424
     }
   ],
+  "draft": null,
   "items": []
 }

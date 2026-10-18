@@ -1,0 +1,36 @@
+{
+  "v": 1,
+  "slug": "ze_obj_avulsion_a1",
+  "updatedAt": "2026-10-18T04:18:51.873Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "OBJ",
+        "长征图",
+        "大图",
+        "单关"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:59.337Z",
+      "submission": 423
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "OBJ",
+        "长征图",
+        "大图",
+        "单关"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:59.337Z",
+      "submission": 423
+    }
+  ],
+  "draft": null,
+  "items": []
+}

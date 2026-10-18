@@ -1,0 +1,40 @@
+{
+  "v": 1,
+  "slug": "ze_immortal_flame",
+  "updatedAt": "2026-10-18T04:18:51.873Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "单关",
+        "长征图",
+        "跳刀",
+        "弹幕",
+        "音乐",
+        "移植图"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:57.248Z",
+      "submission": 427
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "单关",
+        "长征图",
+        "跳刀",
+        "弹幕",
+        "音乐",
+        "移植图"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:57.248Z",
+      "submission": 427
+    }
+  ],
+  "draft": null,
+  "items": []
+}

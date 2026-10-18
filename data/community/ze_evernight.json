@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "slug": "ze_evernight",
+  "updatedAt": "2026-10-18T04:18:51.873Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "多关卡",
+        "大图",
+        "神器",
+        "BOSS战",
+        "移植图"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:57.769Z",
+      "submission": 426
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "多关卡",
+        "大图",
+        "神器",
+        "BOSS战",
+        "移植图"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:57.769Z",
+      "submission": 426
+    }
+  ],
+  "draft": null,
+  "items": []
+}

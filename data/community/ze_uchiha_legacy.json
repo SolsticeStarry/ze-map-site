@@ -1,0 +1,42 @@
+{
+  "v": 1,
+  "slug": "ze_uchiha_legacy",
+  "updatedAt": "2026-10-18T04:18:51.873Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "大图",
+        "神器",
+        "BOSS战",
+        "热门",
+        "跳刀",
+        "弹幕",
+        "移植图"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:56.709Z",
+      "submission": 428
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "大图",
+        "神器",
+        "BOSS战",
+        "热门",
+        "跳刀",
+        "弹幕",
+        "移植图"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:56.709Z",
+      "submission": 428
+    }
+  ],
+  "draft": null,
+  "items": []
+}
