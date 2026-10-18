@@ -1,13 +1,13 @@
 {
   "v": 1,
   "slug": "ze_tensor_of_ice_v1_1",
-  "updatedAt": "2026-10-18T15:34:18.610Z",
+  "updatedAt": "2026-10-18T17:31:18.728Z",
   "fields": {
     "difficulty": {
-      "v": "火星",
-      "by": "AntiLockwise",
-      "at": "2026-10-18T15:34:14.913Z",
-      "submission": 444
+      "v": "普通",
+      "by": "白叶",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 512
     },
     "tags": {
       "v": [
@@ -68,7 +68,11 @@
       "at": "2026-10-18T15:34:14.913Z",
       "submission": 443,
       "field": "section",
-      "title": "地图由 [Kur4yam1] 绘制"
+      "title": "地图由 [Kur4yam1] 绘制",
+      "part": 0,
+      "revisedBy": null,
+      "revisedAt": null,
+      "revision": 0
     }
   ],
   "log": [
@@ -152,6 +156,14 @@
       "by": "AntiLockwise",
       "at": "2026-10-18T15:34:14.913Z",
       "submission": 451
+    },
+    {
+      "field": "difficulty",
+      "from": "火星",
+      "to": "普通",
+      "by": "白叶",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 512
     }
   ],
   "draft": null,
