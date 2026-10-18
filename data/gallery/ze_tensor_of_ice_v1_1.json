@@ -1,11 +1,35 @@
 {
   "slug": "ze_tensor_of_ice_v1_1",
-  "count": 1,
+  "count": 5,
   "images": [
     {
       "src": "https://terr.ze-map.cn/gallery/ze_tensor_of_ice_v1_1/05-workshop.webp",
       "kind": "workshop",
       "caption": "工坊预览图（作者上传）"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tensor_of_ice_v1_1/u452.webp",
+      "kind": "user",
+      "caption": "起点",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tensor_of_ice_v1_1/u453.webp",
+      "kind": "user",
+      "caption": "道中1",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tensor_of_ice_v1_1/u454.webp",
+      "kind": "user",
+      "caption": "道中2",
+      "by": "AntiLockwise"
+    },
+    {
+      "src": "https://terr.ze-map.cn/gallery/ze_tensor_of_ice_v1_1/u455.webp",
+      "kind": "user",
+      "caption": "结尾弹幕",
+      "by": "AntiLockwise"
     }
   ]
 }
