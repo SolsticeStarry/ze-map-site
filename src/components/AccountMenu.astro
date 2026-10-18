@@ -145,6 +145,7 @@ import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
     notifyChanged,
     type AccountMe,
     type AccountNotification,
+    type AccountUser,
   } from '../lib/account-client';
   import { mountTurnstile, resetTurnstile, takeTurnstileToken, turnstileHint, turnstileToken } from '../lib/turnstile';
   /* 昵称规则的**通用**部分：本地先拦一道给出即时反馈；政治类词表只在服务端（不入库） */
@@ -202,6 +203,36 @@ import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
   let noteTotal = 0;
   let logged = false;
   let busy = false;
+
+  /*
+   * 账号状态本地缓存（2026-10-19 站长反馈「第一次进来账户要等 1 秒才显示」）。
+   *
+   * 页面是静态的，登录状态只能问 /api/me —— 首次访问要等网络 + Worker 冷启动，
+   * 这一秒里页头显示的是「未登录」。把上一次读到的用户存一份在 localStorage，
+   * 进页面**先按缓存画出来**（头像、昵称、等级立刻就有了），再在后台问一次真的：
+   *   · 真的还登录着 → 用新数据覆盖；
+   *   · 其实已退出 / 会话过期 → 画成未登录，并把缓存清掉。
+   * 只存展示用的公开字段（昵称 / 等级 / 称号），不存口令、不存会话。
+   */
+  const ME_CACHE = 'ze:me:v1';
+  function cachedUser(): AccountUser | null {
+    try {
+      const raw = localStorage.getItem(ME_CACHE);
+      if (!raw) return null;
+      const u = JSON.parse(raw) as AccountUser;
+      return u && typeof u.name === 'string' && u.name ? u : null;
+    } catch {
+      return null;
+    }
+  }
+  function saveUserCache(u: AccountUser | null): void {
+    try {
+      if (u) localStorage.setItem(ME_CACHE, JSON.stringify(u));
+      else localStorage.removeItem(ME_CACHE);
+    } catch {
+      /* 隐私模式下 localStorage 会抛错：缓存失败不影响功能 */
+    }
+  }
 
   /** 建一个元素：className + 文本（文本一律走 textContent） */
   const mk = (tag: string, cls?: string, text?: string): HTMLElement => {
@@ -444,10 +475,16 @@ import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
   }
 
   async function load() {
+    /* 先用上回缓存把头像 / 昵称画出来（几乎 0 延迟），再问服务端核对 */
+    const cached = cachedUser();
+    if (cached) paint({ ok: true, user: cached, github: { enabled: false } } as AccountMe, true);
     try {
-      paint(await meOrThrow(), true);
+      const data = await meOrThrow();
+      paint(data, true);
+      saveUserCache(data.user ?? null);
     } catch {
-      paint(null, false);
+      /* 接口没通：有缓存就继续用缓存显示（别把已登录的人画成未登录），没有才画成未登录 */
+      if (!cached) paint(null, false);
     }
     loaded = true;
     /* 登录了才去问收件箱（未登录时这一步根本不发请求） */
