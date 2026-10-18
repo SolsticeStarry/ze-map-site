@@ -9,8 +9,9 @@
  *
  * 产物：data/workshop/<workshopId>.json（已存在则跳过，可断点续跑）
  *
- *   node scripts/content/fetch-workshop.mjs              # 全部模式
+ *   node scripts/content/fetch-workshop.mjs              # 全部模式（已有缓存跳过）
  *   node scripts/content/fetch-workshop.mjs --mode 2001  # 只抓 ZE
+ *   node scripts/content/fetch-workshop.mjs --force      # 无视缓存全部重抓（刷订阅数/浏览量/更新时间用）
  *   node scripts/content/fetch-workshop.mjs --ids 3600074056,123  # 只补抓几个指定条目
  *
  * 什么时候用 --ids：工坊条目被作者换了（旧的那条删了、新的一条才是活的），
@@ -30,6 +31,8 @@ const IDS = (argv.includes('--ids') ? argv[argv.indexOf('--ids') + 1] : '')
   .map((s) => s.trim())
   .filter((s) => /^\d{6,}$/.test(s));
 const BATCH = Number((argv.includes('--batch') ? argv[argv.indexOf('--batch') + 1] : null) ?? 80);
+/* --force：缓存也重抓。订阅数/浏览量这些每天在变，而默认「有缓存就跳过」会让它们永远是第一次抓的那份。 */
+const FORCE = argv.includes('--force');
 const API = 'https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/';
 
 const catalog = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/entity/catalog.json'), 'utf8'));
@@ -38,7 +41,7 @@ const maps = IDS.length ? [] : catalog.maps.filter((m) => !MODE || m.a === MODE)
 fs.mkdirSync(OUT, { recursive: true });
 const cached = new Set(fs.readdirSync(OUT).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, '')));
 
-const todo = (IDS.length ? IDS : maps.map((m) => m.f)).filter((id) => id && !cached.has(String(id)));
+const todo = (IDS.length ? IDS : maps.map((m) => m.f)).filter((id) => id && (FORCE || !cached.has(String(id))));
 console.log(
   IDS.length
     ? `指定条目 ${IDS.length} 个 · 已缓存 ${IDS.length - todo.length} · 待抓取 ${todo.length}`

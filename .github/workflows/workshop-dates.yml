@@ -1,0 +1,80 @@
+# 工坊版本日期自动同步（2026-10-18 加）
+#
+# 干什么：每天拉一次社区那份「工坊版本记录」的 manifest，跑
+#   scripts/content/sync-workshop-dates.mjs → 更新 data/workshop-updates.json
+# 有变化才提交（提交信息沿用站长的 `update MM.DD.N` 格式），
+# 一提交 Cloudflare Workers Builds 就会重建站点，条目页的「工坊最近更新」跟着更新。
+#
+# 为什么放 GitHub Actions 而不是本地跑：这份数据每天都在变，人肉同步必然后滞后
+# （上一次就是因为三个月没刷，105 张图挂着「实体快照日期」当工坊日期）。
+#
+# ⚠️ 两个硬要求：
+#   1. 数据源地址存在 **Repository Secret `WORKSHOP_TRACK_REPO`** 里（值是 git clone 地址），
+#      不写进本文件 —— 仓库是公开的，来源不能出现在代码/日志里。没配就静默跳过，不报红。
+#   2. 只在 schedule / 手动触发时跑，不监听 push —— 否则机器人自己的提交会再触发一轮，无限循环。
+#
+# 手动跑：Actions → Workshop dates → Run workflow。
+
+name: Workshop dates
+
+on:
+  schedule:
+    # 每天 03:17 UTC = 北京时间 11:17（避开整点，给 Cloudflare 构建错峰）
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: workshop-dates
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TRACK_REPO: ${{ secrets.WORKSHOP_TRACK_REPO }}
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 准备 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 没配来源地址就跳过
+        if: env.TRACK_REPO == ''
+        run: |
+          echo "::notice::缺少 WORKSHOP_TRACK_REPO secret，本次跳过。仓库 Settings → Secrets and variables → Actions 里添加即可。"
+
+      - name: 稀疏拉取版本记录（只取 manifest.json）
+        if: env.TRACK_REPO != ''
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse "$TRACK_REPO" _mt
+          git -C _mt sparse-checkout set --no-cone '2001/*/*/manifest.json'
+          echo "manifest 数量：$(find _mt/2001 -name manifest.json | wc -l)"
+
+      - name: 同步到 data/workshop-updates.json
+        if: env.TRACK_REPO != ''
+        run: node scripts/content/sync-workshop-dates.mjs --repo _mt
+
+      - name: 有变化就提交并推送
+        if: env.TRACK_REPO != ''
+        run: |
+          set -e
+          if git diff --quiet -- data/workshop-updates.json; then
+            echo "没有变化，不提交"
+            exit 0
+          fi
+          mmdd="$(date -u +%m.%d)"
+          n=$(( $(git rev-list --count --since="$(date -u +%Y-%m-%d)T00:00:00Z" HEAD) + 1 ))
+          git config user.name "hhjjdsj"
+          git config user.email "hhjjdsj@users.noreply.github.com"
+          git add data/workshop-updates.json
+          git commit -m "update ${mmdd}.${n} 工坊版本日期自动同步"
+          git push
