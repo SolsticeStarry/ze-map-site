@@ -97,6 +97,38 @@ export function mergeEntry<T extends { id: string; data: Record<string, any> }>(
   /* 有社区补充正文就不再算「资料待补充」 */
   if (doc.notes.length > 0) data.stub = false;
 
+  /*
+   * 视频按分栏投稿（2026-10-19）：表单上是「通关视频 / 老司机经验 / 触发攻略 /
+   * 彩蛋触发 / 音乐 / 相关视频」六个词条，写回后落在社区文件的 fields.videoXxx。
+   * 这里把它们并进统一的 videoUrls，并把类别写进 videoKinds —— 地图页的分栏
+   * （src/pages/maps/[...slug].astro）只认 videoKinds，这样新投的视频直接进对应分栏，
+   * 不会再因为「没有类别」被兜底到「相关视频」。
+   */
+  const VIDEO_KIND_FIELDS: Record<string, string> = {
+    videoRun: '通关视频',
+    videoVeteran: '老司机经验',
+    videoTrigger: '触发攻略',
+    videoEaster: '彩蛋触发',
+    videoMusic: '音乐',
+    videoOther: '相关视频',
+  };
+  const allVideoUrls: string[] = Array.isArray(data.videoUrls) ? [...(data.videoUrls as string[])] : [];
+  const allVideoKinds: Record<string, string> = {
+    ...((data.videoKinds as Record<string, string> | undefined) ?? {}),
+  };
+  for (const [field, kind] of Object.entries(VIDEO_KIND_FIELDS)) {
+    const v = fieldValue(doc, field);
+    if (!Array.isArray(v)) continue;
+    for (const url of v) {
+      if (typeof url !== 'string' || !url) continue;
+      if (!allVideoUrls.includes(url)) allVideoUrls.push(url);
+      const bv = /BV[0-9A-Za-z]{10}/.exec(url)?.[0];
+      if (bv) allVideoKinds[bv] = kind;
+    }
+  }
+  if (allVideoUrls.length) data.videoUrls = allVideoUrls;
+  if (Object.keys(allVideoKinds).length) data.videoKinds = allVideoKinds;
+
   data.communityFields = applied;
   data.communityNotes = doc.notes;
   data.communityPeople = contributors(doc);

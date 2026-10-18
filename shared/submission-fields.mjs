@@ -130,6 +130,9 @@ export const FIELD_RULES = {
   videoUrls: {
     kind: 'urlList',
     label: '攻略视频',
+    /* 2026-10-19 夜：页面已经按六类分栏，投稿也改成按类投（见下面的 videoRun…videoOther）。
+       这个老字段保留只为兼容历史投稿/审核台，表单上不再出现（hidden）。 */
+    hidden: true,
     hint:
       '每行一个 **B 站**视频链接（bilibili.com/video/BV… 或 b23.tv 短链）。' +
       '会用「官方播放器嵌入」（点击才加载，本站不转存、不下载、不剪辑）。' +
@@ -143,6 +146,60 @@ export const FIELD_RULES = {
     /* 社区补的按「追加 + 去重」合并，不替换 —— 否则补 1 个会把原有的全顶掉 */
     append: true,
     /* 只收 B 站：校验时按域名过滤（见 validateValue 的 urlList 分支） */
+    onlyHosts: ['bilibili.com', 'b23.tv'],
+  },
+  /*
+   * 视频分栏投放（2026-10-19 站长要求）：地图页按「通关 / 老司机经验 / 触发攻略 /
+   * 彩蛋触发 / 音乐 / 相关」六块展示，投稿就按这六块投。
+   * 写回时写进社区文件的 fields.videoXxx；页面合并（src/lib/maps.ts）会把链接并进
+   * videoUrls、同时把类别写进 videoKinds —— 新投的视频直接进对应分栏，不再兜底到「相关视频」。
+   */
+  videoRun: {
+    kind: 'urlList',
+    label: '通关视频',
+    hint: '全流程、通关实录、指挥视角。每行一个 B 站链接（bilibili.com/video/BV… 或 b23.tv 短链）。只收公开视频；不是自己拍的请在「理由」里写原作者。',
+    max: 12,
+    append: true,
+    onlyHosts: ['bilibili.com', 'b23.tv'],
+  },
+  videoVeteran: {
+    kind: 'urlList',
+    label: '老司机经验',
+    hint: '神器 / 僵尸操作、进阶技巧、实战教学。每行一个 B 站链接。',
+    max: 12,
+    append: true,
+    onlyHosts: ['bilibili.com', 'b23.tv'],
+  },
+  videoTrigger: {
+    kind: 'urlList',
+    label: '触发攻略',
+    hint: '触发点、机关讲解。每行一个 B 站链接。',
+    max: 12,
+    append: true,
+    onlyHosts: ['bilibili.com', 'b23.tv'],
+  },
+  videoEaster: {
+    kind: 'urlList',
+    label: '彩蛋触发',
+    hint: '彩蛋、隐藏关 / 隐藏房间。通过后会同时给这张图加上「彩蛋」标签。每行一个 B 站链接。',
+    max: 12,
+    append: true,
+    onlyHosts: ['bilibili.com', 'b23.tv'],
+  },
+  videoMusic: {
+    kind: 'urlList',
+    label: '音乐',
+    hint: 'BGM / OST / 主题曲 / 歌单。每行一个 B 站链接。',
+    max: 12,
+    append: true,
+    onlyHosts: ['bilibili.com', 'b23.tv'],
+  },
+  videoOther: {
+    kind: 'urlList',
+    label: '相关视频',
+    hint: '拿不准属于哪一类的放这里（实况、整活、合集等）。每行一个 B 站链接。',
+    max: 12,
+    append: true,
     onlyHosts: ['bilibili.com', 'b23.tv'],
   },
   sources: {

@@ -822,7 +822,20 @@ const showToc = toc.length >= 3;
           else break;
         }
         const id = current?.id ?? '';
-        for (const a of links) a.classList.toggle('is-active', a.getAttribute('href') === '#' + id);
+        for (const a of links) {
+          const on = a.getAttribute('href') === '#' + id;
+          a.classList.toggle('is-active', on);
+          /* 无障碍：让读屏知道当前在哪一节 */
+          if (on) a.setAttribute('aria-current', 'true');
+          else a.removeAttribute('aria-current');
+        }
+        /*
+         * 目录很长时（手写条目十几节），高亮项会滚出目录自己的可视区 ——
+         * 用户看着目录不知道自己在哪。这里把当前项滚进目录内部的可视范围
+         * （block:'nearest' 只动最小距离，不会把整页拽走）。
+         */
+        const active = links.find((a) => a.classList.contains('is-active') && a.closest('.map-toc'));
+        active?.scrollIntoView({ block: 'nearest' });
       };
       const onScroll = () => {
         if (!raf) raf = requestAnimationFrame(paint);
