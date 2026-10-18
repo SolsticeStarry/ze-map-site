@@ -6,9 +6,16 @@
   "author": "Moltard、TaskuVaras",
   "players": "最多 64 人",
   "duration": "每关回合时限 15 分钟",
-  "tags": ["蘑菇林", "卡通风", "神器", "Boss战", "多结局", "彩蛋"],
+  "tags": [
+    "蘑菇林",
+    "卡通风",
+    "神器",
+    "Boss战",
+    "多结局",
+    "彩蛋"
+  ],
   "videoUrls": [
-    "https://www.bilibili.com/video/BV1yfj36JEQk/"
+    "https://www.bilibili.com/video/BV1hR1LYnE9Z/"
   ],
   "sources": [
     "https://gamebanana.com/mods/130991",
