@@ -1,13 +1,26 @@
 {
   "v": 1,
   "slug": "ze_obf_rampage_v2_legacy",
-  "updatedAt": "2026-09-30T11:30:14.512Z",
+  "updatedAt": "2026-10-18T04:18:37.602Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_obf_rampage_v2_legacy.webp",
       "by": "SiKi",
       "at": "2026-09-30T11:30:14.512Z",
       "submission": 48
+    },
+    "tags": {
+      "v": [
+        "热门",
+        "OBJ",
+        "长征图",
+        "单关",
+        "行动代号",
+        "CS·GO移植"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:49.041Z",
+      "submission": 411
     }
   },
   "notes": [],
@@ -19,7 +32,23 @@
       "by": "SiKi",
       "at": "2026-09-30T11:30:14.512Z",
       "submission": 48
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "热门",
+        "OBJ",
+        "长征图",
+        "单关",
+        "行动代号",
+        "CS·GO移植"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:49.041Z",
+      "submission": 411
     }
   ],
+  "draft": null,
   "items": []
 }

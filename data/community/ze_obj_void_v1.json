@@ -1,13 +1,26 @@
 {
   "v": 1,
   "slug": "ze_obj_void_v1",
-  "updatedAt": "2026-09-30T11:30:43.302Z",
+  "updatedAt": "2026-10-18T04:18:37.602Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_obj_void_v1.webp",
       "by": "SiKi",
       "at": "2026-09-30T11:30:43.302Z",
       "submission": 50
+    },
+    "tags": {
+      "v": [
+        "CSGO移植",
+        "单关卡",
+        "OBJ",
+        "长征图",
+        "传送门多",
+        "多结局"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:50.070Z",
+      "submission": 413
     }
   },
   "notes": [],
@@ -27,7 +40,23 @@
       "by": "SiKi",
       "at": "2026-09-30T11:30:43.302Z",
       "submission": 50
+    },
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "CSGO移植",
+        "单关卡",
+        "OBJ",
+        "长征图",
+        "传送门多",
+        "多结局"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:50.070Z",
+      "submission": 413
     }
   ],
+  "draft": null,
   "items": []
 }

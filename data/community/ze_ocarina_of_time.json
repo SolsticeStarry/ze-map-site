@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "slug": "ze_ocarina_of_time",
+  "updatedAt": "2026-10-18T04:18:37.602Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "多关卡",
+        "大图",
+        "长征图",
+        "剧情",
+        "游戏改编"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:51.807Z",
+      "submission": 416
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "多关卡",
+        "大图",
+        "长征图",
+        "剧情",
+        "游戏改编"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:51.807Z",
+      "submission": 416
+    }
+  ],
+  "draft": null,
+  "items": []
+}
