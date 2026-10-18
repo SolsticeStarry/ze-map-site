@@ -1,0 +1,42 @@
+{
+  "v": 1,
+  "slug": "ze_2049",
+  "updatedAt": "2026-10-18T04:18:45.231Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "神器",
+        "BOSS战",
+        "弹幕",
+        "音乐",
+        "移植图",
+        "大图",
+        "KZ"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:52.352Z",
+      "submission": 417
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "神器",
+        "BOSS战",
+        "弹幕",
+        "音乐",
+        "移植图",
+        "大图",
+        "KZ"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:52.352Z",
+      "submission": 417
+    }
+  ],
+  "draft": null,
+  "items": []
+}

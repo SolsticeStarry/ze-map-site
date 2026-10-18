@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "slug": "ze_neochrome",
+  "updatedAt": "2026-10-18T04:18:45.231Z",
+  "fields": {
+    "tags": {
+      "v": [
+        "单关卡",
+        "弹幕",
+        "跳刀",
+        "BOSS战",
+        "短流程"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:52.882Z",
+      "submission": 418
+    }
+  },
+  "notes": [],
+  "log": [
+    {
+      "field": "tags",
+      "from": null,
+      "to": [
+        "单关卡",
+        "弹幕",
+        "跳刀",
+        "BOSS战",
+        "短流程"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:52.882Z",
+      "submission": 418
+    }
+  ],
+  "draft": null,
+  "items": []
+}
