@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_forsaken_temple",
-  "updatedAt": "2026-10-14T11:43:25.087Z",
+  "updatedAt": "2026-10-18T17:31:29.385Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_forsaken_temple.webp",
@@ -27,6 +27,14 @@
       "by": "SiKi",
       "at": "2026-10-14T11:43:25.087Z",
       "submission": 313
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 4,
+      "by": "豆腐脑子加冰",
+      "at": "2026-10-18T17:31:08.673Z",
+      "submission": 522
     }
   ],
   "draft": null,
@@ -169,21 +177,43 @@
       "cd": null,
       "uses": null,
       "note": "",
-      "intro": "触发第二关封锁的门(该神器为灵魂绑定在第一个拿到的人身上)",
-      "by": "SiKi",
-      "at": "2026-10-14T11:43:25.087Z",
-      "submission": 313
+      "intro": "触发第一关封锁的门(该神器为灵魂绑定在第一个拿到的人身上)",
+      "by": "豆腐脑子加冰",
+      "at": "2026-10-18T17:31:08.673Z",
+      "submission": 522
     },
     {
       "action": "update",
       "name": "Tornado Magic",
       "cd": 91,
       "uses": null,
-      "note": "",
+      "note": "在风云社，此神器只有定身没有悬浮效果，将僵尸吹飞后会再次落地",
       "intro": "向前生成一个环形范围风，处于范围内的僵尸将吹飞并且悬浮在空中拥有定身效果",
-      "by": "SiKi",
-      "at": "2026-10-14T11:43:25.087Z",
-      "submission": 313
+      "by": "豆腐脑子加冰",
+      "at": "2026-10-18T17:31:08.673Z",
+      "submission": 522
+    },
+    {
+      "action": "update",
+      "name": "Electro Magic",
+      "cd": 90,
+      "uses": null,
+      "note": "在风云社，此神器没有减速效果（只会yek人类和僵尸）",
+      "intro": "在前方生成一个闪电力场，造成减速与伤害效果",
+      "by": "豆腐脑子加冰",
+      "at": "2026-10-18T17:31:08.673Z",
+      "submission": 522
+    },
+    {
+      "action": "update",
+      "name": "Earth Magic",
+      "cd": 90,
+      "uses": null,
+      "note": "",
+      "intro": "在面前生成一堵横向的土墙阻挡僵尸",
+      "by": "豆腐脑子加冰",
+      "at": "2026-10-18T17:31:08.673Z",
+      "submission": 522
     }
   ]
 }
