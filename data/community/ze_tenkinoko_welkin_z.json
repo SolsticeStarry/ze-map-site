@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_tenkinoko_welkin_z",
-  "updatedAt": "2026-10-14T05:14:10.288Z",
+  "updatedAt": "2026-10-18T15:34:14.913Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_tenkinoko_welkin_z.webp",
@@ -74,6 +74,8 @@
       "at": "2026-10-14T04:53:27.529Z",
       "submission": 163,
       "field": "story",
+      "title": null,
+      "part": 0,
       "revisedBy": null,
       "revisedAt": null,
       "revision": 0
@@ -184,6 +186,14 @@
       "by": "AntiLockwise",
       "at": "2026-10-14T05:14:10.288Z",
       "submission": 147
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 1,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 442
     }
   ],
   "draft": null,
@@ -244,15 +254,15 @@
       "submission": 162
     },
     {
-      "action": "add",
+      "action": "update",
       "name": "彩虹治愈术 (人类)",
       "cd": 65,
-      "uses": 99,
-      "note": "神器为CD制",
-      "intro": "释放后 以使用者为圆心 生成一块治愈区域 区域内的人类会瞬间回复至200血 同时将刷新充能神器的CD",
+      "uses": null,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一块治愈区域 区域内的人类会瞬间回复至200血 同时加速回复充能神器的CD",
       "by": "AntiLockwise",
-      "at": "2026-10-14T04:53:27.174Z",
-      "submission": 162
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 442
     },
     {
       "action": "add",
