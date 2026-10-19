@@ -34,6 +34,7 @@ const mapCount = new Set(people.flatMap((p) => p.maps.map((m: any[]) => m[0]))).
       <span><b>{people.length}</b> 位资料贡献者</span>
       <span><b>{totalCount.toLocaleString('en-US')}</b> 条贡献</span>
       <span><b>{mapCount}</b> 张图</span>
+      <span id="meta-ups" hidden></span>
       <span class="contrib-meta-hint">视频授权 UP 主会在页面打开时（联网）一起加进来</span>
     </p>
   </section>
@@ -237,8 +238,8 @@ const mapCount = new Set(people.flatMap((p) => p.maps.map((m: any[]) => m[0]))).
      * 改成**朝场地中心的弹簧引力 + 阻尼**：球在半空聚成一团、互相推挤，
      * 一直有轻微运动，看起来是「活着的」；撞墙与球间冲量照旧。
      */
-    const K = 1.7; // 向心引力（1/s²）
-    const DAMP = 0.996;
+    const K = 1.15; // 向心引力（1/s²）
+    const DAMP = 0.994;
     const REST = 0.5;
 
     function step(dt: number) {
@@ -273,7 +274,7 @@ const mapCount = new Set(people.flatMap((p) => p.maps.map((m: any[]) => m[0]))).
         }
       }
       /* 两两碰撞：位置修正 + 冲量（迭代几次让堆叠稳定） */
-      for (let it = 0; it < 4; it++) {
+      for (let it = 0; it < 6; it++) {
         for (let i = 0; i < balls.length; i++) {
           const a = balls[i];
           for (let j = i + 1; j < balls.length; j++) {
@@ -712,6 +713,11 @@ const mapCount = new Set(people.flatMap((p) => p.maps.map((m: any[]) => m[0]))).
           });
         }
         if (hint) hint.textContent = '拖动小球 · 悬停看名字 · 点击看详细贡献（已加上视频授权 UP 主）';
+        const metaUps = document.getElementById('meta-ups');
+        if (metaUps) {
+          metaUps.hidden = false;
+          metaUps.textContent = `+ ${ups.length} 位视频授权 UP 主`;
+        }
         fitRadii();
         updateHud();
         if (reduce) {
