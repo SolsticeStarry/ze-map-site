@@ -1,0 +1,1154 @@
+---
+/**
+ * 贡献者（2026-10-20 加，站长要求：导航里加一个贡献者板块）
+ *
+ * 数据：仓库里能公开的贡献（社区投稿 / 图片集署名）由
+ * scripts/content/build-contributors.mjs 在构建前汇总成 data/contributors.json；
+ * 视频授权 UP 主**不进仓库**，页面运行时另问 /api/video-thanks 加进同一堆球里。
+ *
+ * 表现：每个贡献者是一颗球，大小按贡献条数算，在有重力的场地里互相碰撞。
+ * 物理是自己写的一小段（圆-圆冲量 + 位置修正 + 墙体反弹），没引第三方引擎：
+ * 这个规模用不着 matter.js，少一个依赖少一份构建风险。
+ * 没有 JS / 系统开了「减少动态效果」时，退化成静态排版 + 下方文字名单。
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import contributorsData from '../../data/contributors.json';
+
+const people = (contributorsData as { contributors: any[] }).contributors ?? [];
+const totalCount = people.reduce((s, p) => s + p.total, 0);
+const mapCount = new Set(people.flatMap((p) => p.maps.map((m: any[]) => m[0]))).size;
+---
+
+<BaseLayout
+  title="贡献者 | ZE 地图资料站"
+  description="谁在给这份 ZE 地图资料库添砖加瓦：社区投稿、图片集供稿与视频授权的贡献者，按贡献条数排成一堆会碰撞的球。"
+>
+  <section class="contrib-hero">
+    <p class="contrib-kicker">CONTRIBUTORS</p>
+    <h1 class="contrib-title">贡献者</h1>
+    <p class="contrib-lead">
+      这张表只算仓库里能公开的部分：社区投稿的字段、正文、神器与图片集署名。
+      每位贡献者是一颗球，球越大代表他补的条目越多；点开能看到具体补了哪张图的什么。
+    </p>
+    <p class="contrib-meta">
+      <span><b>{people.length}</b> 位资料贡献者</span>
+      <span><b>{totalCount.toLocaleString('en-US')}</b> 条贡献</span>
+      <span><b>{mapCount}</b> 张图</span>
+      <span class="contrib-meta-hint">视频授权 UP 主会在页面打开时（联网）一起加进来</span>
+    </p>
+  </section>
+
+  <section class="contrib-stage" id="stage" aria-label="贡献者球池">
+    <canvas id="pit" role="img" aria-label="按贡献大小排布的球状贡献者"></canvas>
+    <div class="pit-hud" aria-hidden="true">
+      <span class="pit-live"><i></i>LIVE FIELD</span>
+      <span id="pit-nodes">— NODES</span>
+      <span class="pit-legend">SIZE = 贡献条数</span>
+    </div>
+    <label class="pit-search">
+      <span class="pit-search-icon" aria-hidden="true">⌕</span>
+      <input id="pit-q" type="search" placeholder="找贡献者，回车选中" autocomplete="off" spellcheck="false" />
+      <span class="pit-search-hint" id="pit-q-hint" aria-live="polite"></span>
+    </label>
+    <div class="pit-tip" id="pit-tip" hidden></div>
+    <noscript><p class="pit-noscript">这个区块需要 JavaScript 才能动起来；下面的文字名单是完整内容。</p></noscript>
+
+    <aside class="pit-card" id="pit-card" hidden aria-live="polite">
+      <button class="pit-card-x" id="pit-card-x" type="button" aria-label="关闭">✕</button>
+      <div class="pit-card-inner">
+        <p class="pit-card-kind" id="pit-card-kind"></p>
+        <h2 class="pit-card-name" id="pit-card-name"></h2>
+        <p class="pit-card-total" id="pit-card-total"></p>
+        <div class="pit-kinds" id="pit-kinds"></div>
+        <ul class="pit-maps" id="pit-maps"></ul>
+        <a class="pit-card-link" id="pit-card-link" target="_blank" rel="noopener" hidden>在 B 站打开主页 ↗</a>
+      </div>
+    </aside>
+  </section>
+
+  <p class="contrib-tip" id="pit-hint">拖动小球 · 悬停看名字 · 点击查看详细贡献</p>
+
+  <section class="contrib-list">
+    <details>
+      <summary>看文字名单（{people.length} 位，按贡献条数排序）</summary>
+      <table>
+        <thead>
+          <tr><th>贡献者</th><th>贡献条数</th><th>涉及地图</th><th>主要贡献</th><th>最近一次</th></tr>
+        </thead>
+        <tbody>
+          {people.map((p) => (
+            <tr>
+              <td>{p.name}</td>
+              <td class="num">{p.total}</td>
+              <td class="num">{p.maps.length}</td>
+              <td>{Object.entries(p.kinds).map(([k, n]) => `${k} ${n}`).join(' · ')}</td>
+              <td class="num">{p.lastAt ? String(p.lastAt).slice(0, 10) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+  </section>
+
+  <script type="application/json" id="contrib-data" set:html={JSON.stringify(people)} />
+
+  <script>
+    type Person = {
+      name: string;
+      total: number;
+      kinds: Record<string, number>;
+      maps: [string, string, number][];
+      lastAt?: string;
+      /** 视频授权 UP 主：mid / 收录视频数 / 地图 slug 列表 */
+      up?: { mid: string; videos: number; maps: string[] };
+    };
+
+    const raw = document.getElementById('contrib-data')?.textContent ?? '[]';
+    const people: Person[] = JSON.parse(raw);
+    const canvas = document.getElementById('pit') as HTMLCanvasElement | null;
+    const stage = document.getElementById('stage');
+    const tip = document.getElementById('pit-tip');
+    const hint = document.getElementById('pit-hint');
+    const card = document.getElementById('pit-card');
+    if (!canvas || !stage) throw new Error('贡献者球池缺节点');
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('canvas 2d 不可用');
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const PALETTE = ['#e5484d', '#46c2b6', '#f2b34c', '#8ea2f0', '#d98cf0', '#8ad06a'];
+    const HASH = (s: string) => {
+      let h = 2166136261;
+      for (const ch of s) {
+        h ^= ch.codePointAt(0) ?? 0;
+        h = Math.imul(h, 16777619);
+      }
+      return Math.abs(h);
+    };
+
+    type Ball = Person & {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      r: number;
+      /** 按贡献条数算出来的基准半径；真实半径 = baseR × 场地适配系数 */
+      baseR: number;
+      m: number;
+      color: string;
+      hueIndex: number;
+      up?: { mid: string; videos: number; maps: string[] };
+    };
+
+    const balls: Ball[] = [];
+    const radiusOf = (total: number) => Math.min(62, Math.max(18, 16 + Math.sqrt(Math.max(0, total)) * 2.6));
+
+    let W = 800;
+    let H = 520;
+    let dpr = 1;
+
+    function layoutStatic() {
+      /* 静态排版：按半径从大到小放进网格，避免叠在一起 */
+      const gap = 10;
+      let x = gap;
+      let y = gap;
+      let rowH = 0;
+      for (const b of [...balls].sort((p, q) => q.r - p.r)) {
+        if (x + b.r * 2 > W - gap) {
+          x = gap;
+          y += rowH + gap;
+          rowH = 0;
+        }
+        b.x = x + b.r;
+        b.y = y + b.r;
+        b.vx = 0;
+        b.vy = 0;
+        x += b.r * 2 + gap;
+        rowH = Math.max(rowH, b.r * 2);
+      }
+    }
+
+    function addBall(p: Person) {
+      /* 颜色按加入顺序轮流取，避免哈希撞色撞出一堆同色球（第一版有 3 颗紫球挨在一起） */
+      const idx = balls.length % PALETTE.length;
+      const ang = Math.random() * Math.PI * 2;
+      const rad = Math.min(W, H) * (0.06 + Math.random() * 0.16);
+      const b: Ball = {
+        ...p,
+        x: W / 2 + Math.cos(ang) * rad,
+        y: H / 2 + Math.sin(ang) * rad,
+        vx: (Math.random() - 0.5) * 220,
+        vy: (Math.random() - 0.5) * 160,
+        r: radiusOf(p.total),
+        baseR: radiusOf(p.total),
+        m: 0,
+        color: PALETTE[idx],
+        hueIndex: idx,
+      };
+      b.m = b.r * b.r;
+      balls.push(b);
+    }
+
+    /*
+     * 场地适配：球的大小仍然按贡献比例，但整体缩放到「大约占满场地 40% 面积」，
+     * 否则 11 颗球挤在正中一小团，周围全是空的（第一版就是这个毛病）。
+     * 从 baseR 重算，resize 多次也不会越缩越大。
+     */
+    function fitRadii() {
+      if (!balls.length) return;
+      let sum = 0;
+      for (const b of balls) sum += Math.PI * b.baseR * b.baseR;
+      const target = W * H * 0.34;
+      const k = Math.min(2.6, Math.max(0.9, Math.sqrt(target / Math.max(1, sum))));
+      /* 半径还要受场地尺寸限制：手机上场地窄，球太大会被边框切掉 */
+      const cap = Math.min(120, W * 0.2, H * 0.22);
+      for (const b of balls) {
+        b.r = Math.min(cap, Math.max(14, b.baseR * k));
+        b.m = b.r * b.r;
+      }
+    }
+
+    for (const p of people) addBall(p);
+    if (!balls.length) hint && (hint.textContent = '暂时还没有贡献者记录。');
+
+    /* ---------- 尺寸 ---------- */
+    function resize() {
+      const rect = stage!.getBoundingClientRect();
+      W = Math.max(320, Math.round(rect.width));
+      H = Math.max(320, Math.round(rect.height));
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas!.width = Math.round(W * dpr);
+      canvas!.height = Math.round(H * dpr);
+      canvas!.style.width = W + 'px';
+      canvas!.style.height = H + 'px';
+      fitRadii();
+      for (const b of balls) {
+        b.x = Math.min(W - b.r, Math.max(b.r, b.x));
+        b.y = Math.min(H - b.r, Math.max(b.r, b.y));
+      }
+      if (reduce) {
+        layoutStatic();
+        draw();
+      }
+    }
+
+    /* ---------- 物理 ----------
+     * 不用「往下掉」的重力：球会全部堆在底边，上面空一大片。
+     * 改成**朝场地中心的弹簧引力 + 阻尼**：球在半空聚成一团、互相推挤，
+     * 一直有轻微运动，看起来是「活着的」；撞墙与球间冲量照旧。
+     */
+    const K = 1.7; // 向心引力（1/s²）
+    const DAMP = 0.996;
+    const REST = 0.5;
+
+    function step(dt: number) {
+      const cx = W / 2;
+      const cy = H / 2;
+      for (const b of balls) {
+        if (b === dragging) continue;
+        b.vx += (cx - b.x) * K * dt;
+        b.vy += (cy - b.y) * K * dt;
+        b.vx *= DAMP;
+        b.vy *= DAMP;
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+      }
+      /* 墙体 */
+      for (const b of balls) {
+        if (b === dragging) continue;
+        if (b.x - b.r < 0) {
+          b.x = b.r;
+          b.vx = Math.abs(b.vx) * REST;
+        } else if (b.x + b.r > W) {
+          b.x = W - b.r;
+          b.vx = -Math.abs(b.vx) * REST;
+        }
+        if (b.y - b.r < 0) {
+          b.y = b.r;
+          b.vy = Math.abs(b.vy) * REST;
+        } else if (b.y + b.r > H) {
+          b.y = H - b.r;
+          b.vy = -Math.abs(b.vy) * REST;
+          b.vx *= 0.92;
+        }
+      }
+      /* 两两碰撞：位置修正 + 冲量（迭代几次让堆叠稳定） */
+      for (let it = 0; it < 4; it++) {
+        for (let i = 0; i < balls.length; i++) {
+          const a = balls[i];
+          for (let j = i + 1; j < balls.length; j++) {
+            const b = balls[j];
+            let dx = b.x - a.x;
+            let dy = b.y - a.y;
+            let d2 = dx * dx + dy * dy;
+            const min = a.r + b.r;
+            if (d2 >= min * min) continue;
+            let d = Math.sqrt(d2) || 0.001;
+            let nx = dx / d;
+            let ny = dy / d;
+            const overlap = min - d;
+            const ma = a === dragging ? Infinity : a.m;
+            const mb = b === dragging ? Infinity : b.m;
+            const wa = ma === Infinity ? 0 : (mb === Infinity ? 1 : mb / (ma + mb));
+            const wb = mb === Infinity ? 0 : (ma === Infinity ? 1 : ma / (ma + mb));
+            a.x -= nx * overlap * wa;
+            a.y -= ny * overlap * wa;
+            b.x += nx * overlap * wb;
+            b.y += ny * overlap * wb;
+            if (a === dragging || b === dragging) continue;
+            const rvx = b.vx - a.vx;
+            const rvy = b.vy - a.vy;
+            const vn = rvx * nx + rvy * ny;
+            if (vn > 0) continue;
+            const e = 0.15;
+            const invA = 1 / a.m;
+            const invB = 1 / b.m;
+            const jimp = (-(1 + e) * vn) / (invA + invB);
+            a.vx -= jimp * nx * invA;
+            a.vy -= jimp * ny * invA;
+            b.vx += jimp * nx * invB;
+            b.vy += jimp * ny * invB;
+          }
+        }
+      }
+      /* 待在场地里 */
+      for (const b of balls) {
+        b.x = Math.min(W - b.r, Math.max(b.r, b.x));
+        b.y = Math.min(H - b.r, Math.max(b.r, b.y));
+      }
+    }
+
+    /* ---------- 绘制 ---------- */
+    /* 背景里慢慢漂的粒子：给「场地」一点空灵感，数量很少，不吃性能 */
+    const dust = Array.from({ length: 46 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      r: 0.5 + Math.random() * 1.5,
+      a: 0.1 + Math.random() * 0.28,
+      vx: (Math.random() - 0.5) * 0.012,
+      vy: (Math.random() - 0.5) * 0.012,
+      teal: Math.random() < 0.6,
+    }));
+    function moveDust(dt: number) {
+      for (const p of dust) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        if (p.x < 0) p.x += 1;
+        if (p.x > 1) p.x -= 1;
+        if (p.y < 0) p.y += 1;
+        if (p.y > 1) p.y -= 1;
+      }
+    }
+
+    let query = '';
+
+    function draw() {
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx!.clearRect(0, 0, W, H);
+
+      /* 底色：中心一圈很淡的青 */
+      const bg = ctx!.createRadialGradient(W / 2, H / 2, 20, W / 2, H / 2, Math.max(W, H) * 0.72);
+      bg.addColorStop(0, 'rgba(70,194,182,0.10)');
+      bg.addColorStop(0.5, 'rgba(20,24,30,0)');
+      bg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx!.fillStyle = bg;
+      ctx!.fillRect(0, 0, W, H);
+
+      /* 同心环：像个雷达罩，只做背景 */
+      const rr = Math.min(W, H);
+      for (const [k, alpha] of [
+        [0.26, 0.1],
+        [0.36, 0.07],
+        [0.46, 0.045],
+      ] as const) {
+        ctx!.beginPath();
+        ctx!.arc(W / 2, H / 2, rr * k, 0, Math.PI * 2);
+        ctx!.strokeStyle = `rgba(120,220,210,${alpha})`;
+        ctx!.lineWidth = 1;
+        ctx!.setLineDash([2, 7]);
+        ctx!.stroke();
+        ctx!.setLineDash([]);
+      }
+
+      /* 尘埃 */
+      for (const p of dust) {
+        ctx!.beginPath();
+        ctx!.arc(p.x * W, p.y * H, p.r, 0, Math.PI * 2);
+        ctx!.fillStyle = p.teal ? `rgba(70,194,182,${p.a})` : `rgba(229,72,77,${p.a * 0.8})`;
+        ctx!.fill();
+      }
+
+      /* 星座连线：靠近的球之间一根极淡的线 */
+      for (let i = 0; i < balls.length; i++) {
+        for (let j = i + 1; j < balls.length; j++) {
+          const a = balls[i];
+          const b = balls[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const d = Math.hypot(dx, dy);
+          const limit = (a.r + b.r) * 2.4;
+          if (d > limit) continue;
+          const alpha = (1 - d / limit) * 0.16;
+          ctx!.beginPath();
+          ctx!.moveTo(a.x, a.y);
+          ctx!.lineTo(b.x, b.y);
+          ctx!.strokeStyle = `rgba(120,220,210,${alpha})`;
+          ctx!.lineWidth = 1;
+          ctx!.stroke();
+        }
+      }
+
+      for (const b of balls) {
+        const hovered = b === hoverBall;
+        const picked = b === pickedBall;
+        const matched = !query || b.name.toLowerCase().includes(query);
+        const dim = (pickedBall && !picked) || (!matched && query !== '');
+        const r = b.r * (hovered ? 1.06 : 1);
+
+        ctx!.save();
+        if (dim) ctx!.globalAlpha = 0.22;
+        ctx!.shadowColor = hexA(b.color, 0.45);
+        ctx!.shadowBlur = hovered || picked ? 20 : 8;
+
+        ctx!.beginPath();
+        ctx!.arc(b.x, b.y, r, 0, Math.PI * 2);
+        const g = ctx!.createRadialGradient(b.x - r * 0.3, b.y - r * 0.36, r * 0.04, b.x, b.y, r * 0.99);
+        g.addColorStop(0, hexA(b.color, 1));
+        g.addColorStop(0.55, hexA(b.color, 0.82));
+        g.addColorStop(1, hexA(b.color, 0.48));
+        ctx!.fillStyle = g;
+        ctx!.fill();
+        ctx!.shadowBlur = 0;
+
+        /* 一点高光（很小一块，别做成灰斑） */
+        ctx!.beginPath();
+        ctx!.ellipse(b.x - r * 0.32, b.y - r * 0.36, r * 0.22, r * 0.14, -0.5, 0, Math.PI * 2);
+        ctx!.fillStyle = 'rgba(255,255,255,0.14)';
+        ctx!.fill();
+
+        /* 外圈细描边 + 顶部高光弧 */
+        ctx!.lineWidth = 1;
+        ctx!.strokeStyle = hovered || picked ? 'rgba(255,255,255,0.8)' : hexA('#ffffff', 0.2);
+        ctx!.stroke();
+        ctx!.beginPath();
+        ctx!.arc(b.x, b.y, r * 0.94, Math.PI * 1.08, Math.PI * 1.62);
+        ctx!.strokeStyle = 'rgba(255,255,255,0.28)';
+        ctx!.lineWidth = 1.4;
+        ctx!.stroke();
+
+        /* 球上写名字 + 条数（加一层深色投影：浅色球上白字也读得清） */
+        if (r >= 30) {
+          const fs = Math.min(14, Math.max(10, r * 0.28));
+          ctx!.shadowColor = 'rgba(0,0,0,0.55)';
+          ctx!.shadowBlur = 6;
+          ctx!.fillStyle = 'rgba(255,255,255,0.97)';
+          ctx!.font = `600 ${fs}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+          ctx!.textAlign = 'center';
+          ctx!.textBaseline = 'middle';
+          const maxChars = Math.max(3, Math.floor((r * 1.55) / (fs * 0.62)));
+          const label = b.name.length > maxChars ? b.name.slice(0, maxChars) + '…' : b.name;
+          const showCount = r >= 46;
+          ctx!.fillText(label, b.x, b.y - (showCount ? fs * 0.55 : 0));
+          if (showCount) {
+            ctx!.font = `500 ${Math.max(9, fs * 0.72)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+            ctx!.fillStyle = 'rgba(255,255,255,0.72)';
+            ctx!.fillText(`${b.total}`, b.x, b.y + fs * 0.75);
+          }
+          ctx!.shadowBlur = 0;
+        }
+        ctx!.restore();
+      }
+    }
+
+    const hexA = (hex: string, a: number) => {
+      const h = hex.replace('#', '');
+      const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+      return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+    };
+
+    /* ---------- 交互 ---------- */
+    let hoverBall: Ball | null = null;
+    let pickedBall: Ball | null = null;
+    let dragging: Ball | null = null;
+    let dragMoved = 0;
+    let downAt = 0;
+    let pointer = { x: 0, y: 0 };
+
+    function hitTest(x: number, y: number): Ball | null {
+      for (let i = balls.length - 1; i >= 0; i--) {
+        const b = balls[i];
+        const dx = x - b.x;
+        const dy = y - b.y;
+        if (dx * dx + dy * dy <= b.r * b.r) return b;
+      }
+      return null;
+    }
+
+    function pos(e: PointerEvent) {
+      const rect = canvas!.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function showTip(b: Ball | null) {
+      if (!tip) return;
+      if (!b) {
+        tip.hidden = true;
+        return;
+      }
+      tip.hidden = false;
+      tip.textContent = `${b.name} · ${b.total} 条`;
+      tip.style.left = Math.min(W - 140, Math.max(8, pointer.x + 14)) + 'px';
+      tip.style.top = Math.min(H - 34, Math.max(8, pointer.y + 14)) + 'px';
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      const p = pos(e);
+      const b = hitTest(p.x, p.y);
+      if (!b) {
+        closeCard();
+        return;
+      }
+      dragging = b;
+      dragMoved = 0;
+      downAt = performance.now();
+      canvas.setPointerCapture(e.pointerId);
+      canvas.style.cursor = 'grabbing';
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      const p = pos(e);
+      pointer = p;
+      if (dragging) {
+        dragMoved += Math.hypot(p.x - dragging.x, p.y - dragging.y);
+        const nx = Math.min(W - dragging.r, Math.max(dragging.r, p.x));
+        const ny = Math.min(H - dragging.r, Math.max(dragging.r, p.y));
+        dragging.vx = (nx - dragging.x) * 18;
+        dragging.vy = (ny - dragging.y) * 18;
+        dragging.x = nx;
+        dragging.y = ny;
+        return;
+      }
+      const b = hitTest(p.x, p.y);
+      hoverBall = b;
+      canvas.style.cursor = b ? 'pointer' : 'default';
+      showTip(b);
+    });
+
+    canvas.addEventListener('pointerup', (e) => {
+      if (!dragging) return;
+      const moved = dragMoved;
+      const held = performance.now() - downAt;
+      const b = dragging;
+      dragging = null;
+      canvas.style.cursor = 'pointer';
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {}
+      /* 拖得很短 = 点击：打开详情 */
+      if (moved < 6 && held < 500) select(b!);
+    });
+
+    canvas.addEventListener('pointerleave', () => {
+      hoverBall = null;
+      showTip(null);
+    });
+
+    function select(b: Ball) {
+      pickedBall = b;
+      renderCard(b);
+      if (!reduce) draw();
+    }
+
+    function closeCard() {
+      pickedBall = null;
+      if (card) card.hidden = true;
+      if (!reduce) draw();
+    }
+
+    /* ---------- 详情卡 ---------- */
+    const cardName = document.getElementById('pit-card-name');
+    const cardKind = document.getElementById('pit-card-kind');
+    const cardTotal = document.getElementById('pit-card-total');
+    const cardKinds = document.getElementById('pit-kinds');
+    const cardMaps = document.getElementById('pit-maps');
+    const cardLink = document.getElementById('pit-card-link') as HTMLAnchorElement | null;
+
+    function renderCard(b: Ball) {
+      if (!card) return;
+      card.hidden = false;
+      if (cardKind) cardKind.textContent = b.up ? '视频授权贡献者' : '资料贡献者';
+      if (cardName) cardName.textContent = b.name;
+      if (cardTotal) {
+        cardTotal.textContent = b.up
+          ? `本站收录了他 ${b.up.videos} 条视频，分布在 ${b.up.maps.length} 张图上`
+          : `共 ${b.total} 条贡献，涉及 ${b.maps.length} 张图`;
+      }
+      if (cardKinds) {
+        cardKinds.textContent = '';
+        for (const [k, n] of Object.entries(b.kinds)) {
+          const row = document.createElement('div');
+          row.className = 'pit-kind';
+          const label = document.createElement('span');
+          label.textContent = k;
+          const bar = document.createElement('i');
+          bar.style.width = Math.max(8, Math.round((n / Math.max(1, b.total)) * 100)) + '%';
+          const num = document.createElement('b');
+          num.textContent = String(n);
+          row.append(label, bar, num);
+          cardKinds.append(row);
+        }
+      }
+      if (cardMaps) {
+        cardMaps.textContent = '';
+        const list: [string, string, number][] = b.up
+          ? b.up.maps.map((slug) => [slug, '', 0])
+          : b.maps;
+        for (const [slug, title] of list.slice(0, 8)) {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = `/maps/${slug}/`;
+          a.textContent = title || slug;
+          li.append(a);
+          cardMaps!.append(li);
+        }
+        if (list.length > 8) {
+          const li = document.createElement('li');
+          li.className = 'pit-more';
+          li.textContent = `还有 ${list.length - 8} 张…`;
+          cardMaps.append(li);
+        }
+      }
+      if (cardLink) {
+        if (b.up?.mid) {
+          cardLink.hidden = false;
+          cardLink.href = `https://space.bilibili.com/${encodeURIComponent(b.up.mid)}`;
+        } else {
+          cardLink.hidden = true;
+          cardLink.removeAttribute('href');
+        }
+      }
+    }
+
+    document.getElementById('pit-card-x')?.addEventListener('click', closeCard);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeCard();
+    });
+
+    /* ---------- 搜索：按名字高亮，回车选中 ---------- */
+    const qInput = document.getElementById('pit-q') as HTMLInputElement | null;
+    const qHint = document.getElementById('pit-q-hint');
+    const nodesEl = document.getElementById('pit-nodes');
+    function updateHud() {
+      if (nodesEl) nodesEl.textContent = `${balls.length} NODES`;
+    }
+    updateHud();
+    if (qInput) {
+      if (window.matchMedia('(max-width: 640px)').matches) qInput.placeholder = '找贡献者';
+      qInput.addEventListener('input', () => {
+        query = qInput.value.trim().toLowerCase();
+        const n = query ? balls.filter((b) => b.name.toLowerCase().includes(query)).length : 0;
+        if (qHint) qHint.textContent = query ? `${n} 个匹配` : '';
+        if (!reduce) draw();
+      });
+      qInput.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const hit = balls.find((b) => b.name.toLowerCase().includes(query));
+        if (hit) select(hit);
+      });
+      qInput.addEventListener('blur', () => {
+        if (!qInput.value.trim()) {
+          query = '';
+          if (qHint) qHint.textContent = '';
+          if (!reduce) draw();
+        }
+      });
+    }
+
+    /* ---------- 主循环 ---------- */
+    let last = performance.now();
+    let acc = 0;
+    function frame(now: number) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (!document.hidden && !reduce) {
+        acc += dt;
+        moveDust(dt);
+        const fixed = 1 / 120;
+        let n = 0;
+        while (acc >= fixed && n < 6) {
+          step(fixed);
+          acc -= fixed;
+          n++;
+        }
+        draw();
+      }
+      requestAnimationFrame(frame);
+    }
+
+    resize();
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resize).observe(stage);
+    window.addEventListener('resize', resize);
+    if (reduce) {
+      layoutStatic();
+      draw();
+    } else {
+      requestAnimationFrame(frame);
+    }
+
+    /* ---------- 视频授权 UP 主（不在仓库里，运行时问接口） ---------- */
+    fetch('/api/video-thanks', { headers: { accept: 'application/json' } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const ups: { u: string; m: string; videos: number; maps: string[] }[] = j?.ups ?? [];
+        if (!ups.length) return;
+        for (const u of ups) {
+          if (balls.some((b) => b.name === u.u && b.up)) continue;
+          addBall({
+            name: u.u,
+            total: u.videos,
+            kinds: { 视频: u.videos },
+            maps: [],
+            up: { mid: String(u.m ?? ''), videos: u.videos, maps: u.maps ?? [] },
+          });
+        }
+        if (hint) hint.textContent = '拖动小球 · 悬停看名字 · 点击看详细贡献（已加上视频授权 UP 主）';
+        fitRadii();
+        updateHud();
+        if (reduce) {
+          layoutStatic();
+          draw();
+        }
+      })
+      .catch(() => {
+        /* 本地预览 / 接口不可用时保持只有资料贡献者，不影响页面 */
+      });
+  </script>
+
+  <style>
+    .contrib-hero {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 42px 20px 18px;
+    }
+    .contrib-kicker {
+      margin: 0 0 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11.5px;
+      letter-spacing: 0.22em;
+      color: var(--accent-2);
+    }
+    .contrib-title {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 4vw, 44px);
+      line-height: 1.1;
+    }
+    .contrib-lead {
+      max-width: 760px;
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 14.5px;
+      line-height: 1.8;
+    }
+    .contrib-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 18px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .contrib-meta b {
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 18px;
+    }
+    .contrib-meta-hint {
+      font-size: 12.5px;
+      opacity: 0.8;
+    }
+
+    .contrib-stage {
+      position: relative;
+      max-width: 1100px;
+      margin: 8px auto 0;
+      height: clamp(420px, 62vh, 640px);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      /*
+       * 这块「物理场」**始终保持深色**，不跟亮色主题走：
+       * 亮底上粉彩球 + 白字会糊成一片（站长 2026-10-20 反馈「白色不显眼、放上去看不见字」）。
+       * 深色仪器面板本身也是这个页面的视觉主体，亮色主题下留一块深色区域反而更有层次。
+       */
+      background:
+        radial-gradient(120% 90% at 50% 0%, rgba(70, 194, 182, 0.1), transparent 60%),
+        #0a0e13;
+      overflow: hidden;
+      touch-action: none;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 24px 60px rgba(0, 0, 0, 0.35);
+    }
+    /* 仪器面板的网格底纹：只在中段显影，不抢球 */
+    .contrib-stage::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(120, 220, 210, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(120, 220, 210, 0.05) 1px, transparent 1px);
+      background-size: 46px 46px;
+      mask-image: radial-gradient(90% 80% at 50% 45%, #000 20%, transparent 78%);
+    }
+    .contrib-stage::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background: radial-gradient(100% 70% at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.3));
+    }
+    .pit-hud {
+      position: absolute;
+      z-index: 2;
+      top: 13px;
+      left: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.14em;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+    .pit-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: #7ee0d4;
+    }
+    .pit-live i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #46c2b6;
+      box-shadow: 0 0 10px #46c2b6;
+      animation: pit-pulse 2.6s ease-in-out infinite;
+    }
+    @keyframes pit-pulse {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.3;
+      }
+    }
+    .pit-search {
+      position: absolute;
+      z-index: 6;
+      top: 10px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 9px;
+      background: rgba(8, 11, 15, 0.62);
+      backdrop-filter: blur(6px);
+      transition: border-color 0.15s;
+    }
+    .pit-search:focus-within {
+      border-color: var(--accent-2);
+    }
+    .pit-search-icon {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1;
+    }
+    .pit-search input {
+      width: 148px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #e9eef5;
+      font-size: 12px;
+      font-family: inherit;
+    }
+    .pit-search input::placeholder {
+      color: rgba(233, 238, 245, 0.45);
+    }
+    .pit-search-hint {
+      font-size: 11px;
+      color: var(--accent-2);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: nowrap;
+    }
+    #pit {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: default;
+    }
+    .contrib-tip {
+      max-width: 1100px;
+      margin: 10px auto 0;
+      padding: 0 20px;
+      color: var(--muted);
+      font-size: 12.5px;
+      letter-spacing: 0.02em;
+    }
+    .pit-noscript {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 30px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .pit-tip {
+      position: absolute;
+      z-index: 7;
+      padding: 5px 10px;
+      border-radius: 7px;
+      background: rgba(6, 9, 13, 0.94);
+      border: 1px solid rgba(120, 220, 210, 0.28);
+      color: #e9eef5;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+    }
+    .pit-card {
+      position: absolute;
+      z-index: 4;
+      right: 12px;
+      top: 56px;
+      width: min(320px, calc(100% - 32px));
+      max-height: calc(100% - 96px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 16px 18px 18px;
+      border-radius: 14px;
+      border: 1px solid var(--border-2);
+      background: rgba(12, 15, 20, 0.92);
+      color: #e9eef5;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(10px);
+    }
+    /* 四角细线：仪器面板的感觉，不抢内容 */
+    .pit-card::before,
+    .pit-card::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgba(70, 194, 182, 0.6);
+      pointer-events: none;
+    }
+    .pit-card::before {
+      left: -1px;
+      top: -1px;
+      border-right: 0;
+      border-bottom: 0;
+      border-top-left-radius: 14px;
+    }
+    .pit-card::after {
+      right: -1px;
+      bottom: -1px;
+      border-left: 0;
+      border-top: 0;
+      border-bottom-right-radius: 14px;
+    }
+    .pit-card-x {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 26px;
+      height: 26px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: rgba(233, 238, 245, 0.6);
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .pit-card-x:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+    .pit-card-inner {
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 2px;
+      scrollbar-width: thin;
+    }
+    .pit-card-kind {
+      margin: 0 0 2px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-2);
+    }
+    .pit-card-name {
+      margin: 0 0 4px;
+      font-size: 20px;
+    }
+    .pit-card-total {
+      margin: 0 0 12px;
+      color: rgba(233, 238, 245, 0.6);
+      font-size: 12.5px;
+      line-height: 1.7;
+    }
+    .pit-kinds {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    /* ⚠️ 下面几段是**运行时创建**的节点（详情卡里的行、地图链接），
+       Astro 的 scoped 样式只作用于模板里写出来的元素，所以这里必须用 :global()。 */
+    :global(.pit-kind) {
+      display: grid;
+      grid-template-columns: 74px minmax(0, 1fr) 30px;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: rgba(233, 238, 245, 0.62);
+    }
+    :global(.pit-kind > span:first-child) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    :global(.pit-kind i) {
+      display: block;
+      height: 5px;
+      min-width: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+    :global(.pit-kind b) {
+      color: #fff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 600;
+      text-align: right;
+    }
+    :global(.pit-maps) {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 4px;
+      font-size: 12.5px;
+    }
+    :global(.pit-maps a) {
+      color: #7ee0d4;
+      text-decoration: none;
+    }
+    :global(.pit-maps a:hover) {
+      text-decoration: underline;
+    }
+    :global(.pit-more) {
+      color: rgba(233, 238, 245, 0.55);
+      font-size: 12px;
+    }
+    .pit-card-link {
+      display: inline-block;
+      margin-top: 12px;
+      color: #7ee0d4;
+      font-size: 12.5px;
+    }
+
+    .contrib-list {
+      max-width: 1100px;
+      margin: 22px auto 60px;
+      padding: 0 20px;
+    }
+    .contrib-list details {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      background: var(--panel);
+    }
+    .contrib-list summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .contrib-list table {
+      width: 100%;
+      margin-top: 12px;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .contrib-list th,
+    .contrib-list td {
+      padding: 7px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+    .contrib-list th {
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 12px;
+    }
+    .contrib-list .num {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-align: right;
+    }
+
+    @media (max-width: 640px) {
+      .contrib-stage {
+        height: clamp(380px, 58vh, 520px);
+        border-radius: 14px;
+        margin: 8px 12px 0;
+      }
+      .contrib-hero {
+        padding: 28px 16px 12px;
+      }
+      .pit-card {
+        left: 12px;
+        right: 12px;
+        top: auto;
+        bottom: 12px;
+        width: auto;
+        max-height: 62%;
+      }
+      .contrib-tip {
+        padding: 0 12px;
+        font-size: 12px;
+      }
+      .pit-hud {
+        gap: 10px;
+        font-size: 9.5px;
+        letter-spacing: 0.1em;
+      }
+      .pit-hud .pit-legend {
+        display: none;
+      }
+      .pit-search {
+        top: 8px;
+        right: 8px;
+        padding: 4px 8px;
+      }
+      .pit-search input {
+        width: 96px;
+        font-size: 11.5px;
+      }
+      .pit-search-hint {
+        display: none;
+      }
+    }
+  </style>
+</BaseLayout>
