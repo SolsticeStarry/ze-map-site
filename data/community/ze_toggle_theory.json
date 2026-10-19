@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_toggle_theory",
-  "updatedAt": "2026-10-18T17:31:29.385Z",
+  "updatedAt": "2026-10-19T01:06:29.816Z",
   "fields": {
     "cover": {
       "v": "/images/covers/custom/ze_toggle_theory.webp",
@@ -69,6 +69,14 @@
       "by": "时轩",
       "at": "2026-10-18T17:31:08.119Z",
       "submission": 521
+    },
+    {
+      "field": "items",
+      "from": null,
+      "to": 2,
+      "by": "时轩",
+      "at": "2026-10-19T01:06:29.816Z",
+      "submission": 523
     }
   ],
   "draft": null,
@@ -110,23 +118,23 @@
       "action": "update",
       "name": "Zombie Flipswitch",
       "cd": 10,
-      "uses": null,
+      "uses": 3,
       "note": "",
       "intro": "于第一关中操控红色板子升降收缩",
       "by": "时轩",
-      "at": "2026-10-18T17:31:08.119Z",
-      "submission": 521
+      "at": "2026-10-19T01:06:29.816Z",
+      "submission": 523
     },
     {
       "action": "update",
       "name": "Zombie Colorswitch",
       "cd": 10,
-      "uses": null,
+      "uses": 3,
       "note": "",
       "intro": "于第三关中改变人类玩家所属颜色",
       "by": "时轩",
-      "at": "2026-10-18T17:31:08.119Z",
-      "submission": 521
+      "at": "2026-10-19T01:06:29.816Z",
+      "submission": 523
     }
   ]
 }
