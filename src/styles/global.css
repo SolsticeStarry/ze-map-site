@@ -4892,23 +4892,8 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 
 /* ---------- /inbox/：邮箱（2026-10-15，站长的要求：「单开一个邮箱标签页，跟正常邮箱一样」） ----------
    三栏：左文件夹 + 个人信息 / 中列表 / 右正文。窄屏叠成一列，点开一条就只看正文（← 回到列表）。
-   页头导航那个「邮箱」标签上的红点也在这里（.nav-dot）。 */
+   页头导航里的「邮箱」项 2026-10-19 撤掉（和右上角铃铛重复），未读数只体现在铃铛红点上。 */
 .main-nav a { display: inline-flex; align-items: center; gap: 6px; }
-.nav-dot {
-  display: inline-grid;
-  place-items: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #ef4444;
-  color: #fff;
-  font-size: 10.5px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0;
-}
-.nav-dot[hidden] { display: none; }
 
 .mb-guest { max-width: 560px; margin: 26px auto 0; text-align: center; }
 .mb-guest .acc-actions { justify-content: center; }

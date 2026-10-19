@@ -271,12 +271,7 @@ import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
     if (bellBtn) {
       bellBtn.title = noteUnread > 0 ? `收件箱（${noteUnread} 条未读）` : '收件箱';
     }
-    /* 导航里的「邮箱」标签（2026-10-15）：同一个未读数，登录后才显示 */
-    const navDot = document.getElementById('nav-inbox-dot');
-    if (navDot) {
-      navDot.hidden = noteUnread <= 0;
-      navDot.textContent = noteUnread > 9 ? '9+' : String(noteUnread);
-    }
+    /* 2026-10-19：导航里的「邮箱」项已撤（和铃铛重复），未读数只体现在铃铛红点上 */
   }
 
   /** 「共 N 条 · M 条未读」那一行：单独抽出来，便于**不重建列表**地更新 */
@@ -421,9 +416,6 @@ import { BELL_ICON, PERSON_ICON } from '../lib/account-client';
     /* 收件箱铃铛：只有登录后才显示；退出登录时把红点与列表一起清掉 */
     logged = Boolean(user);
     if (bellWrap) bellWrap.hidden = !user;
-    /* 导航里的「邮箱」标签同一个道理：没登录时它只会是一页空的说明，不如不显示 */
-    const navInbox = document.getElementById('nav-inbox');
-    if (navInbox) navInbox.hidden = !user;
     if (!user) {
       noteUnread = 0;
       noteTotal = 0;
