@@ -22,9 +22,11 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const ROOT = 'E:/Astro-code/ze-map-site';
+/* ⚠️ 不能用写死的绝对路径：云端构建（Linux）上没有 E:/…，一 import 就整个构建失败。
+   以脚本自身位置推仓库根目录。 */
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.join(ROOT, 'data/contributors.json');
 
 /* 字段 → 人话（神器 / 标签 / 背景故事…），页面详情里按这个分组 */
