@@ -183,6 +183,9 @@ data/research/_*/
 .dev.vars*
 !.dev.vars.example
 
+# 工坊版本记录的稀疏检出（sync-workshop-dates.mjs 用的临时目录，别入库）
+_mt/
+
 # R2（地形分片搬到对象存储，见 docs/r2-migration.md）
 # 凭证与本地同步状态绝不入库；data/terr-manifest.json 是给页面数张数用的，必须入库。
 .env.r2
