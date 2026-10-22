@@ -610,6 +610,11 @@ const fields = Object.entries(rules)
       els.full.hidden = next !== 'full';
       els.items.hidden = next !== 'full' && currentField !== 'items';
       if (next === 'single') renderSingle();
+      /* 单项的内容卡只在单项档显示；切到整页编辑时必须一起收起，否则会出现两份难度 */
+      if (next !== 'single') {
+        const editorCard = document.getElementById('se-single-editor-card');
+        if (editorCard) editorCard.hidden = true;
+      }
       els.media.hidden = next !== 'single' || !(currentField === 'cover' || currentField === 'gallery');
       els.mapNote.textContent = current ? `正在编辑《${current.title}》（${current.slug}）的资料。` : '输入名字开始。';
     }
