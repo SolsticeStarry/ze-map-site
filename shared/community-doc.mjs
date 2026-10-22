@@ -349,6 +349,25 @@ export function applySubmission(doc, sub) {
        投稿人会以为稿子丢了（2026-09-28 的反馈）。log 里本来也有这个信息，
        但渲染只读 notes，所以得在 note 上存一份。
        「社区整理」（titledtext）另外带上投稿人自己起的小节标题。 */
+    /* 2026-10-22：story / summary / guide / body 这类「一段话」改成最新覆盖旧的，
+       不再一层层追加（同一张图出现两条一模一样的背景故事，读者会以为是两版内容）。
+       社区整理（section）仍然按节追加，不动。 */
+    const REPLACE_NOTE_FIELDS = new Set(['story', 'summary', 'guide', 'body']);
+    if (REPLACE_NOTE_FIELDS.has(sub.field)) {
+      const oldNotes = doc.notes.filter((n) => n.field === sub.field);
+      if (oldNotes.length) {
+        doc.notes = doc.notes.filter((n) => n.field !== sub.field);
+        doc.log.push({
+          field: sub.field,
+          from: oldNotes.map((n) => n.text).join('\n\n'),
+          to: sub.value,
+          by,
+          at,
+          submission: sub.id ?? null,
+          note: `覆盖 ${oldNotes.length} 条旧社区投稿`,
+        });
+      }
+    }
     doc.notes.push({
       text: sub.value,
       by,
