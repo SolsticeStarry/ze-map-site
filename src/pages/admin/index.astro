@@ -681,6 +681,40 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     return head;
   }
 
+  /* 2026-10-22：story / summary / guide / body 通过后会覆盖旧社区版本，
+     审核前先把「会覆盖谁」摆出来，别让审核员在不知情的情况下顶掉别人的稿子。 */
+  const REPLACE_FIELDS = new Set(['story', 'summary', 'guide', 'body']);
+  let notesIndex: Promise<Map<string, any[]>> | null = null;
+  function loadNotesIndex(): Promise<Map<string, any[]>> {
+    if (!notesIndex) {
+      notesIndex = fetch('/submit/maps.json')
+        .then((r) => r.json())
+        .then((rows: any[]) => {
+          const m = new Map<string, any[]>();
+          for (const row of rows) m.set(String(row.slug), Array.isArray(row.notes) ? row.notes : []);
+          return m;
+        })
+        .catch(() => new Map<string, any[]>());
+    }
+    return notesIndex;
+  }
+  async function appendOverrideHint(box: HTMLElement, item: QueueItem): Promise<void> {
+    if (!REPLACE_FIELDS.has(item.field)) return;
+    if (item.status !== 'pending' && item.status !== 'approved') return;
+    const notes = (await loadNotesIndex()).get(String(item.map_slug)) ?? [];
+    const same = notes.filter((n: any) => n.field === item.field);
+    if (!same.length) return;
+    const latest = same[same.length - 1];
+    const who = same.map((n: any) => n.by || '匿名').join('、');
+    box.append(
+      el(
+        'p',
+        'admin-note is-warn',
+        `通过后会覆盖：${who} 的旧版本「${String(latest.text ?? '').slice(0, 36)}…」（旧文会写进 log）`
+      )
+    );
+  }
+
   function renderItem(item: QueueItem): HTMLElement {
     const box = el('div', `admin-item is-${item.status}`);
     box.dataset.id = String(item.id);
@@ -988,6 +1022,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     actions.append(view);
 
     box.append(actions);
+    void appendOverrideHint(box, item);
     return box;
   }
 
