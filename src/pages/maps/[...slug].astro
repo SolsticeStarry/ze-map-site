@@ -140,7 +140,9 @@ const notesOf = (field: string) => communityNotes.filter((n: { field?: string | 
 const KNOWN_NOTE_FIELDS = ['summary', 'guide', 'story', 'section'];
 const summaryNotes = notesOf('summary');
 const guideNotes = notesOf('guide');
-const storyNotes = notesOf('story');
+/* story 已经由生成器并进正文（带署名），这里不再重复渲染同一段（2026-10-23） */
+const rawBody = String(entry.body ?? '');
+const storyNotes = notesOf('story').filter((n: any) => !rawBody.includes(String(n.text ?? '').slice(0, 40)));
 /*
  * 「社区整理」（2026-10-15 加）：投稿人**自己起标题**的一节。
  * 和 story / guide 一样是社区块（压不过本站正文），区别只是标题由他定；
