@@ -1,0 +1,1240 @@
+---
+/**
+ * 编辑条目（2026-10-21，本地试验版 · 未上线）
+ *
+ * 按 SolsticeStarry 的投稿页思路重做：先看现状，再改；只提交改动过的项。
+ *   单项补充：不需要登录，改一项交一项（含封面 / 图片集上传）；
+ *   整页编辑：需要登录，所有字段按现状预填，只把改动项按 items[] 一次提交。
+ * 数据和线上同一套：/submit/maps.json（现状）、/api/submit（批量）、
+ * /api/submit-cover、/api/submit-gallery。
+ *
+ * ⚠️ 目前只在本机验证，没有替换线上 /submit/。
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { FIELD_RULES } from '../../../shared/submission-fields.mjs';
+
+const rules = FIELD_RULES as Record<string, any>;
+const SKIP = new Set(['cover', 'gallery', 'items']);
+const fields = Object.entries(rules)
+  .filter(([k, r]) => !r.hidden && !SKIP.has(k) && k !== 'body')
+  .map(([key, r]) => ({
+    key,
+    label: r.label ?? key,
+    kind: r.kind ?? 'text',
+    hint: String(r.hint ?? '').replace(/\*\*/g, '').slice(0, 140),
+    requireLogin: Boolean(r.requireLogin),
+    values: r.values ?? null,
+  }));
+---
+
+<BaseLayout title="编辑条目 | ZE 地图资料站" description="按现状修改这张图的资料：只提交改动过的项，单项补充不需要登录。">
+  <section class="se-hero">
+    <div class="se-hero-inner">
+      <div class="se-hero-copy">
+        <p class="se-kicker">EDIT ENTRY</p>
+        <h1 class="se-title">编辑条目</h1>
+        <p class="se-lead">
+          这张图现在的资料在下面，改哪一项就动哪一项；只有改动过的项会提交。
+          <b>单项补充不需要登录</b>，整页编辑需要登录。
+        </p>
+      </div>
+      <ol class="se-hero-steps">
+        <li><b>1</b><span>选地图</span><em>中文名或内部名都行</em></li>
+        <li><b>2</b><span>填内容</span><em>只改要改的那几项</em></li>
+        <li><b>3</b><span>提交待审</span><em>进审核队列，可留理由</em></li>
+        <li><b>4</b><span>审核上线</span><em>通过后写入条目并署名</em></li>
+      </ol>
+    </div>
+  </section>
+
+  <div class="se-layout">
+    <main class="se-main">
+      <div class="se-tabs" id="se-tabs">
+        <button class="se-tab is-on" type="button" data-tab="single">单项补充</button>
+        <button class="se-tab" type="button" data-tab="full">整页编辑（需登录）</button>
+      </div>
+
+      <section class="se-card">
+        <label class="se-map">
+          <span>地图</span>
+          <input id="se-map" list="se-map-list" placeholder="中文名或内部名，比如 ze_lotr_minas_tirith" autocomplete="off" />
+          <datalist id="se-map-list"></datalist>
+        </label>
+        <p class="se-note" id="se-map-note">正在读取地图索引…</p>
+        <p class="se-auth" id="se-auth">正在读取登录状态…</p>
+      </section>
+
+      <section class="se-card" id="se-single" hidden>
+        <div class="se-row">
+          <p class="se-label">要补充哪一项</p>
+          <div class="se-fieldchips" id="se-field"></div>
+        </div>
+      </section>
+
+      <section class="se-card" id="se-single-editor-card" hidden>
+        <div id="se-single-editor"></div>
+      </section>
+
+      <section class="se-card" id="se-full" hidden>
+        <p class="se-note">所有字段已按现状填好；改过的字段会高亮，提交时只带上改过的项。</p>
+        <div id="se-full-fields" class="se-fields"></div>
+        <div id="se-new-sections" class="se-new-sections"></div>
+        <button class="se-btn se-btn-sm" type="button" id="se-add-section">＋ 新增一节（社区整理）</button>
+      </section>
+
+      <section class="se-card" id="se-items" hidden>
+        <div class="se-card-head">
+          <h2 class="se-h2">神器 / 道具</h2>
+          <span class="se-note">改哪行交哪行；点「删除」＝这件本图没有</span>
+          <button class="se-btn se-btn-sm" type="button" id="se-item-add">+ 新增一件</button>
+        </div>
+        <div class="se-items-wrap">
+          <table class="se-items">
+            <thead>
+              <tr><th>道具名</th><th>冷却（秒）</th><th>次数</th><th>说明</th><th>备注</th><th>操作</th></tr>
+            </thead>
+            <tbody id="se-items-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="se-card" id="se-media" hidden>
+        <div class="se-card-head">
+          <h2 class="se-h2">封面 / 图片集</h2>
+          <span class="se-note">每个框里选好文件后，点框里的「上传这张」；上传后进审核</span>
+        </div>
+        <div class="se-media-grid">
+          <div class="se-file" id="se-cover-box">
+            <span>换封面</span>
+            <input type="file" id="se-cover" accept="image/*" />
+            <em>PNG / JPG / WebP，单张</em>
+            <button class="se-btn se-btn-sm" type="button" id="se-cover-go" disabled>上传这张</button>
+          </div>
+          <div class="se-file" id="se-gallery-box">
+            <span>加图片集</span>
+            <input type="file" id="se-gallery" accept="image/*" />
+            <em id="se-gallery-hint">工坊预览图之外，玩家截图</em>
+            <button class="se-btn se-btn-sm" type="button" id="se-gallery-go" disabled>上传这张</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="se-card se-submit" id="se-submit" hidden>
+        <div class="se-submit-bar">
+          <span id="se-changed" class="se-changed-chip">改动 0 项</span>
+          <div class="se-submit-acts">
+            <button class="se-btn se-btn-primary" type="button" id="se-send">提交待审</button>
+          </div>
+        </div>
+        <p class="se-result" id="se-result" hidden></p>
+      </section>
+    </main>
+
+    <aside class="se-side">
+      <div class="se-card">
+        <h2 class="se-h2">这张图现在的内容</h2>
+        <dl class="se-dl" id="se-side-dl"></dl>
+      </div>
+      <div class="se-card">
+        <h2 class="se-h2">已通过的社区投稿</h2>
+        <ul class="se-notes" id="se-side-notes"></ul>
+      </div>
+    </aside>
+  </div>
+
+  <script type="application/json" id="se-field-defs" set:html={JSON.stringify(fields)} />
+
+  <script>
+    type FieldDef = { key: string; label: string; kind: string; hint: string; requireLogin: boolean; values: string[] | null };
+    type MapRow = Record<string, any>;
+    const defs: FieldDef[] = JSON.parse(document.getElementById('se-field-defs')?.textContent ?? '[]');
+    const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+
+    const els = {
+      map: $<HTMLInputElement>('se-map')!,
+      mapList: $<HTMLDataListElement>('se-map-list')!,
+      mapNote: $('se-map-note')!,
+      auth: $('se-auth')!,
+      tabs: $('se-tabs')!,
+      single: $('se-single')!,
+      full: $('se-full')!,
+      items: $('se-items')!,
+      media: $('se-media')!,
+      submit: $('se-submit')!,
+      field: $('se-field')!,
+      singleEditor: $('se-single-editor')!,
+      fullFields: $('se-full-fields')!,
+      itemsBody: $('se-items-body')!,
+      changed: $('se-changed')!,
+      result: $<HTMLParagraphElement>('se-result')!,
+      sideDl: $('se-side-dl')!,
+      sideNotes: $('se-side-notes')!,
+      cover: $<HTMLInputElement>('se-cover')!,
+      gallery: $<HTMLInputElement>('se-gallery')!,
+    };
+
+    let index: MapRow[] = [];
+    let current: MapRow | null = null;
+    let mode: 'single' | 'full' = 'single';
+    let currentField = 'difficulty';
+    let logged = false;
+    let base: Record<string, string> = {};
+    let now: Record<string, string> = {};
+    type ItemRow = { name: string; cd: string; uses: string; intro: string; note: string; removed: boolean };
+    let itemRows: ItemRow[] = [];
+    /* 整页编辑里字段的显示顺序（可用 ↑↓ 调，只影响编辑顺序） */
+    let fullOrder: string[] = [];
+    let itemBase: ItemRow[] = [];
+
+    const defOf = (k: string) => defs.find((d) => d.key === k);
+    const kindOf = (k: string) => defOf(k)?.kind ?? 'text';
+
+    const valueOf = (row: MapRow, key: string): string => {
+      const v = row[key];
+      if (v == null) return '';
+      /* 标签用「、」连接：它本来就是多选，用换行会在单行控件里粘成一串 */
+      if (Array.isArray(v)) return v.join(key === 'tags' ? '、' : '\n');
+      return String(v);
+    };
+
+    /* 标签词表（全站已用过的标签，点一下就是选中） */
+    let tagVocab: string[] = [];
+    fetch('/submit/tags.json')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: any) => {
+        tagVocab = Array.isArray(list?.tags) ? list.tags.map((x: any) => String(x?.n ?? '')).filter(Boolean) : [];
+        if (currentField === 'tags') renderSingle();
+      })
+      .catch(() => {});
+
+    /** 把「、」分隔的字符串做成可点的标签片（原来的按钮式交互） */
+    function tagEditor(value: string, onChange: (v: string) => void): HTMLElement {
+      const wrap = document.createElement('div');
+      wrap.className = 'se-chips';
+      const current = () => value.split(/[、,，\s]+/).map((s) => s.trim()).filter(Boolean);
+      const sync = () => {
+        const set = new Set(current());
+        for (const chip of wrap.querySelectorAll<HTMLButtonElement>('.se-chip')) {
+          chip.classList.toggle('is-on', set.has(chip.dataset.tag ?? ''));
+        }
+      };
+      const addChip = (tag: string) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'se-chip';
+        b.dataset.tag = tag;
+        b.textContent = tag;
+        b.addEventListener('click', () => {
+          const list = current();
+          const at = list.indexOf(tag);
+          if (at >= 0) list.splice(at, 1);
+          else list.push(tag);
+          value = list.join('、');
+          onChange(value);
+          sync();
+        });
+        wrap.append(b);
+      };
+      for (const t of current()) addChip(t);
+      for (const t of tagVocab) if (!current().includes(t)) addChip(t);
+      wrap.classList.add('is-vocab');
+      sync();
+
+      /* 新标签：输完回车 / 点「加上」 */
+      const row = document.createElement('div');
+      row.className = 'se-chip-add';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.placeholder = '新标签，回车加上';
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'se-btn se-btn-sm';
+      add.textContent = '加上';
+      const commit = () => {
+        const t = inp.value.trim();
+        if (!t) return;
+        const list = current();
+        if (!list.includes(t)) list.push(t);
+        value = list.join('、');
+        onChange(value);
+        inp.value = '';
+        wrap.textContent = '';
+        for (const x of current()) addChip(x);
+        sync();
+      };
+      add.addEventListener('click', commit);
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commit();
+        }
+      });
+      row.append(inp, add);
+      const box = document.createElement('div');
+      box.className = 'se-tagbox';
+      box.append(wrap, row);
+      return box;
+    }
+
+    /** 难度这类 enum：也做成按钮片，不用下拉（原来的样子） */
+    function enumEditor(def: FieldDef, value: string, onChange: (v: string) => void): HTMLElement {
+      const wrap = document.createElement('div');
+      wrap.className = 'se-chips';
+      for (const opt of def.values ?? []) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'se-chip' + (opt === value ? ' is-on' : '');
+        b.textContent = opt;
+        b.addEventListener('click', () => {
+          for (const c of wrap.querySelectorAll('.se-chip')) c.classList.toggle('is-on', c === b);
+          onChange(opt);
+        });
+        wrap.append(b);
+      }
+      return wrap;
+    }
+
+    function editorFor(def: FieldDef, value: string, onChange: (v: string) => void, hideLabel = false): HTMLElement {
+      const wrap = document.createElement('label');
+      wrap.className = 'se-field';
+      if (!hideLabel) {
+        const cap = document.createElement('span');
+        cap.textContent = def.label;
+        wrap.append(cap);
+      }
+      let input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      if (def.kind === 'enum' && Array.isArray(def.values)) {
+        input = document.createElement('select');
+        for (const v of def.values) {
+          const o = document.createElement('option');
+          o.value = v;
+          o.textContent = v;
+          input.append(o);
+        }
+        (input as HTMLSelectElement).value = value || def.values[0];
+      } else if (def.kind === 'longtext' || def.kind === 'urlList' || def.kind === 'textlist') {
+        input = document.createElement('textarea');
+        input.rows = def.kind === 'longtext' ? 5 : 3;
+        input.value = value;
+      } else if (def.kind === 'int') {
+        input = document.createElement('input');
+        input.type = 'number';
+        input.min = '0';
+        input.value = value;
+      } else {
+        input = document.createElement('input');
+        input.type = 'text';
+        input.value = value;
+      }
+      input.addEventListener('input', () => onChange(input.value));
+      wrap.append(input);
+      if (def.hint) {
+        const em = document.createElement('em');
+        em.className = 'se-hint';
+        em.textContent = def.hint.slice(0, 110);
+        wrap.append(em);
+      }
+      return wrap;
+    }
+
+    function renderSide(row: MapRow) {
+      const rows: Array<[string, string]> = [
+        ['难度', row.difficulty ?? '—'],
+        ['标签', Array.isArray(row.tags) ? row.tags.join('、') : '—'],
+        ['作者', row.author ?? '—'],
+        ['版本', row.version ?? '—'],
+        ['人数', row.players ?? '—'],
+        ['时长', row.duration ?? '—'],
+        ['关卡', row.stages != null ? String(row.stages) : '—'],
+        ['图片集', row.galleryCount ? `${row.galleryCount} 张` : '—'],
+      ];
+      els.sideDl.textContent = '';
+      for (const [k, v] of rows) {
+        const div = document.createElement('div');
+        const dt = document.createElement('dt');
+        dt.textContent = k;
+        const dd = document.createElement('dd');
+        dd.textContent = String(v);
+        div.append(dt, dd);
+        els.sideDl.append(div);
+      }
+      els.sideNotes.textContent = '';
+      const notes: any[] = Array.isArray(row.notes) ? row.notes : [];
+      if (!notes.length) {
+        const li = document.createElement('li');
+        li.className = 'se-empty';
+        li.textContent = '还没有人投过正文 —— 你写的会成为第一条（通过后显示在条目里）。';
+        els.sideNotes.append(li);
+      }
+      for (const n of notes.slice(0, 6)) {
+        const li = document.createElement('li');
+        const head = document.createElement('div');
+        head.className = 'se-note-head';
+        head.textContent = `${n.field}${n.title ? `「${n.title}」` : ''} · ${n.by || '匿名'}`;
+        const body = document.createElement('p');
+        body.className = 'se-note-body';
+        body.textContent = String(n.text ?? '').slice(0, 64) + '…';
+        const acts = document.createElement('div');
+        acts.className = 'se-note-acts';
+        for (const label of ['修订这条', '申请删除']) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'se-mini';
+          b.textContent = label;
+          b.addEventListener('click', () => {
+            els.result.hidden = false;
+            els.result.textContent = `「${label}」在正式版里会走修订/删除申请；这一轮先只验证编辑表单。`;
+          });
+          acts.append(b);
+        }
+        li.append(head, body, acts);
+        els.sideNotes.append(li);
+      }
+    }
+
+    /* 特殊项：没有普通编辑器，各自落在下面的卡片里 */
+    const SPECIAL_FIELDS = [
+      { key: 'items', label: '神器 / 道具' },
+      { key: 'cover', label: '地图封面' },
+      { key: 'gallery', label: '图片集图片' },
+    ];
+
+    function renderSingle() {
+      els.field.textContent = '';
+      /* 原来的样子：所有可投的项铺成一排按钮，点哪个改哪个（不用下拉） */
+      for (const def of defs) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'se-fchip' + (def.key === currentField ? ' is-on' : '');
+        b.dataset.key = def.key;
+        b.textContent = def.label;
+        b.addEventListener('click', () => {
+          currentField = def.key;
+          renderSingle();
+        });
+        els.field.append(b);
+      }
+      for (const sp of SPECIAL_FIELDS) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'se-fchip' + (sp.key === currentField ? ' is-on' : '');
+        b.dataset.key = sp.key;
+        b.textContent = sp.label;
+        b.addEventListener('click', () => {
+          currentField = sp.key;
+          renderSingle();
+        });
+        els.field.append(b);
+      }
+      els.singleEditor.textContent = '';
+      const isSpecial = SPECIAL_FIELDS.some((s) => s.key === currentField);
+      if (!isSpecial) {
+        const def = defOf(currentField)!;
+        const onChange = (v: string) => { now[currentField] = v; renderCount(); };
+        if (def.key === 'tags') {
+          els.singleEditor.append(tagEditor(now.tags ?? '', onChange));
+        } else if (def.kind === 'enum') {
+          els.singleEditor.append(enumEditor(def, now[currentField] ?? '', onChange));
+        } else {
+          els.singleEditor.append(editorFor(def, now[currentField] ?? '', onChange, true));
+        }
+      }
+      els.singleEditor.hidden = isSpecial;
+      const editorCard = document.getElementById('se-single-editor-card');
+      if (editorCard) editorCard.hidden = mode !== 'single' || isSpecial;
+      els.items.hidden = !(isSpecial && currentField === 'items') || mode === 'full';
+      els.media.hidden = !(isSpecial && (currentField === 'cover' || currentField === 'gallery'));
+      const coverBox = document.getElementById('se-cover-box');
+      const galleryBox = document.getElementById('se-gallery-box');
+      if (coverBox) coverBox.hidden = currentField !== 'cover';
+      if (galleryBox) galleryBox.hidden = currentField !== 'gallery';
+    }
+
+    function renderFull() {
+      els.fullFields.textContent = '';
+      for (const key of fullOrder) {
+        const def = defOf(key)!;
+        const row = document.createElement('div');
+        row.className = 'se-full-row';
+        row.dataset.key = key;
+        const onChange = (v: string) => {
+          now[def.key] = v;
+          row.classList.toggle('is-changed', v !== base[def.key]);
+          renderCount();
+        };
+        if (def.key === 'tags') row.append(tagEditor(now.tags ?? '', onChange));
+        else if (def.kind === 'enum') row.append(enumEditor(def, now[def.key] ?? '', onChange));
+        else row.append(editorFor(def, now[def.key] ?? '', onChange));
+        if (now[def.key] !== base[def.key]) row.classList.add('is-changed');
+        /* 换顺序：只影响编辑时的排列 */
+        const acts = document.createElement('div');
+        acts.className = 'se-row-acts';
+        const mk = (label: string, dir: -1 | 1, disabled: boolean) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'se-btn se-btn-sm';
+          b.textContent = label;
+          b.disabled = disabled;
+          b.addEventListener('click', () => {
+            const i = fullOrder.indexOf(key);
+            const j = i + dir;
+            if (i < 0 || j < 0 || j >= fullOrder.length) return;
+            [fullOrder[i], fullOrder[j]] = [fullOrder[j], fullOrder[i]];
+            renderFull();
+          });
+          return b;
+        };
+        const at = fullOrder.indexOf(key);
+        acts.append(mk('↑', -1, at === 0), mk('↓', 1, at === fullOrder.length - 1));
+        row.prepend(acts);
+        els.fullFields.append(row);
+      }
+    }
+
+    function renderItems() {
+      els.itemsBody.textContent = '';
+      if (!itemRows.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 6;
+        td.className = 'se-empty';
+        td.textContent = '这张图还没有神器 / 道具表，点上面的「+ 新增一件」加一行。';
+        tr.append(td);
+        els.itemsBody.append(tr);
+        return;
+      }
+      for (const [i, it] of itemRows.entries()) {
+        const tr = document.createElement('tr');
+        if (it.removed) tr.classList.add('is-removed');
+        const nameTd = document.createElement('td');
+        if (i < itemBase.length) {
+          const name = document.createElement('b');
+          name.textContent = it.name;
+          nameTd.append(name);
+        } else {
+          /* 新增行要能填名字 */
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.placeholder = '道具名';
+          inp.value = it.name;
+          inp.style.width = '110px';
+          inp.addEventListener('input', () => { itemRows[i].name = inp.value; renderCount(); });
+          nameTd.append(inp);
+        }
+        const mkInput = (val: string, w: string, on: (v: string) => void, text = '') => {
+          const td = document.createElement('td');
+          const inp = document.createElement('input');
+          inp.value = val;
+          inp.style.width = w;
+          inp.placeholder = text;
+          inp.addEventListener('input', () => { on(inp.value); renderCount(); });
+          td.append(inp);
+          return td;
+        };
+        const intro = mkInput(it.intro, '100%', (v) => (itemRows[i].intro = v), '一句话说明（选填）');
+        const note = mkInput(it.note, '100%', (v) => (itemRows[i].note = v), '备注');
+        const cd = mkInput(it.cd, '74px', (v) => (itemRows[i].cd = v), '原表未给');
+        const uses = mkInput(it.uses, '58px', (v) => (itemRows[i].uses = v), '—');
+        const actTd = document.createElement('td');
+        actTd.className = 'se-item-acts';
+        /* 顺序可调：上移 / 下移（只影响提交行顺序） */
+        const mkMove = (label: string, dir: -1 | 1, disabled: boolean) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'se-btn se-btn-sm';
+          b.textContent = label;
+          b.disabled = disabled;
+          b.addEventListener('click', () => {
+            const j = i + dir;
+            if (j < 0 || j >= itemRows.length) return;
+            [itemRows[i], itemRows[j]] = [itemRows[j], itemRows[i]];
+            renderItems();
+            renderCount();
+          });
+          return b;
+        };
+        const up = mkMove('↑', -1, i === 0);
+        const down = mkMove('↓', 1, i === itemRows.length - 1);
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'se-btn se-btn-sm';
+        del.textContent = it.removed ? '恢复' : '删除';
+        del.addEventListener('click', () => {
+          if (i >= itemBase.length) {
+            itemRows.splice(i, 1);
+          } else {
+            itemRows[i].removed = !itemRows[i].removed;
+          }
+          renderItems();
+          renderCount();
+        });
+        actTd.append(up, down, del);
+        tr.append(nameTd, cd, uses, intro, note, actTd);
+        els.itemsBody.append(tr);
+      }
+    }
+
+    function changedFields() {
+      return Object.keys(now).filter((k) => now[k] !== base[k]);
+    }
+
+    function changedItems() {
+      const out: Array<Record<string, unknown>> = [];
+      for (const [i, it] of itemRows.entries()) {
+        const b = itemBase[i];
+        if (!b) {
+          if (it.name.trim()) out.push({ action: 'add', name: it.name, cd: it.cd, uses: it.uses, intro: it.intro, note: it.note });
+          continue;
+        }
+        if (it.removed && !b.removed) {
+          out.push({ action: 'remove', name: it.name, intro: it.intro, note: it.note || '作者申请删除' });
+          continue;
+        }
+        if (!it.removed && b.removed) {
+          out.push({ action: 'add', name: it.name, cd: it.cd, uses: it.uses, intro: it.intro, note: it.note });
+          continue;
+        }
+        /*
+         * 只带上真正改过的列：这张图是手写表（maps.json 里只有名字），
+         * 如果整行覆盖提交，空的 cd/uses 会把原来正文里的数值抹掉。
+         */
+        const diff: Record<string, unknown> = { action: 'update', name: it.name };
+        for (const k of ['cd', 'uses', 'intro', 'note'] as const) {
+          if (it[k] !== b[k]) diff[k] = it[k];
+        }
+        if (Object.keys(diff).length > 2) out.push(diff);
+      }
+      return out;
+    }
+
+    function renderCount() {
+      const n = changedFields().length + (changedItems().length ? 1 : 0);
+      els.changed.textContent = `改动 ${n} 项`;
+    }
+
+    function loadCurrent(row: MapRow) {
+      current = row;
+      base = {};
+      now = {};
+      for (const def of defs) {
+        base[def.key] = valueOf(row, def.key);
+        now[def.key] = base[def.key];
+      }
+      fullOrder = defs.map((d) => d.key);
+      itemRows = (Array.isArray(row.items) ? row.items : []).map((r: any) => ({
+        name: String(r.n ?? r.name ?? ''),
+        cd: String(r.c ?? r.cd ?? ''),
+        uses: String(r.u ?? r.uses ?? ''),
+        intro: String(r.i ?? r.intro ?? ''),
+        note: String(r.note ?? ''),
+        removed: String(r.action ?? '') === 'remove',
+      }));
+      itemBase = itemRows.map((r) => ({ ...r }));
+      renderSide(row);
+      renderSingle();
+      renderFull();
+      renderItems();
+      renderCount();
+      els.submit.hidden = false;
+      els.result.hidden = true;
+      /* 载入后按当前模式显示对应的编辑区（之前这里漏了，单项补充会一直藏着） */
+      setMode(mode);
+    }
+
+    function setMode(next: 'single' | 'full') {
+      if (next === 'full' && !logged) {
+        els.mapNote.textContent = '整页编辑需要登录：先登录，再回来选这项。';
+        return;
+      }
+      mode = next;
+      for (const b of els.tabs.querySelectorAll<HTMLButtonElement>('.se-tab')) b.classList.toggle('is-on', b.dataset.tab === next);
+      els.single.hidden = next !== 'single';
+      els.full.hidden = next !== 'full';
+      els.items.hidden = next !== 'full' && currentField !== 'items';
+      if (next === 'single') renderSingle();
+      els.media.hidden = next !== 'single' || !(currentField === 'cover' || currentField === 'gallery');
+      els.mapNote.textContent = current ? `正在编辑《${current.title}》（${current.slug}）的资料。` : '输入名字开始。';
+    }
+
+    els.tabs.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.se-tab');
+      if (btn) setMode(btn.dataset.tab as 'single' | 'full');
+    });
+    $('se-item-add')?.addEventListener('click', () => {
+      itemRows.push({ name: '', cd: '', uses: '', intro: '', note: '', removed: false });
+      renderItems();
+    });
+    els.map.addEventListener('change', () => {
+      const q = els.map.value.trim().toLowerCase();
+      const hit =
+        index.find((r) => String(r.slug).toLowerCase() === q) ??
+        index.find((r) => String(r.title ?? '').toLowerCase() === q) ??
+        index.find((r) => String(r.title ?? '').toLowerCase().includes(q) && q.length >= 2);
+      if (!hit) { els.mapNote.textContent = '没找到这张图，换个名字试试。'; return; }
+      loadCurrent(hit);
+    });
+
+    /* 整页编辑：新增「条目」= 新的一节（社区整理），提交时作为 section 字段 */
+    const newSections: Array<{ title: string; text: string }> = [];
+    $('se-add-section')?.addEventListener('click', () => {
+      const box = document.createElement('div');
+      box.className = 'se-newsec';
+      const title = document.createElement('input');
+      title.type = 'text';
+      title.placeholder = '小节标题（2~20 字）';
+      const ta = document.createElement('textarea');
+      ta.placeholder = '这一节的内容…';
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'se-btn se-btn-sm';
+      del.textContent = '删除这一节';
+      const item = { title: '', text: '' };
+      title.addEventListener('input', () => {
+        item.title = title.value;
+        renderCount();
+      });
+      ta.addEventListener('input', () => {
+        item.text = ta.value;
+        renderCount();
+      });
+      del.addEventListener('click', () => {
+        const at = newSections.indexOf(item);
+        if (at >= 0) newSections.splice(at, 1);
+        box.remove();
+        renderCount();
+      });
+      box.append(title, ta, del);
+      $('se-new-sections')!.append(box);
+      newSections.push(item);
+    });
+
+    /* ---------- 提交文字改动 ---------- */
+    function payload() {
+      const items: Array<Record<string, unknown>> = [];
+      const fieldsChanged = changedFields();
+      for (const k of fieldsChanged) {
+        const def = defOf(k)!;
+        let v: unknown = now[k];
+        if (def.kind === 'urlList' || def.kind === 'textlist') v = now[k].split('\n').map((s) => s.trim()).filter(Boolean);
+        items.push({ field: k, value: v });
+      }
+      const its = changedItems();
+      if (its.length) items.push({ field: 'items', value: its });
+      const secs = newSections.filter((s) => s.title.trim() && s.text.trim());
+      if (secs.length) items.push({ field: 'section', value: { sections: secs } });
+      return items;
+    }
+
+    async function sendText() {
+      if (!current) return;
+      const items = payload();
+      if (!items.length) {
+        els.result.hidden = false;
+        els.result.textContent = '还没有改动 —— 改一项再提交。';
+        return;
+      }
+      els.result.hidden = false;
+      els.result.textContent = '提交中…';
+      try {
+        const res = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ map: current.slug, items, note: '编辑条目' }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        const okText = `已提交 ${items.length} 项，编号 #${data.id ?? data.ids?.[0] ?? '?'}。审核通过后会写进条目。`;
+        /* 先重载（把改动清零），再把成功提示放回去 —— 顺序反了提示会被 loadCurrent 清掉 */
+        loadCurrent(current);
+        els.result.hidden = false;
+        els.result.textContent = okText;
+      } catch (e) {
+        els.result.textContent = '提交失败：' + (e instanceof Error ? e.message : String(e));
+      }
+    }
+
+    /* ---------- 上传封面 / 图片集 ---------- */
+    async function upload(fileInput: HTMLInputElement, kind: 'cover' | 'gallery') {
+      const file = fileInput.files?.[0];
+      if (!file || !current) return;
+      const fd = new FormData();
+      fd.append('map', current.slug);
+      fd.append('note', kind === 'cover' ? '编辑条目 · 换封面' : '编辑条目 · 图片集');
+      fd.append(kind, file);
+      els.result.hidden = false;
+      els.result.textContent = '上传中…';
+      try {
+        const res = await fetch(kind === 'cover' ? '/api/submit-cover' : '/api/submit-gallery', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        els.result.textContent = kind === 'cover' ? '封面已提交，等审核。' : '图片已提交，等审核。';
+        fileInput.value = '';
+      } catch (e) {
+        els.result.textContent = '上传失败：' + (e instanceof Error ? e.message : String(e));
+      }
+    }
+
+    $('se-send')!.addEventListener('click', sendText);
+    /* 每个框自己上传：选好文件后按钮才可点（不再用底部一个混合按钮） */
+    const coverGo = document.getElementById('se-cover-go') as HTMLButtonElement | null;
+    const galleryGo = document.getElementById('se-gallery-go') as HTMLButtonElement | null;
+    els.cover.addEventListener('change', () => {
+      if (coverGo) coverGo.disabled = !els.cover.files?.length;
+    });
+    els.gallery.addEventListener('change', () => {
+      if (galleryGo) galleryGo.disabled = !els.gallery.files?.length;
+    });
+    coverGo?.addEventListener('click', async () => {
+      await upload(els.cover, 'cover');
+      if (coverGo) coverGo.disabled = true;
+    });
+    galleryGo?.addEventListener('click', async () => {
+      await upload(els.gallery, 'gallery');
+      if (galleryGo) galleryGo.disabled = true;
+    });
+
+    /* ---------- 启动 ---------- */
+    fetch('/api/me?lite=1')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        /* 本地预览（127.0.0.1 / localhost）临时放开整页编辑：站长不想为测试注册账号。
+           线上域名下仍然必须登录。 */
+        const LOCAL = ['127.0.0.1', 'localhost', '::1'].includes(location.hostname);
+        logged = Boolean(j?.user) || LOCAL;
+        els.auth.textContent = j?.user
+          ? `已登录：${j.user.name}（整页编辑可用）`
+          : LOCAL
+            ? '本地预览：整页编辑已临时放开（正式站需要登录）'
+            : '未登录：单项补充照常可用；整页编辑需要登录。';
+        els.auth.classList.toggle('is-on', logged);
+      })
+      .catch(() => {
+        const LOCAL = ['127.0.0.1', 'localhost', '::1'].includes(location.hostname);
+        logged = LOCAL;
+        els.auth.textContent = LOCAL
+          ? '本地预览：整页编辑已临时放开（正式站需要登录）'
+          : '登录状态没读到（接口没通）—— 不影响单项补充。';
+      });
+
+    fetch('/submit/maps.json')
+      .then((r) => r.json())
+      .then((list: MapRow[]) => {
+        index = list;
+        els.mapNote.textContent = `索引里有 ${list.length} 张图，输入名字开始。`;
+        for (const r of list) {
+          const o = document.createElement('option');
+          o.value = String(r.slug);
+          o.label = String(r.title ?? r.slug);
+          els.mapList.append(o);
+        }
+        const want = new URLSearchParams(location.search).get('map');
+        if (want) {
+          const hit = list.find((r) => r.slug === want || r.titleEn === want);
+          if (hit) { els.map.value = String(hit.slug); loadCurrent(hit); }
+        }
+      })
+      .catch(() => {
+        els.mapNote.textContent = '读取 /submit/maps.json 失败 —— 先跑一次 npm run build。';
+      });
+  </script>
+
+  <style is:global>
+    /* ---------- 编辑条目：页面骨架 ---------- */
+    .se-hero {
+      position: relative;
+      margin-bottom: 8px;
+      padding: 40px 20px 26px;
+      border-bottom: 1px solid var(--border);
+      background:
+        radial-gradient(900px 320px at 12% -10%, rgba(229, 72, 77, 0.12), transparent 60%),
+        radial-gradient(700px 300px at 92% 0%, rgba(70, 194, 182, 0.08), transparent 60%);
+    }
+    .se-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(70% 100% at 30% 0%, #000 10%, transparent 75%);
+    }
+    .se-hero-inner {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 28px;
+      max-width: 1100px;
+      margin: 0 auto;
+      align-items: end;
+    }
+    .se-kicker {
+      margin: 0 0 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--accent-2);
+    }
+    .se-title {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 4vw, 42px);
+      line-height: 1.08;
+    }
+    .se-lead {
+      max-width: 620px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.85;
+    }
+    .se-lead b { color: var(--text); font-weight: 600; }
+    .se-hero-steps {
+      display: grid;
+      gap: 2px;
+      margin: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      list-style: none;
+      
+    }
+    .se-hero-steps li {
+      display: grid;
+      grid-template-columns: 22px 64px 1fr;
+      gap: 10px;
+      align-items: baseline;
+      padding: 7px 4px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .se-hero-steps li + li { border-top: 1px dashed rgba(255, 255, 255, 0.07); }
+    .se-hero-steps b {
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid rgba(229, 72, 77, 0.55);
+      color: #ff8f88;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+    }
+    .se-hero-steps span { color: var(--text); font-size: 13px; }
+    .se-hero-steps em { font-style: normal; font-size: 11.5px; opacity: 0.75; }
+
+    .se-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 22px;
+      max-width: 1100px;
+      margin: 22px auto 80px;
+      padding: 0 20px;
+      align-items: start;
+    }
+
+    /* ---------- 分段控件 ---------- */
+    .se-tabs {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel);
+      margin-bottom: 16px;
+    }
+    .se-tab {
+      padding: 8px 16px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .se-tab:hover { color: var(--text); }
+    .se-tab.is-on {
+      background: linear-gradient(135deg, #e5484d, #ff7a59);
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(229, 72, 77, 0.25);
+    }
+
+    /* ---------- 卡片 ---------- */
+    .se-card {
+      padding: 20px 22px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 40%), var(--panel);
+      margin-bottom: 14px;
+    }
+    .se-card-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 10px;
+      margin: 0 0 14px;
+    }
+    .se-h2 { margin: 0; font-size: 15px; letter-spacing: 0.01em; }
+    .se-h2::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 14px;
+      margin-right: 8px;
+      border-radius: 2px;
+      background: var(--accent);
+      vertical-align: -2px;
+    }
+
+    /* ---------- 地图选择 ---------- */
+    .se-map { display: grid; gap: 8px; }
+    .se-map span, .se-field span {
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .se-map input, .se-field input, .se-field select, .se-field textarea {
+      width: 100%;
+      padding: 11px 13px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-2);
+      color: var(--text);
+      font: inherit;
+      font-size: 13.5px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .se-field textarea { resize: vertical; line-height: 1.75; }
+    .se-map input:hover, .se-field input:hover, .se-field select:hover, .se-field textarea:hover { border-color: var(--border-2); }
+    .se-map input:focus, .se-field input:focus, .se-field select:focus, .se-field textarea:focus {
+      outline: none;
+      border-color: var(--accent-2);
+      box-shadow: 0 0 0 3px rgba(70, 194, 182, 0.12);
+    }
+    .se-note { margin: 10px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+    .se-auth { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; }
+    .se-auth.is-on { color: var(--accent-2); }
+
+    /* ---------- 字段 ---------- */
+    .se-row { margin: 0; }
+
+    .se-field { display: grid; gap: 8px; }
+    .se-hint { font-style: normal; font-size: 11.5px; color: var(--muted); opacity: 0.85; line-height: 1.6; }
+    .se-fields { display: grid; gap: 8px; margin-top: 12px; }
+    .se-full-row {
+      position: relative;
+      padding: 12px 14px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .se-full-row:hover { background: rgba(255, 255, 255, 0.02); }
+    .se-row-acts { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+    .se-row-acts .se-btn { padding: 3px 7px; font-size: 11.5px; }
+    .se-full-row.is-changed {
+      border-color: color-mix(in srgb, var(--accent-2) 45%, transparent);
+      background: rgba(70, 194, 182, 0.06);
+    }
+
+    /* ---------- 神器 / 道具 ---------- */
+    .se-items-wrap { overflow-x: auto; margin: 0 -6px; padding: 0 6px; }
+    .se-items { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 680px; }
+    .se-items th {
+      padding: 9px 8px;
+      text-align: left;
+      font-weight: 500;
+      color: var(--muted);
+      font-size: 11.5px;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .se-items td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .se-items tr:hover td { background: rgba(255, 255, 255, 0.015); }
+    .se-items input[type='text'] {
+      padding: 7px 9px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 12.5px;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+    .se-items input[type='text']:focus { outline: none; border-color: var(--accent-2); }
+    .se-items input[type='checkbox'] { accent-color: var(--accent); width: 15px; height: 15px; }
+
+    /* ---------- 封面 / 图片集 ---------- */
+    .se-media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+    .se-file {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border: 1px dashed var(--border-2);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.015);
+      font-size: 12.5px;
+      color: var(--muted);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .se-file:hover { border-color: var(--accent-2); background: rgba(70, 194, 182, 0.05); }
+    .se-file span { color: var(--text); font-size: 13px; }
+    .se-file input { font-size: 12px; color: var(--muted); }
+    .se-file em { font-style: normal; font-size: 11.5px; opacity: 0.8; }
+
+    /* ---------- 提交条 ---------- */
+    .se-submit {
+      position: sticky;
+      bottom: 14px;
+      z-index: 5;
+      padding: 14px 18px;
+      border-color: var(--border-2);
+      /* 跟随主题：暗色是深色面板，亮色是白面板（之前写死深色，太阳模式下突兀） */
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
+    }
+    .se-submit-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+    .se-changed-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .se-changed-chip b { color: var(--text); font-size: 15px; }
+    .se-submit-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+    .se-btn {
+      padding: 9px 16px;
+      border: 1px solid var(--border-2);
+      border-radius: 10px;
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .se-btn:hover { border-color: var(--accent-2); }
+    .se-btn:active { transform: translateY(1px); }
+    .se-btn-primary {
+      border-color: transparent;
+      background: linear-gradient(135deg, #e5484d, #ff7a59);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(229, 72, 77, 0.28);
+    }
+    .se-result {
+      margin: 12px 0 0;
+      padding: 11px 13px;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent-2);
+      border-radius: 10px;
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    /* ---------- 右侧 ---------- */
+    .se-side { position: sticky; top: 92px; display: grid; gap: 14px; }
+    .se-dl { margin: 0; display: grid; gap: 9px; font-size: 12.5px; }
+    .se-dl div { display: flex; gap: 10px; align-items: baseline; }
+    .se-dl dt { flex: 0 0 52px; color: var(--muted); font-size: 12px; }
+    .se-dl dd {
+      margin: 0;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12.5px;
+      color: var(--text);
+    }
+    .se-notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: 12.5px; }
+    .se-notes li { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); }
+    .se-note-head { color: var(--accent-2); font-size: 11.5px; letter-spacing: 0.02em; }
+    .se-note-body { margin: 4px 0 8px; color: var(--muted); line-height: 1.65; }
+    .se-note-acts { display: flex; gap: 6px; }
+    .se-mini {
+      padding: 3px 9px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+    .se-mini:hover { border-color: var(--border-2); color: var(--text); }
+    .se-empty { color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+
+    /* 标签 / 难度：按钮片（原来的交互，不做下拉） */
+    .se-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .se-chips.is-vocab { max-height: 240px; overflow-y: auto; padding-right: 4px; }
+    .se-chip {
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .se-chip:hover { border-color: var(--border-2); color: var(--text); }
+    .se-chip.is-on { border-color: transparent; background: linear-gradient(135deg, #e5484d, #ff7a59); color: #fff; }
+    .se-tagbox { display: grid; gap: 10px; }
+    .se-chip-add { display: flex; gap: 8px; }
+    .se-chip-add input {
+      flex: 1;
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--panel-2);
+      color: var(--text);
+      font: inherit;
+      font-size: 12.5px;
+    }
+    .se-chip-add input:focus { outline: none; border-color: var(--accent-2); }
+    .se-btn-sm { padding: 7px 12px; font-size: 12.5px; }
+
+    .se-label { margin: 0 0 8px; font-size: 12px; letter-spacing: .06em; color: var(--muted); }
+    .se-fieldchips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .se-fchip {
+      padding: 7px 13px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+    .se-fchip:hover { border-color: var(--border-2); color: var(--text); }
+    .se-fchip.is-on { border-color: transparent; background: linear-gradient(135deg,#e5484d,#ff7a59); color: #fff; }
+    .se-item-acts { display: flex; gap: 4px; }
+    .se-newsec { display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--border-2); border-radius: 10px; margin: 10px 0; }
+    .se-newsec input, .se-newsec textarea { padding: 9px 11px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-2); color: var(--text); font: inherit; font-size: 13px; }
+    .se-newsec textarea { min-height: 90px; resize: vertical; }
+    .se-newsec .se-btn { justify-self: start; }
+    .se-item-acts .se-btn { padding: 4px 7px; }
+    .se-items tr.is-removed td { opacity: .45; text-decoration: line-through; }
+
+    @media (max-width: 980px) {
+      .se-hero-inner { grid-template-columns: minmax(0, 1fr); align-items: start; }
+      .se-hero-steps { grid-template-columns: 1fr 1fr; display: grid; }
+      .se-hero-steps li { grid-template-columns: 20px 56px 1fr; }
+      .se-layout { grid-template-columns: minmax(0, 1fr); }
+      .se-side { position: static; order: 2; }
+      .se-submit { position: static; }
+    }
+    @media (max-width: 640px) {
+      .se-hero { padding: 26px 16px 18px; }
+      .se-layout { padding: 0 12px; }
+      .se-hero-steps { grid-template-columns: 1fr; }
+      .se-card { padding: 16px 14px; }
+      .se-tabs { display: flex; width: 100%; }
+      .se-tab { flex: 1; }
+    }
+  </style>
+</BaseLayout>

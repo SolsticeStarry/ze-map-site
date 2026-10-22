@@ -1219,13 +1219,54 @@ main [id],
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
 }
 .map-toc-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
   margin: 0 0 8px;
-  padding-left: 4px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  font-family: inherit;
   font-size: 12px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--muted);
+  letter-spacing: 0.12em;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
 }
+.map-toc-title:hover { background: var(--panel-2); border-color: var(--border); }
+.toc-label { white-space: nowrap; }
+.toc-count {
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 10.5px;
+  letter-spacing: 0;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.toc-toggle-text {
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.map-toc-title:hover .toc-toggle-text,
+.map-toc[data-collapsed='1'] .toc-toggle-text { opacity: 0.9; }
+.toc-caret {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+/* 收起状态：只留标题一行，点标题再展开（2026-10-21） */
+.map-toc[data-collapsed='1'] ol { display: none; }
+.map-toc[data-collapsed='1'] .toc-caret { transform: rotate(-90deg); }
+.map-toc[data-collapsed='1'] { padding-bottom: 10px; }
 .map-toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
 .map-toc a,
 .map-drawer .md-list a {
@@ -5097,4 +5138,51 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
   .acc-row-thumb { width: 52px; }
   .acc-row-date { margin-left: 0; }
   .acc-actions .acc-btn { flex: 1 1 auto; }
+}
+
+/* 2026-10-21：目录收进最右边缘的竖排按钮，点开从右侧滑出；不占两列、不压正文 */
+@media (min-width: 901px) {
+  .map-toc {
+    position: fixed;
+    top: 96px;
+    right: 12px;
+    width: 280px;
+    max-height: min(72vh, 560px);
+    z-index: 60;
+    opacity: 0;
+    transform: translateX(calc(100% + 26px));
+    pointer-events: none;
+    transition: transform 0.22s ease, opacity 0.18s ease;
+  }
+  .map-toc.is-open {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  .toc-rail-btn {
+    position: fixed;
+    right: 0;
+    top: 44%;
+    z-index: 61;
+    writing-mode: vertical-rl;
+    padding: 14px 7px;
+    border: 1px solid var(--border);
+    border-right: 0;
+    border-radius: 10px 0 0 10px;
+    background: var(--panel);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .toc-rail-btn:hover {
+    color: var(--text);
+    border-color: var(--border-2);
+    background: var(--panel-2);
+  }
+}
+@media (max-width: 900px) {
+  .toc-rail-btn { display: none; }
 }
