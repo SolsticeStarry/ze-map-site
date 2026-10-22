@@ -562,24 +562,8 @@ const showToc = toc.length >= 3;
         </p>
         {/* 编辑条目（2026-10-21）：按 SolsticeStarry 的思路改成「先看现状、只改要改的项」。 */}
         <a class="btn btn-primary" href={`/submit/edit/?map=${entry.id}`}>✏️ 编辑这张图的资料</a>
-        {/*
-          社区整理（2026-10-15）：补一格 vs 加一节自己的内容 vs 整理一整篇，是三种不同的活，
-          所以侧栏里三个入口并排摆 —— 这个直接落到投稿页的「社区整理」那一档。
-        */}
-        <a class="btn btn-section" href={`/submit/?map=${entry.id}&field=section`}>✍️ 社区整理（加一节）</a>
-        <p class="sidebar-hint is-tiny">
-          有标准字段装不下的长篇见解（彩蛋与机关、老玩家心得…）？用这个：标题你自己起，
-          一次能写 1~3 节、一张图累计最多 6 节，通过后显示在本页末尾、带「社区整理」小标。需要登录。
-        </p>
-        {/*
-          大面积整理的独立入口（2026-10-13）：补一格 vs 整理一整篇是两件事，
-          所以在侧栏里也分开摆 —— 直接落到投稿表单里的「整篇条目草稿」。
-        */}
-        <a class="btn btn-draft" href={`/submit/?map=${entry.id}&field=draft`}>📝 大面积整理（整篇改写）</a>
-        <p class="sidebar-hint is-tiny">
-          这张图还没有本站正文、或者你想整篇重写？用这个：按 <code>## 小节</code> 写，
-          采纳时同名小节替换、没写到的小节保留。需要登录。
-        </p>
+        {/* 2026-10-22：社区整理、大面积整理两个旧入口下线 —— 新编辑页里已有
+            「新增一节（社区整理）」与「整页编辑（需登录）」，不再从侧栏分三个入口。 */}
         {hasCommunity && (
           <p class="community-credit">
             本条目含社区补充，感谢：{communityPeople.join('、')}
