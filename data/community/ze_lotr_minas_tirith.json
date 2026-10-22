@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_lotr_minas_tirith",
-  "updatedAt": "2026-10-22T10:26:18.482Z",
+  "updatedAt": "2026-10-22T13:13:06.351Z",
   "fields": {
     "videoUrls": {
       "v": [
@@ -24,6 +24,18 @@
       "by": "匿名",
       "at": "2026-10-22T10:26:10.603Z",
       "submission": 525,
+      "field": "story",
+      "title": null,
+      "part": 0,
+      "revisedBy": null,
+      "revisedAt": null,
+      "revision": 0
+    },
+    {
+      "text": "本段基于《魔戒》电影版米那斯提力斯攻防战改编，地图含大量作者原创内容。\n\n刚铎首都米那斯提力斯，白城。魔多的半兽人大军兵临城下，攻城锤撞击着城门，投石机将燃烧的巨石抛向城内。\n\n人类小队必须逐层防守，启动城防系统，等待洛汗骑兵的援军。而僵尸阵营的炎魔与戒灵，正在黑暗中等待机会…….",
+      "by": "SolsticeStarry",
+      "at": "2026-10-22T13:12:53.758Z",
+      "submission": 526,
       "field": "story"
     }
   ],
@@ -53,6 +65,14 @@
       "by": "匿名",
       "at": "2026-10-22T10:26:10.603Z",
       "submission": 525
+    },
+    {
+      "field": "story",
+      "from": null,
+      "to": null,
+      "by": "SolsticeStarry",
+      "at": "2026-10-22T13:12:53.758Z",
+      "submission": 526
     }
   ],
   "draft": null,
