@@ -216,16 +216,19 @@ function loadGfl(mapName) {
    走 normalizeDoc 而不是直接 JSON.parse：仓库里的文件可能被人手改坏，
    构建期不该因为一行坏数据整页崩掉。 */
 const COMMUNITY_DIR = path.join(ROOT, 'data/community');
-function communityStoryOf(slug) {
+function communityNoteOf(slug, field) {
   try {
     const doc = JSON.parse(fs.readFileSync(path.join(COMMUNITY_DIR, `${slug}.json`), 'utf8'));
     const notes = (Array.isArray(doc.notes) ? doc.notes : []).filter(
-      (n) => n && n.field === 'story' && typeof n.text === 'string' && n.text.trim()
+      (n) => n && n.field === field && typeof n.text === 'string' && n.text.trim()
     );
     return notes.length ? notes[notes.length - 1] : null;
   } catch {
     return null;
   }
+}
+function communityStoryOf(slug) {
+  return communityNoteOf(slug, 'story');
 }
 
 function communityItemsOf(slug) {
@@ -623,6 +626,7 @@ function renderEntry(rec, research, wsRec, gfl) {
    * （魔晄炉 / 米纳斯 / 黑珍珠号）。只看 summary 的话那三页会被标成 stub，
    * 页面顶部就会挂出「本条目为数据条目，资料待补充」—— 而它们恰恰是全站内容最全的三页。
    */
+  const summaryNote = research ? communityNoteOf(pageSlug, 'summary') : null;
   const hasEditorial = Boolean(research?.summary || research?.sections?.length);
   /*
    * 封面优先级：
@@ -743,8 +747,15 @@ function renderEntry(rec, research, wsRec, gfl) {
   const manualStages = Number.isFinite(research?.stages);
 
   /* 摘要只有普通图才有；手写小节的图（sections）开头直接就是「背景故事」那一节 */
-  if (research?.summary) {
-    intro.push(mdSafe(research.summary.trim()), '');
+  if (summaryNote || research?.summary) {
+    const summaryText = summaryNote ? String(summaryNote.text).trim() : String(research.summary).trim();
+    intro.push(mdSafe(summaryText), '');
+    if (summaryNote) {
+      intro.push(
+        `*本简介由 ${summaryNote.by || '匿名'} 投稿，${String(summaryNote.at || '').slice(0, 10)} 审核通过。*`,
+        ''
+      );
+    }
   }
   // 数据条目的「资料待补充」提示由详情页统一渲染（stub 字段），正文里不再重复
 

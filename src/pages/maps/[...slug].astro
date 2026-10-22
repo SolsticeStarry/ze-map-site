@@ -139,6 +139,7 @@ const notesOf = (field: string) => communityNotes.filter((n: { field?: string | 
 /** 已经单独成块的字段；不在这个集合里的一律进「社区补充」 */
 const KNOWN_NOTE_FIELDS = ['summary', 'guide', 'story', 'section'];
 const summaryNotes = notesOf('summary');
+/* 简介若已被生成器并入正文（带署名），这里就不重复显示 */
 const guideNotes = notesOf('guide');
 /* story 已经由生成器并进正文（带署名），这里不再重复渲染同一段（2026-10-23） */
 const rawBody = String(entry.body ?? '');
@@ -155,7 +156,9 @@ const otherNotes = communityNotes.filter((n: { field?: string | null }) => !KNOW
  * 见 generate-map-entries.mjs）。有本站简介的图，投稿页会直接拦住这类稿子；
  * 这里再挡一层，免得老投稿或手改数据把它顶到开头。
  */
-const showSummaryNote = summaryNotes.length > 0 && !entry.data.hasSummary;
+const showSummaryNote =
+  summaryNotes.filter((n: any) => !String(entry.body ?? '').includes(String(n.text ?? '').slice(0, 40))).length > 0 &&
+  !entry.data.hasSummary;
 /*
  * 一条社区正文的署名。
  * 被修订过的要写清「谁写的、谁改的、什么时候改的」—— 只保留原作者会让人以为
