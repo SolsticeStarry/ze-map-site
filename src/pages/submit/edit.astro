@@ -182,8 +182,6 @@ const fields = Object.entries(rules)
     let now: Record<string, string> = {};
     type ItemRow = { name: string; cd: string; uses: string; intro: string; note: string; removed: boolean };
     let itemRows: ItemRow[] = [];
-    /* 整页编辑里字段的显示顺序（可用 ↑↓ 调，只影响编辑顺序） */
-    let fullOrder: string[] = [];
     let itemBase: ItemRow[] = [];
 
     const defOf = (k: string) => defs.find((d) => d.key === k);
@@ -205,7 +203,8 @@ const fields = Object.entries(rules)
         tagVocab = Array.isArray(list?.tags) ? list.tags.map((x: any) => String(x?.n ?? '')).filter(Boolean) : [];
         if (currentField === 'tags') renderSingle();
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('[submit/edit] 载入失败', err);});
 
     /** 把「、」分隔的字符串做成可点的标签片（原来的按钮式交互） */
     function tagEditor(value: string, onChange: (v: string) => void): HTMLElement {
@@ -452,11 +451,10 @@ const fields = Object.entries(rules)
 
     function renderFull() {
       els.fullFields.textContent = '';
-      for (const key of fullOrder) {
-        const def = defOf(key)!;
+      for (const def of defs) {
         const row = document.createElement('div');
         row.className = 'se-full-row';
-        row.dataset.key = key;
+        row.dataset.key = def.key;
         const onChange = (v: string) => {
           now[def.key] = v;
           row.classList.toggle('is-changed', v !== base[def.key]);
@@ -466,27 +464,6 @@ const fields = Object.entries(rules)
         else if (def.kind === 'enum') row.append(enumEditor(def, now[def.key] ?? '', onChange));
         else row.append(editorFor(def, now[def.key] ?? '', onChange));
         if (now[def.key] !== base[def.key]) row.classList.add('is-changed');
-        /* 换顺序：只影响编辑时的排列 */
-        const acts = document.createElement('div');
-        acts.className = 'se-row-acts';
-        const mk = (label: string, dir: -1 | 1, disabled: boolean) => {
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'se-btn se-btn-sm';
-          b.textContent = label;
-          b.disabled = disabled;
-          b.addEventListener('click', () => {
-            const i = fullOrder.indexOf(key);
-            const j = i + dir;
-            if (i < 0 || j < 0 || j >= fullOrder.length) return;
-            [fullOrder[i], fullOrder[j]] = [fullOrder[j], fullOrder[i]];
-            renderFull();
-          });
-          return b;
-        };
-        const at = fullOrder.indexOf(key);
-        acts.append(mk('↑', -1, at === 0), mk('↓', 1, at === fullOrder.length - 1));
-        row.prepend(acts);
         els.fullFields.append(row);
       }
     }
@@ -537,24 +514,6 @@ const fields = Object.entries(rules)
         const uses = mkInput(it.uses, '58px', (v) => (itemRows[i].uses = v), '—');
         const actTd = document.createElement('td');
         actTd.className = 'se-item-acts';
-        /* 顺序可调：上移 / 下移（只影响提交行顺序） */
-        const mkMove = (label: string, dir: -1 | 1, disabled: boolean) => {
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'se-btn se-btn-sm';
-          b.textContent = label;
-          b.disabled = disabled;
-          b.addEventListener('click', () => {
-            const j = i + dir;
-            if (j < 0 || j >= itemRows.length) return;
-            [itemRows[i], itemRows[j]] = [itemRows[j], itemRows[i]];
-            renderItems();
-            renderCount();
-          });
-          return b;
-        };
-        const up = mkMove('↑', -1, i === 0);
-        const down = mkMove('↓', 1, i === itemRows.length - 1);
         const del = document.createElement('button');
         del.type = 'button';
         del.className = 'se-btn se-btn-sm';
@@ -568,7 +527,7 @@ const fields = Object.entries(rules)
           renderItems();
           renderCount();
         });
-        actTd.append(up, down, del);
+        actTd.append(del);
         tr.append(nameTd, cd, uses, intro, note, actTd);
         els.itemsBody.append(tr);
       }
@@ -620,7 +579,6 @@ const fields = Object.entries(rules)
         base[def.key] = valueOf(row, def.key);
         now[def.key] = base[def.key];
       }
-      fullOrder = defs.map((d) => d.key);
       itemRows = (Array.isArray(row.items) ? row.items : []).map((r: any) => ({
         name: String(r.n ?? r.name ?? ''),
         cd: String(r.c ?? r.cd ?? ''),
@@ -816,25 +774,50 @@ const fields = Object.entries(rules)
           : '登录状态没读到（接口没通）—— 不影响单项补充。';
       });
 
-    fetch('/submit/maps.json')
-      .then((r) => r.json())
-      .then((list: MapRow[]) => {
-        index = list;
-        els.mapNote.textContent = `索引里有 ${list.length} 张图，输入名字开始。`;
-        for (const r of list) {
+    /* 索引偶尔在 dev/冷启动时第一次拿不到，重试两次再报错 */
+    const loadIndex = async (): Promise<MapRow[]> => {
+      let last: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const r = await fetch('/submit/maps.json', { cache: 'no-store' });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const j = await r.json();
+          if (!Array.isArray(j)) throw new Error('不是数组');
+          return j as MapRow[];
+        } catch (e) {
+          last = e;
+          if (attempt < 2) await new Promise((res) => setTimeout(res, 600));
+        }
+      }
+      throw last instanceof Error ? last : new Error('索引读取失败');
+    };
+
+    loadIndex()
+      .then((rows) => {
+        index = rows;
+        els.mapList.textContent = '';
+        for (const row of rows) {
           const o = document.createElement('option');
-          o.value = String(r.slug);
-          o.label = String(r.title ?? r.slug);
+          o.value = String(row.slug);
+          o.label = String(row.title ?? row.slug);
           els.mapList.append(o);
         }
-        const want = new URLSearchParams(location.search).get('map');
-        if (want) {
-          const hit = list.find((r) => r.slug === want || r.titleEn === want);
-          if (hit) { els.map.value = String(hit.slug); loadCurrent(hit); }
+        const want = new URLSearchParams(location.search).get('map') ?? '';
+        const hit = want
+          ? rows.find((x) => String(x.slug) === want || String(x.titleEn) === want)
+          : undefined;
+        if (hit) {
+          els.map.value = String(hit.slug);
+          loadCurrent(hit);
+        } else if (want) {
+          els.mapNote.textContent = `索引 ${rows.length} 张图；没找到「${want}」，输入名字开始。`;
+        } else {
+          els.mapNote.textContent = `索引 ${rows.length} 张图，输入名字开始。`;
         }
       })
-      .catch(() => {
-        els.mapNote.textContent = '读取 /submit/maps.json 失败 —— 先跑一次 npm run build。';
+      .catch((err) => {
+        console.error('[submit/edit] 读取索引失败', err);
+        els.mapNote.textContent = '读取地图索引失败，请刷新重试。';
       });
   </script>
 
