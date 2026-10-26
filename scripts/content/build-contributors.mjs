@@ -3,7 +3,7 @@
  * 贡献者汇总（2026-10-20 加，站长要求「导航里加一个贡献者板块，按贡献大小做物理球」）
  *
  * 数据来源**只用仓库里的东西**：
- *   · data/community/<slug>.json —— 社区投稿（字段 / 正文 / 神器 / 整篇草稿）里的署名与数量
+ *   · data/content/<slug>.json —— 玩家内容 history 里的署名与数量
  *   · data/gallery/<slug>.json   —— 玩家投稿图片的署名
  * 视频授权 UP 主**不能**写进这里（UP 主信息按站长要求不进 GitHub），
  * 页面会在浏览器里另问 /api/video-thanks，把它们作为第二组球加进物理场。
@@ -66,21 +66,23 @@ function bump(name, field, slug, at) {
   people.set(who, row);
 }
 
-/* 社区文件 */
-const communityDir = path.join(ROOT, 'data/community');
-for (const f of fs.readdirSync(communityDir)) {
-  if (!f.endsWith('.json')) continue;
-  const slug = f.replace(/\.json$/, '');
-  let doc;
-  try {
-    doc = JSON.parse(fs.readFileSync(path.join(communityDir, f), 'utf8'));
-  } catch {
-    continue;
+/* 玩家内容历史。优先用 log 条目，避免迁移时生成的字段摘要重复计数。 */
+const contentDir = path.join(ROOT, 'data/content');
+if (fs.existsSync(contentDir)) {
+  for (const f of fs.readdirSync(contentDir)) {
+    if (!f.endsWith('.json')) continue;
+    const slug = f.replace(/\.json$/, '');
+    let doc;
+    try {
+      doc = JSON.parse(fs.readFileSync(path.join(contentDir, f), 'utf8'));
+    } catch {
+      continue;
+    }
+    const history = Array.isArray(doc.history) ? doc.history : [];
+    const logs = history.filter((item) => item?.source === 'data/community.log' && item?.field);
+    const fallback = history.filter((item) => item?.source === 'data/community' && item?.field);
+    for (const item of logs.length ? logs : fallback) bump(item.by, item.field, slug, item.at);
   }
-  for (const [field, v] of Object.entries(doc.fields ?? {})) bump(v?.by, field, slug, v?.at);
-  for (const n of doc.notes ?? []) bump(n?.by, n?.field || 'story', slug, n?.at);
-  for (const it of doc.items ?? []) bump(it?.by, 'items', slug, it?.at);
-  if (doc.draft?.by) bump(doc.draft.by, 'draft', slug, doc.draft.at);
 }
 
 /* 图片集清单 */

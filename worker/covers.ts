@@ -17,7 +17,7 @@
  */
 
 import { detectImageFormat, imageSize } from '../shared/image-size.mjs';
-import { GitError, deleteRepoFile, listRepoDir, writeRepoBinary } from './community';
+import { GitError } from './git';
 import type { Env } from './http';
 
 export const COVER_DIR = 'public/images/covers/custom';
@@ -26,7 +26,7 @@ export const COVER_MIN_WIDTH = 640;
 /** 允许的扩展名，按生成器的取图优先级排列（webp → png → jpg → jpeg） */
 export const COVER_EXTS = ['webp', 'png', 'jpg', 'jpeg'];
 
-/** 存进 submissions.value 的封面元数据 */
+/** 存进 page_revisions.payload.media 的封面元数据 */
 export interface CoverMeta {
   key: string;
   ext: string;
@@ -162,57 +162,12 @@ export const coverRepoPath = (slug: string, ext: string) => `${COVER_DIR}/${slug
 /**
  * 页面用的 **URL** 形式。
  *
- * ⚠️ 记进 data/community/<slug>.json 的必须是这个，不是仓库路径。
- * 生成器写进 frontmatter 的 `cover:` 是 URL（`/images/...`），社区覆盖的值会被直接当 URL 用；
+ * ⚠️ 记进 data/content/<slug>.json 的必须是这个，不是仓库路径。
+ * 生成器写进 frontmatter 的 `cover:` 是 URL（`/images/...`），玩家覆盖的值会被直接当 URL 用；
  * 存成 `public/images/...` 的话，浏览器会按相对路径去 `/maps/<图>/public/images/...` 取，
  * 结果就是「封面变黑 + 一个破图小图标」（2026-09-26 真踩过，两处只差一个前缀）。
  */
 export const coverUrl = (slug: string, ext: string) => `/images/covers/custom/${slug}.${ext}`;
-
-/**
- * 把封面提交进仓库，并清掉**同一张图的其它扩展名**。
- *
- * ⚠️ **当前没有调用方**：2026-10-05 起攒批写回（`worker/submissions.ts` 的 `handleAdminFlush`）
- * 直接把图片和文档改动合成一个 commit，并在同一个 commit 里删掉其它扩展名。这里保留作参考实现，
- * 也说明「为什么必须清扩展名」这件事。
- *
- * 为什么要清：生成器按 webp → png → jpg → jpeg 取第一个命中的文件，
- * 如果 `ze_x.webp` 和 `ze_x.jpg` 同时存在，后者永远不生效却一直占着仓库 ——
- * 而且事后根本分不清哪张是"当前生效的那张"。同一个 commit 里删干净最省事。
- */
-export async function commitCoverToRepo(
-  env: Env,
-  slug: string,
-  bytes: Uint8Array,
-  ext: string,
-  message: string
-): Promise<{ sha: string; removed: string[] }> {
-  const target = coverRepoPath(slug, ext);
-  const { sha } = await writeRepoBinary(env, target, bytes, message);
-
-  const removed: string[] = [];
-  let entries: { name: string }[] = [];
-  try {
-    entries = await listRepoDir(env, COVER_DIR);
-  } catch {
-    entries = []; // 列目录失败不该让整次审核失败：图已经提交上去了
-  }
-  for (const e of entries) {
-    const m = /^(.+)\.([A-Za-z0-9]+)$/.exec(e.name);
-    if (!m) continue;
-    if (m[1].toLowerCase() !== slug.toLowerCase()) continue;
-    if (!COVER_EXTS.includes(m[2].toLowerCase())) continue;
-    if (e.name === `${slug}.${ext}`) continue;
-    try {
-      if (await deleteRepoFile(env, `${COVER_DIR}/${e.name}`, `${message}（清掉旧扩展名 ${m[2]}）`)) {
-        removed.push(e.name);
-      }
-    } catch {
-      /* 删不掉就算了，生成器会按优先级取新的那张，不影响显示 */
-    }
-  }
-  return { sha, removed };
-}
 
 /** 给审核台用的响应（图片本身，鉴权在外面做） */
 export function imageResponse(bytes: Uint8Array, contentType: string): Response {

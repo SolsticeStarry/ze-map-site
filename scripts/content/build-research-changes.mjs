@@ -5,7 +5,7 @@
  *   node scripts/content/build-research-changes.mjs
  *
  * 这份清单只覆盖**本站整理的资料**（data/research/*.json 与 data/gallery/*.json）。
- * 社区投稿那部分不在这里 —— 它写在 data/community/<slug>.json 的 log[] 里，
+ * 玩家修订那部分不在这里 —— 它写在 data/content/<slug>.json 的 history 里，
  * 构建期直接读文件就有（连作者和投稿编号都在），不需要 git，也就不会受浅克隆影响。
  * 两边在 src/lib/update-feed.ts 里合并成首页底部那份「最近改动」。
  *
@@ -111,7 +111,6 @@ const log = run([
   'src/content/maps',
   'data/research',
   'data/gallery',
-  'data/community',
 ]);
 if (log.status !== 0) {
   console.warn('[changes] git log 失败，保留现有 data/research-changes.json 不动');
@@ -252,7 +251,7 @@ const kept = items.slice(0, MAX_ITEMS);
 const next = {
   _说明:
     '本站整理资料的逐条改动记录（data/research 与 data/gallery），由 scripts/content/build-research-changes.mjs ' +
-    '从 git 历史生成，别手改。社区投稿那部分不在这里 —— 构建期直接读 data/community/<slug>.json 的 log。',
+    '从 git 历史生成，别手改。玩家修订那部分不在这里 —— 更新流直接读 data/content/<slug>.json 的 history。',
   version: 1,
   items: kept,
 };

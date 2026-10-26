@@ -15,7 +15,7 @@
  *
  * 两条渲染路径：
  *   · 原稿（data/research/<map>.json 的 guides[]）→ 生成器把 :::figure 转成 <GuideFigure> JSX 写进 MDX；
- *   · 社区投稿（data/community/<map>.json 的 notes，field = guide）→ 页面用 GuideNote 组件按块渲染。
+ *   · 玩家修订正文（data/content 的正文块）→ 页面按块渲染。
  *
  * 解析失败**一律降级成普通文字**，绝不抛错：教程写错一个符号不该让整站构建红。
  */

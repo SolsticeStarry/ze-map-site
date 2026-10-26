@@ -52,6 +52,8 @@ for (const file of htmls) {
   for (const m of html.matchAll(/(?:href|src)="(\/[^"#][^"]*)"/g)) {
     const target = m[1];
     if (target.startsWith('//')) continue;
+    // 运行时由 Worker / R2 提供，不在 dist 静态产物里
+    if (target.startsWith('/api/') || target.startsWith('/terr/')) continue;
     checked++;
     if (!exists(target)) {
       if (!broken.has(target)) broken.set(target, new Set());

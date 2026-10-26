@@ -31,7 +31,6 @@ const REQUIRED_PATHS = [
   'data/terr-manifest.json',
   'data/entity-status.json',
   'data/research',
-  'data/community',
   'data/workshop',
   'data/gallery',
   'public/entity/catalog.json',

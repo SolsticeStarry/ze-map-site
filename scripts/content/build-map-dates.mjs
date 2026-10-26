@@ -14,7 +14,7 @@
  *   added   —— src/content/maps/<slug>.mdx 第一次以「新增」出现在提交里的日期。
  *              用它表示「这张图是什么时候进站的」。
  *              为什么以 MDX 为准：entities/工坊数据的导入会生成新 MDX。
- *   updated —— data/research/<slug>.json、data/community/<slug>.json、
+ *   updated —— data/research/<slug>.json、data/content/<slug>.json、
  *              以及 src/content/maps/<slug>.mdx 里最近一次改动的日期。
  *              也就是「GitHub 上有人动过这张图的资料」。
  *
@@ -83,7 +83,6 @@ const log = run([
   '--',
   'src/content/maps',
   'data/research',
-  'data/community',
 ]);
 if (log.status !== 0) {
   console.warn('[dates] git log 失败，保留现有 data/map-dates.json 不动');

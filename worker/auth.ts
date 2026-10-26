@@ -11,14 +11,14 @@
  *      的硬上限，见下面 PBKDF2_ITER 的说明）。
  *
  * 登录状态怎么用：`getSessionUser()` 在投稿接口里读一次，把投稿的 `user_id` 写上、
- * 并用**账号昵称**覆盖手填昵称（防止冒名）。等级与免审权益由已通过/被驳回条数算出来。
+ * 并用**账号昵称**覆盖手填昵称（防止冒名）。等级由已通过/被驳回条数算出来。
  */
 
 import { allowWrite, fail, isBanned, isLocalHost, json, readJsonBody, safeEqual, type Env } from './http';
 import { turnstileMessage, verifyTurnstile } from './turnstile';
 import { checkNicknameContent, nicknameRejectMessage, normalizeName, parseExtraBlocklist } from '../shared/nickname-rules.mjs';
 import { loadAgreed, type AgreedUp } from './videos';
-import { listContributors } from './community';
+import { listContributors } from './git';
 /*
  * 收件箱（2026-10-14）：账号类的通知（停用/恢复/重置口令/改名/称号）在这里写。
  * notifications.ts **不** import 本文件（登录态由 index.ts 解析后传进去），所以这条依赖是单向的。
@@ -163,7 +163,7 @@ const LEVELS: Array<{ min: number; name: string; hint: string }> = [
   { min: 0, name: '路人', hint: '还没投过，欢迎来补第一笔' },
 ];
 
-/** 等级 + 权益。免审门槛：通过 ≥10 条、且驳回占比 ≤20%（驳回 ≤ 通过/5） */
+/** 等级 + 权益。`trusted` 目前未接入 page_revisions，所有修订仍统一走待审。 */
 export function levelOf(approved: number, rejected: number) {
   const lv = LEVELS.find((l) => approved >= l.min) ?? LEVELS[LEVELS.length - 1];
   const next = [...LEVELS].reverse().find((l) => l.min > approved) ?? null;
@@ -173,7 +173,7 @@ export function levelOf(approved: number, rejected: number) {
     approved,
     rejected,
     next: next ? { level: next.name, need: next.min - approved } : null,
-    /** 免审直发：投稿直接进「待写回」队列，不再需要人工点通过 */
+    /** 保留字段：当前 page_revisions 不读取它；所有修订统一 pending。 */
     trusted: approved >= 10 && rejected <= Math.floor(approved / 5),
   };
 }
@@ -706,20 +706,28 @@ export async function ensureSchema(env: Env): Promise<void> {
        )`
     ).run()
   );
-  await step('submissions', () =>
+  await step('page_revisions', () =>
     env.DB.prepare(
-      `CREATE TABLE IF NOT EXISTS submissions (
+      `CREATE TABLE IF NOT EXISTS page_revisions (
          id INTEGER PRIMARY KEY AUTOINCREMENT,
-         map_slug TEXT NOT NULL, field TEXT NOT NULL, value TEXT NOT NULL,
-         note TEXT, submitter TEXT, contact TEXT, ip_hash TEXT NOT NULL,
-         status TEXT NOT NULL DEFAULT 'pending', created_at INTEGER NOT NULL,
-         reviewed_at INTEGER, reviewer TEXT, reject_note TEXT, commit_sha TEXT, error TEXT,
-         user_id INTEGER, batch TEXT
+         map_slug TEXT NOT NULL,
+         user_id INTEGER NOT NULL,
+         submitter TEXT NOT NULL,
+         payload TEXT NOT NULL,
+         base_rev TEXT,
+         status TEXT NOT NULL DEFAULT 'pending',
+         mode TEXT NOT NULL DEFAULT 'full',
+         created_at INTEGER NOT NULL,
+         reviewed_at INTEGER,
+         reviewer TEXT,
+         reject_note TEXT,
+         commit_sha TEXT,
+         error TEXT
        )`
     ).run()
   );
-  await step('idx_sub_status', () =>
-    env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_sub_status ON submissions (status, created_at)`).run()
+  await step('idx_page_revision_status', () =>
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_page_revision_status ON page_revisions(status, created_at)`).run()
   );
 
   try {
@@ -803,47 +811,15 @@ export async function ensureSchema(env: Env): Promise<void> {
       /* 索引建不起来（老库里有脏数据）不该拖垮账号系统：登录路径里还有一次显式查询兜着 */
     }
 
-    /* submissions.user_id：老的库没有这一列，补上 */
-    const cols = await env.DB.prepare(`PRAGMA table_info(submissions)`).all<{ name: string }>();
-    if (!(cols.results ?? []).some((c) => c.name === 'user_id')) {
-      await step('submissions.user_id', () =>
-        env.DB.prepare(`ALTER TABLE submissions ADD COLUMN user_id INTEGER`).run()
+    /* 老库的 page_revisions 没有 mode：补一列，单项修订才能落库。 */
+    const prCols = await env.DB.prepare(`PRAGMA table_info(page_revisions)`).all<{ name: string }>();
+    if (!(prCols.results ?? []).some((c) => c.name === 'mode')) {
+      await step('page_revisions.mode', () =>
+        env.DB.prepare(`ALTER TABLE page_revisions ADD COLUMN mode TEXT NOT NULL DEFAULT 'full'`).run()
       );
     }
-    /* submissions.batch：批量投稿（2026-10-13）用，同一批共用一个短 id */
-    if (!(cols.results ?? []).some((c) => c.name === 'batch')) {
-      await step('submissions.batch', () => env.DB.prepare(`ALTER TABLE submissions ADD COLUMN batch TEXT`).run());
-    }
-    /*
-     * submissions.adopted_at：这条整篇草稿**已经被采纳为原稿**的时间（2026-10-15 加）。
-     * 以前只把「已采纳」记在社区文档（data/community/<slug>.json 的 fields.draft）里，
-     * D1 完全不知情 —— 于是审核台的「整篇草稿 · 待采纳」里，采纳过的草稿会一直堆着，
-     * 越攒越多、又没法从列表里排掉（站长报的就是这个）。现在采纳时顺手记一笔，
-     * 队列按它把已采纳的从「待采纳」里排除（要看得显式带 adopted=1）。
-     */
-    if (!(cols.results ?? []).some((c) => c.name === 'adopted_at')) {
-      await step('submissions.adopted_at', () =>
-        env.DB.prepare(`ALTER TABLE submissions ADD COLUMN adopted_at INTEGER`).run()
-      );
-    }
-    /*
-     * 作者自助修订（2026-10-19 站长要求）：已经写回仓库的内容，作者也能自己发起修改/删除，
-     * 但**仍然要过审核**。做法是插一条新的待审行：
-     *   revise_of      指向原投稿 id（审核台据此标成「作者修订 #123」）
-     *   delete_request 1 = 作者申请删除这条内容（审核通过后从社区文件里移除）
-     */
-    if (!(cols.results ?? []).some((c) => c.name === 'revise_of')) {
-      await step('submissions.revise_of', () =>
-        env.DB.prepare(`ALTER TABLE submissions ADD COLUMN revise_of INTEGER`).run()
-      );
-    }
-    if (!(cols.results ?? []).some((c) => c.name === 'delete_request')) {
-      await step('submissions.delete_request', () =>
-        env.DB.prepare(`ALTER TABLE submissions ADD COLUMN delete_request INTEGER NOT NULL DEFAULT 0`).run()
-      );
-    }
-    await step('idx_sub_user', () =>
-      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_sub_user ON submissions(user_id, created_at)`).run()
+    await step('idx_page_revision_mode', () =>
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_page_revision_mode ON page_revisions(mode, status, created_at)`).run()
     );
     schemaReady = true;
   } catch (err) {
@@ -862,9 +838,9 @@ export async function ensureSchema(env: Env): Promise<void> {
 export async function recalcUserStats(env: Env, userId: number): Promise<void> {
   const row = await env.DB.prepare(
     `SELECT
-       COUNT(DISTINCT CASE WHEN status = 'applied' THEN map_slug || '|' || field END) AS ok,
-       COUNT(DISTINCT CASE WHEN status = 'rejected' THEN map_slug || '|' || field END) AS no
-     FROM submissions WHERE user_id = ?1`
+       COUNT(DISTINCT CASE WHEN status = 'applied' THEN map_slug || '|' || mode END) AS ok,
+       COUNT(DISTINCT CASE WHEN status = 'rejected' THEN map_slug || '|' || mode END) AS no
+     FROM page_revisions WHERE user_id = ?1`
   )
     .bind(userId)
     .first<{ ok: number; no: number }>();
@@ -1196,9 +1172,9 @@ export async function handleMe(request: Request, env: Env, url: URL): Promise<Re
   const { results } = await env.DB.prepare(
     /* value 只给「待审 / 被驳回 / 已上线」的行：个人页要用它做「改自己的投稿」的预填。
        已上线的内容作者也能自己发起修订（审核后生效），所以要能看到原值。 */
-    `SELECT id, map_slug, field, status, created_at, reviewed_at, reject_note, commit_sha,
-            CASE WHEN status IN ('pending','rejected','applied') THEN value ELSE NULL END AS value
-     FROM submissions WHERE user_id = ?1 ORDER BY created_at DESC LIMIT 50`
+    `SELECT id, map_slug, mode AS field, status, created_at, reviewed_at, reject_note, commit_sha,
+            CASE WHEN status IN ('pending','rejected','applied') THEN payload ELSE NULL END AS value
+     FROM page_revisions WHERE user_id = ?1 ORDER BY created_at DESC LIMIT 50`
   )
     .bind(user.id)
     .all<{
@@ -1219,7 +1195,7 @@ export async function handleMe(request: Request, env: Env, url: URL): Promise<Re
    * 这里是**投稿条数**（同图同字段改三次就是三条）。两个都显示，但标签写清楚。
    */
   const { results: byStatus } = await env.DB.prepare(
-    `SELECT status, COUNT(*) AS n FROM submissions WHERE user_id = ?1 GROUP BY status`
+    `SELECT status, COUNT(*) AS n FROM page_revisions WHERE user_id = ?1 GROUP BY status`
   )
     .bind(user.id)
     .all<{ status: string; n: number }>();
@@ -1396,7 +1372,7 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
   /*
    * linkgh：把这个账号挂到 GitHub 贡献者上（2026-10-13 加）—— 「仓库贡献者」称号。
    * 规则和「授权 UP 主」一样：**只人工发**，而且发之前要核对 —— 用户名必须在仓库的贡献者名单里
-   * （GitHub API 读，见 community.ts 的 listContributors）。
+   * （GitHub API 读，见 git.ts 的 listContributors）。
    * 一个人可能有多个 GitHub 号（SiKi = trrrr-ai + MiKU），所以收一个列表；**至少一个**要对得上，
    * 对不上的那些照样存下来但会在返回里点名（提交被 squash 过、或走的是 PR 分支，名单里就可能没有）。
    */
@@ -1496,7 +1472,7 @@ export async function handleAdminAccountAction(request: Request, env: Env): Prom
 
     await env.DB.prepare(`UPDATE users SET name = ?1, name_key = ?2 WHERE id = ?3`).bind(next.value, key, id).run();
     /* 顺手改掉「还没写回仓库」的署名（pending / approved）；已 applied 的在 git 里，改不动 */
-    await env.DB.prepare(`UPDATE submissions SET submitter = ?1 WHERE user_id = ?2 AND status IN ('pending','approved')`)
+    await env.DB.prepare(`UPDATE page_revisions SET submitter = ?1 WHERE user_id = ?2 AND status IN ('pending','approved')`)
       .bind(next.value, id)
       .run();
     await pushNotification(env, {

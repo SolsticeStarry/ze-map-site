@@ -5,7 +5,7 @@
  * 为什么只有这一件事了：以前这个脚本还会用 headless 浏览器 + CDP 把本站 3D 预览
  * 渲染成 4 个机位的图（iso/top/side/close）。2026-10-06 站长决定图片集**只放真实图片**，
  * 于是整条截图链路（Edge CDP / sharp / 机位参数）一起删掉了 ——
- * 现在的图片集 = 工坊预览图（本脚本）+ 玩家投稿（/submit/ 的「图片集图片」）。
+ * 现在的图片集 = 工坊预览图（本脚本）+ 玩家上传（/submit/edit 的「图片集图片」）。
  *
  * 产物写到仓库外的 `bake/gallery/<slug>/05-workshop.<ext>`（bake/ 已 gitignore），
  * 再由 upload-gallery.mjs 传到 R2（`gallery/` 前缀）并写出清单 data/gallery/<slug>.json。

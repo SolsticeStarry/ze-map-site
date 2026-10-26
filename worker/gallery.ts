@@ -3,21 +3,21 @@
  *
  * 为什么没有「本站渲染的 3D 视角图」了：那几张虽然清晰可控，但本质是本站画的示意图，
  * 放在「图片集」里和真实截图混在一起会误导人（2026-10-06 站长决定去掉）。
- * 现在图片集只收人拍的东西，投稿入口在 /submit/ 的「图片集图片」。
+ * 现在图片集只收人拍的东西，投稿入口在 /submit/edit 的「图片集图片」。
  *
  * 存储分工（和封面刻意不同）：
  *   - **待审图片**放 KV（`UPLOADS` 绑定的 `pending-gallery/<uuid>.<ext>`）：
  *     带 30 天 TTL，没人审的图会自己过期，不用配 R2 生命周期规则 —— 和封面同一套路；
  *   - **通过的图片**在写回仓库时挪进 R2（`gallery/<slug>/u<投稿id>.<ext>`，公开可读、
  *     一年 immutable）。图片不进 git：546 张地图 × 若干张图，塞进去会重演 terr 那次的体积事故；
- *   - **入库的只有清单** `data/gallery/<slug>.json`（几百字节），由 worker/submissions.ts 的
- *     攒批写回和社区文档一起提交 —— 一次提交 = 一次重建。
+ *   - **入库的只有清单** `data/gallery/<slug>.json`（几百字节），由 page_revisions 的
+ *     攒批写回和 data/content 一起提交 —— 一次提交 = 一次重建。
  *
  * 文件名为什么是 `u<投稿id>.<ext>`：id 由 D1 自增保证唯一，**同一个 id 每次重试都写同一个
  * 对象名** —— 写回失败重来时不会在桶里留下孤儿图。工坊预览图沿用 `05-workshop.<ext>`。
  */
 import { detectImageFormat, imageSize } from '../shared/image-size.mjs';
-import { GitError } from './community';
+import { GitError } from './git';
 import type { Env } from './http';
 
 /** 正式图片的 R2 前缀（公开读：https://terr.ze-map.cn/gallery/<slug>/<file>） */
@@ -53,7 +53,7 @@ export { GALLERY_PER_MAP_MAX } from '../shared/submission-fields.mjs';
  */
 export const GALLERY_PER_REQUEST_MAX = 24;
 
-/** 存进 submissions.value 的图片集元数据 */
+/** 存进 page_revisions.payload.media 的图片集元数据 */
 export interface GalleryMeta {
   key: string;
   ext: string;
@@ -162,7 +162,7 @@ export interface GalleryManifest {
 
 /**
  * 解析清单文本。**坏文件不抛错**：当成空清单，本次写回会把它重写成合法结构
- * （和 worker/community.ts 对社区文档的做法一致）。
+ * （和 page_revisions 写回 content 的做法一致）。
  */
 export function parseManifest(text: string | null, slug: string): GalleryManifest {
   let raw: unknown = null;

@@ -85,7 +85,7 @@ export interface Env {
    * 设置：`wrangler secret put NICKNAME_EXTRA`；改完按 isolate 缓存 5 分钟自然生效，不用重新部署。
    */
   NICKNAME_EXTRA?: string;
-  /** 以下三项可选，默认值见 worker/community.ts */
+  /** 以下三项可选，默认值见 worker/git.ts */
   GITHUB_REPO?: string;
   GITHUB_BRANCH?: string;
   /** 便于本地拿假 GitHub 做测试 */

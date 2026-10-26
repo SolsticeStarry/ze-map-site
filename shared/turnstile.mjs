@@ -28,9 +28,21 @@ export function isLocalHostname(host) {
   return /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host);
 }
 
-/** 按当前域名选 Site Key：本地用测试 key，线上用真 key */
+/**
+ * 是不是预览 / 测试域名（*.workers.dev、*.pages.dev）。
+ *
+ * 真 Site Key 在 Turnstile 后台配了域名白名单，只放行 ze-map.cn；
+ * 在这些预览域名上用真 key 会直接报「无法连接到网站」，于是登录、注册、投稿
+ * 全被前端那句「请先完成人机验证」挡住 —— 测试 Worker 就等于不可用。
+ * 预览域名一律走官方「永远通过」的测试 key；生产域名不受影响。
+ */
+export function isPreviewHostname(host) {
+  return /(^|\.)(workers\.dev|pages\.dev)(:\d+)?$/i.test(host);
+}
+
+/** 按当前域名选 Site Key：本地 / 预览用测试 key，线上用真 key */
 export function siteKeyFor(host) {
-  if (isLocalHostname(host)) return LOCAL_TEST_SITE_KEY;
+  if (isLocalHostname(host) || isPreviewHostname(host)) return LOCAL_TEST_SITE_KEY;
   return TURNSTILE_SITE_KEY;
 }
 

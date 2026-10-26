@@ -26,7 +26,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DIFFICULTIES, isDifficulty, normalizeDifficulty } from '../../shared/difficulty.mjs';
 import { BAKED_SOURCE, normalizeEntitySource } from '../../shared/entity-source.mjs';
-import { normalizeDoc } from '../../shared/community-doc.mjs';
 import { cdText, docItemRows, mergeItems, usesText } from '../../shared/items.mjs';
 import { guideTextToMdx, relicAnchorId } from '../../shared/guide-blocks.mjs';
 
@@ -210,33 +209,6 @@ function loadGfl(mapName) {
     const data = readJson(f);
     return { ...data, _from: target === mapName ? null : target };
   } catch { return null; }
-}
-
-/* 社区投稿里与神器 / 道具有关的部分（data/community/<地图英文名>.json 的 items[]）。
-   走 normalizeDoc 而不是直接 JSON.parse：仓库里的文件可能被人手改坏，
-   构建期不该因为一行坏数据整页崩掉。 */
-const COMMUNITY_DIR = path.join(ROOT, 'data/community');
-function communityNoteOf(slug, field) {
-  try {
-    const doc = JSON.parse(fs.readFileSync(path.join(COMMUNITY_DIR, `${slug}.json`), 'utf8'));
-    const notes = (Array.isArray(doc.notes) ? doc.notes : []).filter(
-      (n) => n && n.field === field && typeof n.text === 'string' && n.text.trim()
-    );
-    return notes.length ? notes[notes.length - 1] : null;
-  } catch {
-    return null;
-  }
-}
-function communityStoryOf(slug) {
-  return communityNoteOf(slug, 'story');
-}
-
-function communityItemsOf(slug) {
-  const f = path.join(COMMUNITY_DIR, `${slug}.json`);
-  if (!fs.existsSync(f)) return [];
-  try {
-    return normalizeDoc(slug, readJson(f)).items ?? [];
-  } catch { return []; }
 }
 
 /* 关卡数复核：dump 的 st 字段偶尔偏低（例：ze_minecraft_universe 记为 1，
@@ -522,18 +494,14 @@ async function emitManifest(slug, research) {
   );
 }
 
-function sectionsToBody(sections, slug, coverRel, story) {
+function sectionsToBody(sections, slug, coverRel) {
   const marker = galleryMarker(slug, coverRel);
   const out = [];
   const storyAt = sections.findIndex((s) => /^背景故事/.test(s.title.trim()));
   const after = storyAt >= 0 ? storyAt : 0;
   sections.forEach((s, i) => {
     if (out.length) out.push('');
-    const isStory = /^背景故事/.test(s.title.trim());
-    const body =
-      isStory && story
-        ? `${String(story.text).trim()}\n\n*本段由 ${story.by || '匿名'} 投稿，${String(story.at || '').slice(0, 10)} 审核通过；原稿保留在版本历史里。*`
-        : s.body.replace(/\s+$/, '');
+    const body = s.body.replace(/\s+$/, '');
     out.push(`## ${s.title.trim()}`, '', body, '');
     if (i === after) out.push(marker, '');
   });
@@ -557,7 +525,7 @@ const MAP_SIZES = (() => {
 
 function renderEntry(rec, research, wsRec, gfl) {
   /*
-   * pageSlug = 页面文件名（= data/research / data/gallery / data/community 的键、投稿链接里的 map 参数）。
+   * pageSlug = 页面文件名（= data/research / data/gallery 的键、编辑链接里的 map 参数）。
    * 多数图和实体名一样；魔晄炉的页面是 ze_ffvii_mako_reactor，实体叫 ze_ffvii_mako_reactor_v6_p
    * —— 这种差异由 research 的 `maps` 字段声明（见文件开头 entityAlias）。
    */
@@ -626,7 +594,6 @@ function renderEntry(rec, research, wsRec, gfl) {
    * （魔晄炉 / 米纳斯 / 黑珍珠号）。只看 summary 的话那三页会被标成 stub，
    * 页面顶部就会挂出「本条目为数据条目，资料待补充」—— 而它们恰恰是全站内容最全的三页。
    */
-  const summaryNote = research ? communityNoteOf(pageSlug, 'summary') : null;
   const hasEditorial = Boolean(research?.summary || research?.sections?.length);
   /*
    * 封面优先级：
@@ -747,15 +714,8 @@ function renderEntry(rec, research, wsRec, gfl) {
   const manualStages = Number.isFinite(research?.stages);
 
   /* 摘要只有普通图才有；手写小节的图（sections）开头直接就是「背景故事」那一节 */
-  if (summaryNote || research?.summary) {
-    const summaryText = summaryNote ? String(summaryNote.text).trim() : String(research.summary).trim();
-    intro.push(mdSafe(summaryText), '');
-    if (summaryNote) {
-      intro.push(
-        `*本简介由 ${summaryNote.by || '匿名'} 投稿，${String(summaryNote.at || '').slice(0, 10)} 审核通过。*`,
-        ''
-      );
-    }
+  if (research?.summary) {
+    intro.push(mdSafe(String(research.summary).trim()), '');
   }
   // 数据条目的「资料待补充」提示由详情页统一渲染（stub 字段），正文里不再重复
 
@@ -840,13 +800,8 @@ function renderEntry(rec, research, wsRec, gfl) {
     );
   }
 
-  /* 神器 / 道具：服务器配置打底，社区投稿逐行盖上（原值留在备注里）。
-     生成器**读社区文档**是有意的：表格在正文里，读时合并得让 MDX 里带组件，
-     而 MDX 一律由脚本生成 —— 两边都真实、且输出仍然确定（社区文件是入库的）。
-     键用 pageSlug：社区投稿文件是按**页面名**存的（ze_ffvii_mako_reactor.json）。 */
-  const communityRows = communityItemsOf(pageSlug);
-  const merged = mergeItems(gfl?.items ?? [], communityRows);
-  const communityCount = merged.rows.filter((r) => r.kind !== 'server').length;
+  /* 神器 / 道具：服务器配置打底；玩家逐行覆盖由 data/content 在渲染层合并。 */
+  const merged = mergeItems(gfl?.items ?? [], []);
   /* 教程小节（research.guides）：叠在自动正文之上，不取代它 */
   const guides = (Array.isArray(research?.guides) ? research.guides : []).filter(
     (g) => g && typeof g.title === 'string' && g.title.trim() && typeof g.body === 'string' && g.body.trim()
@@ -865,10 +820,8 @@ function renderEntry(rec, research, wsRec, gfl) {
   }
 
   if (merged.rows.length) {
-    /* 备注列只在真的有社区行时出现：没有社区投稿的图，表格保持三列，
-       免得 340 多个条目凭空多出一列空白（也免得 diff 里全是噪音）。 */
-    const showNote = communityCount > 0;
-    const title = gfl?.items?.length ? '神器 / 道具（服务器配置）' : '神器 / 道具（社区补充）';
+    const showNote = false;
+    const title = gfl?.items?.length ? '神器 / 道具（服务器配置）' : '神器 / 道具';
     /* 社区反馈「本图没有」的行不计入表格（也不计入件数），只在下面那句说明里点名 */
     const shownCount = merged.rows.length - merged.removed.length;
     const goneNote = merged.removed.length
@@ -877,10 +830,10 @@ function renderEntry(rec, research, wsRec, gfl) {
     const lead = gfl?.items?.length
       ? `以下 ${shownCount} 件道具来自公开的服务器 entwatch 配置，是本图在服务器上实际注册的神器与道具${
           gfl._from ? `（取自 GFL 的 \`${gfl._from}\` 配置）` : ''
-        }${communityCount ? '；备注里标了「社区更正 / 社区补充」的行来自社区投稿' : ''}${
-          guideAnchors.size ? '；带链接的道具名可以点进下面的教程' : ''
-        }${relicIntros.size ? '；「说明」列是社区写的一句话介绍' : ''}${goneNote}：`
-      : `本站没有这张图的服务器配置解析结果，以下 ${shownCount} 件来自[社区投稿](/contribute/)补充${goneNote}：`;
+        }${guideAnchors.size ? '；带链接的道具名可以点进下面的教程' : ''}${
+          relicIntros.size ? '；「说明」列是一句话介绍' : ''
+        }${goneNote}：`
+      : `本站没有这张图的服务器配置解析结果。`;
     gameplay.push(...itemsBlock(merged.rows, { title, lead, showNote, anchors: guideAnchors, intros: relicIntros }));
   }
 
@@ -934,9 +887,6 @@ function renderEntry(rec, research, wsRec, gfl) {
         ? '- 实体点位来自地图实体定义；有模型碰撞壳的刷子实体带真实包围盒，其余使用类别典型尺寸。'
         : '- 历史快照的实体点位和体积说明保留原始口径。',
     gfl ? '- 神器 / 道具、BOSS 与音乐名单来自 GFL 公开服务器配置（entwatch / bosshud / musicname），可能与其它服务器不一致。' : null,
-    communityCount
-      ? '- 神器 / 道具表里标注「社区更正 / 社区补充」的行来自社区投稿（投稿页提交、人工审核）；原值保留在备注里，未标注的行仍是服务器配置原值。'
-      : null,
     manualStages
       ? '- 关卡数取自本站人工整理，与服务器配置或实际流程可能仍有出入。'
       : '- 关卡数由实体命名（lvl2 / stage3 等）推断，未命名的按就近标注推断，可能与服务器配置或实际流程略有出入。',
@@ -948,8 +898,7 @@ function renderEntry(rec, research, wsRec, gfl) {
 
   /*
    * 手写小节的图（research.sections）：正文 = 开头摘要 + 人工小节（图片集标记插在
-   * 「背景故事」之后）+ 教程 + 社区投稿的神器更正（它们没有自动生成的神器表，
-   * 所以投稿只能这样显式补出来，不能让投稿石沉大海）+ 上面那份补缺小节。
+   * 「背景故事」之后）+ 教程 + 上面那份补缺小节。
    */
   const hasSections = Array.isArray(research?.sections) && research.sections.length > 0;
 
@@ -966,31 +915,8 @@ function renderEntry(rec, research, wsRec, gfl) {
   const body = hasSections
     ? [
         ...intro,
-        ...sectionsToBody(research.sections, pageSlug, coverRel, research ? communityStoryOf(pageSlug) : null),
+        ...sectionsToBody(research.sections, pageSlug, coverRel),
         ...guideBody,
-        ...(() => {
-          const docRows = docItemRows(research.sections.map((s) => `## ${s.title}\n\n${s.body}`).join('\n\n'));
-          const mergedDoc = mergeItems(docRows.map((r) => ({ name: r.name, cd: r.cd, maxuses: null })), communityItemsOf(pageSlug));
-          /* kind !== 'server' = 社区动过手脚的行（更正 / 补充 / 删除）；删除的那些由 itemsBlock
-             整行滤掉、只在表下留一句说明，所以这里的件数要按「表里真的出现的行」算。 */
-          const nonServer = mergedDoc.rows.filter((r) => r.kind !== 'server');
-          const changedCount = nonServer.filter((r) => r.kind !== 'removed').length;
-          const goneCount = nonServer.length - changedCount;
-          return nonServer.length
-            ? [
-                '',
-                ...itemsBlock(nonServer, {
-                  title: '神器 / 道具更正（社区投稿）',
-                  lead:
-                    `上面的神器表由本站人工整理；以下是[社区投稿](/contribute/)的更正与补充（${changedCount} 件` +
-                    `${goneCount ? `，另有 ${goneCount} 件经反馈本图没有、已从表中移除` : ''}），未列出的行仍以原表为准：`,
-                  showNote: true,
-                  anchors: guideAnchorsFor(guides, mergedDoc.rows),
-                  intros: relicIntros,
-                }),
-              ]
-            : [];
-        })(),
         ...manualTail,
       ]
     : [...intro, galleryMarker(pageSlug, coverRel), '', ...gameplay, ...guideBody, ...meta];

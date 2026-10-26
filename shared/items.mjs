@@ -8,8 +8,8 @@
  * 谁也说不清它对不对 —— 所以原值一律保留在备注里，来源逐行标注。
  *
  * 数据流向：
- *   投稿（/submit/，字段 items）→ D1 → 审核 → data/community/<slug>.json 的 items[]
- *   → 生成器用 mergeItems() 合并进条目正文的「神器 / 道具」表
+ *   单项补充（/submit/edit，字段 items）或整页编辑 → page_revisions → 审核
+ *   → data/content/<slug>.json 的 itemEdits[] → 生成器用 mergeItems() 合并进「神器 / 道具」表
  */
 
 /** 投稿里这三种动作；键会进 JSON、进日志，别随意改名 */
@@ -91,9 +91,103 @@ export function normalizeItemRow(raw, extra = {}) {
  * `data/gfl-parsed`，就会对着这些图说「本站还没有这张图的神器表」——
  * 而页面上明明摆着一张表，投稿人当场就懵了（2026-09-28 的反馈）。
  *
- * 只做「认名字」这一件事，不重写手写正文：命中的行用来做表单里的名称联想与对照。
+ * 认出手写表的名称、说明、备注和分数；分数并进备注，避免丢信息。
  * 名字取哪一列：中文列 + 英文名/ID 列并存时（火焰 | Fire）取英文列，否则取第一列。
  */
+/**
+ * 从 research 正文的「神器 / 道具」表里抽出完整行（名称 / 冷却 / 次数 / 说明 / 备注）。
+ * 详情页和编辑页都需要这份“人写的说明”；只认名字的 docItemRows() 不够。
+ */
+export function docItemDetails(text) {
+  /* 手写表常把 <tr> / <th> 拆成多行；先压成单行，否则表头认不出来，只剩名字。 */
+  const src = String(text ?? '').replace(/<tr\b[\s\S]*?<\/tr>/gi, (row) => row.replace(/\r?\n/g, ' '));
+  if (!src) return [];
+  const rows = [];
+  let active = false;
+  let level = 0;
+  let header = null;
+
+  const parsePipe = (line) =>
+    line
+      .replace(/^\s*\|/, '')
+      .replace(/\|\s*$/, '')
+      .split('|')
+      .map((cell) => String(cell ?? '').trim());
+
+  const headerOf = (cells) => {
+    const keys = cells.map((cell) => itemKey(cell));
+    const find = (...names) => keys.findIndex((key) => names.includes(key));
+    /* 人工表有三种写法：GFL 导出的「道具 / 冷却 / 使用次数 / 说明 / 备注」，
+       以及米纳斯这类手写表「神器 / 分数 / 效果 / 备注」。都要认。 */
+    const name = find('道具', '名称', '英文名', 'item', 'name', '神器');
+    const cd = find('冷却', 'cd', 'cooldown');
+    const uses = find('使用次数', '次数', 'uses', 'maxuses');
+    const intro = find('说明', '介绍', 'intro', 'description', '效果', '作用');
+    const note = find('备注', 'note', '持有建议', '建议');
+    const score = find('分数', 'score');
+    return name >= 0 || cd >= 0 || intro >= 0 ? { name, cd, uses, intro, note, score } : null;
+  };
+
+  const rowOf = (cells) => {
+    const value = (index) => (index >= 0 ? String(cells[index] ?? '').trim() : '');
+    const nameCell = value(header?.name ?? 0);
+    if (!nameCell || /^(神器|道具|名称|英文名|item|name)$/i.test(nameCell)) return null;
+    if (/^-+$/.test(nameCell) || cells.every((cell) => !cell || /^:?-+:?$/.test(cell))) return null;
+    const cdText = value(header?.cd ?? -1);
+    const usesText = value(header?.uses ?? -1);
+    const cd = cdText ? Number((/(\d+(?:\.\d+)?)/.exec(cdText) ?? [])[1]) : null;
+    const uses = /不限/.test(usesText) ? 0 : usesText ? Number((/(\d+)/.exec(usesText) ?? [])[1]) : null;
+    const score = value(header?.score ?? -1);
+    const note = [score ? `分数 ${score}` : '', value(header?.note ?? -1)].filter(Boolean).join(' · ');
+    return {
+      action: 'update',
+      name: nameCell,
+      cd: Number.isFinite(cd) ? cd : null,
+      uses: Number.isFinite(uses) ? uses : null,
+      intro: value(header?.intro ?? -1) === '待补充' ? '' : value(header?.intro ?? -1),
+      note,
+    };
+  };
+
+  for (const line of src.split(/\r?\n/)) {
+    const heading = line.match(/^(#{2,4})\s+(.*)$/);
+    if (heading) {
+      if (/(神器|道具)/.test(heading[2])) {
+        active = true;
+        level = heading[1].length;
+      } else if (active && heading[1].length <= level) {
+        active = false;
+      }
+      continue;
+    }
+    if (!active) continue;
+
+    let cells = null;
+    const html = line.match(/<tr\b[^>]*>([\s\S]*?)<\/tr>/i);
+    if (html) cells = cellsOfHtml(html[1]);
+    else if (/^\s*\|/.test(line)) cells = parsePipe(line);
+    if (!cells) continue;
+
+    if (!header) {
+      const found = headerOf(cells);
+      if (found) {
+        header = found;
+        continue;
+      }
+    }
+    const row = rowOf(cells);
+    if (row) rows.push(row);
+  }
+
+  const seen = new Set();
+  return rows.filter((row) => {
+    const key = itemKey(row.name);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function docItemRows(text) {
   const src = String(text ?? '');
   if (!src) return [];

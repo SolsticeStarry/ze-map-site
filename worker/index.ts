@@ -2,14 +2,13 @@
  * ze-map-site Worker —— 路由入口。
  *
  * 背景：站点原本是**纯静态资源** Worker，一行脚本都没有。现在它承担四件事：
- *   P1  社区难度投票（/api/vote /api/stats）
- *   P2  社区投稿 + 审核台（/api/submit /api/submission /api/admin/*）
+ *   P2  内容修订 + 审核台（/api/page-revision /api/admin/page-revisions/*）
  *   P3  视频署名（/api/video-meta）：标题与 UP 主名 / UID，读 R2 里的
  *       `video-meta/index.json`（本地 tools/video-meta-push.mjs 推上去），
  *       这样 UP 主信息不必进 GitHub 仓库（见 worker/videos.ts 的说明）
  *   P4  账号（/api/register /api/login /api/logout /api/me /api/password /api/profile，
  *       见 worker/auth.ts）。**登录始终是可选的**：不登录照样能投稿，
- *       登录了才会把投稿记到自己名下（/account/ 个人页），并累等级与免审资格。
+ *       登录了才会把投稿记到自己名下（/account/ 个人页），并累计等级。
  *       会话是无状态签名 Cookie，不建表、不查 KV。
  *
  * 性能：Cloudflare 官方路由规则是「静态资源优先命中，匹配不到才调用 Worker」，
@@ -38,25 +37,16 @@ import {
   sha256Hex,
   type Env,
 } from './http';
-import {
-  handleAdminAdopt,
-  handleAdminCurrent,
-  handleAdminBan,
-  handleAdminFlush,
-  handleAdminImage,
-  handleAdminQueue,
-  handleAdminReview,
-  handleAdminUnstage,
-  handleSubmissionStatus,
-  handleSubmit,
-  handleSubmitCover,
-  handleSubmitGallery,
-} from './submissions';
-import { handleStats, handleVote } from './votes';
 import { handleTerr } from './terr';
 import { handleVideoMeta, handleVideoThanks } from './videos';
-/* 「改/撤回自己的投稿」（2026-10-19）：登录用户的自助操作，见 worker/my-submissions.ts */
-import { handleMySubmissionEdit, handleMySubmissionWithdraw } from './my-submissions';
+import { handleContentMediaUpload } from './content-media';
+import {
+  handleAdminPageRevisionCurrent,
+  handleAdminPageRevisionFlush,
+  handleAdminPageRevisionQueue,
+  handleAdminPageRevisionReview,
+  handlePageRevisionSubmit,
+} from './page-revisions';
 import {
   handleAdminAccountAction,
   handleAdminAccounts,
@@ -105,6 +95,14 @@ async function route(request: Request, env: Env): Promise<Response> {
    */
   if (path.startsWith('/terr/')) return handleTerr(request, env);
 
+  /* 旧的字段投稿页已删除：保留 URL 做 301。 */
+  if (path === '/submit') {
+    const target = new URL('/submit/edit/', url);
+    target.search = url.search;
+    target.hash = url.hash;
+    return Response.redirect(target.toString(), 301);
+  }
+
   /*
    * 非 /api/* 一律交回资源绑定（含未命中时的 404 兜底）。
    * 千万别在这里自己 new Response('Not found')，那会把站内 404 页顶掉。
@@ -125,25 +123,18 @@ async function route(request: Request, env: Env): Promise<Response> {
     const denied = checkAdmin(request, env);
     if (denied) return denied;
 
-    if (path === '/api/admin/queue') return handleAdminQueue(request, env, url);
-    /* 现值：给「现值 vs 新值」对比用，按 id 取（列表不再逐图读 GitHub，见 handleAdminQueue 注释） */
-    if (path === '/api/admin/current') return handleAdminCurrent(request, env, url);
-    if (path === '/api/admin/review') return handleAdminReview(request, env);
-    if (path === '/api/admin/flush') return handleAdminFlush(request, env);
-    /* 采纳整篇草稿：把社区整理版合并进人工原稿（2026-10-13） */
-    if (path === '/api/admin/adopt') return handleAdminAdopt(request, env);
-    if (path === '/api/admin/unstage') return handleAdminUnstage(request, env);
-    if (path === '/api/admin/ban') return handleAdminBan(request, env);
+    if (path === '/api/admin/page-revisions') {
+      if (request.method === 'GET') return handleAdminPageRevisionQueue(request, env, url);
+      if (request.method === 'POST') return handleAdminPageRevisionReview(request, env);
+    }
+    /* 「现在的值」快照：审核台给整页修订做两栏对比用（按 slug 懒加载） */
+    if (path === '/api/admin/page-revisions/current') return handleAdminPageRevisionCurrent(request, env, url);
+    if (path === '/api/admin/page-revisions/flush') return handleAdminPageRevisionFlush(request, env);
     /* 站内公告（收件箱）：GET 看最近发过的、POST 发一条全员公告 */
     if (path === '/api/admin/announce') return handleAdminAnnounce(request, env, url);
     /* 账号管理（P4）：看账号列表 / 停用 / 恢复 / 解锁连续输错被锁的账号 */
     if (path === '/api/admin/accounts') {
       return request.method === 'POST' ? handleAdminAccountAction(request, env) : handleAdminAccounts(request, env, url);
-    }
-    /* 待审图片的缩略图（封面 / 图片集）：<img> 带不了自定义头，所以审核台用 fetch + Bearer 取 blob，
-       这样密钥不会出现在 URL 里（也就不进任何日志）。 */
-    if (path.startsWith('/api/admin/cover/') || path.startsWith('/api/admin/gallery/')) {
-      return handleAdminImage(request, env, path);
     }
     return fail('未知接口', 404);
   }
@@ -161,24 +152,9 @@ async function route(request: Request, env: Env): Promise<Response> {
   const ipHash = await sha256Hex(`${salt ?? 'local-dev-only'}:${clientIp(request)}`);
 
   /* ===== 公开接口 ===== */
-  if (path === '/api/stats') return handleStats(request, env, url, ipHash);
-  if (path === '/api/vote') return handleVote(request, env, ipHash);
-  if (path === '/api/submit') return handleSubmit(request, env, ipHash, clientIp(request));
-  if (path === '/api/submit-cover') return handleSubmitCover(request, env, ipHash, clientIp(request));
-  if (path === '/api/submit-gallery') return handleSubmitGallery(request, env, ipHash, clientIp(request));
-  if (path === '/api/submission') return handleSubmissionStatus(request, env, url);
-  /*
-   * 改 / 撤回自己的投稿（2026-10-19）：必须登录，且只能动自己那条、
-   * 且只在「待审 / 被驳回」时能改 —— 已写回仓库的内容要走重新投稿 + 审核。
-   */
-  if (path === '/api/my-submission/edit') {
-    await ensureSchema(env);
-    return handleMySubmissionEdit(request, env);
-  }
-  if (path === '/api/my-submission/withdraw') {
-    await ensureSchema(env);
-    return handleMySubmissionWithdraw(request, env);
-  }
+  if (path === '/api/page-revision') return handlePageRevisionSubmit(request, env, ipHash);
+  if (path === '/api/content-cover') return handleContentMediaUpload(request, env, ipHash, 'cover');
+  if (path === '/api/content-gallery') return handleContentMediaUpload(request, env, ipHash, 'gallery');
   /* 视频标题 / UP 主名：只读、带 R2 索引。不写 D1（见 videos.ts 顶部的取舍说明） */
   if (path === '/api/video-meta') return handleVideoMeta(request, env, url);
   /* 「特别感谢」名单（已同意收录的 UP 主），/thanks/ 页面读它 */

@@ -3,8 +3,8 @@
  *
  * 为什么要单独抽出来：
  * 「什么算一条合法投稿」这件事有三个地方需要知道 ——
- *   1. 投稿表单（src/pages/submit.astro）—— 前端即时校验、渲染对应控件
- *   2. Worker（worker/index.ts）—— 服务端权威校验，绝不相信前端
+ *   1. 单项编辑器（src/pages/submit/edit.astro）—— 前端即时校验、渲染对应控件
+ *   2. 整页编辑器（src/pages/edit/[slug].astro）与 Worker（shared/page-schema.mjs / worker/page-revisions.ts）—— 服务端权威校验，绝不相信前端
  *   3. 测试脚本 —— 单独验证规则本身
  * 三处各写一份必然漂移。难度枚举那次线上构建红叉（有人写了「普通」）
  * 就是同一类事故，所以这次一开始就共用一份。
@@ -43,14 +43,14 @@ export const LIMITS = {
  *   tags     字符串数组（标签）
  *   int      整数
  *   urlList  链接数组
- *   image    图片文件（**不走这里的 text 校验**：由 /api/submit-cover 以 multipart 上传，
+ *   image    图片文件（**不走这里的 text 校验**：由 /api/content-cover 以 multipart 上传，
  *            校验与落盘在 worker/covers.ts；这里只用于表单控件与审核台标签）
- *   gallery  图片集图片（**同 image**：由 /api/submit-gallery 上传，一批最多 24 张、
+ *   gallery  图片集图片（**同 image**：由 /api/content-gallery 上传，一批最多 24 张、
  *            每张各成一条投稿；校验在 worker/gallery.ts，图片进 R2、通过的清单写进 data/gallery/<slug>.json）
  *   longtext 多行正文（**正文类字段不做条目字段覆盖，而是进「社区补充」区块的笔记** ——
- *            见 shared/community-doc.mjs 的 applySubmission 与 isNoteField）
+ *            见 scripts/legacy/community-doc.mjs 的 applySubmission 与 isNoteField（历史）
  *   itemlist 神器 / 道具行（**逐行合并**，不整表替换：见 shared/items.mjs 的 mergeItems；
- *            落盘进社区文档的 items[]，由生成器合并进条目正文）
+ *            落盘进 content 的 itemEdits，由生成器合并进条目正文）
  *
  * ⚠️ `hint` 是**纯文本**：投稿表单用 textContent 填、/contribute/ 直接插值，
  *    两边都不会解析 markdown —— 写 `**加粗**` 只会原样显示出星号。
@@ -230,7 +230,7 @@ export const FIELD_RULES = {
       '图片版权归原作者，作者要求撤下我们会立刻删。',
     /* 图片上限与落盘在 worker/gallery.ts（单张 1.5 MB、宽至少 480px、
        每图最多 GALLERY_PER_MAP_MAX 张 = 36，见上面那个常量）；
-       说明上限 60 字；接口是 /api/submit-gallery（multipart，一批最多 24 张，一次请求只验一次人机） */
+       说明上限 60 字；接口是 /api/content-gallery（multipart，一批最多 24 张） */
     maxCaption: 60,
   },
   /*
@@ -323,7 +323,7 @@ export const FIELD_RULES = {
    * 编辑者想要「一块自己的地盘」：自己起个小节名，把标准字段装不下的长篇见解放进去。
    *
    * 边界（定这个字段时就写在提示里，服务端逐条兜住）：
-   *   · 一张图**最多一篇**（worker/submissions.ts 里按 field='section' 计数拦重复投）；
+   *   · 一张图**最多一篇**（旧 community 链路里按 field='section' 计数；当前 content 用 blocks）；
    *   · 标题 2~20 字，**不许与本站自己的小节同名**（见 RESERVED_SECTION_TITLES）；
    *   · 正文 ≤4000 字、禁 < > { }；**必须登录**（长篇要能追到人）；
    *   · 渲染在条目末尾，挂「社区整理」小标 + 署名与日期 —— 和 story / guide 一样**压不过本站正文**，
@@ -556,7 +556,7 @@ export function validateValue(field, raw) {
         if (/[<>{}]/.test(text)) return { ok: false, error: `${at}正文里不能出现 < > { } 这几个字符` };
         out.push({ title, text });
       }
-      /* reviseOf 的合法性由 community-doc.mjs 的 isReviseId 兜（这里只做类型清洗，避免互相 import） */
+      /* reviseOf 的合法性由旧 community-doc.mjs 的 isReviseId 兜（这里只做类型清洗，避免互相 import） */
       const reviseOf = typeof obj.reviseOf === 'string' ? obj.reviseOf.trim() : '';
       return { ok: true, value: reviseOf ? { sections: out, reviseOf } : { sections: out } };
     }
@@ -701,13 +701,13 @@ export function validateValue(field, raw) {
     }
 
     case 'image':
-      /* 图片不走 JSON 投稿：表单会用 multipart 打到 /api/submit-cover，
+      /* 图片不走 JSON 投稿：表单会用 multipart 打到 /api/content-cover，
          服务端在那里做权威校验（种类、体积、尺寸）。走到这里说明调用方搞错了入口。 */
-      return { ok: false, error: '封面请用表单里的图片上传控件（接口是 /api/submit-cover）' };
+      return { ok: false, error: '封面请用表单里的图片上传控件（接口是 /api/content-cover）' };
 
     case 'gallery':
-      /* 同理：图片集走 multipart 到 /api/submit-gallery（一批多张），落盘在 worker/gallery.ts */
-      return { ok: false, error: '图片集请用表单里的图片上传控件（接口是 /api/submit-gallery）' };
+      /* 同理：图片集走 multipart 到 /api/content-gallery（一批多张），落盘在 worker/gallery.ts */
+      return { ok: false, error: '图片集请用表单里的图片上传控件（接口是 /api/content-gallery）' };
 
     case 'urlList': {
       const list = Array.isArray(raw)

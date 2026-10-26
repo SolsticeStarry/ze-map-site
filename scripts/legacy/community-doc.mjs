@@ -1,7 +1,8 @@
 /**
- * 社区贡献文档 data/community/<slug>.json 的形状与读写辅助。
+ * 旧社区贡献文档 data/community/<slug>.json 的形状辅助。
  *
- * Worker（写入）与站点构建（读取）共用这一份，避免两边对格式的理解漂移。
+ * 仅保留给 scripts/legacy/migrate-editorial.mjs 迁移旧数据使用；
+ * 运行时与站点构建已不再读它。当前模型见 docs/content-model.md。
  *
  * 文件长这样：
  * {
@@ -35,8 +36,8 @@
  * 判断走 isItemField()，同样从字段表派生。
  */
 
-import { FIELD_RULES } from './submission-fields.mjs';
-import { itemKey, normalizeItemRow } from './items.mjs';
+import { FIELD_RULES } from '../../shared/submission-fields.mjs';
+import { itemKey, normalizeItemRow } from '../../shared/items.mjs';
 
 export const DOC_VERSION = 1;
 
