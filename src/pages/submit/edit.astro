@@ -72,7 +72,15 @@ const fields = Object.entries(rules)
         </div>
       </section>
 
-      <section class="se-card" id="se-single-editor-card" hidden>
+      <section class="se-card" id="se-local-pending" hidden>
+        <div class="se-card-head">
+          <h2 class="se-h2">本机待审投稿</h2>
+          <span class="se-note">匿名投稿的撤回码存在这台设备上；换设备就找不回了</span>
+        </div>
+        <div id="se-local-list" class="se-local-list"></div>
+      </section>
+
+<section class="se-card" id="se-single-editor-card" hidden>
         <div id="se-single-editor"></div>
       </section>
 
@@ -748,6 +756,48 @@ const fields = Object.entries(rules)
       return patch;
     }
 
+    function renderLocalPending() {
+      const box = document.getElementById('se-local-pending');
+      const list = document.getElementById('se-local-list');
+      if (!box || !list) return;
+      let rows: Array<{ id: number; token: string; slug: string; title?: string; at: number }> = [];
+      try { rows = JSON.parse(localStorage.getItem('ze:pending') || '[]'); } catch {}
+      rows = rows.filter((r) => r && r.id && r.token);
+      box.hidden = rows.length === 0;
+      list.textContent = '';
+      for (const r of rows) {
+        const row = document.createElement('div');
+        row.className = 'se-local-row';
+        const label = document.createElement('span');
+        label.textContent = `#${r.id} · ${r.title ?? r.slug} · ${new Date(r.at).toLocaleString()}`;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'se-btn se-btn-sm';
+        btn.textContent = '撤回';
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            const res = await fetch('/api/page-revision/withdraw', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ id: r.id, token: r.token }),
+            });
+            const j = await res.json();
+            if (!res.ok || !j.ok) throw new Error(j.error || '撤回失败');
+            const left = rows.filter((x) => x.id !== r.id);
+            localStorage.setItem('ze:pending', JSON.stringify(left));
+            renderLocalPending();
+          } catch (err) {
+            btn.disabled = false;
+            btn.textContent = '撤回失败';
+            btn.title = err instanceof Error ? err.message : String(err);
+          }
+        });
+        row.append(label, btn);
+        list.append(row);
+      }
+    }
+
     async function sendText() {
       if (!current) return;
       const items = payload();
@@ -773,6 +823,14 @@ const fields = Object.entries(rules)
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
         const okText = `已提交，编号 #${data.id ?? '?'}。审核通过后会写进条目。`;
+        if (data.withdrawToken) {
+          try {
+            const list = JSON.parse(localStorage.getItem('ze:pending') || '[]');
+            list.push({ id: data.id, token: data.withdrawToken, slug: current.slug, title: current.title, at: Date.now() });
+            localStorage.setItem('ze:pending', JSON.stringify(list.slice(-15)));
+            renderLocalPending();
+          } catch {}
+        }
         pendingMedia.cover = undefined;
         pendingMedia.gallery.length = 0;
         /* 先重载（把改动清零），再把成功提示放回去 —— 顺序反了提示会被 loadCurrent 清掉 */

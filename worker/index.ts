@@ -153,6 +153,8 @@ async function route(request: Request, env: Env): Promise<Response> {
 
   /* ===== 公开接口 ===== */
   if (path === '/api/page-revision') return handlePageRevisionSubmit(request, env, ipHash);
+  if (path === '/api/page-revision/withdraw') return handlePageRevisionWithdraw(request, env);
+  if (path === '/api/my-revisions') return handleMyPageRevisions(request, env);
   if (path === '/api/content-cover') return handleContentMediaUpload(request, env, ipHash, 'cover');
   if (path === '/api/content-gallery') return handleContentMediaUpload(request, env, ipHash, 'gallery');
   /* 视频标题 / UP 主名：只读、带 R2 索引。不写 D1（见 videos.ts 顶部的取舍说明） */

@@ -33,6 +33,18 @@ type RevisionRow = {
   error: string | null;
 };
 
+
+/** 匿名投稿的撤回码：只回给提交者，库里存 SHA-256（2026-10-27） */
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+function newWithdrawToken(): string {
+  const buf = new Uint8Array(16);
+  crypto.getRandomValues(buf);
+  return [...buf].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export async function handlePageRevisionSubmit(request: Request, env: Env, ipHash = ''): Promise<Response> {
   if (request.method !== 'POST') return fail('只支持 POST', 405);
   await ensureSchema(env);
@@ -61,11 +73,19 @@ export async function handlePageRevisionSubmit(request: Request, env: Env, ipHas
 
   if (ipHash && !(await allowWrite(env, ipHash, 'content-single', 30))) return fail('操作太频繁了，请过一会儿再试', 429);
   const submitter = String(payload.submitter ?? '匿名').replace(/[\r\n]/g, ' ').slice(0, 32) || '匿名';
+  const withdrawToken = newWithdrawToken();
+  const withdrawHash = await sha256Hex(withdrawToken);
   const result = await env.DB.prepare(
-    `INSERT INTO page_revisions (map_slug, user_id, submitter, payload, base_rev, status, mode, created_at)
-     VALUES (?1, 0, ?2, ?3, ?4, 'pending', 'single', ?5)`
-  ).bind(slug, submitter, JSON.stringify(payload), baseRev, Date.now()).run();
-  return json({ ok: true, id: Number((result as { meta?: { last_row_id?: number } }).meta?.last_row_id ?? 0), status: 'pending', mode });
+    `INSERT INTO page_revisions (map_slug, user_id, submitter, payload, base_rev, status, mode, created_at, withdraw_hash)
+     VALUES (?1, 0, ?2, ?3, ?4, 'pending', 'single', ?5, ?6)`
+  ).bind(slug, submitter, JSON.stringify(payload), baseRev, Date.now(), withdrawHash).run();
+  return json({
+    ok: true,
+    id: Number((result as { meta?: { last_row_id?: number } }).meta?.last_row_id ?? 0),
+    status: 'pending',
+    mode,
+    withdrawToken,
+  });
 }
 
 export async function handleAdminPageRevisionQueue(request: Request, env: Env, url: URL): Promise<Response> {
@@ -389,4 +409,50 @@ export async function handleAdminPageRevisionFlush(request: Request, env: Env): 
     for (const key of pendingMediaKeys) await dropPendingImage(env, key);
   }
   return json({ ok: true, count: ids.length, commitSha: commit.sha, maps: files.size });
+}
+
+/** GET /api/my-revisions：登录用户自己的修订列表（账号页用） */
+export async function handleMyPageRevisions(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'GET') return fail('只支持 GET', 405);
+  await ensureSchema(env);
+  const user = await getSessionUser(request, env).catch(() => null);
+  if (!user) return fail('需要先登录', 401);
+  const rows = await env.DB.prepare(
+    `SELECT id, map_slug, status, mode, payload, created_at, reviewed_at, reviewer, reject_note, commit_sha
+       FROM page_revisions WHERE user_id = ?1 ORDER BY created_at DESC LIMIT 100`
+  ).bind(user.id).all();
+  const items = (rows.results ?? []).map((row: Record<string, unknown>) => {
+    let slug = String(row.map_slug ?? '');
+    try {
+      const parsed = JSON.parse(String(row.payload ?? '{}'));
+      if (typeof parsed.slug === 'string') slug = parsed.slug;
+    } catch {}
+    return { ...row, slug };
+  });
+  return json({ ok: true, items });
+}
+
+/** POST /api/page-revision/withdraw：本人（登录）或用撤回码（匿名）撤回待审修订 */
+export async function handlePageRevisionWithdraw(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') return fail('只支持 POST', 405);
+  await ensureSchema(env);
+  const body = await readJsonBody(request, 8 * 1024);
+  if (!body.ok) return body.response;
+  const payload = body.body as Record<string, unknown>;
+  const id = Number(payload.id);
+  if (!Number.isInteger(id) || id <= 0) return fail('修订编号不合法');
+  const token = typeof payload.token === 'string' ? payload.token : '';
+  const row = await env.DB.prepare(
+    'SELECT id, user_id, status, withdraw_hash FROM page_revisions WHERE id = ?1'
+  ).bind(id).first<{ id: number; user_id: number; status: string; withdraw_hash: string | null }>();
+  if (!row) return fail('没有这条修订', 404);
+  if (row.status !== 'pending') return fail('只有待审的修订可以撤回', 409);
+  const user = await getSessionUser(request, env).catch(() => null);
+  const owner = user && Number(row.user_id) === Number(user.id);
+  const tokenOk = token && row.withdraw_hash && (await sha256Hex(token)) === row.withdraw_hash;
+  if (!owner && !tokenOk) return fail('没有权限撤回这条修订', 403);
+  await env.DB.prepare(
+    "UPDATE page_revisions SET status='withdrawn', reviewed_at=?1, reviewer=?2 WHERE id=?3 AND status='pending'"
+  ).bind(Date.now(), owner ? user!.name : '投稿人', id).run();
+  return json({ ok: true, id, status: 'withdrawn' });
 }

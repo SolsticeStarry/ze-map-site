@@ -577,7 +577,7 @@ import QqGroup from '../components/QqGroup.astro';
             if (!confirm(s.status === 'applied' ? '确定申请删除这条已上线的内容？会进入审核，通过后从条目里移除。' : '确定撤回这条投稿？撤回后不会再进入审核队列。')) return;
             delBtn.disabled = true;
             try {
-              const res = await fetch('/api/my-submission/withdraw', {
+              const res = await fetch('/api/page-revision/withdraw', {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ id: s.id }),
@@ -611,6 +611,44 @@ import QqGroup from '../components/QqGroup.astro';
           return;
         }
         /* 先把骨架画出来（用户能立刻看到自己是谁），地图名随后补上 */
+        /* 2026-10-27：投稿历史改读 page_revisions（旧 submissions 表已删） */
+
+        try {
+
+          const r = await fetch('/api/my-revisions', { credentials: 'include' });
+
+          if (r.ok) {
+
+            const j = await r.json();
+
+            data.submissions = (Array.isArray(j.items) ? j.items : []).map((x: any) => ({
+
+              id: x.id,
+
+              map_slug: x.map_slug,
+
+              field: 'content',
+
+              status: x.status,
+
+              created_at: x.created_at,
+
+              value: '',
+
+              reject_note: x.reject_note,
+
+              commit_sha: x.commit_sha,
+
+              reviewer: x.reviewer,
+
+              mode: x.mode,
+
+            }));
+
+          }
+
+        } catch {}
+
         renderMe(data.user, data.submissions, data.counts);
         paintGithubBound(data.user, Boolean(data.github?.enabled));
         if (data.submissions.length) {
