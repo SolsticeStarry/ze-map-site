@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_backrooms_insomnia",
-  "baseRev": "fnv1a:295dd2d4",
+  "baseRev": "fnv1a:eefe9611",
   "researchRev": "fnv1a:1b75b002",
   "heroImage": null,
   "tags": null,
@@ -33,15 +33,6 @@
             "content": [
               {
                 "type": "text",
-                "marks": [
-                  {
-                    "type": "textStyle",
-                    "attrs": {
-                      "fontSize": null,
-                      "color": "green"
-                    }
-                  }
-                ],
                 "text": "玩法上作者把「关卡随机化」做成核心：每局从主关卡里随机抽取，某一主关卡被打通后不再被抽中，下一局改跑一个小关卡（通常是短时间小游戏），存活的人类越多拿到的「硬币」越多。每张关卡都有专属的实体 NPC 随机出现，需要用道具或叫队友配合处理；随着通关数增加，会有更多「幻影」（Phantom）实体加入追猎，这类实体可以被僵尸方像 ZM 道具一样操控。部分主关卡里散落着其他探索者留下的容器，打开能获得道具，运气好会有好东西。每局开局可以在装备室用后室材料（硬币）购买道具，并提前了解本局关卡情况。"
               }
             ]
@@ -79,12 +70,12 @@
   "stageRows": null,
   "itemEdits": [
     {
-      "action": "add",
+      "action": "update",
       "name": "火盐包",
       "cd": 60,
       "uses": null,
-      "note": "",
-      "intro": "在神器模型前方释放一片火盐区域，需要攻击火盐区域来点燃(枪或刀)，点燃后的火盐区对僵尸强减速，第一个撞到的僵尸会清空速度。"
+      "intro": "在神器模型前方释放一片火盐区域，需要攻击火盐区域来点燃(枪或刀)，点燃后的火盐区对僵尸强减速，第一个撞到的僵尸会清空速度。",
+      "note": "打爆瞬间有光照效果。"
     },
     {
       "action": "remove",
@@ -93,6 +84,38 @@
       "uses": null,
       "intro": "",
       "note": ""
+    },
+    {
+      "action": "update",
+      "name": "Almond Water",
+      "cd": 0,
+      "uses": null,
+      "intro": "",
+      "note": ""
+    },
+    {
+      "action": "remove",
+      "name": "Handful of Fire Salt",
+      "cd": 0,
+      "uses": 1,
+      "intro": "\t在神器模型前方释放一片火盐区域，需要攻击火盐区域来点燃(枪或刀)，点燃后的火盐区对僵尸强减速，第一个撞到的僵尸会清空速度",
+      "note": ""
+    },
+    {
+      "action": "remove",
+      "name": "Bag of Fire Salt",
+      "cd": 60,
+      "uses": null,
+      "intro": "",
+      "note": ""
+    },
+    {
+      "action": "add",
+      "name": "散装火盐",
+      "cd": null,
+      "uses": 1,
+      "intro": "在神器模型前方释放一片火盐区域，需要攻击火盐区域来点燃(枪或刀)，点燃后的火盐区对僵尸强减速，第一个撞到的僵尸会清空速度。",
+      "note": "打爆瞬间有光照效果。"
     }
   ],
   "itemOrder": [],
@@ -185,6 +208,12 @@
       "submitter": "SolsticeStarry",
       "reviewer": "审核员",
       "appliedAt": 1792989996727
+    },
+    {
+      "revision": 1,
+      "submitter": "SolsticeStarry",
+      "reviewer": "123",
+      "appliedAt": 1793029462031
     }
   ]
 }
