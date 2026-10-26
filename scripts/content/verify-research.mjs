@@ -14,7 +14,7 @@ const DIR = path.join(ROOT, 'data/research');
 const FIX = process.argv.includes('--fix-tags');
 
 // 难度枚举与站点/Worker 共用一份定义（shared/difficulty.mjs），别再这里硬编码
-const DIFFS = DIFFICULTIES.filter((d) => d !== '未知');
+const DIFFS = DIFFICULTIES;
 const BAD_PHRASES = ['根据搜索结果', '我查到', '作为AI', '作为 AI', '以下是', '综上所述，我们', '无法访问'];
 const SAFE_TAG = (t) => String(t || '').replace(/[\\/:*?"<>|#%]/g, '·').replace(/\s+/g, ' ').trim().slice(0, 24);
 const isUrl = (u) => /^https?:\/\/\S+$/i.test(String(u || ''));
@@ -24,7 +24,7 @@ const isUrl = (u) => /^https?:\/\/\S+$/i.test(String(u || ''));
 // 构建、CI 全绿，只是署名被悄悄丢掉 —— 2026-09-24 的 PR 就是这样。
 const KNOWN_FIELDS = new Set([
   'slug', 'title', 'author', 'players', 'duration', 'version', 'game', 'featured', 'stages',
-  'difficulty', 'summary', 'tags', 'videoUrls', 'sources', 'confidence', 'verified',
+  'difficulty', 'summary', 'tags', 'videoUrls', 'sources', 'confidence', 'verified', 'titleEn', 'workshopId',
   /* 手写小节的图：正文放 sections，页面 slug ≠ 实体名时用 maps 声明 */
   'sections', 'maps',
   /* 教程 / 神器讲解：叠在自动正文之上的小节（左图右文用 :::figure 语法，见 shared/guide-blocks.mjs） */
