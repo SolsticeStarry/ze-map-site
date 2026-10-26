@@ -46,6 +46,8 @@ import {
   handleAdminPageRevisionQueue,
   handleAdminPageRevisionReview,
   handlePageRevisionSubmit,
+  handleMyPageRevisions,
+  handlePageRevisionWithdraw,
 } from './page-revisions';
 import {
   handleAdminAccountAction,
