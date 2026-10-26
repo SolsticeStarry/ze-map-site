@@ -1,0 +1,73 @@
+{
+  "v": 1,
+  "slug": "ze_obff_npst_v24",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_obff_npst_v24.webp",
+  "tags": null,
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "author": "@Seth(英俊)",
+    "authorNote": "千音星璃(出资和制作规划);汐月雪，Luna(神器)"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 31,
+      "by": "白叶",
+      "at": "2026-09-29T12:38:48.364Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community",
+      "submission": 303,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "field": "author"
+    },
+    {
+      "source": "data/community",
+      "submission": 304,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-14T11:43:05.896Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_obff_npst_v24.webp",
+      "by": "白叶",
+      "at": "2026-09-29T12:38:48.364Z",
+      "submission": 31
+    },
+    {
+      "source": "data/community.log",
+      "field": "author",
+      "from": null,
+      "to": "@Seth(英俊)",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 303
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "千音星璃(出资和制作规划);汐月雪，Luna(神器)",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 304
+    }
+  ]
+}

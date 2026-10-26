@@ -1,0 +1,72 @@
+{
+  "v": 1,
+  "slug": "ze_requiem_test",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_requiem_test.webp",
+  "tags": null,
+  "difficulty": "困难",
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "duration": "约 25 分钟"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 38,
+      "by": "白叶",
+      "at": "2026-09-29T15:53:24.430Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 122,
+      "by": "SiKi",
+      "at": "2026-10-06T13:11:51.730Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community",
+      "submission": 312,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-14T11:43:25.087Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "白叶",
+      "at": "2026-09-29T15:53:24.430Z",
+      "submission": 38
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_requiem_test.webp",
+      "by": "SiKi",
+      "at": "2026-10-06T13:11:51.730Z",
+      "submission": 122
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "约 25 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 312
+    }
+  ]
+}

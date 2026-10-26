@@ -1,0 +1,183 @@
+{
+  "v": 1,
+  "slug": "ze_boatescape888",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "坐船跑",
+    "训练图",
+    "CSGO移植",
+    "多关卡",
+    "弹幕",
+    "热门",
+    "入门"
+  ],
+  "difficulty": "入门",
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "aliases": "其它:坐船跑888",
+    "authorNote": "Tenshi (作者)",
+    "version": "ze_boatescape888 (CS2) v1_8 (CSGO)",
+    "duration": "5分钟+",
+    "players": "64"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 457,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 458,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community",
+      "submission": 459,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 460,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 461,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 462,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 463,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "field": "players"
+    },
+    {
+      "source": "data/community",
+      "submission": 456,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:32:10.450Z",
+      "field": "draft"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T17:32:10.450Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": null,
+      "to": "50 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "submission": 456
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "入门",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "submission": 457
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "其它:坐船跑888"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "submission": 458
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "坐船跑",
+        "训练图",
+        "CSGO移植",
+        "多关卡",
+        "弹幕",
+        "热门",
+        "入门"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "submission": 459
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "Tenshi (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "submission": 460
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "ze_boatescape888 (CS2) v1_8 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "submission": 461
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "5分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "submission": 462
+    },
+    {
+      "source": "data/community.log",
+      "field": "players",
+      "from": null,
+      "to": "64",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "submission": 463
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:32:10.450Z",
+      "submission": 456
+    }
+  ]
+}

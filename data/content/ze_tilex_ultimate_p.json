@@ -1,0 +1,370 @@
+{
+  "v": 1,
+  "slug": "ze_tilex_ultimate_p",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "跳刀",
+    "CSGO移植",
+    "多关卡",
+    "BOSS战",
+    "神器",
+    "日本作者"
+  ],
+  "difficulty": "火星",
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "authorNote": "Airvulpes (作者)",
+    "version": "v2_13_hdr (CSGO) _p（CS2)",
+    "players": "64",
+    "duration": "40分钟+",
+    "author": "Airvulpes"
+  },
+  "stageRows": null,
+  "itemEdits": [
+    {
+      "action": "add",
+      "name": "治愈1 (人类)",
+      "cd": 20,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一块治愈区域 区域内的人类会缓慢回复至250血"
+    },
+    {
+      "action": "add",
+      "name": "治愈2 (人类)",
+      "cd": 20,
+      "uses": 99,
+      "note": "",
+      "intro": "效果同治愈1"
+    },
+    {
+      "action": "add",
+      "name": "治愈3 (人类)",
+      "cd": 20,
+      "uses": 99,
+      "note": "",
+      "intro": "效果同治愈1"
+    },
+    {
+      "action": "add",
+      "name": "深渊监视者 (人类)",
+      "cd": 30,
+      "uses": 0,
+      "note": "用于BOSS战躲避危险技能 BOSS战结束后禁用",
+      "intro": "释放后 在使用者前方生成一块球型的传送区域 进入后将在安全区域内滞留一段时间"
+    },
+    {
+      "action": "add",
+      "name": "DDR音游",
+      "cd": 1145,
+      "uses": 14,
+      "note": "其实这不是神器 我也不知道它为什么会在里面lol",
+      "intro": "在关卡2触发后 结尾将会出现DDR小游戏"
+    },
+    {
+      "action": "remove",
+      "name": "Heal 1",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": ""
+    },
+    {
+      "action": "remove",
+      "name": "Heal 2",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": ""
+    },
+    {
+      "action": "remove",
+      "name": "Heal 3",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": ""
+    },
+    {
+      "action": "remove",
+      "name": "Abyss",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": ""
+    },
+    {
+      "action": "remove",
+      "name": "DDR",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": ""
+    }
+  ],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1eVYF6gETP/",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 506,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "add",
+      "name": "治愈1 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 506,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "add",
+      "name": "治愈2 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 506,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "add",
+      "name": "治愈3 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 506,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "add",
+      "name": "深渊监视者 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 506,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "add",
+      "name": "DDR音游"
+    },
+    {
+      "source": "data/community",
+      "submission": 506,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "remove",
+      "name": "Heal 1"
+    },
+    {
+      "source": "data/community",
+      "submission": 506,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "remove",
+      "name": "Heal 2"
+    },
+    {
+      "source": "data/community",
+      "submission": 506,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "remove",
+      "name": "Heal 3"
+    },
+    {
+      "source": "data/community",
+      "submission": 506,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "remove",
+      "name": "Abyss"
+    },
+    {
+      "source": "data/community",
+      "submission": 506,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "remove",
+      "name": "DDR"
+    },
+    {
+      "source": "data/community",
+      "submission": 500,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 501,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 502,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 503,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 504,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "players"
+    },
+    {
+      "source": "data/community",
+      "submission": 505,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 511,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "videoUrls"
+    },
+    {
+      "source": "data/community",
+      "submission": 508,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "author"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T17:31:18.728Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "火星",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 500
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "跳刀",
+        "CSGO移植",
+        "多关卡",
+        "BOSS战",
+        "神器",
+        "日本作者"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 501
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "Airvulpes (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 502
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "v2_13_hdr (CSGO) _p（CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 503
+    },
+    {
+      "source": "data/community.log",
+      "field": "players",
+      "from": null,
+      "to": "64",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 504
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "40分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 505
+    },
+    {
+      "source": "data/community.log",
+      "field": "items",
+      "from": null,
+      "to": 10,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 506
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV19V2ZYGEGp/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 507
+    },
+    {
+      "source": "data/community.log",
+      "field": "author",
+      "from": null,
+      "to": "Airvulpes",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 508
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": [
+        "https://www.bilibili.com/video/BV19V2ZYGEGp/"
+      ],
+      "to": [
+        "https://www.bilibili.com/video/BV1eVYF6gETP/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 511
+    }
+  ]
+}

@@ -1,0 +1,1086 @@
+{
+ "contributors": [
+  {
+   "name": "AntiLockwise",
+   "total": 279,
+   "lastAt": "2026-10-18T17:32:10.450Z",
+   "kinds": {
+    "图片集": 83,
+    "整篇草稿": 30,
+    "时长": 19,
+    "标签": 18,
+    "署名详情": 18,
+    "版本": 18,
+    "难度": 17,
+    "神器 / 道具": 17,
+    "攻略视频": 15,
+    "作者": 14,
+    "其他社区叫法": 11,
+    "背景故事": 6,
+    "关卡数": 3,
+    "人数": 3,
+    "地图中文名": 2,
+    "社区整理（自定义小节）": 2,
+    "资料来源": 2,
+    "地图简介": 1
+   },
+   "maps": [
+    [
+     "ze_visualizer",
+     "监视者",
+     28
+    ],
+    [
+     "ze_dreamin",
+     "梦之韵",
+     23
+    ],
+    [
+     "ze_bh3rd_babel_z",
+     "崩坏3:巴比伦",
+     19
+    ],
+    [
+     "ze_tenkinoko_welkin_z",
+     "天气之子",
+     19
+    ],
+    [
+     "ze_three_eyes",
+     "三 眼",
+     18
+    ],
+    [
+     "ze_project_codex_z",
+     "魔女之夜",
+     17
+    ],
+    [
+     "ze_bh3rd_nagazoracity_z",
+     "崩坏3:长空市",
+     16
+    ],
+    [
+     "ze_luciddreams_cs2",
+     "清醒的白日梦",
+     16
+    ],
+    [
+     "ze_bh3rd_cyberpunk_z",
+     "崩坏3:天穹市",
+     14
+    ],
+    [
+     "ze_mist_p",
+     "雾城龙影",
+     14
+    ],
+    [
+     "ze_tensor_of_ice_v1_1",
+     "冰之脉络",
+     13
+    ],
+    [
+     "ze_flower",
+     "花之声",
+     12
+    ],
+    [
+     "ze_cyberspace_v2",
+     "赛博空间",
+     11
+    ],
+    [
+     "ze_conflict",
+     "次元战争",
+     10
+    ],
+    [
+     "ze_deadcore_r",
+     "灰白核心",
+     10
+    ],
+    [
+     "ze_grau_p",
+     "鸽 劳",
+     10
+    ],
+    [
+     "ze_gris_p",
+     "格里斯",
+     10
+    ],
+    [
+     "ze_tilex_ultimate_p",
+     "跳刀列车(终极版)",
+     10
+    ],
+    [
+     "ze_boatescape888",
+     "坐船跑(弹幕版)",
+     9
+    ]
+   ]
+  },
+  {
+   "name": "SiKi",
+   "total": 146,
+   "lastAt": "2026-10-21T07:07:00.952Z",
+   "kinds": {
+    "地图封面": 86,
+    "图片集": 37,
+    "时长": 5,
+    "背景故事": 4,
+    "攻略视频": 2,
+    "署名详情": 2,
+    "其他社区叫法": 2,
+    "作者": 2,
+    "资料来源": 2,
+    "人数": 1,
+    "标签": 1,
+    "神器 / 道具": 1,
+    "关卡数": 1
+   },
+   "maps": [
+    [
+     "ze_obf_filth_v1",
+     "龙门行动: 怒火中烧",
+     28
+    ],
+    [
+     "ze_samosbor",
+     "笼子（自肃禁区）",
+     13
+    ],
+    [
+     "ze_obf_npst_v2",
+     "行动代号：尼赫伦斯",
+     4
+    ],
+    [
+     "ze_tranquility",
+     "崇寂之渊",
+     3
+    ],
+    [
+     "ze_unfulfilled_ambition",
+     "未竟之志",
+     3
+    ],
+    [
+     "ze_arcana_heart",
+     "阿卡纳之心",
+     2
+    ],
+    [
+     "ze_bang_dream_mygo",
+     "爱音の梦",
+     2
+    ],
+    [
+     "ze_dystopia_p",
+     "反乌托邦",
+     2
+    ],
+    [
+     "ze_forsaken_temple",
+     "离奇神庙",
+     2
+    ],
+    [
+     "ze_obff_npst_v24",
+     "最中幻想2:尼赫伦斯",
+     2
+    ],
+    [
+     "ze_obf_npst_v1",
+     "龙门行动：黑山基地",
+     2
+    ],
+    [
+     "ze_obf_rampage_v2",
+     "行动代号: 野火燎原",
+     2
+    ],
+    [
+     "ze_obj_blue_depth",
+     "行动代号：深蓝劫余",
+     2
+    ],
+    [
+     "ze_obj_void_v1",
+     "龙门行动: 至死不渝",
+     2
+    ],
+    [
+     "ze_requiem_test",
+     "安魂曲",
+     2
+    ],
+    [
+     "ze_amdaporkeep",
+     "无限城堡垒",
+     1
+    ],
+    [
+     "ze_aot_trost_v6r",
+     "巨人:终焉之战",
+     1
+    ],
+    [
+     "ze_bh3rd_babel_z",
+     "崩坏3:巴比伦",
+     1
+    ],
+    [
+     "ze_bh3rd_cyberpunk_z",
+     "崩坏3:天穹市",
+     1
+    ],
+    [
+     "ze_bh3rd_nagazoracity_z",
+     "崩坏3:长空市",
+     1
+    ],
+    [
+     "ze_blue_magic_castle",
+     "魔仙堡",
+     1
+    ],
+    [
+     "ze_boatescape101_p",
+     "坐船图101",
+     1
+    ],
+    [
+     "ze_castlevania",
+     "恶魔城",
+     1
+    ],
+    [
+     "ze_castlevania_nes",
+     "恶魔城传说(NES版)",
+     1
+    ],
+    [
+     "ze_colorlicouspilar_p",
+     "彩虹塔",
+     1
+    ],
+    [
+     "ze_crimson_azure_nexus",
+     "赤蓝圣枢",
+     1
+    ],
+    [
+     "ze_death_forest",
+     "恐怖之森",
+     1
+    ],
+    [
+     "ze_desperate_soul",
+     "母神悲歌",
+     1
+    ],
+    [
+     "ze_diddle",
+     "轮子妈",
+     1
+    ],
+    [
+     "ze_dorororo",
+     "doro历险记",
+     1
+    ],
+    [
+     "ze_drakelord_castle_b3",
+     "德雷克的城堡",
+     1
+    ],
+    [
+     "ze_eizures_b2",
+     "核子工厂",
+     1
+    ],
+    [
+     "ze_exchange_innovation_p",
+     "交换创新",
+     1
+    ],
+    [
+     "ze_fapescape_rote_p",
+     "新乐高大逃亡",
+     1
+    ],
+    [
+     "ze_ffxii_mt_bur_omisace_v6",
+     "神都奥尔米赛斯v6",
+     1
+    ],
+    [
+     "ze_ffxiv_pharos_sirius_night",
+     "天狼星灯塔夜晚版",
+     1
+    ],
+    [
+     "ze_ffxiv_wanderers_palace_v6_2",
+     "放浪古神殿v62",
+     1
+    ],
+    [
+     "ze_firewall_laboratory_part1_p",
+     "防火墙实验室1",
+     1
+    ],
+    [
+     "ze_gris_p",
+     "格里斯",
+     1
+    ],
+    [
+     "ze_iamlegend_p",
+     "我是英雄",
+     1
+    ],
+    [
+     "ze_iceskate",
+     "溜冰大逃亡",
+     1
+    ],
+    [
+     "ze_inboxed_p",
+     "身法菜鸡的噩梦",
+     1
+    ],
+    [
+     "ze_incident_seasons",
+     "四季异变章",
+     1
+    ],
+    [
+     "ze_industrial_dejavu",
+     "工业循环",
+     1
+    ],
+    [
+     "ze_jiangnan_town_v3_1",
+     "江南水乡",
+     1
+    ],
+    [
+     "ze_kitchen",
+     "犹如史诗般的巨人厨房",
+     1
+    ],
+    [
+     "ze_loom",
+     "城市掠夺者",
+     1
+    ],
+    [
+     "ze_lotr_minas_tirith",
+     "魔戒：米那斯提力斯",
+     1
+    ],
+    [
+     "ze_mario_tower_p",
+     "马里奥高塔",
+     1
+    ],
+    [
+     "ze_melong_dow_learjet_p",
+     "梅隆机场逃亡",
+     1
+    ],
+    [
+     "ze_miside",
+     "米塔",
+     1
+    ],
+    [
+     "ze_mochi_island",
+     "年糕岛",
+     1
+    ],
+    [
+     "ze_no_name_v2_3",
+     "无 名",
+     1
+    ],
+    [
+     "ze_no_title_cs2_l",
+     "闹太套",
+     1
+    ],
+    [
+     "ze_npst_v8_gmod",
+     "ze_npst_v8_gmod",
+     1
+    ],
+    [
+     "ze_obf_insane",
+     "龙门行动: 烈火雄心",
+     1
+    ],
+    [
+     "ze_obf_rampage_v24",
+     "龙门幻想: 火之心",
+     1
+    ],
+    [
+     "ze_obf_rampage_v2_legacy",
+     "龙门行动: 火之心",
+     1
+    ],
+    [
+     "ze_obf_rescape",
+     "行动代号：浴火重生",
+     1
+    ],
+    [
+     "ze_obj_abyss_v2",
+     "行动代号:破渊之剑",
+     1
+    ],
+    [
+     "ze_obj_annihilate_dd_v1",
+     "行动代号：孤注一掷",
+     1
+    ],
+    [
+     "ze_obj_ember",
+     "龙门行动: 绝境星火",
+     1
+    ],
+    [
+     "ze_obj_escalation_v1",
+     "龙门行动: 逆境飞升",
+     1
+    ],
+    [
+     "ze_obj_ouroboros_ragnarok",
+     "代号：破晓终幕",
+     1
+    ],
+    [
+     "ze_obj_prison",
+     "ze_obj_prison",
+     1
+    ],
+    [
+     "ze_obj_rampage_v1_2",
+     "龙门行动: 横空出世",
+     1
+    ],
+    [
+     "ze_obj_redemption",
+     "龙门行动: 一线生机",
+     1
+    ],
+    [
+     "ze_obj_redemption_v2",
+     "行动代号:劫烬生曦",
+     1
+    ],
+    [
+     "ze_obj_rove_v1",
+     "行动代号:永夜行疆",
+     1
+    ],
+    [
+     "ze_panic_escape_p",
+     "仓库逃亡",
+     1
+    ],
+    [
+     "ze_peach_castle_n64",
+     "马里奥: 桃子城堡",
+     1
+    ],
+    [
+     "ze_pirates_port_royal",
+     "加勒比海盗：皇家港",
+     1
+    ],
+    [
+     "ze_potc_p",
+     "加勒比海盗",
+     1
+    ],
+    [
+     "ze_purification_a1",
+     "净化之时",
+     1
+    ],
+    [
+     "ze_p_v_z",
+     "植物大战僵尸: 龙门战争",
+     1
+    ],
+    [
+     "ze_rt4_hessel_valley_fys",
+     "时雨4:希赛尔山谷",
+     1
+    ],
+    [
+     "ze_runaway_underroof2",
+     "屋底大逃亡2",
+     1
+    ],
+    [
+     "ze_santassination_p",
+     "大头工厂",
+     1
+    ],
+    [
+     "ze_skygarden",
+     "天穹庭院",
+     1
+    ],
+    [
+     "ze_skyscraper_city_p",
+     "镜之边缘:净化",
+     1
+    ],
+    [
+     "ze_slender_escape_p",
+     "面条人",
+     1
+    ],
+    [
+     "ze_stab_town_p",
+     "突破小镇",
+     1
+    ],
+    [
+     "ze_starlight_revue_cs2",
+     "少女歌剧:命运舞台",
+     1
+    ],
+    [
+     "ze_tenkinoko_welkin_z",
+     "天气之子",
+     1
+    ],
+    [
+     "ze_toggle_theory",
+     "绯蓝节奏",
+     1
+    ],
+    [
+     "ze_urban_laby_of_death_p",
+     "穿越迷宫",
+     1
+    ],
+    [
+     "ze_valleyescape",
+     "山谷大逃亡",
+     1
+    ],
+    [
+     "ze_visualizer",
+     "监视者",
+     1
+    ],
+    [
+     "ze_watagi_sanatorium",
+     "渡木疗养院",
+     1
+    ],
+    [
+     "ze_zombiemod_corporation_p",
+     "僵尸公司",
+     1
+    ]
+   ]
+  },
+  {
+   "name": "creeper_kk",
+   "total": 36,
+   "lastAt": "2026-10-18T04:18:00.924Z",
+   "kinds": {
+    "标签": 35,
+    "背景故事": 1
+   },
+   "maps": [
+    [
+     "ze_atos",
+     "阿托斯",
+     2
+    ],
+    [
+     "ze_2049",
+     "视觉盛宴",
+     1
+    ],
+    [
+     "ze_amdaporkeep",
+     "无限城堡垒",
+     1
+    ],
+    [
+     "ze_aware",
+     "觉 醒",
+     1
+    ],
+    [
+     "ze_a_e_s_t_h_e_t_i_c_p",
+     "汉堡王国",
+     1
+    ],
+    [
+     "ze_evernight",
+     "永 夜",
+     1
+    ],
+    [
+     "ze_ffvii_cosmo_canyon_t",
+     "最终幻想7:宇宙峡谷",
+     1
+    ],
+    [
+     "ze_ffvii_malgo_reactor",
+     "最终幻想:麻辣炉",
+     1
+    ],
+    [
+     "ze_ffvii_snow_cosmo",
+     "最终幻想7:雪域峡谷",
+     1
+    ],
+    [
+     "ze_ffxii_feywood_t",
+     "最终幻想12:幻妖之森",
+     1
+    ],
+    [
+     "ze_ffxii_westersand_v8",
+     "最终幻想12:西沙81",
+     1
+    ],
+    [
+     "ze_ffxiv_pharos_sirius_night",
+     "天狼星灯塔夜晚版",
+     1
+    ],
+    [
+     "ze_ffxiv_wanderers_palace_v6_2",
+     "放浪古神殿v62",
+     1
+    ],
+    [
+     "ze_hsc",
+     "方 块",
+     1
+    ],
+    [
+     "ze_immortal_flame",
+     "永恒烈焰",
+     1
+    ],
+    [
+     "ze_last_man_standing",
+     "龙门山(再版)",
+     1
+    ],
+    [
+     "ze_minimal",
+     "极 病",
+     1
+    ],
+    [
+     "ze_neochrome",
+     "瞬狱影杀阵",
+     1
+    ],
+    [
+     "ze_neron",
+     "盈能之境",
+     1
+    ],
+    [
+     "ze_obf_rampage_v2_legacy",
+     "龙门行动: 火之心",
+     1
+    ],
+    [
+     "ze_obj_avulsion_a1",
+     "行动代号:分崩离析",
+     1
+    ],
+    [
+     "ze_obj_ember",
+     "龙门行动: 绝境星火",
+     1
+    ],
+    [
+     "ze_obj_rampage_v1_2",
+     "龙门行动: 横空出世",
+     1
+    ],
+    [
+     "ze_obj_redemption_v2",
+     "行动代号:劫烬生曦",
+     1
+    ],
+    [
+     "ze_obj_void_v1",
+     "龙门行动: 至死不渝",
+     1
+    ],
+    [
+     "ze_ocarina_of_time",
+     "塞尔达传说:时之笛",
+     1
+    ],
+    [
+     "ze_offliner",
+     "单机者",
+     1
+    ],
+    [
+     "ze_palace_of_minolila_cs2",
+     "米诺莉拉",
+     1
+    ],
+    [
+     "ze_santassination_p",
+     "大头工厂",
+     1
+    ],
+    [
+     "ze_sisyphus",
+     "西西弗斯推石头",
+     1
+    ],
+    [
+     "ze_sky_fantasy_v1",
+     "天空幻想V1",
+     1
+    ],
+    [
+     "ze_stalker_ultimate_v23",
+     "潜行者:切尔诺贝利v23",
+     1
+    ],
+    [
+     "ze_the_curse_of_blackwater",
+     "黑水镇的诅咒",
+     1
+    ],
+    [
+     "ze_uchiha_legacy",
+     "宇智波:遗响",
+     1
+    ],
+    [
+     "ze_xenovation",
+     "次元终点",
+     1
+    ]
+   ]
+  },
+  {
+   "name": "白叶",
+   "total": 30,
+   "lastAt": "2026-10-18T17:31:18.728Z",
+   "kinds": {
+    "难度": 17,
+    "地图封面": 10,
+    "标签": 3
+   },
+   "maps": [
+    [
+     "ze_obj_ouroboros_aurora_v2",
+     "行动代号:落日余晖-重生",
+     4
+    ],
+    [
+     "ze_incident_seasons",
+     "四季异变章",
+     2
+    ],
+    [
+     "ze_minecraft_manor_panic",
+     "我的世界:宅邸防守战",
+     2
+    ],
+    [
+     "ze_obj_blue_depth",
+     "行动代号：深蓝劫余",
+     2
+    ],
+    [
+     "ze_obj_redemption_v2",
+     "行动代号:劫烬生曦",
+     2
+    ],
+    [
+     "ze_overkill_p",
+     "赶尽杀绝",
+     2
+    ],
+    [
+     "ze_squid_game",
+     "鱿鱼游戏",
+     2
+    ],
+    [
+     "ze_backrooms_deathbed_v1",
+     "后室：死眠",
+     1
+    ],
+    [
+     "ze_dnb_realms_a1",
+     "贝斯摇滚领域",
+     1
+    ],
+    [
+     "ze_einstein",
+     "爱因斯坦的世界",
+     1
+    ],
+    [
+     "ze_minecraft_sakura",
+     "我的世界: 龙门村",
+     1
+    ],
+    [
+     "ze_miside",
+     "米塔",
+     1
+    ],
+    [
+     "ze_obff_npst_v24",
+     "最中幻想2:尼赫伦斯",
+     1
+    ],
+    [
+     "ze_obf_filth_v1",
+     "龙门行动: 怒火中烧",
+     1
+    ],
+    [
+     "ze_obj_ouroboros_aurora",
+     "龙门行动: 落日余晖",
+     1
+    ],
+    [
+     "ze_panic_escape_p",
+     "仓库逃亡",
+     1
+    ],
+    [
+     "ze_peach_castle_n64",
+     "马里奥: 桃子城堡",
+     1
+    ],
+    [
+     "ze_requiem_test",
+     "安魂曲",
+     1
+    ],
+    [
+     "ze_santassination_p",
+     "大头工厂",
+     1
+    ],
+    [
+     "ze_tensor_of_ice_v1_1",
+     "冰之脉络",
+     1
+    ],
+    [
+     "ze_watagi_sanatorium",
+     "渡木疗养院",
+     1
+    ]
+   ]
+  },
+  {
+   "name": "时轩",
+   "total": 13,
+   "lastAt": "2026-10-19T01:06:29.816Z",
+   "kinds": {
+    "其他社区叫法": 4,
+    "神器 / 道具": 3,
+    "攻略视频": 2,
+    "难度": 1,
+    "背景故事": 1,
+    "地图封面": 1,
+    "地图中文名": 1
+   },
+   "maps": [
+    [
+     "ze_depths",
+     "深 渊",
+     6
+    ],
+    [
+     "ze_toggle_theory",
+     "绯蓝节奏",
+     4
+    ],
+    [
+     "ze_loom",
+     "城市掠夺者",
+     3
+    ]
+   ]
+  },
+  {
+   "name": "宇宙机器人",
+   "total": 9,
+   "lastAt": "2026-10-23T02:05:31.588Z",
+   "kinds": {
+    "标签": 5,
+    "人数": 3,
+    "背景故事": 1
+   },
+   "maps": [
+    [
+     "ze_2021_xmas_world_p",
+     "2021圣诞世界",
+     2
+    ],
+    [
+     "ze_apollo_p",
+     "阿波罗",
+     2
+    ],
+    [
+     "ze_einstein",
+     "爱因斯坦的世界",
+     2
+    ],
+    [
+     "ze_colors_p",
+     "彩色世界",
+     1
+    ],
+    [
+     "ze_forius_just_run_p",
+     "别打油桶",
+     1
+    ],
+    [
+     "ze_lotr_minas_tirith",
+     "魔戒：米那斯提力斯",
+     1
+    ]
+   ]
+  },
+  {
+   "name": "koyun-OvO",
+   "total": 8,
+   "lastAt": "2026-10-15T07:54:09.363Z",
+   "kinds": {
+    "地图中文名": 1,
+    "标签": 1,
+    "神器 / 道具": 1,
+    "时长": 1,
+    "人数": 1,
+    "攻略视频": 1,
+    "背景故事": 1,
+    "难度": 1
+   },
+   "maps": [
+    [
+     "ze_forhidden_slicoo_cs2",
+     "禁地:斯迪科",
+     8
+    ]
+   ]
+  },
+  {
+   "name": "LZY",
+   "total": 5,
+   "lastAt": "2026-10-15T07:54:04.720Z",
+   "kinds": {
+    "标签": 1,
+    "作者": 1,
+    "关卡数": 1,
+    "神器 / 道具": 1,
+    "难度": 1
+   },
+   "maps": [
+    [
+     "ze_light_shadow_cs2",
+     "光与影",
+     5
+    ]
+   ]
+  },
+  {
+   "name": "Liyuu~",
+   "total": 2,
+   "lastAt": "2026-09-24T08:49:12.101Z",
+   "kinds": {
+    "攻略视频": 2
+   },
+   "maps": [
+    [
+     "ze_backrooms_insomnia",
+     "后室2:失眠症",
+     1
+    ],
+    [
+     "ze_lotr_minas_tirith",
+     "魔戒：米那斯提力斯",
+     1
+    ]
+   ]
+  },
+  {
+   "name": "SolsticeStarry",
+   "total": 2,
+   "lastAt": "2026-10-22T13:12:53.758Z",
+   "kinds": {
+    "神器 / 道具": 1,
+    "背景故事": 1
+   },
+   "maps": [
+    [
+     "ze_backrooms_insomnia",
+     "后室2:失眠症",
+     1
+    ],
+    [
+     "ze_lotr_minas_tirith",
+     "魔戒：米那斯提力斯",
+     1
+    ]
+   ]
+  },
+  {
+   "name": "豆腐脑子加冰",
+   "total": 1,
+   "lastAt": "2026-10-18T17:31:08.673Z",
+   "kinds": {
+    "神器 / 道具": 1
+   },
+   "maps": [
+    [
+     "ze_forsaken_temple",
+     "离奇神庙",
+     1
+    ]
+   ]
+  },
+  {
+   "name": "Hunter灬俊",
+   "total": 1,
+   "lastAt": "2026-10-26T10:20:55.966Z",
+   "kinds": {
+    "通关视频": 1
+   },
+   "maps": [
+    [
+     "ze_frostdrake_tower_p",
+     "冰龙",
+     1
+    ]
+   ]
+  }
+ ]
+}

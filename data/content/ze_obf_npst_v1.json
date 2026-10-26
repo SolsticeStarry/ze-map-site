@@ -1,0 +1,56 @@
+{
+  "v": 1,
+  "slug": "ze_obf_npst_v1",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_obf_npst_v1.webp",
+  "tags": null,
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "duration": "约 40 分钟"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 33,
+      "by": "SiKi",
+      "at": "2026-09-29T15:42:45.020Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community",
+      "submission": 305,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-14T11:43:05.896Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_obf_npst_v1.webp",
+      "by": "SiKi",
+      "at": "2026-09-29T15:42:45.020Z",
+      "submission": 33
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "约 40 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:05.896Z",
+      "submission": 305
+    }
+  ]
+}

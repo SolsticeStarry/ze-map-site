@@ -1,0 +1,34 @@
+{
+  "v": 1,
+  "slug": "ze_frostdrake_tower_p",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": null,
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1MbnU6gEi9/",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "field": "videoRun",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1MbnU6gEi9/"
+      ],
+      "by": "Hunter灬俊",
+      "at": "2026-10-26T10:20:55.966Z",
+      "submission": 528,
+      "source": "data/community.log"
+    }
+  ]
+}

@@ -1,0 +1,231 @@
+{
+  "v": 1,
+  "slug": "ze_luciddreams_cs2",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "俄罗斯作者",
+    "单关卡",
+    "CSGO移植",
+    "跳刀",
+    "弹幕",
+    "热门"
+  ],
+  "difficulty": "困难",
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "aliases": "EXG:清醒梦",
+    "author": "R. (作者)",
+    "authorNote": "R. (作者) Kuroki (移植)",
+    "version": "f5_8 (CSGO) ze_luciddreams_cs2 (CS2)",
+    "duration": "15分钟+"
+  },
+  "stageRows": null,
+  "itemEdits": [
+    {
+      "action": "add",
+      "name": "护盾(人类)",
+      "cd": 60,
+      "uses": null,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一片半圆的推力区域 区域外的僵尸会被阻挡在外"
+    }
+  ],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1rq4y1Y7G9/",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 210,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:55:07.787Z",
+      "field": "items",
+      "action": "add",
+      "name": "护盾(人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 204,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:53:00.060Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community",
+      "submission": 205,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:53:17.453Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 206,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:53:33.625Z",
+      "field": "author"
+    },
+    {
+      "source": "data/community",
+      "submission": 207,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:53:50.815Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 208,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:54:02.026Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 209,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:55:01.072Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 211,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:55:10.497Z",
+      "field": "videoUrls"
+    },
+    {
+      "source": "data/community",
+      "submission": 212,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:51:34.912Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 198,
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:47:12.855Z",
+      "field": "draft"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-15T10:47:12.855Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": null,
+      "to": "87 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:51:54.417Z",
+      "submission": 198
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "EXG:清醒梦"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:53:00.060Z",
+      "submission": 204
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "俄罗斯作者",
+        "单关卡",
+        "CSGO移植",
+        "跳刀",
+        "弹幕",
+        "热门"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:53:17.453Z",
+      "submission": 205
+    },
+    {
+      "source": "data/community.log",
+      "field": "author",
+      "from": null,
+      "to": "R. (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:53:33.625Z",
+      "submission": 206
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "R. (作者) Kuroki (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:53:50.815Z",
+      "submission": 207
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "f5_8 (CSGO) ze_luciddreams_cs2 (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:54:02.026Z",
+      "submission": 208
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "15分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:55:01.072Z",
+      "submission": 209
+    },
+    {
+      "source": "data/community.log",
+      "field": "items",
+      "from": null,
+      "to": 1,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:55:07.787Z",
+      "submission": 210
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1rq4y1Y7G9/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:55:10.497Z",
+      "submission": 211
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:51:34.912Z",
+      "submission": 212
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:47:12.855Z",
+      "submission": 198
+    }
+  ]
+}

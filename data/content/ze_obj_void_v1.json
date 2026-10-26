@@ -1,0 +1,77 @@
+{
+  "v": 1,
+  "slug": "ze_obj_void_v1",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_obj_void_v1.webp",
+  "tags": [
+    "CSGO移植",
+    "单关卡",
+    "OBJ",
+    "长征图",
+    "传送门多",
+    "多结局"
+  ],
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 50,
+      "by": "SiKi",
+      "at": "2026-09-30T11:30:43.302Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community",
+      "submission": 413,
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:50.070Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T04:18:37.602Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_obj_void_v1.webp",
+      "by": "SiKi",
+      "at": "2026-09-29T15:40:56.312Z",
+      "submission": 36
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": "/images/covers/custom/ze_obj_void_v1.webp",
+      "to": "/images/covers/custom/ze_obj_void_v1.webp",
+      "by": "SiKi",
+      "at": "2026-09-30T11:30:43.302Z",
+      "submission": 50
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "CSGO移植",
+        "单关卡",
+        "OBJ",
+        "长征图",
+        "传送门多",
+        "多结局"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:50.070Z",
+      "submission": 413
+    }
+  ]
+}

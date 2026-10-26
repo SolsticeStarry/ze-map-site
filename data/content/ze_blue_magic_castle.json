@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "slug": "ze_blue_magic_castle",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_blue_magic_castle.webp",
+  "tags": null,
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 86,
+      "by": "SiKi",
+      "at": "2026-10-04T11:30:23.833Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-04T11:30:23.833Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_blue_magic_castle.webp",
+      "by": "SiKi",
+      "at": "2026-10-04T11:30:23.833Z",
+      "submission": 86
+    }
+  ]
+}

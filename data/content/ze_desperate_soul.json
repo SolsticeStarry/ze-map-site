@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "slug": "ze_desperate_soul",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_desperate_soul.webp",
+  "tags": null,
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 81,
+      "by": "SiKi",
+      "at": "2026-10-04T11:29:01.325Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-04T11:29:01.325Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_desperate_soul.webp",
+      "by": "SiKi",
+      "at": "2026-10-04T11:29:01.325Z",
+      "submission": 81
+    }
+  ]
+}

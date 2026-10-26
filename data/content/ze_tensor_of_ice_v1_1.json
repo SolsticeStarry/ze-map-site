@@ -1,0 +1,223 @@
+{
+  "v": 1,
+  "slug": "ze_tensor_of_ice_v1_1",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "BOSS战",
+    "跳刀",
+    "CSGO移植",
+    "弹幕",
+    "单关",
+    "日本作者"
+  ],
+  "difficulty": "普通",
+  "blocks": [
+    {
+      "id": "guide-1",
+      "type": "guideItem",
+      "title": "地图由 [Kur4yam1] 绘制",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "1个关卡\n\n1场boss战\n\n难度极高的弹幕/跳刀"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "guideCleared": false,
+  "infobox": {
+    "author": "Kur4yam1",
+    "authorNote": "Kur4yam1 (作者/移植)",
+    "version": "ze_tensor_of_ice (CS2) v1_1 (CSGO)",
+    "duration": "10分钟+",
+    "stages": "1"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1oy4y1w7q1/",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 443,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "field": "section",
+      "title": "地图由 [Kur4yam1] 绘制"
+    },
+    {
+      "source": "data/community",
+      "submission": 512,
+      "by": "白叶",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 445,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 446,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "field": "author"
+    },
+    {
+      "source": "data/community",
+      "submission": 447,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 448,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 449,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 450,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "field": "videoUrls"
+    },
+    {
+      "source": "data/community",
+      "submission": 451,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "field": "stages"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T17:31:18.728Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "section",
+      "from": null,
+      "to": null,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 443
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "火星",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 444
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "BOSS战",
+        "跳刀",
+        "CSGO移植",
+        "弹幕",
+        "单关",
+        "日本作者"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 445
+    },
+    {
+      "source": "data/community.log",
+      "field": "author",
+      "from": null,
+      "to": "Kur4yam1",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 446
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "Kur4yam1 (作者/移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 447
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "ze_tensor_of_ice (CS2) v1_1 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 448
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "10分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 449
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1oy4y1w7q1/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 450
+    },
+    {
+      "source": "data/community.log",
+      "field": "stages",
+      "from": null,
+      "to": 1,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:14.913Z",
+      "submission": 451
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": "火星",
+      "to": "普通",
+      "by": "白叶",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 512
+    }
+  ]
+}

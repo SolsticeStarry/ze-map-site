@@ -1,7 +1,277 @@
 {
- "_说明": "本站整理资料的逐条改动记录（data/research 与 data/gallery），由 scripts/content/build-research-changes.mjs 从 git 历史生成，别手改。社区投稿那部分不在这里 —— 构建期直接读 data/community/<slug>.json 的 log。",
+ "_说明": "本站整理资料的逐条改动记录（data/research 与 data/gallery），由 scripts/content/build-research-changes.mjs 从 git 历史生成，别手改。玩家修订那部分不在这里 —— 更新流直接读 data/content/<slug>.json 的 history。",
  "version": 1,
  "items": [
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_bh3rd_babel_z",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_bh3rd_cyberpunk_z",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_bh3rd_nagazoracity_z",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_conflict",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_deadcore_r",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_flower",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_grau_p",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_luciddreams_cs2",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_mist_p",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_project_codex_z",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_three_eyes",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-26T18:47:29+08:00",
+   "slug": "ze_visualizer",
+   "parts": [
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-25T14:13:06+08:00",
+   "slug": "2001-ze_evil_monk_mountain-3825265066",
+   "parts": [
+    "标题",
+    "英文名",
+    "难度",
+    "标签",
+    "简介",
+    "攻略视频",
+    "资料来源",
+    "workshopId"
+   ],
+   "first": true
+  },
+  {
+   "at": "2026-10-25T14:13:06+08:00",
+   "slug": "2001-ze_gardens_of_babylon-3822375610",
+   "parts": [
+    "标题",
+    "英文名",
+    "难度",
+    "标签",
+    "简介",
+    "攻略视频",
+    "资料来源",
+    "workshopId"
+   ],
+   "first": true
+  },
+  {
+   "at": "2026-10-25T14:13:06+08:00",
+   "slug": "2001-ze_ruin_of_black_stone-3823360741",
+   "parts": [
+    "标题",
+    "英文名",
+    "难度",
+    "标签",
+    "简介",
+    "攻略视频",
+    "资料来源",
+    "workshopId"
+   ],
+   "first": true
+  },
+  {
+   "at": "2026-10-25T14:13:06+08:00",
+   "slug": "2001-ze_run_away-3826719174",
+   "parts": [
+    "标题",
+    "英文名",
+    "难度",
+    "标签",
+    "简介",
+    "攻略视频",
+    "资料来源",
+    "workshopId"
+   ],
+   "first": true
+  },
+  {
+   "at": "2026-10-25T14:13:06+08:00",
+   "slug": "2001-ze_SCP-3824726441",
+   "parts": [
+    "标题",
+    "英文名",
+    "难度",
+    "标签",
+    "简介",
+    "攻略视频",
+    "资料来源",
+    "workshopId"
+   ],
+   "first": true
+  },
+  {
+   "at": "2026-10-25T14:13:06+08:00",
+   "slug": "2001-ze_Surf_OwO_t1-3824367173",
+   "parts": [
+    "标题",
+    "英文名",
+    "难度",
+    "标签",
+    "简介",
+    "攻略视频",
+    "资料来源",
+    "workshopId"
+   ],
+   "first": true
+  },
+  {
+   "at": "2026-10-19T01:32:11+08:00",
+   "slug": "ze_boatescape888",
+   "parts": [
+    "正文小节"
+   ]
+  },
+  {
+   "at": "2026-10-18T23:48:17+08:00",
+   "slug": "ze_obf_filth_v1",
+   "parts": [],
+   "gallery": 1
+  },
+  {
+   "at": "2026-10-18T23:48:10+08:00",
+   "slug": "ze_obf_filth_v1",
+   "parts": [],
+   "gallery": 8
+  },
+  {
+   "at": "2026-10-18T23:47:58+08:00",
+   "slug": "ze_obf_filth_v1",
+   "parts": [],
+   "gallery": 8
+  },
+  {
+   "at": "2026-10-18T23:47:44+08:00",
+   "slug": "ze_obf_filth_v1",
+   "parts": [],
+   "gallery": 8
+  },
+  {
+   "at": "2026-10-18T23:34:20+08:00",
+   "slug": "ze_tensor_of_ice_v1_1",
+   "parts": [],
+   "gallery": 4
+  },
+  {
+   "at": "2026-10-18T14:44:44+08:00",
+   "slug": "ze_emerald",
+   "parts": [
+    "攻略视频"
+   ]
+  },
+  {
+   "at": "2026-10-18T14:44:44+08:00",
+   "slug": "ze_lego",
+   "parts": [
+    "标题",
+    "简介",
+    "作者",
+    "人数",
+    "时长",
+    "标签",
+    "攻略视频",
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-18T14:44:44+08:00",
+   "slug": "ze_slender_escape_p",
+   "parts": [
+    "标题",
+    "简介",
+    "标签",
+    "攻略视频",
+    "资料来源"
+   ]
+  },
+  {
+   "at": "2026-10-18T13:05:07+08:00",
+   "slug": "ze_shroomforest3_p",
+   "parts": [
+    "标签"
+   ]
+  },
+  {
+   "at": "2026-10-17T16:59:35+08:00",
+   "slug": "ze_lotr_minas_tirith",
+   "parts": [
+    "标题",
+    "aliases"
+   ]
+  },
+  {
+   "at": "2026-10-16T19:37:02+08:00",
+   "slug": "ze_samosbor",
+   "parts": [],
+   "gallery": 4
+  },
+  {
+   "at": "2026-10-16T19:36:52+08:00",
+   "slug": "ze_samosbor",
+   "parts": [],
+   "gallery": 8
+  },
   {
    "at": "2026-10-15T18:52:40+08:00",
    "slug": "ze_visualizer",

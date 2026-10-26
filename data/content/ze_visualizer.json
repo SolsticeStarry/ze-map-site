@@ -1,0 +1,472 @@
+{
+  "v": 1,
+  "slug": "ze_visualizer",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_visualizer.webp",
+  "tags": [
+    "BOSS战",
+    "CSGO移植",
+    "多关卡",
+    "神器",
+    "弹幕",
+    "KZ",
+    "热门"
+  ],
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "aliases": "MOEUB:深渊监视者",
+    "author": "M4dara",
+    "authorNote": "M4dara (作者) seth (移植)",
+    "version": "ze_visualizer (CS2) v1_2 (CSGO)",
+    "duration": "40分钟+"
+  },
+  "stageRows": null,
+  "itemEdits": [
+    {
+      "action": "add",
+      "name": "治愈 (人类)",
+      "cd": 100,
+      "uses": 99,
+      "note": "我们仍未知道是谁发明了免抓奶...",
+      "intro": "释放后 以使用者为中心 生成一片区域 区域内的人类会持续回复血量"
+    },
+    {
+      "action": "add",
+      "name": "能量球 (人类)",
+      "cd": 3,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 发射一颗能量球 触碰到球的僵尸会被施加弱减速效果"
+    },
+    {
+      "action": "add",
+      "name": "方块 (人类)",
+      "cd": 60,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 生成一个巨大的方块模型 模型范围内的人类/僵尸会被禁锢在其中"
+    },
+    {
+      "action": "add",
+      "name": "护盾 (人类)",
+      "cd": 60,
+      "uses": 99,
+      "note": "谁发明的牙盾和10秒盾...",
+      "intro": "释放后 以使用者为中心 生成一片区域 区域外的僵尸会被阻挡在外"
+    },
+    {
+      "action": "add",
+      "name": "冰冻球 (人类)",
+      "cd": 35,
+      "uses": 99,
+      "note": "孩子们.. 一直打被冻的僵尸会大飞",
+      "intro": "释放后 在使用者前方 发射一颗冰冻球 触碰到球的僵尸会被施加强定身效果"
+    },
+    {
+      "action": "add",
+      "name": "黑洞球 (人类)",
+      "cd": 50,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 发射一颗黑洞球 球触碰到僵尸后将在原地生成一片区域 区域内的僵尸会被吸入中心"
+    },
+    {
+      "action": "add",
+      "name": "能量球 (僵尸)",
+      "cd": 8,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 发射一颗能量球 触碰到球的人类会受到弱减速效果与微量伤害"
+    },
+    {
+      "action": "add",
+      "name": "冰冻球 (僵尸)",
+      "cd": 50,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 发射一颗冰冻球 触碰到球的人类会受到强定身效果"
+    },
+    {
+      "action": "add",
+      "name": "黑洞 (僵尸)",
+      "cd": 90,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为中心 生成一片区域 区域内的人类将被吸引到区域中心"
+    },
+    {
+      "action": "add",
+      "name": "治愈 (僵尸)",
+      "cd": 50,
+      "uses": 99,
+      "note": "僵尸奶神器自己有bug吃不到..",
+      "intro": "释放后 以使用者为中心 生成一片区域 区域内的所有僵尸将会被施加 加速效果"
+    }
+  ],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1Gh411v7jC/",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 118,
+      "by": "SiKi",
+      "at": "2026-10-06T13:11:50.273Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community",
+      "submission": 349,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community",
+      "submission": 350,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 351,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "author"
+    },
+    {
+      "source": "data/community",
+      "submission": 352,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 353,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 354,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 356,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "videoUrls"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items",
+      "action": "add",
+      "name": "治愈 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items",
+      "action": "add",
+      "name": "能量球 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items",
+      "action": "add",
+      "name": "方块 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items",
+      "action": "add",
+      "name": "护盾 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items",
+      "action": "add",
+      "name": "冰冻球 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items",
+      "action": "add",
+      "name": "黑洞球 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items",
+      "action": "add",
+      "name": "能量球 (僵尸)"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items",
+      "action": "add",
+      "name": "冰冻球 (僵尸)"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items",
+      "action": "add",
+      "name": "黑洞 (僵尸)"
+    },
+    {
+      "source": "data/community",
+      "submission": 355,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "items",
+      "action": "add",
+      "name": "治愈 (僵尸)"
+    },
+    {
+      "source": "data/community",
+      "submission": 348,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 347,
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:52:38.727Z",
+      "field": "draft"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-15T10:52:38.727Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_visualizer.webp",
+      "by": "SiKi",
+      "at": "2026-10-06T13:11:50.273Z",
+      "submission": 118
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": null,
+      "to": "65 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:24:26.011Z",
+      "submission": 347
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 348
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "MOEUB:深渊监视者"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 349
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "BOSS战",
+        "CSGO移植",
+        "多关卡",
+        "神器",
+        "弹幕",
+        "KZ",
+        "热门"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 350
+    },
+    {
+      "source": "data/community.log",
+      "field": "author",
+      "from": null,
+      "to": "M4dara",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 351
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "M4dara (作者) seth (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 352
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "ze_visualizer (CS2) v1_2 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 353
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "40分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 354
+    },
+    {
+      "source": "data/community.log",
+      "field": "items",
+      "from": null,
+      "to": 10,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 355
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1Gh411v7jC/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:57:49.502Z",
+      "submission": 356
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:52:38.727Z",
+      "submission": 347
+    }
+  ],
+  "difficulty": "困难"
+}

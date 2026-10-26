@@ -1,0 +1,74 @@
+{
+  "v": 1,
+  "slug": "ze_obj_ouroboros_aurora_v2",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+  "tags": null,
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 26,
+      "by": "匿名",
+      "at": "2026-09-26T07:40:36.746Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-09-26T07:40:36.746Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "by": "白叶",
+      "at": "2026-09-26T04:23:48.886Z",
+      "submission": 21
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "to": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "by": "白叶",
+      "at": "2026-09-26T04:31:04.830Z",
+      "submission": 23
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "to": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "by": "白叶",
+      "at": "2026-09-26T04:34:07.854Z",
+      "submission": 24
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "to": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "by": "白叶",
+      "at": "2026-09-26T07:35:36.445Z",
+      "submission": 25
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "to": "public/images/covers/custom/ze_obj_ouroboros_aurora_v2.webp",
+      "by": "匿名",
+      "at": "2026-09-26T07:40:36.746Z",
+      "submission": 26
+    }
+  ]
+}

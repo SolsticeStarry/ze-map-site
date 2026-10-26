@@ -1,0 +1,89 @@
+{
+  "v": 1,
+  "slug": "ze_atos",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "可破坏物",
+    "传送门多",
+    "危险区多",
+    "多关卡",
+    "跳刀",
+    "神器",
+    "移植图"
+  ],
+  "difficulty": null,
+  "blocks": [
+    {
+      "id": "story",
+      "type": "story",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "阿托斯是一个梦幻世界\n这里有许多有趣的神器\n戴上耳机好好享受旅程"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 400,
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:42.795Z",
+      "field": "story"
+    },
+    {
+      "source": "data/community",
+      "submission": 399,
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:42.281Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T04:18:23.282Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "可破坏物",
+        "传送门多",
+        "危险区多",
+        "多关卡",
+        "跳刀",
+        "神器",
+        "移植图"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:42.281Z",
+      "submission": 399
+    },
+    {
+      "source": "data/community.log",
+      "field": "story",
+      "from": null,
+      "to": null,
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:42.795Z",
+      "submission": 400
+    }
+  ]
+}

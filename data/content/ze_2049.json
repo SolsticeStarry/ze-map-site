@@ -1,0 +1,54 @@
+{
+  "v": 1,
+  "slug": "ze_2049",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "神器",
+    "BOSS战",
+    "弹幕",
+    "音乐",
+    "移植图",
+    "大图",
+    "KZ"
+  ],
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 417,
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:52.352Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T04:18:45.231Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "神器",
+        "BOSS战",
+        "弹幕",
+        "音乐",
+        "移植图",
+        "大图",
+        "KZ"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:52.352Z",
+      "submission": 417
+    }
+  ]
+}

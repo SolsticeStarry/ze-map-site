@@ -1,0 +1,64 @@
+{
+  "v": 1,
+  "slug": "ze_apollo_p",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "可破坏物",
+    "休闲",
+    "娱乐图"
+  ],
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "players": "24-40"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 436,
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:46.362Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 437,
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:46.900Z",
+      "field": "players"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T04:42:55.787Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "可破坏物",
+        "休闲",
+        "娱乐图"
+      ],
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:46.362Z",
+      "submission": 436
+    },
+    {
+      "source": "data/community.log",
+      "field": "players",
+      "from": null,
+      "to": "24-40",
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:46.900Z",
+      "submission": 437
+    }
+  ]
+}

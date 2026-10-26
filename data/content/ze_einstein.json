@@ -1,0 +1,92 @@
+{
+  "v": 1,
+  "slug": "ze_einstein",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "热门",
+    "路径多",
+    "单关",
+    "机关",
+    "解谜",
+    "娱乐",
+    "娱乐图",
+    "随机机关",
+    "随机生成"
+  ],
+  "difficulty": "普通",
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "players": "24-64"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 8,
+      "by": "白叶",
+      "at": "2026-09-24T08:58:26.733Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 438,
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:47.429Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 439,
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:47.953Z",
+      "field": "players"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T04:42:55.787Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "普通",
+      "by": "白叶",
+      "at": "2026-09-24T08:58:26.733Z",
+      "submission": 8
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "热门",
+        "路径多",
+        "单关",
+        "机关",
+        "解谜",
+        "娱乐",
+        "娱乐图",
+        "随机机关",
+        "随机生成"
+      ],
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:47.429Z",
+      "submission": 438
+    },
+    {
+      "source": "data/community.log",
+      "field": "players",
+      "from": null,
+      "to": "24-64",
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:47.953Z",
+      "submission": 439
+    }
+  ]
+}

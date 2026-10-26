@@ -1,0 +1,218 @@
+{
+  "v": 1,
+  "slug": "ze_deadcore_r",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "多关卡",
+    "跳刀",
+    "弹幕",
+    "日本作者",
+    "经典",
+    "BOSS战",
+    "CSGO移植",
+    "死亡核心"
+  ],
+  "difficulty": "火星",
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "aliases": "EXG:死亡核心R",
+    "authorNote": "Airvulpes (作者) SIRloin 兎RB (移植)",
+    "version": "r2 (CSGO) ze_deadcore_r (CS2)",
+    "duration": "50分钟+"
+  },
+  "stageRows": null,
+  "itemEdits": [
+    {
+      "action": "add",
+      "name": "光炮 (人类)",
+      "cd": 5,
+      "uses": 99,
+      "note": "随时间变化的动态效果神器",
+      "intro": "释放后 在使用者前方射出能量球 能量球路径上的僵尸都将受到减速/定身效果 (神器蓄能时间越久 效果越强)"
+    }
+  ],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1rJ41197mh/",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 237,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:59.931Z",
+      "field": "items",
+      "action": "add",
+      "name": "光炮 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 231,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:00:27.906Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 232,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:00:33.744Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community",
+      "submission": 233,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:01:38.369Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 234,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:00.920Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 235,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:50.908Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 236,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:04:17.508Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 238,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:04:29.055Z",
+      "field": "videoUrls"
+    },
+    {
+      "source": "data/community",
+      "submission": 230,
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:48:13.344Z",
+      "field": "draft"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-15T10:48:13.344Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": null,
+      "to": "194 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:26:10.071Z",
+      "submission": 230
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "火星",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:00:27.906Z",
+      "submission": 231
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "EXG:死亡核心R"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:00:33.744Z",
+      "submission": 232
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "多关卡",
+        "跳刀",
+        "弹幕",
+        "日本作者",
+        "经典",
+        "BOSS战",
+        "CSGO移植",
+        "死亡核心"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:01:38.369Z",
+      "submission": 233
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "Airvulpes (作者) SIRloin 兎RB (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:00.920Z",
+      "submission": 234
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "r2 (CSGO) ze_deadcore_r (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:50.908Z",
+      "submission": 235
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "50分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:04:17.508Z",
+      "submission": 236
+    },
+    {
+      "source": "data/community.log",
+      "field": "items",
+      "from": null,
+      "to": 1,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:03:59.931Z",
+      "submission": 237
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1rJ41197mh/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:04:29.055Z",
+      "submission": 238
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:48:13.344Z",
+      "submission": 230
+    }
+  ]
+}

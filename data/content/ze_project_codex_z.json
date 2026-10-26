@@ -1,0 +1,296 @@
+{
+  "v": 1,
+  "slug": "ze_project_codex_z",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "弹幕",
+    "跳刀",
+    "中国作者",
+    "多关卡",
+    "CS·GO移植",
+    "冷门",
+    "BOSS战"
+  ],
+  "difficulty": "火星",
+  "blocks": [
+    {
+      "id": "story",
+      "type": "story",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "有人说这世界太过耀眼，于是他们取走了色彩……"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "guideCleared": false,
+  "infobox": {
+    "aliases": "EXG:彩虹圣典",
+    "author": "LzYoRHa",
+    "authorNote": "LzYoRHa (作者) 不知名的好心人/南宫紫梦 (移植)",
+    "version": "ze_project_codex_z (CS2) v1_2 (CSGO)",
+    "duration": "45分钟+"
+  },
+  "stageRows": null,
+  "itemEdits": [
+    {
+      "action": "add",
+      "name": "黄 (人类)",
+      "cd": 60,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为中心 生成一片区域 区域内的人类会缓速回复血量 上限为131"
+    },
+    {
+      "action": "add",
+      "name": "红 (人类)",
+      "cd": 60,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后(需抬头按E) 在使用者前方 生成一条直线的推力区域 区域内的僵尸将会被驱逐"
+    },
+    {
+      "action": "add",
+      "name": "蓝 (人类)",
+      "cd": 60,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 生成一片区域 区域内的僵尸将会持续受到减速效果"
+    },
+    {
+      "action": "add",
+      "name": "紫 (人类)",
+      "cd": 60,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 生成一片区域 区域内的僵尸将会被吸力吸至中心"
+    }
+  ],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 254,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:19:04.038Z",
+      "field": "story"
+    },
+    {
+      "source": "data/community",
+      "submission": 253,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:49.732Z",
+      "field": "items",
+      "action": "add",
+      "name": "黄 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 253,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:49.732Z",
+      "field": "items",
+      "action": "add",
+      "name": "红 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 253,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:49.732Z",
+      "field": "items",
+      "action": "add",
+      "name": "蓝 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 253,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:49.732Z",
+      "field": "items",
+      "action": "add",
+      "name": "紫 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 246,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:20:14.555Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 247,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:20:26.417Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community",
+      "submission": 248,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:20:48.753Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 249,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:20:55.002Z",
+      "field": "author"
+    },
+    {
+      "source": "data/community",
+      "submission": 250,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:13.946Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 251,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:24.299Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 252,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:32.927Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 239,
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:48:43.433Z",
+      "field": "draft"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-15T10:48:43.433Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": null,
+      "to": "90 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:04:40.881Z",
+      "submission": 239
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "火星",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:20:14.555Z",
+      "submission": 246
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "EXG:彩虹圣典"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:20:26.417Z",
+      "submission": 247
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "弹幕",
+        "跳刀",
+        "中国作者",
+        "多关卡",
+        "CS·GO移植",
+        "冷门",
+        "BOSS战"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:20:48.753Z",
+      "submission": 248
+    },
+    {
+      "source": "data/community.log",
+      "field": "author",
+      "from": null,
+      "to": "LzYoRHa",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:20:55.002Z",
+      "submission": 249
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "LzYoRHa (作者) 不知名的好心人/南宫紫梦 (移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:13.946Z",
+      "submission": 250
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "ze_project_codex_z (CS2) v1_2 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:24.299Z",
+      "submission": 251
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "45分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:32.927Z",
+      "submission": 252
+    },
+    {
+      "source": "data/community.log",
+      "field": "items",
+      "from": null,
+      "to": 4,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:21:49.732Z",
+      "submission": 253
+    },
+    {
+      "source": "data/community.log",
+      "field": "story",
+      "from": null,
+      "to": null,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T14:19:04.038Z",
+      "submission": 254
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:48:43.433Z",
+      "submission": 239
+    }
+  ]
+}

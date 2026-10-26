@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "slug": "ze_pirates_port_royal",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_pirates_port_royal.webp",
+  "tags": null,
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 71,
+      "by": "SiKi",
+      "at": "2026-10-04T11:26:09.021Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-04T11:26:09.021Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_pirates_port_royal.webp",
+      "by": "SiKi",
+      "at": "2026-10-04T11:26:09.021Z",
+      "submission": 71
+    }
+  ]
+}

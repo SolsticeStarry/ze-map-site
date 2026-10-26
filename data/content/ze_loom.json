@@ -1,0 +1,88 @@
+{
+  "v": 1,
+  "slug": "ze_loom",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_loom.webp",
+  "tags": null,
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "aliases": "恐惧隐现"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 62,
+      "by": "SiKi",
+      "at": "2026-10-04T11:22:19.984Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community",
+      "submission": 516,
+      "by": "时轩",
+      "at": "2026-10-18T17:31:05.250Z",
+      "field": "title"
+    },
+    {
+      "source": "data/community",
+      "submission": 518,
+      "by": "时轩",
+      "at": "2026-10-18T17:31:06.367Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T17:31:18.739Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_loom.webp",
+      "by": "SiKi",
+      "at": "2026-10-04T11:22:19.984Z",
+      "submission": 62
+    },
+    {
+      "source": "data/community.log",
+      "field": "title",
+      "from": null,
+      "to": "恐惧再现",
+      "by": "时轩",
+      "at": "2026-10-18T17:31:05.250Z",
+      "submission": 516
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "城市掠夺者"
+      ],
+      "by": "时轩",
+      "at": "2026-10-18T17:31:05.822Z",
+      "submission": 517
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": [
+        "城市掠夺者"
+      ],
+      "to": [
+        "恐惧隐现"
+      ],
+      "by": "时轩",
+      "at": "2026-10-18T17:31:06.367Z",
+      "submission": 518
+    }
+  ],
+  "title": "恐惧再现"
+}

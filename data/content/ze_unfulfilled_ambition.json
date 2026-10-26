@@ -1,0 +1,75 @@
+{
+  "v": 1,
+  "slug": "ze_unfulfilled_ambition",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": null,
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "stages": "1",
+    "author": "ze探险家"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 307,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "field": "stages"
+    },
+    {
+      "source": "data/community",
+      "submission": 308,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "field": "author"
+    },
+    {
+      "source": "data/community",
+      "submission": 309,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "field": "sources"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-14T11:43:25.087Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "stages",
+      "from": null,
+      "to": 1,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 307
+    },
+    {
+      "source": "data/community.log",
+      "field": "author",
+      "from": null,
+      "to": "ze探险家",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 308
+    },
+    {
+      "source": "data/community.log",
+      "field": "sources",
+      "from": null,
+      "to": [
+        "https://steamcommunity.com/sharedfiles/filedetails/?id=3736078005"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 309
+    }
+  ]
+}

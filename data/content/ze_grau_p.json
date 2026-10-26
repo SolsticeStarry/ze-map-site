@@ -1,0 +1,248 @@
+{
+  "v": 1,
+  "slug": "ze_grau_p",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "BOSS战",
+    "CSGO移植",
+    "多关卡",
+    "方块",
+    "经典老图",
+    "日本作者"
+  ],
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "author": "Kune",
+    "authorNote": "Kune (作者)",
+    "version": "a03_4ff (CSGO) ze_grau_p (CS2)",
+    "duration": "20分钟+"
+  },
+  "stageRows": null,
+  "itemEdits": [
+    {
+      "action": "add",
+      "name": "治愈光环",
+      "cd": 0,
+      "uses": 99,
+      "note": "",
+      "intro": "为神器光环范围内的人类持续回复血量"
+    },
+    {
+      "action": "add",
+      "name": "僵尸减速球",
+      "cd": 0,
+      "uses": null,
+      "note": "",
+      "intro": "向前方发射一个减速球 命中的人类将会受到缓速效果"
+    },
+    {
+      "action": "add",
+      "name": "僵尸加速",
+      "cd": 30,
+      "uses": 99,
+      "note": "",
+      "intro": "使用后给予使用者加速效果"
+    }
+  ],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1Q54y1X74s",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 325,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "field": "items",
+      "action": "add",
+      "name": "治愈光环"
+    },
+    {
+      "source": "data/community",
+      "submission": 325,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "field": "items",
+      "action": "add",
+      "name": "僵尸减速球"
+    },
+    {
+      "source": "data/community",
+      "submission": 325,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "field": "items",
+      "action": "add",
+      "name": "僵尸加速"
+    },
+    {
+      "source": "data/community",
+      "submission": 320,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "field": "author"
+    },
+    {
+      "source": "data/community",
+      "submission": 321,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 322,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 323,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 324,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 326,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "field": "videoUrls"
+    },
+    {
+      "source": "data/community",
+      "submission": 327,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "field": "sources"
+    },
+    {
+      "source": "data/community",
+      "submission": 340,
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:51:27.508Z",
+      "field": "draft"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-15T10:51:27.508Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "author",
+      "from": null,
+      "to": "Kune",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 320
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "BOSS战",
+        "CSGO移植",
+        "多关卡",
+        "方块",
+        "经典老图",
+        "日本作者"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 321
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "Kune (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 322
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "a03_4ff (CSGO) ze_grau_p (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 323
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "20分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 324
+    },
+    {
+      "source": "data/community.log",
+      "field": "items",
+      "from": null,
+      "to": 3,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 325
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1Q54y1X74s"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 326
+    },
+    {
+      "source": "data/community.log",
+      "field": "sources",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1Jp411R72M/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 327
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": null,
+      "to": "85 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:02.741Z",
+      "submission": 340
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:51:27.508Z",
+      "submission": 340
+    }
+  ]
+}

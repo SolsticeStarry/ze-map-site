@@ -1,0 +1,59 @@
+{
+  "v": 1,
+  "slug": "ze_dystopia_p",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": null,
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "duration": "约 30 分钟",
+    "aliases": "EXG社区: 敌托邦【困难】"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 318,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:40.718Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 319,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:40.718Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-14T11:43:40.718Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "约 30 分钟",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:40.718Z",
+      "submission": 318
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "EXG社区: 敌托邦【困难】"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:40.718Z",
+      "submission": 319
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "v": 1,
+  "slug": "ze_tranquility",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_tranquility.webp",
+  "tags": [
+    "机关图",
+    "传送门多",
+    "弹幕"
+  ],
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1m55y6rExR/",
+      "kind": "run"
+    },
+    {
+      "url": "https://www.bilibili.com/video/BV11pg96pEGf/",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 116,
+      "by": "SiKi",
+      "at": "2026-10-06T13:11:49.553Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community",
+      "submission": 123,
+      "by": "匿名",
+      "at": "2026-10-09T12:26:31.988Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 316,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "field": "videoUrls"
+    },
+    {
+      "source": "data/community",
+      "submission": 317,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "field": "sources"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-14T11:43:25.087Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_tranquility.webp",
+      "by": "SiKi",
+      "at": "2026-10-06T13:11:49.553Z",
+      "submission": 116
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "机关图",
+        "传送门多",
+        "弹幕"
+      ],
+      "by": "匿名",
+      "at": "2026-10-09T12:26:31.988Z",
+      "submission": 123
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1m55y6rExR/",
+        "https://www.bilibili.com/video/BV11pg96pEGf/"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 316
+    },
+    {
+      "source": "data/community.log",
+      "field": "sources",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1m55y6rExR/",
+        "https://www.bilibili.com/video/BV11pg96pEGf/",
+        "https://steamcommunity.com/sharedfiles/filedetails/?id=3707338750"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 317
+    }
+  ]
+}

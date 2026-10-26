@@ -1,0 +1,347 @@
+{
+  "v": 1,
+  "slug": "ze_mist_p",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "BOSS战",
+    "CSGO移植",
+    "单关卡",
+    "弹幕",
+    "跳刀",
+    "长征"
+  ],
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "aliases": "X社区:迷雾",
+    "author": "Soft Serve",
+    "authorNote": "Soft Serve (作者)",
+    "version": "ze_mist_p (CS2) q3 (CSGO)",
+    "duration": "15分钟+"
+  },
+  "stageRows": null,
+  "itemEdits": [
+    {
+      "action": "add",
+      "name": "治愈光环",
+      "cd": 60,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一片区域 区域内的人类会持续受到治疗效果"
+    },
+    {
+      "action": "add",
+      "name": "静电立场",
+      "cd": 10,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一片区域 区域内的僵尸会持续受到弱减速效果"
+    },
+    {
+      "action": "add",
+      "name": "剧毒喷雾",
+      "cd": 10,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方发射喷雾 接触到喷雾的僵尸会被削减生命值"
+    },
+    {
+      "action": "add",
+      "name": "灵魂爆发",
+      "cd": 10,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方发射能量球 接触到能量球的僵尸将会受到推力效果"
+    },
+    {
+      "action": "add",
+      "name": "灼热炽焰",
+      "cd": 10,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方生成一片直线区域 区域内的僵尸将会持续受到灼烧减速效果"
+    },
+    {
+      "action": "add",
+      "name": "冰霜新星",
+      "cd": 10,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一片区域 区域内的僵尸将会受到强定身效果"
+    }
+  ],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1GVFjzUEXh/",
+      "kind": "run"
+    },
+    {
+      "url": "https://www.bilibili.com/video/BV1AY411N7cF/",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 332,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community",
+      "submission": 333,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 334,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "author"
+    },
+    {
+      "source": "data/community",
+      "submission": 335,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 336,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 337,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 339,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "videoUrls"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items",
+      "action": "add",
+      "name": "治愈光环"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items",
+      "action": "add",
+      "name": "静电立场"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items",
+      "action": "add",
+      "name": "剧毒喷雾"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items",
+      "action": "add",
+      "name": "灵魂爆发"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items",
+      "action": "add",
+      "name": "灼热炽焰"
+    },
+    {
+      "source": "data/community",
+      "submission": 338,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "field": "items",
+      "action": "add",
+      "name": "冰霜新星"
+    },
+    {
+      "source": "data/community",
+      "submission": 341,
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:52:09.473Z",
+      "field": "draft"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-15T10:52:09.473Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "X社区:迷雾"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 332
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "BOSS战",
+        "CSGO移植",
+        "单关卡",
+        "弹幕",
+        "跳刀",
+        "长征"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 333
+    },
+    {
+      "source": "data/community.log",
+      "field": "author",
+      "from": null,
+      "to": "Soft Serve",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 334
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "Soft Serve (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 335
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "ze_mist_p (CS2) q3 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 336
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "15分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 337
+    },
+    {
+      "source": "data/community.log",
+      "field": "items",
+      "from": null,
+      "to": 6,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 338
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1GVFjzUEXh/",
+        "https://www.bilibili.com/video/BV1AY411N7cF/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 339
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": null,
+      "to": "52 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T13:36:06.028Z",
+      "submission": 341
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:52:09.473Z",
+      "submission": 341
+    }
+  ],
+  "difficulty": null
+}

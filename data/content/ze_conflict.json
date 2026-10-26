@@ -1,0 +1,198 @@
+{
+  "v": 1,
+  "slug": "ze_conflict",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "CSGO移植",
+    "多关卡",
+    "跳刀",
+    "弹幕",
+    "韩国作者",
+    "机关图",
+    "短流程"
+  ],
+  "difficulty": "困难",
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "aliases": "音乐游戏:公交车",
+    "authorNote": "Rakka/Rio(作者) (为同一人)",
+    "version": "v4_4 (CSGO) ze_conflict (CS2)",
+    "duration": "15分钟+"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1fgvyeqE3Z/",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 186,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:14.756Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 180,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:15.815Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community",
+      "submission": 181,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:12.165Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 182,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:12.676Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 183,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:13.180Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 184,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:13.703Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 185,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:14.220Z",
+      "field": "videoUrls"
+    },
+    {
+      "source": "data/community",
+      "submission": 178,
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:46:01.497Z",
+      "field": "draft"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-15T10:46:01.497Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": null,
+      "to": "152 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:16.335Z",
+      "submission": 178
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:15.291Z",
+      "submission": 179
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "音乐游戏:公交车"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:15.815Z",
+      "submission": 180
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "CSGO移植",
+        "多关卡",
+        "跳刀",
+        "弹幕",
+        "韩国作者",
+        "机关图",
+        "短流程"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:12.165Z",
+      "submission": 181
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "Rakka/Rio(作者) (为同一人)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:12.676Z",
+      "submission": 182
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "v4_4 (CSGO) ze_conflict (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:13.180Z",
+      "submission": 183
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "15分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:13.703Z",
+      "submission": 184
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1fgvyeqE3Z/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:14.220Z",
+      "submission": 185
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": "困难",
+      "to": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T11:42:14.756Z",
+      "submission": 186
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:46:01.497Z",
+      "submission": 178
+    }
+  ]
+}

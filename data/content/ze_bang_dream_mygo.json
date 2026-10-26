@@ -1,0 +1,66 @@
+{
+  "v": 1,
+  "slug": "ze_bang_dream_mygo",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "弹幕",
+    "音乐",
+    "娱乐",
+    "娱乐图"
+  ],
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "authorNote": "作者：花泽爱吃香菜、皮皮猫233、SIRloin ; 自定义谱面: 無玖、楽14、佐贺 ; 谱面轨道制作:内格夫"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 314,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 315,
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-14T11:43:25.087Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "弹幕",
+        "音乐",
+        "娱乐",
+        "娱乐图"
+      ],
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 314
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "作者：花泽爱吃香菜、皮皮猫233、SIRloin ; 自定义谱面: 無玖、楽14、佐贺 ; 谱面轨道制作:内格夫",
+      "by": "SiKi",
+      "at": "2026-10-14T11:43:25.087Z",
+      "submission": 315
+    }
+  ]
+}

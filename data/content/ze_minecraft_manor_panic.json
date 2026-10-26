@@ -1,0 +1,54 @@
+{
+  "v": 1,
+  "slug": "ze_minecraft_manor_panic",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_minecraft_manor_panic.webp",
+  "tags": null,
+  "difficulty": "简单",
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 29,
+      "by": "白叶",
+      "at": "2026-09-26T15:38:10.051Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community",
+      "submission": 30,
+      "by": "白叶",
+      "at": "2026-09-26T15:38:16.987Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-09-26T15:38:16.987Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "简单",
+      "by": "白叶",
+      "at": "2026-09-26T15:38:10.051Z",
+      "submission": 29
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_minecraft_manor_panic.webp",
+      "by": "白叶",
+      "at": "2026-09-26T15:38:16.987Z",
+      "submission": 30
+    }
+  ]
+}

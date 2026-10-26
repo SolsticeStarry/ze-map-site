@@ -1,0 +1,70 @@
+{
+  "v": 1,
+  "slug": "ze_2021_xmas_world_p",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "滑翔",
+    "守点",
+    "娱乐",
+    "防守图",
+    "多场景",
+    "重复关卡"
+  ],
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "players": "24-64"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 434,
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:45.288Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 435,
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:45.812Z",
+      "field": "players"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T04:42:55.787Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "滑翔",
+        "守点",
+        "娱乐",
+        "防守图",
+        "多场景",
+        "重复关卡"
+      ],
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:45.288Z",
+      "submission": 434
+    },
+    {
+      "source": "data/community.log",
+      "field": "players",
+      "from": null,
+      "to": "24-64",
+      "by": "宇宙机器人",
+      "at": "2026-10-18T04:42:45.812Z",
+      "submission": 435
+    }
+  ]
+}

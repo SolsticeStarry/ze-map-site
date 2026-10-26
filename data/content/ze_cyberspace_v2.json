@@ -1,0 +1,504 @@
+{
+  "v": 1,
+  "slug": "ze_cyberspace_v2",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "BOSS战",
+    "神器",
+    "跳刀",
+    "CSGO移植",
+    "弹幕",
+    "日本作者",
+    "多关卡"
+  ],
+  "blocks": [
+    {
+      "id": "story",
+      "type": "story",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "3+2个关卡 (RTV/ZM)"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "3个人类神器 & 2个僵尸神器"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "机关触发"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "弹幕/跳刀"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "guideCleared": false,
+  "infobox": {
+    "aliases": "其它:电脑梦境",
+    "author": "Kur4yam1",
+    "authorNote": "Kur4yam1 (作者/移植)",
+    "version": "ze_cyberspace_v2 (CS2)",
+    "duration": "25分钟+",
+    "players": "64"
+  },
+  "stageRows": null,
+  "itemEdits": [
+    {
+      "action": "add",
+      "name": "治愈 (人类)",
+      "cd": 60,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一块治愈区域 区域内的人类会持续回复血量"
+    },
+    {
+      "action": "add",
+      "name": "切割 (人类)",
+      "cd": 45,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 发射出一道剑气向前推进 触碰的僵尸将被施加定身效果"
+    },
+    {
+      "action": "add",
+      "name": "数据涡流 (人类)",
+      "cd": 65,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方生成一块减速区域 区域内的僵尸将被施加弱减速效果"
+    },
+    {
+      "action": "add",
+      "name": "扰乱 (僵尸)",
+      "cd": 75,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 以使用者为圆心 生成一块加速区域 区域随使用者而移动 区域内的僵尸将获得加速效果"
+    },
+    {
+      "action": "add",
+      "name": "光炮 (僵尸)",
+      "cd": 60,
+      "uses": 99,
+      "note": "",
+      "intro": "释放后 在使用者前方 生成一道直线的特效区域 区域内的人类会持续受到伤害"
+    },
+    {
+      "action": "remove",
+      "name": "Add",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": ""
+    },
+    {
+      "action": "remove",
+      "name": "Subtract",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": ""
+    },
+    {
+      "action": "remove",
+      "name": "Divide",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": ""
+    },
+    {
+      "action": "remove",
+      "name": "Zombie Multiply",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": ""
+    },
+    {
+      "action": "remove",
+      "name": "Zombie Fraction",
+      "cd": null,
+      "uses": null,
+      "note": "",
+      "intro": ""
+    }
+  ],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 464,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "field": "section"
+    },
+    {
+      "source": "data/community",
+      "submission": 484,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 484,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 484,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 484,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 484,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 499,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 499,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 499,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 499,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 499,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items"
+    },
+    {
+      "source": "data/community",
+      "submission": 482,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community",
+      "submission": 483,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 485,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "author"
+    },
+    {
+      "source": "data/community",
+      "submission": 486,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 487,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 488,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 489,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "players"
+    },
+    {
+      "source": "data/community",
+      "submission": 464,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "field": "section",
+      "title": "地图由 [Kur4yam1] 绘制"
+    },
+    {
+      "source": "data/community",
+      "submission": 484,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "items",
+      "action": "add",
+      "name": "治愈 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 484,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "items",
+      "action": "add",
+      "name": "切割 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 484,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "items",
+      "action": "add",
+      "name": "数据涡流 (人类)"
+    },
+    {
+      "source": "data/community",
+      "submission": 484,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "items",
+      "action": "add",
+      "name": "扰乱 (僵尸)"
+    },
+    {
+      "source": "data/community",
+      "submission": 484,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "items",
+      "action": "add",
+      "name": "光炮 (僵尸)"
+    },
+    {
+      "source": "data/community",
+      "submission": 499,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "remove",
+      "name": "Add"
+    },
+    {
+      "source": "data/community",
+      "submission": 499,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "remove",
+      "name": "Subtract"
+    },
+    {
+      "source": "data/community",
+      "submission": 499,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "remove",
+      "name": "Divide"
+    },
+    {
+      "source": "data/community",
+      "submission": 499,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "remove",
+      "name": "Zombie Multiply"
+    },
+    {
+      "source": "data/community",
+      "submission": 499,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "field": "items",
+      "action": "remove",
+      "name": "Zombie Fraction"
+    },
+    {
+      "source": "data/community",
+      "submission": 481,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "field": "difficulty"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T17:31:18.728Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "section",
+      "from": null,
+      "to": null,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:34:18.610Z",
+      "submission": 464
+    },
+    {
+      "source": "data/community.log",
+      "field": "difficulty",
+      "from": null,
+      "to": "困难",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "submission": 481
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "其它:电脑梦境"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "submission": 482
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "BOSS战",
+        "神器",
+        "跳刀",
+        "CSGO移植",
+        "弹幕",
+        "日本作者",
+        "多关卡"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "submission": 483
+    },
+    {
+      "source": "data/community.log",
+      "field": "items",
+      "from": null,
+      "to": 5,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "submission": 484
+    },
+    {
+      "source": "data/community.log",
+      "field": "author",
+      "from": null,
+      "to": "Kur4yam1",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "submission": 485
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "Kur4yam1 (作者/移植)",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "submission": 486
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "ze_cyberspace_v2 (CS2)",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "submission": 487
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "25分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "submission": 488
+    },
+    {
+      "source": "data/community.log",
+      "field": "players",
+      "from": null,
+      "to": "64",
+      "by": "AntiLockwise",
+      "at": "2026-10-18T15:47:42.814Z",
+      "submission": 489
+    },
+    {
+      "source": "data/community.log",
+      "field": "items",
+      "from": null,
+      "to": 5,
+      "by": "AntiLockwise",
+      "at": "2026-10-18T17:31:18.728Z",
+      "submission": 499
+    }
+  ],
+  "difficulty": "困难"
+}

@@ -1,0 +1,66 @@
+{
+  "v": 1,
+  "slug": "ze_obj_ember",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": "/images/covers/custom/ze_obj_ember.webp",
+  "tags": [
+    "大图",
+    "OBJ",
+    "长征图",
+    "CS2原创",
+    "单关"
+  ],
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {},
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": null,
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 52,
+      "by": "SiKi",
+      "at": "2026-09-30T11:30:57.578Z",
+      "field": "cover"
+    },
+    {
+      "source": "data/community",
+      "submission": 412,
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:49.556Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-18T04:18:37.602Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "cover",
+      "from": null,
+      "to": "/images/covers/custom/ze_obj_ember.webp",
+      "by": "SiKi",
+      "at": "2026-09-30T11:30:57.578Z",
+      "submission": 52
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "大图",
+        "OBJ",
+        "长征图",
+        "CS2原创",
+        "单关"
+      ],
+      "by": "creeper_kk",
+      "at": "2026-10-18T04:17:49.556Z",
+      "submission": 412
+    }
+  ]
+}

@@ -1,0 +1,171 @@
+{
+  "v": 1,
+  "slug": "ze_flower",
+  "baseRev": null,
+  "researchRev": null,
+  "heroImage": null,
+  "tags": [
+    "弹幕",
+    "跳刀",
+    "单关卡",
+    "CSGO移植",
+    "日本作者",
+    "弹幕演出"
+  ],
+  "difficulty": null,
+  "blocks": [],
+  "guideCleared": false,
+  "infobox": {
+    "aliases": "Top游廊(5E):花园幻境(笑)",
+    "authorNote": "Karon (作者)",
+    "version": "ze_flower (CS2) a3_1 (CSGO)",
+    "duration": "10分钟+"
+  },
+  "stageRows": null,
+  "itemEdits": [],
+  "itemOrder": [],
+  "videos": [
+    {
+      "url": "https://www.bilibili.com/video/BV1nykRBFEQF/",
+      "kind": "run"
+    }
+  ],
+  "history": [
+    {
+      "source": "data/community",
+      "submission": 188,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:20:23.294Z",
+      "field": "aliases"
+    },
+    {
+      "source": "data/community",
+      "submission": 189,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:19:46.137Z",
+      "field": "tags"
+    },
+    {
+      "source": "data/community",
+      "submission": 190,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:20:31.545Z",
+      "field": "authorNote"
+    },
+    {
+      "source": "data/community",
+      "submission": 191,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:06.674Z",
+      "field": "version"
+    },
+    {
+      "source": "data/community",
+      "submission": 192,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:13.538Z",
+      "field": "duration"
+    },
+    {
+      "source": "data/community",
+      "submission": 193,
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:22.864Z",
+      "field": "videoUrls"
+    },
+    {
+      "source": "data/community",
+      "submission": 187,
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:46:32.468Z",
+      "field": "draft"
+    },
+    {
+      "source": "data/community.updatedAt",
+      "at": "2026-10-15T10:46:32.468Z"
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": null,
+      "to": "84 字",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:19:38.382Z",
+      "submission": 187
+    },
+    {
+      "source": "data/community.log",
+      "field": "aliases",
+      "from": null,
+      "to": [
+        "Top游廊(5E):花园幻境(笑)"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:20:23.294Z",
+      "submission": 188
+    },
+    {
+      "source": "data/community.log",
+      "field": "tags",
+      "from": null,
+      "to": [
+        "弹幕",
+        "跳刀",
+        "单关卡",
+        "CSGO移植",
+        "日本作者",
+        "弹幕演出"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:19:46.137Z",
+      "submission": 189
+    },
+    {
+      "source": "data/community.log",
+      "field": "authorNote",
+      "from": null,
+      "to": "Karon (作者)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:20:31.545Z",
+      "submission": 190
+    },
+    {
+      "source": "data/community.log",
+      "field": "version",
+      "from": null,
+      "to": "ze_flower (CS2) a3_1 (CSGO)",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:06.674Z",
+      "submission": 191
+    },
+    {
+      "source": "data/community.log",
+      "field": "duration",
+      "from": null,
+      "to": "10分钟+",
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:13.538Z",
+      "submission": 192
+    },
+    {
+      "source": "data/community.log",
+      "field": "videoUrls",
+      "from": null,
+      "to": [
+        "https://www.bilibili.com/video/BV1nykRBFEQF/"
+      ],
+      "by": "AntiLockwise",
+      "at": "2026-10-14T12:21:22.864Z",
+      "submission": 193
+    },
+    {
+      "source": "data/community.log",
+      "field": "draft",
+      "from": "社区整理版（未采纳）",
+      "to": "已采纳为原稿",
+      "by": "AntiLockwise",
+      "at": "2026-10-15T10:46:32.468Z",
+      "submission": 187
+    }
+  ]
+}
