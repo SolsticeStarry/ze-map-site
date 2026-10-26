@@ -18,10 +18,13 @@
   - 按高度着色、区域光晕、方块体积、按高度剖切、关卡分层、单点属性与触发连线、导出 PNG
   - 已收录地图（含 TTT / MG / DE），按图按需加载
 - **标签索引**、深浅色切换、移动端适配、sitemap、自定义 404
-- **社区共建**：`/submit/` 网页投稿（不需要 GitHub 账号）→ D1 队列 → `/admin` 审核台 → 攒批写回 git →
-  自动重建；另有难度投票、`/updates/` 更新日志、贡献者署名（见 [社区编辑方案与实施记录](docs/community-editing-plan.md)）
-- **账号（可选）**：`/account/` 注册后署名稳定（防冒名）、投稿记进个人主页、按已写回条数累计等级与免审资格；
+- **社区共建**：`/submit/edit` 匿名单项补充 / `/edit/<slug>` 登录整页编辑 → D1 `page_revisions` → `/admin` 审核 → 写回 `data/content` → 自动重建；难度由玩家修订，不再投票。详见 [内容模型](docs/content-model.md)
+- **账号（可选）**：`/account/` 注册后署名稳定（防冒名）、投稿记进个人主页、按已写回条数累计等级；
   **不登录照样能投稿**（见 [账号系统](docs/accounts.md)）
+
+## 文档
+
+完整文档索引见 [docs/README.md](docs/README.md)。
 
 ## 技术栈
 

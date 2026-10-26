@@ -4,13 +4,14 @@
 
 **投稿指南在网站上，看这份就够：<https://ze-map.cn/contribute/>**
 
-那份是写给「不会写代码、没有 GitHub 账号」的人的，包含网页表单、提 issue、提 PR、换封面五条路径的完整步骤。这份文件只补充 GitHub 侧的技术约定。
+那份是写给「不会写代码、没有 GitHub 账号」的人的，包含网页编辑、提 issue、提 PR、换封面的完整步骤。这份文件只补充 GitHub 侧的技术约定。
 
-## 三条路径
+## 四条路径
 
 | 方式 | 需要 GitHub 账号 | 适合 |
 | --- | --- | --- |
-| [网页投稿表单](https://ze-map.cn/submit/) | 不用 | 补 / 改某张图的字段（难度、标签、作者、视频、来源、神器 / 道具、正文、封面图） |
+| [单项补充](https://ze-map.cn/submit/edit/) | 不用 | 补 / 改某张图的字段（难度、标签、作者、视频、神器 / 道具、封面图） |
+| [整页编辑](https://ze-map.cn/maps/) | 要 | 正文块、关卡、神器、攻略、图片集等整页修改 |
 | [提 issue](https://github.com/hhjjdsj/ze-map-site/issues/new/choose) | 要 | 一次说好几件事、交整段攻略 |
 | 提 PR 改文件 | 要 | 熟悉 GitHub，或一次改很多张图 |
 
@@ -19,8 +20,8 @@
 | 文件 | |
 | --- | --- |
 | `data/research/<地图英文名>.json` | ✅ **资料原稿，改这里** |
-| `data/community/<slug>.json` | ⚠️ 社区投稿落盘目录，由审核流程写入；手改请开 PR 说明理由 |
-| `data/community/<slug>.json` 的 `items[]` | ✅ 神器 / 道具就只能这么改：条目里的表来自 `data/gfl-parsed/`（服务器配置解析结果，脚本产出），社区更正逐行合并、原值保留在备注里 —— 走投稿页选「神器 / 道具」，或手改这里的 `items[]` |
+| `data/content/<slug>.json` | ✅ 玩家覆盖层；审核通过后由 Worker 写回，手改请开 PR 说明理由 |
+| `data/content/<slug>.json` 的 `itemEdits[]` | ✅ 神器 / 道具的玩家更正：条目里的表来自 `data/gfl-parsed/`，逐行合并、原值保留；走单项补充或整页编辑 |
 | `public/images/covers/custom/<地图英文名>.jpg`（或 `.png` / `.webp`） | ✅ 换地图封面（文件名必须正好是地图英文名） |
 | `src/content/maps/*.mdx` | ❌ **全部由脚本生成**，手改会被 `npm run maps:generate` 整段覆盖 |
 
@@ -41,7 +42,7 @@
 > 想让仓库里的打印稿也同步（可选）：`npm run maps:generate`，然后把 `src/content/maps/`
 > 下的改动一起提交。
 >
-> 不想碰仓库的人：投稿页 `/submit/` 写的是 `data/community/<slug>.json`，由审核流程落盘。
+> 不想碰仓库的人：单项补充 `/submit/edit` 或整页编辑 `/edit/<slug>/` 提交到 `page_revisions`，审核通过后写回 `data/content/<slug>.json`。
 >
 > 判定逻辑在 `scripts/content/check-mdx-drift.mjs`（可在本地跑：`npm run content:mdx`）。
 
@@ -56,7 +57,7 @@
 
 ### 图片这类二进制文件（地图封面）
 
-**首选走投稿页**：地图详情页右侧栏 →「✏️ 补充这张图的资料」→ 选 **地图封面** → 上传。
+**首选走单项补充**：地图详情页右侧栏 →「✏️ 补充这张图的资料」→ 选 **地图封面** → 上传。
 不需要 GitHub 账号，也不用 Fork —— 浏览器端会自动裁成 16:9、压成 webp，服务端校验后进审核队列。
 
 想直接改文件（提 PR）的话：**网页上的铅笔编辑对二进制文件不可用** —— 铅笔只对文字文件出现，所以要走上传/删除。
@@ -74,6 +75,8 @@
 不想折腾 GitHub 的话，把图发给站长代传（`npm run cover:set -- <地图英文名> <图片>`，自动压成 16:9 webp）。
 
 相关限制：网页上传单文件 25 MB（GitHub 规则）、一次最多 100 个文件；本项目封面另有 `cover:verify` 的 800 KB 硬上限。
+
+> 旧 `data/community`、旧 `/submit` 字段表单、D1 `submissions` 和难度投票已删除；当前只有 `data/content` + `page_revisions`。
 
 ## 提 PR 后会自动跑什么
 

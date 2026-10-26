@@ -1,90 +1,41 @@
-# 最近改动（首页底部那份逐条记录）
+# 最近改动（`/updates/` 与首页底部）
 
-> 2026-10-10 上线。首页底部（页脚之上）那块「最近改动」，以及 `/updates/` 页里的
-> 「逐条改动」，还有 `/updates/feed.json`。想加一类记录、改措辞、排查「怎么没显示」看这份。
+> 当前实现：`src/lib/update-feed.ts`、`src/components/UpdateFeed.astro`、`src/pages/updates/feed.json.ts`。
+> 旧 community log 的完整说明在 [`archive/update-feed-community.md`](archive/update-feed-community.md)。
 
-## 它回答什么
+## 1. 两层数据
 
-「最近哪些地图的哪一部分被改过，谁改的，什么时候」——
-不是工坊作者更新地图（那是 `/new/`、`/hot/` 的事），而是**本站资料**的改动。
-
-一行长这样：
-
-```
-10-09  今天   崇寂之渊   标签更新（3 个）        匿名      [社区投稿]
-10-08  2 天前 最终幻想7：魔晄炉  资料更新：正文（旧写法）、关联实体、标题 等 13 项   [本站整理]
-10-04  6 天前 53 张图更新了封面  SiKi  [社区投稿] ▸ 53 张图的清单
-```
-
-## 两层数据（为什么要分两层）
-
-| 层 | 来源 | 颗粒度 | 新鲜度 |
+| 层 | 来源 | 颗粒度 | 什么时候出现 |
 |---|---|---|---|
-| ① 社区投稿 | `data/community/<slug>.json` 的 `log[]` | 字段级 + 作者 + 投稿编号 | **永远最新**：构建期直接读文件，Worker 写回 → 重建就能看到 |
-| ② 本站整理的资料 | `data/research-changes.json` | 字段级（顶层键），无作者 | 跟提交走：本地构建时由脚本重算，随提交入库 |
+| 玩家修订 | `data/content/<slug>.json` 的 `history[]` | 迁移前的 community 字段记录 + 新写回的 `{revision, appliedAt}` | 构建期直接读文件，写回后重建即可看到 |
+| 本站整理 | `data/research-changes.json` | research 顶层字段 / 图片集 | 本地构建由 git 历史生成并提交；浅克隆沿用现有文件 |
 
-②为什么要生成成文件再提交（而不是构建期现算 git）：**线上（Cloudflare Workers Builds）的克隆深度不确定**。
-浅克隆读不到历史，现算会把整站历史都说成「今天」。`data/map-dates.json` 当初就是因此改成
-「本地生成 → 提交 → 线上沿用」的，这里照搬同一套路：
+**不再读取 `data/community`。** 迁移后的旧记录仍以 `source: "data/community.log"` 保留在 content history 里；新写回由 `page_revisions` 追加 `revision` / `submitter` / `reviewer` / `appliedAt`。
 
-- 脚本：`scripts/content/build-research-changes.mjs`（挂在 `npm run build` 的第三步，
-  也可以单独 `npm run changes:build`）
-- 拿不到 git / 浅克隆 / 不在仓库里 → **保留现有文件不动**，只打一行警告，绝不清空
-- `.gitignore` 里有一条 `!data/research-changes.json` 白名单（`data/*` 会连它一起忽略）
+## 2. 合并规则
 
-## 合并与筛选（`src/lib/update-feed.ts`）
+- `getUpdateFeed()` 合并两层，按时间倒序，最多 400 条；slug 找不到页面标题的条目直接丢弃。
+- 每张图最新的改动日期还会由 `latestChangeByMap()` 提供给「最新更新」，避免「最近改动」和「最新更新」两套日期打架。
+- 封面改动按天聚合成一条「N 张图更新了封面」，明细在可展开区；否则批量导封面会刷屏。
+- 新写回的单条修订显示为「内容修订 #编号 已上线」；旧 community 记录继续按字段显示难度 / 标签 / 视频 / 神器等。
+- 「本站整理」只显示前 3 个字段 + 「等 N 项」，避免一次大迁移占满首页。
 
-- 两层合并 → 按时间倒序 → 最多 `FEED_LIMIT`（400）条 → **slug 查不到页面标题的直接丢掉**
-  （多半是已删的图，留着就是 404）。标题在这一层补齐，因为「加载更多」拉的是一个
-  已经带标题的 JSON —— 客户端追加时不该再查一次。
-- 社区那层的措辞在 `communityWhat()`：难度取 `from → to`（`from` 为空时只显示结果值）、
-  标签 / 视频 / 来源 / 神器行按条数、正文类分「新增」与「修订」（修订看 log 里的 `reviseOf`）。
-- **封面聚合**：`cover` 是按天聚合成一条「N 张图更新了封面」，明细进 `extra` 折叠区。
-  不聚合的话，光 09-24~10-06 那几次批量导入封面就会刷满 95 行。
-- 资料那层只显示前 3 个键 + 「等 N 项」：一次提交改十几个键（比如 10-08 那次
-  `document → sections` 的迁移）全列出来是一面墙。
-
-## 生成脚本的口径（和 `build-map-dates.mjs` 保持一致）
-
-- 只看 `data/research` 与 `data/gallery`；`src/content/maps/*.mdx` 是打印稿，
-  它变了只说明「重新生成过」，**不记**（但它参与下面的批量判定）。
-- **一次提交动超过 20 个相关文件 → 整条丢弃**（`BULK = 20`）。理由：整批导入 /
-  生成器改版会一次动几百个文件，记进来首页就成了刷屏。
-- 字段级靠解析 `git log -U0 -p` 的 diff：只取**缩进正好两格**的 JSON 键行
-  （嵌套键缩进更深，不会误伤）。
-- `KEY_LABELS` 决定「哪个键值得记」以及中文名：`confidence` / `verified` / `_待建条目` /
-  `_说明` / `slug` → `null`（台账字段，不算内容变化）。**加新字段时在这里补一行**，
-  否则它要么显示成英文键名，要么被忽略。
-- 图片集清单单独处理：数 `+"src":` 的行数 → 「图片集 +N 张」。
-- 文件最多留最近 400 条（顺带给体积封顶，现在 ~7 KB）。
-
-## 踩过的坑
-
-- **分隔提交的标记不能用 `@@`**：带 `-p` 时 diff 的块头 `@@ -1,3 +1,4 @@` 也以 `@@`
-  开头，第一版解析全乱、结果 0 条。现在用 `%x01`（不可打印字符）。
-- **组件里注释别写 `data/community/*/log`**：`*/` 会提前结束块注释，Astro 编译器
-  报「Invalid Character `，`」，报错位置还在注释行上，很容易看错方向。
-- 整块加了 `data-pagefind-ignore`：这是一份全是地图名与字段名的流水账，
-  不忽略的话搜任何一张图都会被首页截胡（`MapCard` 当初踩过同一个坑）。
-
-## 前端行为（`src/components/UpdateFeed.astro`）
-
-- 首屏只渲染前 `pageSize` 条（首页 8、`/updates/` 20）—— **静态 HTML，没开 JS 也能看**。
-- 点「加载更多」才 `fetch('/updates/feed.json')`（整份 ~20 KB，一次请求翻到底），
-  之后从内存里按页追加；没更多了按钮自己隐藏。
-- 相对时间（今天 / 昨天 / N 天前）由 JS 按**访问者本机时间**填：站点是静态的，
-  构建期算出来过几天就假了（和 `ListExpiry` 同一个理由）。
-- 追加条目的 DOM 由脚本拼（`textContent` 赋值，天然免疫注入）——
-  **改 `li` 的结构时，Astro 模板与那段脚本要一起改**。
-- CSS 在 `src/styles/global.css` 的「最近改动」一节（`.uf-*`），≤560px 会折成两列。
-
-## 怎么验
+## 3. 生成脚本
 
 ```bash
-npm run changes:build          # 只重算 data/research-changes.json
-npm run build                  # 完整构建（已包含上一步）
-npm run preview                # http://localhost:4321/  → 首页底部
+npm run changes:build   # 只重算 data/research-changes.json
+npm run build           # 完整体验（含 feed 数据）
 ```
 
-浏览器里点几下「加载更多」即可（或按 `/updates/` 页那 20 条起步看）。
-`/updates/feed.json` 可以直接打开看这一份清单，条数、措辞、聚合都在里面。
+`scripts/content/build-research-changes.mjs` 的口径：
+
+- 只看 `data/research` 与 `data/gallery`；`src/content/maps/*.mdx` 是生成产物，不记。
+- 一次提交动超过 20 个相关文件视为批量导入，整条丢弃。
+- 本地拿不到 git / 浅克隆时保留现有 `data/research-changes.json`，不清空。
+- 新增值得记录的字段时在 `KEY_LABELS` 补一行。
+
+## 4. 页面与验证
+
+- 首页与 `/updates/` 共用 `UpdateFeed.astro`；首屏静态 HTML，点「加载更多」再取 `/updates/feed.json`。
+- 相对时间由浏览器按访问者本机时间计算。
+- 验证：`npm run build` 后打开 `/updates/`，检查封面聚合、标题、加载更多；`/updates/feed.json` 可直接查看数据。

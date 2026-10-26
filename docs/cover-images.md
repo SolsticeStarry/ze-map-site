@@ -14,7 +14,7 @@
 > **手写小节的三张图**（魔晄炉 `ze_ffvii_mako_reactor` / 米纳斯 `ze_lotr_minas_tirith` /
 > 黑珍珠号 `ze_pirates_port_royal`）和别的图**走同一条流程**：页面 slug、frontmatter、`cover:`
 > 全由生成器按上表算出来（它们的正文以 `sections` 字段放在 `data/research/<slug>.json` 里，
-> 详见 `docs/community-editing-plan.md` 的「手写小节」一节）。
+> 详见 [`content-model.md`](content-model.md) 与 `data/research/<slug>.json` 的 `sections` 字段）。
 > 2026-10-08 之前不是这样 —— 那时这三页的 frontmatter 是「写正文那天」冻结的，于是封面永远停在
 > 旧图：魔晄炉后来补了作者工坊图、米纳斯和黑珍珠号补了人工封面，页面上却一直挂着黑底密度点图，
 > 看起来就是「这张图没有封面」，而构建、CI、`cover:verify` 全是绿的。现在这条特殊路径已经删掉了。
@@ -188,4 +188,4 @@ npm run cover:set -- ze_obj_abyss_v2 --remove
 - **别直接覆盖 `public/images/covers/<分片名>.webp`**。说准确一点：`render-covers.mjs` **默认跳过已存在的文件**（`if (fs.existsSync(out) && !argv.includes('--force'))`），所以直接换掉渲染图平时确实能用 —— 但只要有人跑一次 `npm run data:covers --force`（实体数据更新后要整批重渲染时就会跑），你的图就被冲掉了。而且事后光看文件名分不清哪张是脚本渲染的、哪张是人换的。人工封面统一放 `custom/`，两个问题都没有。
 - **图片要提交进仓库**。封面走的是 `public/` 静态资源，不进仓库线上就是 404，`npm run content:links` 也会报死链。
 - **比例**：卡片封面是 16:9 画幅，详情页顶部还会拿它当满宽背景大图（带遮罩）。所以选图尽量挑**横向、主体居中**的：竖图裁完往往只剩中间一条。
-- 封面走的是**上传**：投稿页选「地图封面」传图（浏览器裁成 16:9、压成 webp → `worker/covers.ts` 权威校验 → 审核通过后提交进 `custom/` 并把 `fields.cover` 记成 `/images/...` 的 URL），也可以发给站长代传或按上面的流程提 PR。**表单不接受任意外链图片地址** —— 防的是有人往页面塞外站图。
+- 封面走的是**上传**：投稿页选「地图封面」传图（浏览器裁成 16:9、压成 webp → `worker/covers.ts` 权威校验 → 审核通过后提交进 `custom/`，写回时把 `data/content/<slug>.json` 的 `heroImage` 记成 `/images/...` 的 URL），也可以发给站长代传或按上面的流程提 PR。**表单不接受任意外链图片地址** —— 防的是有人往页面塞外站图。

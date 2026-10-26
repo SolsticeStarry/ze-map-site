@@ -70,7 +70,7 @@ s2ze 那份数据里还留着其中 16 张的**原工坊预览图地址**（图�
 ## 5. 难度（`data/research/*.json` 的 `difficulty`）—— 源于 FYS
 
 分档（入门 / 简单 / 普通 / 困难 / 火星 / 入土）与每张图的取值，**来自 FYS（风云社）服务器地图列表**
-（2026-10-08 从地图管理器界面逐帧抄录，见 `docs/difficulty-backfill-2026-10-08.md`）。
+（2026-10-08 从地图管理器界面逐帧抄录，见 `docs/archive/difficulty-backfill-2026-10-08.md`）。
 
 - **2026-10-09 已获 FYS 社区同意标注来源**（站长直接沟通的结果）。
 - 标注位置：详情页侧栏「难度 … **源于 FYS**」（`src/pages/maps/[...slug].astro`，`title` 里有完整说明）、

@@ -133,12 +133,13 @@ data/*
 !data/research/
 !data/workshop/
 !data/creators.json
+!data/contributors.json
 !data/gfl/
 !data/gfl-parsed/
-# 社区投稿落盘目录（P2）—— 审核通过后由 Worker 写入，必须入库，
-# 否则构建期读不到，而且 git 也失去「内容变更史」的作用。
-# ⚠️ 上面那条 data/* 会连它一起忽略，所以这行不能删。
-!data/community/
+# 玩家内容层（P4）—— /edit/<slug>/ 审核通过后由 Worker 写回 data/content/<slug>.json。
+# 必须入库：构建期靠 import.meta.glob 读它，不跟踪的话「写回成功」但站点永远看不到。
+# ⚠️ 同上，data/* 会连它一起忽略，这行不能删。
+!data/content/
 # 检索代理留下的临时抓取目录（_ws / _imgs 等）
 data/research/_*/
 # 每张地图的「进站 / 最近改动」日期，由 scripts/content/build-map-dates.mjs 从 git 历史生成。
@@ -206,3 +207,10 @@ scripts/terr-bake/incremental.txt
 scripts/terr-bake/incremental-chunk.txt
 scripts/terr-bake/baked-this-run.txt
 scripts/terr-bake/engine.pid
+
+# 图表生成产物
+.archify/
+
+# 迁移审计导出（含投稿人 / 联系方式 / IP 哈希，不入库）
+migration/legacy/
+
