@@ -51,7 +51,7 @@ const isCoverImage = (img: { kind: string }) => coverIsWorkshop && img.kind === 
       <h2>图片集{images.length > 1 ? `（${images.length}）` : ''}</h2>
       <p class="gallery-hint">
         工坊预览图由地图作者上传，其余来自玩家投稿。点开可看大图，滚轮 / 双击 / 双指缩放，拖动平移；
-        手上也有这张图的截图？<a href={`/submit/?map=${slug}&field=gallery`}>投稿图片</a>
+        手上也有这张图的截图？<a href={`/submit/edit/?map=${slug}&field=gallery`}>投稿图片</a>
         —— 通过后会出现在这里，并署上你的昵称。
       </p>
       <div class={`gallery-grid${images.length > 9 ? ' is-collapsed' : ''}`} id="gallery-grid">

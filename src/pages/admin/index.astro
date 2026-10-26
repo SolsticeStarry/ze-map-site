@@ -1,636 +1,65 @@
 ---
-/**
- * 审核台（P2；2026-10-13 改版）
- *
- * 认证方式：ADMIN_TOKEN（Worker secret）。密钥存在浏览器 localStorage，
- * 请求时走 Authorization: Bearer。没有密钥的人打开这个页面只会看到一个输入框。
- *
- * 为什么不用 Cloudflare Access：Access 要在控制台配 Zero Trust + Access 应用，
- * 而且官方文档写明「Worker 带静态资源时 ctx.access 不会传给用户 Worker」，
- * 在 Worker 里读不到登录身份。密钥方案自包含、可端到端测试。以后想加 Access
- * 作为第二层照样能叠加。
- *
- * ⚠️ 渲染投稿内容一律用 textContent，绝不用 innerHTML —— 投稿是陌生人写的，
- *    用 innerHTML 就等于让投稿人往审核台里注入脚本偷密钥。改版新增的节点
- *    （卡片、标签徽章、对话框）全部走 el()/textContent，别图省事写 innerHTML。
- *
- * 2026-10-13 改版要点：
- *   · 视觉：按钮终于有基底（站里只给 .sidebar-card .btn 写过样式，其余 .btn 被
- *     Tailwind preflight 清零成纯文字）；标签页有计数与选中态；条卡分区块排版。
- *   · 便利：关键词 / 地图筛选（下沉到 SQL）、分页「加载更多」、全选与批量通过 /
- *     批量驳回、地图中文名（不再只有 slug）、「/」聚焦搜索、自动刷新开关。
- *   · 安全：「写回仓库」前弹二次确认（列出条数与涉及的地图）、危险操作走对话框
- *     （不再 window.prompt）、页面 noindex、一键清除本机密钥。
- *   · 可靠：队列接口不再为每张图读一次 GitHub（会撞 50 子请求额度），
- *     现值改走 /api/admin/current 按需分批取。
- */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 ---
+<BaseLayout title="审核台 | ZE 地图资料站" description="内容修订审核" noindex>
+  <main class="audit-page" data-pagefind-ignore>
+    <header class="audit-head">
+      <div><p class="audit-kicker">CONTENT REVIEW</p><h1>审核台</h1><p>单项 / 整页修订共用同一队列，只写 <code>data/content</code>，不会改 research。</p></div>
+      <a class="audit-link" href="/maps/">地图库</a>
+    </header>
 
-<BaseLayout title="审核台 | ZE 地图资料站" description="社区投稿审核" noindex>
-  <div class="container admin-page" data-pagefind-ignore>
-    {/* ---------- 登录卡 ---------- */}
-    <section class="admin-login" id="a-login">
-      <h1>审核台</h1>
-      <p class="admin-hint">
-        密钥只保存在你这台浏览器里（localStorage），不会发往别处。点
-        <b>「通过」</b>只是把投稿攒进<b>待写回</b>；点一次<b>「写回仓库」</b>才会真正提交 ——
-        <b>不管攒了多少条，都只产生一个 commit、只触发一次重建</b>（省 Cloudflare 构建分钟）。
-      </p>
-      <div class="admin-login-grid">
-        <label>
-          <span>管理密钥（ADMIN_TOKEN）</span>
-          <input id="a-token" type="password" placeholder="粘贴后点连接" autocomplete="off" />
-        </label>
-        <label>
-          <span>审核人署名（写进 git 提交信息）</span>
-          <input id="a-reviewer" maxlength="32" placeholder="站长" autocomplete="off" />
-        </label>
-        <button class="btn btn-primary" id="a-connect" type="button">连接</button>
-      </div>
-      <p class="admin-status" id="a-status"></p>
+    <section class="audit-login" id="login">
+      <label>管理密钥<input id="token" type="password" autocomplete="off" placeholder="ADMIN_TOKEN" /></label>
+      <label>审核人<input id="reviewer" maxlength="32" placeholder="站长" /></label>
+      <button id="connect" type="button">连接</button>
+      <p id="login-status"></p>
     </section>
 
-    {/* ---------- 主面板 ---------- */}
-    <section id="a-panel" hidden>
-      <header class="admin-bar">
-        <div class="admin-tabs" id="a-tabs" role="tablist" aria-label="投稿状态">
-          <button class="admin-tab" type="button" role="tab" data-status="pending">待审<b class="tab-n">0</b></button>
-          <button class="admin-tab" type="button" role="tab" data-status="approved">待写回<b class="tab-n">0</b></button>
-          <button class="admin-tab" type="button" role="tab" data-status="applied">已上线<b class="tab-n">0</b></button>
-          <button class="admin-tab" type="button" role="tab" data-status="rejected">已驳回<b class="tab-n">0</b></button>
-          {/*
-            「整篇草稿」（2026-10-15 加）：站长的原话是「找整篇条目草稿太麻烦，审核好的全都堆叠在一块，
-            很难采纳为原稿」。这一档只看 field=draft 的投稿，默认停在**待采纳**（已写回、页面上正挂着），
-            每条都摆着「采纳为原稿」，不再跟难度 / 标签那些混在一起。
-          */}
-          <button class="admin-tab" type="button" role="tab" id="a-tab-drafts">
-            整篇草稿<b class="tab-n" id="a-drafts-n">0</b>
-          </button>
-          {/*
-            「账号」标签：看账号列表 + 停用 / 恢复 / 解锁 / 重置口令 / 挂称号。
-            做它的直接原因：`users.banned` 这一列和检查一直都在，但**以前没有任何入口能改它**。
-          */}
-          <button class="admin-tab" type="button" role="tab" data-status="accounts">账号</button>
+    <section id="panel" hidden>
+      <div class="audit-bar">
+        <div class="audit-tabs" role="tablist">
+          <button class="is-on" data-status="pending" type="button">待审 <b id="count-pending">0</b></button>
+          <button data-status="approved" type="button">待写回 <b id="count-approved">0</b></button>
         </div>
-        <div class="admin-tools">
-          <input
-            id="a-q"
-            class="admin-search"
-            type="search"
-            placeholder="搜地图 / 署名 / 内容…（按 / 聚焦）"
-            autocomplete="off"
-          />
-          <button class="btn btn-ghost" id="a-reload" type="button">刷新</button>
-          {/*
-            发公告（2026-10-14）：写进所有人的收件箱（页头铃铛那里）。
-            和投稿无关，所以不放在攒批区；发之前会把最近发过的公告列出来，免得重复发。
-          */}
-          <button class="btn" id="a-announce" type="button">发公告</button>
-          <label class="admin-auto">
-            <input type="checkbox" id="a-auto" />
-            自动刷新
-          </label>
-          <button class="btn btn-ghost admin-forget" id="a-forget" type="button">清除密钥</button>
+        <div class="audit-actions">
+          <button id="refresh" type="button">刷新</button>
+          <button id="flush" type="button" hidden>写回内容修订</button>
+          <button id="forget" type="button">清除密钥</button>
         </div>
-      </header>
-
-      {/*
-        「整篇草稿」那一档的状态切换（只在那一档显示）：
-        默认「待采纳」= 已写回、页面上正挂着「社区整理版（未采纳）」的那几条 —— 也就是要动手采纳的。
-      */}
-      <div class="admin-drafts-bar" id="a-drafts-bar" hidden>
-        <span class="admin-drafts-label">整篇草稿</span>
-        <div class="admin-drafts-tabs" id="a-drafts-tabs" role="tablist" aria-label="草稿状态">
-          <button class="admin-chip is-on" type="button" role="tab" data-draft-status="applied">待采纳<b class="tab-n">0</b></button>
-          <button class="admin-chip" type="button" role="tab" data-draft-status="pending">待审<b class="tab-n">0</b></button>
-          <button class="admin-chip" type="button" role="tab" data-draft-status="approved">待写回<b class="tab-n">0</b></button>
-          <button class="admin-chip" type="button" role="tab" data-draft-status="rejected">已驳回<b class="tab-n">0</b></button>
-        </div>
-        <span class="admin-hint">
-          「待采纳」= 已经写回仓库、页面上正以「社区整理版（未采纳）」显示的那几篇 —— 点「采纳为原稿」按小节合并进正文。
-          采纳过的会从这一档移走（<b id="a-drafts-adopted">已采纳 0 篇</b>）。
-        </span>
-        {/*
-          「翻看已采纳的」：采纳过的草稿默认不列（不然又攒成一堆存货）。
-          但偶尔要看 —— 比如怀疑某篇采纳完又被人手工改回原稿了。
-        */}
-        <button class="btn btn-ghost admin-drafts-adopted-btn" type="button" id="a-drafts-adopted-btn">
-          翻看已采纳的
-        </button>
       </div>
-
-      <p class="admin-counts" id="a-counts"></p>
-      <p class="admin-status" id="a-panel-status"></p>
-
-      {/*
-        攒批区：把「通过」攒起来的投稿一次写回。有存货就显眼地摆出来，
-        免得忘了点导致「审核通过却没上线」。flush 失败不会丢东西 ——
-        状态留在 approved，修好后（比如换 token）再点一次即可。
-      */}
-      <div class="admin-flush" id="a-flush" hidden>
-        <div class="admin-flush-row">
-          <strong id="a-staged-count">已攒 0 条待写回</strong>
-          <button class="btn btn-primary" type="button" id="a-flush-go">写回仓库（一次提交）</button>
-          <span class="admin-hint">不点这个按钮，审核通过的内容不会出现在网站上。</span>
-        </div>
-        <p class="admin-hint" id="a-flush-out"></p>
-      </div>
-
-      {/* 批量选择条：勾了才出现 */}
-      <div class="admin-selbar" id="a-selbar" hidden>
-        <span>已选 <b id="a-sel-n">0</b> 条</span>
-        <button class="btn" type="button" id="a-sel-all">全选本页</button>
-        <button class="btn btn-ghost" type="button" id="a-sel-none">清除选择</button>
-        <button class="btn btn-primary" type="button" id="a-batch">批量通过（攒着）</button>
-        <button class="btn" type="button" id="a-batch-reject">批量驳回</button>
-      </div>
-
-      <div id="a-list" class="admin-list"></div>
-      <div class="admin-more" id="a-more" hidden>
-        <button class="btn" type="button" id="a-more-go">加载更多</button>
-        <span class="admin-hint" id="a-more-hint"></span>
-      </div>
+      <p id="status" class="audit-status" role="status"></p>
+      <div id="list"></div>
     </section>
-  </div>
-
-  {/*
-    通用对话框：驳回理由 / 封禁理由 / 改昵称 / 挂称号 / 写回确认 / 清除密钥都走它。
-    比 window.prompt 好看，也能带「快捷理由」按钮与多行输入。
-  */}
-  <dialog class="admin-dialog" id="a-dialog" aria-labelledby="a-dialog-title">
-    <h2 id="a-dialog-title">标题</h2>
-    <p class="admin-hint" id="a-dialog-desc" hidden></p>
-    <div id="a-dialog-chips" class="admin-dialog-chips" hidden></div>
-    <div id="a-dialog-body" class="admin-dialog-body"></div>
-    <div class="admin-dialog-actions">
-      <button class="btn btn-ghost" type="button" id="a-dialog-cancel">取消</button>
-      <button class="btn btn-primary" type="button" id="a-dialog-ok">确定</button>
-    </div>
-  </dialog>
+  </main>
 </BaseLayout>
 
 <script>
-  import { FIELD_RULES, looksLikeBannerTitle, newTagsOf } from '../../../shared/submission-fields.mjs';
-  import { ITEM_ACTIONS, cdText, usesText } from '../../../shared/items.mjs';
+  import { docToHtml } from '../../../shared/doc-render.mjs';
 
-  const rules = FIELD_RULES as Record<string, { label: string; kind?: string }>;
-  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-
-  /*
-   * 全站标签词表（/submit/tags.json，构建期从全站数据算）：用来判断投稿里的标签
-   * 是不是**全站首次出现的新词**。加载失败就保持 null —— 那种情况下不标「新」，
-   * 免得把一堆老标签都标成新词误导审核。
-   */
-  let tagVocabulary: Set<string> | null = null;
-  let tagVocabularyLoaded = false;
-  async function loadTagVocabulary(): Promise<void> {
-    if (tagVocabularyLoaded) return;
-    tagVocabularyLoaded = true;
-    try {
-      const res = await fetch('/submit/tags.json');
-      const json = (await res.json()) as { tags?: Array<{ n?: string }> };
-      const names = (json.tags ?? []).map((t) => String(t?.n ?? '')).filter(Boolean);
-      tagVocabulary = names.length ? new Set(names) : null;
-    } catch {
-      tagVocabulary = null;
-    }
-  }
-
-  /** 标签投稿：逐项标出「这张图新增 / 取消 / 全站新词」，比一行 diff 好审得多 */
-  function tagsBlock(item: { value?: unknown; current?: unknown }): HTMLElement {
-    const next = Array.isArray(item.value) ? item.value.map((t) => String(t)) : [];
-    const prev = Array.isArray(item.current) ? item.current.map((t) => String(t)) : [];
-    const prevSet = new Set(prev);
-    const nextSet = new Set(next);
-    const added = next.filter((t) => !prevSet.has(t));
-    const removed = prev.filter((t) => !nextSet.has(t));
-    const fresh = newTagsOf(next, tagVocabulary);
-
-    const box = el('div');
-    const line = (text: string) => box.append(el('p', 'queue-note', text));
-    line(`本次提交 ${next.length} 个标签（整组替换，通过后覆盖这张图的标签）`);
-    if (added.length) line(`➕ 这张图新增 ${added.length} 个：${added.join('、')}`);
-    if (removed.length) line(`➖ 这张图去掉 ${removed.length} 个：${removed.join('、')}`);
-    if (!added.length && !removed.length) line('（和现在的标签一致，没有变化）');
-
-    if (!tagVocabulary) {
-      line('⚠ 全站标签词表没加载出来，这次无法判断有没有新词 —— 请自己确认一遍再通过。');
-    } else if (fresh.length) {
-      line(`🆕 全站首次出现的新标签 ${fresh.length} 个：${fresh.join('、')} —— 通过后会进全站标签，其它图以后也能选到。`);
-    } else {
-      line('全站标签：本次没有新词（都是已有标签）。');
-    }
-
-    const chips = el('div');
-    chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px';
-    for (const t of next) {
-      const isNewWord = tagVocabulary ? newTagsOf([t], tagVocabulary).length > 0 : false;
-      const isAdded = !prevSet.has(t);
-      const chip = el('span', undefined, isNewWord ? `${t} · 新词` : isAdded ? `${t} · 新增` : t);
-      chip.style.cssText = `padding:3px 10px;border-radius:999px;font-size:12.5px;border:1px solid var(--border-2);${
-        isNewWord
-          ? 'background:#a855f7;border-color:#a855f7;color:#fff;font-weight:700'
-          : isAdded
-            ? 'background:#0ea5e9;border-color:#0ea5e9;color:#04121a;font-weight:600'
-            : 'color:var(--muted)'
-      }`;
-      chips.append(chip);
-    }
-    for (const t of removed) {
-      const chip = el('span', undefined, `${t} · 去掉`);
-      chip.style.cssText =
-        'padding:3px 10px;border-radius:999px;font-size:12.5px;border:1px dashed var(--border-2);color:var(--muted);text-decoration:line-through';
-      chips.append(chip);
-    }
-    box.append(chips);
-    return box;
-  }
-
-  const tokenEl = $<HTMLInputElement>('a-token');
-  const reviewerEl = $<HTMLInputElement>('a-reviewer');
-  const statusEl = $<HTMLElement>('a-status');
-  const panelStatusEl = $<HTMLElement>('a-panel-status');
-  const panel = $<HTMLElement>('a-panel');
-  const loginCard = $<HTMLElement>('a-login');
-  const countsEl = $<HTMLElement>('a-counts');
-  const listEl = $<HTMLElement>('a-list');
-
-  let token = localStorage.getItem('ze-admin-token') ?? '';
-  let reviewer = localStorage.getItem('ze-admin-reviewer') ?? '';
-  let currentStatus = 'pending';
-  /*
-   * 「整篇草稿」那一档（2026-10-15）：draftsOnly=true 时请求固定带 field=draft，
-   * 状态用 draftStatus（默认 applied = 已写回、等着采纳）；切回别的标签就关掉。
-   */
-  let draftsOnly = false;
-  let draftStatus = 'applied';
-  /* 「翻看已采纳的」：true 时草稿档带 adopted=1（只看采纳过的）；默认只看还没采纳的 */
-  let adoptedView = false;
-  /* 草稿各状态的计数（服务端 fieldCounts）：缓存一份，切标签时先按它画，别闪成 0 */
-  let draftCounts: Record<string, number> = {};
-  /** 已经采纳为原稿的草稿条数（服务端 adoptedCount）——「待采纳」里看不到它们 */
-  let adoptedCount = 0;
-
-  /* 列表状态（改版后带筛选与分页）：q / map 由服务端过滤，offset 追加式加载 */
-  const PAGE_SIZE = 50;
-  let keyword = '';
-  let mapOnly = '';
-  let items: QueueItem[] = [];
-  let total = 0;
-  const picked = new Set<number>();
-  /** 待审图片的 objectURL：重新渲染前统一回收，不然翻几页就攒一堆内存 */
-  let thumbs: string[] = [];
-
+  const $ = (id: string) => document.getElementById(id) as HTMLElement | null;
+  const tokenEl = $('token') as HTMLInputElement;
+  const reviewerEl = $('reviewer') as HTMLInputElement;
+  const panel = $('panel')!;
+  const list = $('list')!;
+  const statusEl = $('status')!;
+  let token = localStorage.getItem('ze-audit-token') ?? '';
+  let reviewer = localStorage.getItem('ze-audit-reviewer') ?? '';
+  let status: 'pending' | 'approved' = 'pending';
+  let counts: Record<string, number> = {};
   tokenEl.value = token;
   reviewerEl.value = reviewer;
 
-  /* ===== 地图中文名（2026-10-13 改版加）=====
-     队列里以前只有 slug（《ze_lotr_minas_tirith》），审核时得自己在脑子里翻译。
-     构建期生成的 /submit/maps.json 里有中文名，拉一次就够。
-     顺便让搜索支持中文名：输入「米那斯」时把 map 过滤条件带上。 */
-  interface MapRow {
-    slug: string;
-    title?: string;
-    titleEn?: string;
-  }
-  let mapsIndex: MapRow[] = [];
-  const mapTitle = (slug: string): string => {
-    const hit = mapsIndex.find((m) => m.slug === slug);
-    return hit?.title && hit.title !== slug ? hit.title : '';
-  };
-  async function loadMapsIndex(): Promise<void> {
-    if (mapsIndex.length) return;
-    try {
-      const res = await fetch('/submit/maps.json');
-      const list = (await res.json()) as MapRow[];
-      mapsIndex = Array.isArray(list) ? list : [];
-    } catch {
-      mapsIndex = [];
-    }
-  }
-  /** 关键词命中唯一一张图的标题时 → 用 slug 过滤（中文名也能搜） */
-  function resolveMapFromKeyword(text: string): string {
-    const q = text.trim().toLowerCase();
-    if (q.length < 2) return '';
-    const hits = mapsIndex.filter(
-      (m) =>
-        (m.title ?? '').toLowerCase().includes(q) ||
-        (m.titleEn ?? '').toLowerCase().includes(q) ||
-        m.slug.toLowerCase() === q
-    );
-    return hits.length === 1 ? hits[0].slug : '';
-  }
-
-  interface QueueItem {
-    id: number;
-    map_slug: string;
-    field: string;
-    value: unknown;
-    current: unknown;
-    note: string | null;
-    submitter: string | null;
-    contact: string | null;
-    status: string;
-    created_at: number;
-    commit_sha: string | null;
-    error: string | null;
-    reject_note: string | null;
-    /** 正文类字段的修订稿：要替换的那条社区投稿的 id（服务端已把 { text, reviseOf } 拆开） */
-    reviseOf?: string;
-    /** 社区整理（field=section）：投稿人自己起的小节标题 */
-    title?: string;
-    /** 批量投稿：同一批的批次号与条数 */
-    batch?: string;
-    batchCount?: number;
-    /** 整篇草稿：已经被采纳为原稿的时间（ms）。默认不在「待采纳」里列出来 */
-    adopted_at?: number | null;
-    /** 现值是否已经取过（列表不再顺手取，见 loadCurrents） */
-    currentLoaded?: boolean;
-    /** 现值还没取（待审 / 待写回才有意义） */
-    currentPending?: boolean;
-  }
-
-  /** 建节点用 textContent 赋值 —— 天然免疫 HTML 注入 */
-  function el(tag: string, cls?: string, text?: string): HTMLElement {
-    const n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (text !== undefined) n.textContent = text;
-    return n;
-  }
-
-  function fmt(v: unknown): string {
-    if (v === null || v === undefined || v === '') return '（空）';
-    if (Array.isArray(v)) return v.length ? v.join('、') : '（空）';
-    return String(v);
-  }
-
-  async function api(
-    path: string,
-    init: { method?: string; body?: unknown } = {}
-  ): Promise<{ status: number; data: any }> {
-    const res = await fetch(path, {
-      method: init.method ?? 'GET',
-      headers: {
-        authorization: `Bearer ${token}`,
-        ...(init.body ? { 'content-type': 'application/json' } : {}),
-      },
-      body: init.body ? JSON.stringify(init.body) : undefined,
-    });
-    let data: any = null;
-    try {
-      data = await res.json();
-    } catch {
-      /* 非 JSON */
-    }
+  const setStatus = (text: string, bad = false) => { statusEl.textContent = text; statusEl.classList.toggle('is-bad', bad); };
+  const api = async (path: string, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers ?? {});
+    headers.set('authorization', `Bearer ${token}`);
+    if (init.body) headers.set('content-type', 'application/json');
+    const res = await fetch(path, { ...init, headers });
+    const data = await res.json().catch(() => ({}));
     return { status: res.status, data };
-  }
-
-  /*
-   * 最近一次写状态提示的时间。
-   * 用来挡一件事：做完操作（采纳 / 审核 / 写回）后代码里会 `await reload()`，
-   * 而 load() 里有一句 `setStatus('')` —— 于是「已采纳：…」这种提示刚打出来就被擦掉，
-   * 审核员只看到一片空白，不知道到底成没成（E2E 就是这么发现状态栏是空的）。
-   * 现在 load() 只在提示已经凉了（超过 STATUS_KEEP_MS）时才清。
-   */
-  const STATUS_KEEP_MS = 8000;
-  let statusAt = 0;
-
-  function setStatus(text: string, isError = false) {
-    statusAt = Date.now();
-    /* 面板开着就写在面板里（看得见），否则写在登录卡上 */
-    const target = panel.hidden ? statusEl : panelStatusEl;
-    target.textContent = text;
-    target.className = isError ? 'admin-status is-error' : 'admin-status';
-    if (!panel.hidden && !isError && text) {
-      /* 顺便同步到登录卡：清空密钥回到登录界面后还知道上次干了什么 */
-      statusEl.textContent = text;
-      statusEl.className = 'admin-status';
-    }
-  }
-
-  /* ===== 通用对话框（改版加）=====
-     以前驳回理由 / 封禁理由 / 改昵称 / 挂称号全靠 window.prompt：
-     不能带快捷理由、不能多行、样式丑、有的浏览器还会拦。
-     这里用一个原生 <dialog> 统一实现（Esc 关、焦点锁在框里都是浏览器给的）。 */
-  type AskField = { key: string; label: string; value?: string; placeholder?: string; multiline?: boolean };
-  interface AskOptions {
-    title: string;
-    desc?: string;
-    fields?: AskField[];
-    /** 快捷理由：点一下填进第一个字段 */
-    chips?: string[];
-    /** 输入框上面先摆一块自定义内容（例如「最近发过的公告」清单，见发公告那个按钮） */
-    body?: HTMLElement;
-    confirmText?: string;
-    danger?: boolean;
-  }
-  const dialogEl = $<HTMLDialogElement>('a-dialog');
-
-  function ask(opts: AskOptions): Promise<Record<string, string> | null> {
-    const titleEl = $<HTMLElement>('a-dialog-title');
-    const descEl = $<HTMLElement>('a-dialog-desc');
-    const bodyEl = $<HTMLElement>('a-dialog-body');
-    const chipsEl = $<HTMLElement>('a-dialog-chips');
-    const okBtn = $<HTMLButtonElement>('a-dialog-ok');
-    const cancelBtn = $<HTMLButtonElement>('a-dialog-cancel');
-
-    titleEl.textContent = opts.title;
-    descEl.textContent = opts.desc ?? '';
-    descEl.hidden = !opts.desc;
-    bodyEl.replaceChildren();
-    if (opts.body) bodyEl.append(opts.body);
-    chipsEl.replaceChildren();
-    chipsEl.hidden = !opts.chips?.length;
-    okBtn.textContent = opts.confirmText ?? '确定';
-    okBtn.classList.toggle('btn-danger', Boolean(opts.danger));
-    /* 上一次可能被 confirmFlush 改过文案，这里恢复默认 */
-    cancelBtn.textContent = '取消';
-    cancelBtn.classList.remove('btn-danger');
-
-    const inputs = new Map<string, HTMLInputElement | HTMLTextAreaElement>();
-    for (const f of opts.fields ?? []) {
-      const wrap = el('label', 'admin-dialog-field');
-      wrap.append(el('span', undefined, f.label));
-      const input = f.multiline
-        ? (el('textarea') as HTMLTextAreaElement)
-        : (el('input') as HTMLInputElement);
-      if (f.multiline) (input as HTMLTextAreaElement).rows = 3;
-      else (input as HTMLInputElement).type = 'text';
-      input.value = f.value ?? '';
-      input.placeholder = f.placeholder ?? '';
-      wrap.append(input);
-      bodyEl.append(wrap);
-      inputs.set(f.key, input);
-    }
-
-    const first = [...inputs.values()][0];
-    for (const chip of opts.chips ?? []) {
-      const b = el('button', 'admin-chip', chip) as HTMLButtonElement;
-      b.type = 'button';
-      b.onclick = () => {
-        if (!first) return;
-        first.value = chip;
-        first.focus();
-      };
-      chipsEl.append(b);
-    }
-
-    return new Promise((resolve) => {
-      const done = (value: Record<string, string> | null) => {
-        okBtn.onclick = null;
-        cancelBtn.onclick = null;
-        dialogEl.onkeydown = null;
-        dialogEl.oncancel = null;
-        dialogEl.onclick = null;
-        if (dialogEl.open) dialogEl.close();
-        resolve(value);
-      };
-      okBtn.onclick = () => {
-        const out: Record<string, string> = {};
-        for (const [k, input] of inputs) out[k] = input.value.trim();
-        done(out);
-      };
-      cancelBtn.onclick = () => done(null);
-      /* Esc / 点背景 = 取消 */
-      dialogEl.oncancel = () => done(null);
-      dialogEl.onclick = (e) => {
-        if (e.target === dialogEl) done(null);
-      };
-      /* 单行输入里回车 = 确定（多行输入回车是换行，别抢） */
-      dialogEl.onkeydown = (e) => {
-        const t = e.target as HTMLElement;
-        if (e.key === 'Enter' && t.tagName === 'INPUT') {
-          e.preventDefault();
-          okBtn.click();
-        }
-      };
-      if (!dialogEl.open) dialogEl.showModal();
-      first?.focus();
-      first?.select?.();
-    });
-  }
-
-  /**
-   * 待审图片缩略图（封面 / 图片集）。`<img src>` 带不了 Authorization 头，所以用 fetch 取 blob
-   * 再 objectURL —— 这样密钥不会出现在 URL 里（也就不会进任何日志/Referer）。
-   */
-  async function loadImageThumb(id: number, img: HTMLImageElement, kind: 'cover' | 'gallery') {
-    try {
-      const res = await fetch(`/api/admin/${kind}/${id}`, {
-        headers: { authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        let msg = `HTTP ${res.status}`;
-        try {
-          msg = (await res.json())?.error ?? msg;
-        } catch {
-          /* 非 JSON */
-        }
-        img.replaceWith(el('p', 'form-error', `待审图片取不到：${msg}`));
-        return;
-      }
-      img.src = URL.createObjectURL(await res.blob());
-      /* 记下来，重新渲染 / 换页时统一回收（否则翻几页就攒一堆图片内存） */
-      thumbs.push(img.src);
-    } catch {
-      img.replaceWith(el('p', 'form-error', '待审图片取不到（网络错误）'));
-    }
-  }
-
-  /**
-   * 神器 / 道具行的小表格（投稿行与社区文档里已有的行形状相同：
-   * { action, name, cd, uses, note, by }）。
-   * 审核员要看的是「这次改了什么」+「这张图现在是什么样」，两栏并排。
-   */
-  function itemsTable(rows: Array<Record<string, unknown>>, empty: string): HTMLElement {
-    const table = el('table');
-    table.style.cssText = 'width:100%;border-collapse:collapse;margin:6px 0;font-size:13px';
-    const head = el('tr');
-    for (const label of ['动作', '道具', '冷却', '次数', '说明 / 提交人']) {
-      const th = el('th', undefined, label);
-      th.style.cssText = 'text-align:left;border-bottom:1px solid var(--border);padding:4px 6px';
-      head.append(th);
-    }
-    table.append(head);
-
-    if (!rows.length) {
-      const tr = el('tr');
-      const td = el('td', 'queue-note', empty);
-      td.colSpan = 5;
-      tr.append(td);
-      table.append(tr);
-    }
-
-    for (const row of rows) {
-      const tr = el('tr');
-      const cells = [
-        ITEM_ACTIONS[String(row.action)] ?? '更正',
-        String(row.name ?? ''),
-        cdText(row.cd === null || row.cd === undefined ? null : Number(row.cd)),
-        usesText(row.uses === null || row.uses === undefined ? null : Number(row.uses)),
-        /* 「说明」是神器表那一列的一句话介绍；和备注（我们服与原表的差别）分开显示，
-           否则审核员分不清投稿人到底在介绍这件神器，还是在说本服改了参数。 */
-        [
-          row.intro ? `说明：${String(row.intro)}` : '',
-          row.note ? `备注：${String(row.note)}` : '',
-          row.by ? `by ${String(row.by)}` : '',
-        ]
-          .filter(Boolean)
-          .join(' · '),
-      ];
-      for (const text of cells) {
-        const td = el('td', undefined, text);
-        td.style.cssText = 'border-bottom:1px solid var(--border);padding:4px 6px;vertical-align:top';
-        tr.append(td);
-      }
-      table.append(tr);
-    }
-    return table;
-  }
-
-  /** 相对时间：队列关心的是「刚投的要不要马上看」，绝对时间反而要自己算一下 */
-  function fmtAgo(ts: number): string {
-    const diff = Date.now() - ts;
-    if (diff < 60_000) return '刚刚';
-    if (diff < 3600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
-    if (diff < 86400_000) return `${Math.floor(diff / 3600_000)} 小时前`;
-    const days = Math.floor(diff / 86400_000);
-    return days < 30 ? `${days} 天前` : new Date(ts).toLocaleDateString('zh-CN');
-  }
-
-  const STATUS_LABEL: Record<string, string> = {
-    pending: '待审',
-    approved: '待写回',
-    applied: '已上线',
-    rejected: '已驳回',
   };
-
-  /** 草稿太长没法整篇并排比：给字数 + 小节名，正文用「展开」再看 */
-  function docSummary(text: string): string {
-    const s = String(text ?? '');
-    const sections = s
-      .split(/^##\s+/m)
-      .slice(1)
-      .map((chunk) => (chunk.split('\n')[0] ?? '').trim())
-      .filter(Boolean);
-    const chars = [...s.trim()].length;
-    return `${chars} 字 · ${sections.length} 个小节${
-      sections.length ? `（${sections.slice(0, 6).join('、')}${sections.length > 6 ? ' …' : ''}）` : ''
-    }`;
-  }
-
-  /**
-   * 草稿里有哪几个小节名（跟 worker 的 parseDoc 同一套规则：行首 `## `，`###` 不算）。
-   * 用来在采纳前发现「把条目标题行当小节名」的草稿，见下面 shared 的 looksLikeBannerTitle。
-   */
-  function draftSectionTitles(text: string): string[] {
-    return String(text ?? '')
-      .split(/\r?\n/)
-      .filter((line) => /^##\s+/.test(line) && !/^###/.test(line))
-      .map((line) => line.replace(/^##\s+/, '').trim())
-      .filter(Boolean);
-  }
+  const el = (tag: string, cls = '', text = '') => { const node = document.createElement(tag); if (cls) node.className = cls; if (text) node.textContent = text; return node; };
+  const badge = (text: string) => el('span', 'audit-badge', text);
 
   /** 长文本块：默认折到 8 行，点「展开全文」再看 —— 正文动辄几千字，铺开会把卡片撑成一面墙 */
   function textBlock(label: string, text: string, cls: string): HTMLElement {
@@ -651,1294 +80,363 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     return wrap;
   }
 
-  const fmtDate = (ts: number) => new Date(ts).toLocaleString('zh-CN', { hour12: false });
-
-  /** 卡片头：地图中文名 + slug（可点，只看这张图）+ 字段 + 状态 + 时间 + 编号 */
-  function itemHead(item: QueueItem): HTMLElement {
-    const head = el('div', 'admin-item-head');
-    const title = mapTitle(item.map_slug);
-    head.append(el('span', 'admin-item-map', title ? `《${title}》` : `《${item.map_slug}》`));
-
-    const slug = el('span', 'admin-chip is-mono', item.map_slug);
-    slug.title = '点一下只看这张图的投稿';
-    slug.onclick = () => {
-      mapOnly = mapOnly === item.map_slug ? '' : item.map_slug;
-      const box = $<HTMLInputElement>('a-q');
-      if (box) box.value = mapOnly;
-      void load();
-    };
-    head.append(slug);
-    head.append(el('span', 'admin-chip is-field', rules[item.field]?.label ?? item.field));
-    head.append(el('span', `admin-chip is-status is-${item.status}`, STATUS_LABEL[item.status] ?? item.status));
-    if (item.reviseOf) head.append(el('span', 'admin-chip is-revise', `修订 #${item.reviseOf}`));
-    if (item.batchCount && item.batchCount > 1) {
-      head.append(el('span', 'admin-chip is-batch', `同批 ${item.batchCount} 条`));
-    }
-    head.append(el('span', 'admin-item-id', `#${item.id}`));
-
-    const time = el('span', 'admin-item-time', `${fmtAgo(item.created_at)} · ${fmtDate(item.created_at)}`);
-    head.append(time);
-    return head;
-  }
-
-  /* 2026-10-22：story / summary / guide / body 通过后会覆盖旧社区版本，
-     审核前先把「会覆盖谁」摆出来，别让审核员在不知情的情况下顶掉别人的稿子。 */
-  const REPLACE_FIELDS = new Set(['story', 'summary', 'guide', 'body']);
-  let notesIndex: Promise<Map<string, any[]>> | null = null;
-  function loadNotesIndex(): Promise<Map<string, any[]>> {
-    if (!notesIndex) {
-      notesIndex = fetch('/submit/maps.json')
-        .then((r) => r.json())
-        .then((rows: any[]) => {
-          const m = new Map<string, any[]>();
-          for (const row of rows) m.set(String(row.slug), Array.isArray(row.notes) ? row.notes : []);
-          return m;
-        })
-        .catch(() => new Map<string, any[]>());
-    }
-    return notesIndex;
-  }
-  async function appendOverrideHint(box: HTMLElement, item: QueueItem): Promise<void> {
-    if (!REPLACE_FIELDS.has(item.field)) return;
-    if (item.status !== 'pending' && item.status !== 'approved') return;
-    const notes = (await loadNotesIndex()).get(String(item.map_slug)) ?? [];
-    const same = notes.filter((n: any) => n.field === item.field);
-    if (!same.length) return;
-    const latest = same[same.length - 1];
-    const who = same.map((n: any) => n.by || '匿名').join('、');
-    box.append(
-      el(
-        'p',
-        'admin-note is-warn',
-        `通过后会覆盖：${who} 的旧版本「${String(latest.text ?? '').slice(0, 36)}…」（旧文会写进 log）`
-      )
-    );
-  }
-
-  function renderItem(item: QueueItem): HTMLElement {
-    const box = el('div', `admin-item is-${item.status}`);
-    box.dataset.id = String(item.id);
-    box.append(itemHead(item));
-
-    const main = el('div', 'admin-item-main');
-
-    /* ---------- 以下是各字段的「看什么」 ---------- */
-    if (item.field === 'cover') {
-      const meta = (item.value ?? {}) as Record<string, unknown>;
-      const size = `${meta.width ?? '?'}×${meta.height ?? '?'} · ${Math.round((Number(meta.bytes) || 0) / 1024)} KB`;
-      const target = `public/images/covers/custom/${item.map_slug}.${meta.ext ?? 'webp'}`;
-
-      /* 只有还躺在队列里的才去取图。已上线/已驳回的，KV 里的临时副本
-         **按设计已经删掉了** —— 以前这里照样去取，结果审核台把「成功」显示成
-         一片红字「待审图片取不到」，2026-09-26 被误解成上传失败（其实 git 里已经提交了）。 */
-      if (item.status === 'pending' || item.status === 'approved') {
-        const img = el('img', 'admin-thumb') as HTMLImageElement;
-        img.alt = '待审封面';
-        main.append(img);
-        void loadImageThumb(item.id, img, 'cover');
-        main.append(el('p', 'admin-note', `${size} · 通过后写成 ${target}`));
-      } else {
-        main.append(el('p', 'admin-note', `${size} · 目标路径 ${target}`));
-        main.append(
-          el(
-            'p',
-            'admin-note',
-            item.status === 'applied'
-              ? '✅ 图片已写回仓库（KV 里的临时副本已清理）'
-              : '已驳回（KV 里的临时副本已清理）'
-          )
-        );
-      }
-    } else if (item.field === 'gallery') {
-      /*
-        图片集：通过后图片进 R2（`gallery/<slug>/u<投稿id>.<ext>`），仓库里只改清单。
-        文件名由投稿 id 决定，所以这里显示的目标路径就是最终路径，不用猜。
-      */
-      const meta = (item.value ?? {}) as Record<string, unknown>;
-      const size = `${meta.width ?? '?'}×${meta.height ?? '?'} · ${Math.round((Number(meta.bytes) || 0) / 1024)} KB`;
-      const name = `u${item.id}.${meta.ext ?? 'webp'}`;
-      const target = `https://terr.ze-map.cn/gallery/${item.map_slug}/${name}`;
-
-      if (item.status === 'pending' || item.status === 'approved') {
-        const img = el('img', 'admin-thumb is-wide') as HTMLImageElement;
-        img.alt = '待审图片集图片';
-        main.append(img);
-        void loadImageThumb(item.id, img, 'gallery');
-        main.append(el('p', 'admin-note', `${size} · 通过后写成 ${target}`));
-      } else {
-        main.append(el('p', 'admin-note', `${size} · ${target}`));
-        main.append(
-          el(
-            'p',
-            'admin-note',
-            item.status === 'applied'
-              ? '✅ 已进图片集并写回清单（KV 里的临时副本已清理）'
-              : '已驳回（KV 里的临时副本已清理）'
-          )
-        );
-      }
-      main.append(
-        el(
-          'p',
-          'admin-note',
-          item.value && (item.value as Record<string, unknown>).caption
-            ? `图片说明：${String((item.value as Record<string, unknown>).caption)}`
-            : '图片说明：（没写，会显示成「玩家截图」）'
-        )
-      );
-    } else if (rules[item.field]?.kind === 'itemlist') {
-      /* 神器 / 道具：逐行合并，所以要看「这次提交的行」与「文档里已有的行」 */
-      const rows = Array.isArray(item.value) ? (item.value as Array<Record<string, unknown>>) : [];
-      main.append(el('p', 'admin-note', `本次投稿 ${rows.length} 行（通过后逐行合并，不整表替换）`));
-      main.append(itemsTable(rows, '（这次没有可应用的行）'));
-      const curBox = el('div', 'admin-current');
-      curBox.dataset.current = String(item.id);
-      curBox.append(el('p', 'admin-note is-quiet', '社区文档里已有的行：读取中…'));
-      main.append(curBox);
-    } else if (rules[item.field]?.kind === 'tags') {
-      /* 标签：标出「这张图新增 / 去掉 / 全站新词」，比一行 diff 好审。
-         现值（这张图现在的标签）由 /api/admin/current 补上后再重画这一块。 */
-      const holder = el('div', 'tag-block-holder');
-      holder.append(tagsBlock(item));
-      main.append(holder);
-      const curBox = el('div', 'admin-current');
-      curBox.dataset.current = String(item.id);
-      main.append(curBox);
-    } else if (rules[item.field]?.kind === 'titledtext') {
-      /*
-       * 社区整理（2026-10-15）：标题会成为条目里一个二级小节名，审核时要先看它
-       * —— 撞上本站小节名（基本信息 / 关卡 / 神器 / 道具…）服务端已拦，但「意思重复」只有人能判断。
-       */
-      main.append(
-        el('p', 'admin-note', `社区整理小节：标题「${String(item.title ?? '（未填）')}」 · 正文 ${[...String(item.value ?? '').trim()].length} 字`)
-      );
-      main.append(el('p', 'admin-note is-quiet', '通过并写回后：这一节以该标题显示在条目末尾，带「社区整理」小标与投稿人署名'));
-      const details = el('details', 'admin-fold');
-      details.append(el('summary', undefined, '展开正文'));
-      details.append(textBlock('本次提交', String(item.value ?? ''), 'is-new'));
-      main.append(details);
-      const curBox = el('div', 'admin-current');
-      curBox.dataset.current = String(item.id);
-      main.append(curBox);
-    } else if (rules[item.field]?.kind === 'doc') {      /* 整篇草稿：不可能整篇并排比，给字数 + 小节 + 是否已有草稿 */
-      main.append(el('p', 'admin-note', `草稿：${docSummary(String(item.value ?? ''))}`));
-      const details = el('details', 'admin-fold');
-      details.append(el('summary', undefined, '展开草稿全文'));
-      details.append(textBlock('本次提交', String(item.value ?? ''), 'is-new'));
-      main.append(details);
-      const curBox = el('div', 'admin-current');
-      curBox.dataset.current = String(item.id);
-      main.append(curBox);
-      if (item.status === 'pending') {
-        main.append(el('p', 'admin-note is-quiet', '整篇草稿：通过并写回后，页面上会以「社区整理版（未采纳）」显示'));
-      }
+  /**
+   * 富文本预览：docToHtml 会先 validateDoc，并转义所有文本；页面只接收经过校验的
+   * ProseMirror 文档，所以这里可以用 innerHTML。没有 doc（旧纯文本数据）就退回纯文本。
+   */
+  function richBlock(label: string, doc: unknown, cls: string, fallback: string): HTMLElement {
+    const wrap = el('div', `admin-pane ${cls}`);
+    wrap.append(el('span', 'admin-pane-label', label));
+    const body = el('div', 'admin-pane-rich');
+    const html = doc ? docToHtml(doc, []) : '';
+    if (html) body.innerHTML = html;
+    else body.textContent = fallback || '（空）';
+    if (body.textContent && body.textContent.length > 320) {
+      body.classList.add('is-clamped');
+      const more = el('button', 'admin-pane-more', '展开全文') as HTMLButtonElement;
+      more.type = 'button';
+      more.onclick = () => {
+        const clamped = body.classList.toggle('is-clamped');
+        more.textContent = clamped ? '展开全文' : '收起';
+      };
+      wrap.append(body, more);
     } else {
-      /* 普通字段 / 正文：现值 vs 新值两栏对比（现值由 /api/admin/current 按需取） */
+      wrap.append(body);
+    }
+    return wrap;
+  }
+
+
+  const FIXED_BLOCK_LABELS: Record<string, string> = { story: '背景故事', intro: '简介', gameplay: '关卡流程说明' };
+  const INFOBOX_LABELS: Record<string, string> = {
+    author: '作者', version: '版本', players: '人数', duration: '时长', stages: '关卡数', size: '体积', aliases: '其他叫法',
+  };
+  const VIDEO_KIND_LABELS: Record<string, string> = { run: '通关视频', guide: '攻略', music: '音乐' };
+  const ITEM_ACTION_LABELS: Record<string, string> = { add: '新增', update: '修改', remove: '删除' };
+
+  /** ProseMirror doc → 纯文本（审核台只做预览，保留段落换行） */
+  const docText = (node: any): string =>
+    Array.isArray(node?.content) ? node.content.map(docText).join(node.type === 'paragraph' ? '\n' : '') : String(node?.text ?? '');
+
+  /** 整页修订的「现在的值」快照（按 slug 懒加载；列表接口不逐图读 GitHub） */
+  const revisionSnapshots = new Map<string, Promise<Record<string, any> | null>>();
+  function revisionSnapshot(slug: string): Promise<Record<string, any> | null> {
+    if (!revisionSnapshots.has(slug)) {
+      revisionSnapshots.set(
+        slug,
+        api(`/api/admin/page-revisions/current?slug=${encodeURIComponent(slug)}`)
+          .then(({ status, data }) => (status === 200 ? (data?.current ?? null) : null))
+          .catch(() => null)
+      );
+    }
+    return revisionSnapshots.get(slug) ?? Promise.resolve(null);
+  }
+
+  const revText = (value: unknown) => (value === null || value === undefined || value === '' ? '（空）' : String(value));
+  const revRows = (rows: unknown) =>
+    Array.isArray(rows) ? rows.map((row) => (Array.isArray(row) ? row.join(' | ') : String(row))).join('\n') : '（空）';
+  const revVideos = (videos: unknown) =>
+    Array.isArray(videos)
+      ? videos.map((item: any) => `${VIDEO_KIND_LABELS[String(item?.kind)] ?? '通关视频'} ${String(item?.url ?? '')}${item?.title ? `（${item.title}）` : ''}`).join('\n')
+      : '（空）';
+  const revItem = (row: any) => {
+    if (!row) return '';
+    const cd = Number(row.cd) > 0 ? `${row.cd} 秒` : '—';
+    const uses = Number(row.uses) > 0 ? `${row.uses} 次` : '不限';
+    return `${String(row.name ?? '')} · 冷却 ${cd} · 次数 ${uses}${row.intro ? `\n${row.intro}` : ''}${row.note ? `\n备注：${row.note}` : ''}`;
+  };
+  const itemKeyOf = (name: unknown) =>
+    String(name ?? '').replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+
+  type RevisionChange = { label: string; oldText: string; newText: string; oldDoc?: any; newDoc?: any };
+
+  /** 把 payload 翻成「现在的值 | 本次提交」两栏（有 doc 的走富文本预览） */
+  function revisionChanges(payload: Record<string, any>, snap: Record<string, any> | null): RevisionChange[] {
+    const changes: RevisionChange[] = [];
+    const missing = '（现值没取到，不影响审核）';
+    const oldOr = (text: string) => (snap ? text || '（空）' : missing);
+    const snapBlocks: any[] = Array.isArray(snap?.blocks) ? snap.blocks : [];
+    const findBlock = (block: any) =>
+      snapBlocks.find(
+        (item) =>
+          item?.type === block?.type &&
+          (block.type !== 'guideItem' || item?.id === block.id || item?.title === block.title)
+      );
+    if (payload.difficulty !== undefined) {
+      changes.push({ label: '难度', oldText: oldOr(String(snap?.difficulty ?? '')), newText: revText(payload.difficulty) });
+    }
+    if (Array.isArray(payload.tags)) {
+      changes.push({
+        label: '标签',
+        oldText: oldOr(Array.isArray(snap?.tags) ? snap.tags.join('、') : ''),
+        newText: payload.tags.join('、') || '（空）',
+      });
+    }
+    if (payload.media?.cover) {
+      changes.push({ label: '新媒体 · 封面', oldText: oldOr(String(snap?.heroImage ?? '')), newText: '（待审新封面，写回后生成 URL）' });
+    }
+    if (Array.isArray(payload.media?.gallery) && payload.media.gallery.length) {
+      changes.push({ label: '新媒体 · 图片集', oldText: '—', newText: `新增 / 替换 ${payload.media.gallery.length} 张待审图片` });
+    }
+    if (typeof payload.title === 'string') {
+      changes.push({ label: '页面标题', oldText: oldOr(String(snap?.title ?? '')), newText: revText(payload.title) });
+    }
+    if ('heroImage' in payload) {
+      changes.push({
+        label: '封面',
+        oldText: oldOr(String(snap?.heroImage ?? '')),
+        newText: payload.heroImage ? String(payload.heroImage) : '（恢复为图片集默认）',
+      });
+    }
+    if (payload.infobox && typeof payload.infobox === 'object' && !Array.isArray(payload.infobox)) {
+      for (const [key, value] of Object.entries(payload.infobox as Record<string, unknown>)) {
+        changes.push({
+          label: `基本信息 · ${INFOBOX_LABELS[key] ?? key}`,
+          oldText: oldOr(String(snap?.infobox?.[key] ?? '')),
+          newText: revText(value),
+        });
+      }
+    }
+    if (Array.isArray(payload.removedBlocks)) {
+      for (const id of payload.removedBlocks) {
+        const old = snapBlocks.find((item) => item?.id === id) ?? snapBlocks.find((item) => item?.type === id);
+        changes.push({
+          label: `删除 / 重置 · ${FIXED_BLOCK_LABELS[String(id)] ?? `攻略条目 ${String(id)}`}`,
+          oldText: oldOr(String(old?.text ?? '')),
+          newText: '（删除 / 重置为 research）',
+          oldDoc: old?.doc ?? null,
+          newDoc: null,
+        });
+      }
+    }
+    if (payload.guideCleared === true) {
+      const oldGuides = snapBlocks
+        .filter((item) => item?.type === 'guideItem')
+        .map((item) => `${item.title ? `${item.title}\n` : ''}${item.text ?? ''}`)
+        .join('\n\n');
+      changes.push({ label: '攻略技巧', oldText: oldOr(oldGuides), newText: '（全部清空）' });
+    }
+    for (const block of Array.isArray(payload.blocks) ? payload.blocks : []) {
+      if (!block || typeof block !== 'object') continue;
+      const type = String(block.type ?? '');
+      const label = FIXED_BLOCK_LABELS[type] ?? (block.title ? `攻略 · ${String(block.title)}` : '攻略条目');
+      const old = findBlock(block);
+      changes.push({
+        label: `正文 · ${label}`,
+        oldText: oldOr(String(old?.text ?? '')),
+        newText: docText(block.doc).slice(0, 4000) || '（空）',
+        oldDoc: old?.doc ?? null,
+        newDoc: block.doc ?? null,
+      });
+    }
+    if (Array.isArray(payload.stageRows)) {
+      const payloadStageDocs = Array.isArray(payload.stageDocs) ? payload.stageDocs : null;
+      if (payloadStageDocs) {
+        const snapStageRows = Array.isArray(snap?.stageRows) ? snap.stageRows : [];
+        const snapStageDocs = Array.isArray(snap?.stageDocs) ? snap.stageDocs : [];
+        const max = Math.max(payload.stageRows.length, snapStageRows.length);
+        for (let index = 1; index < max; index++) {
+          const oldRow = snapStageRows[index] ?? null;
+          const newRow = payload.stageRows[index] ?? null;
+          if (!oldRow && !newRow) continue;
+          const oldDoc = snapStageDocs[index] ?? null;
+          const newDoc = payloadStageDocs[index] ?? null;
+          if (JSON.stringify(oldRow) === JSON.stringify(newRow) && JSON.stringify(oldDoc) === JSON.stringify(newDoc)) continue;
+          const num = String(newRow?.[0] ?? oldRow?.[0] ?? '').trim();
+          const name = String(newRow?.[1] ?? oldRow?.[1] ?? '').trim();
+          changes.push({
+            label: `关卡流程 · ${[num, name].filter(Boolean).join(' ') || `第 ${index} 项`}`,
+            oldText: oldRow ? (oldRow[2] ?? '') : '（新增关卡）',
+            newText: newRow ? (newRow[2] ?? '') : '（删除关卡）',
+            oldDoc: oldRow ? oldDoc : null,
+            newDoc: newRow ? newDoc : null,
+          });
+        }
+      } else {
+        changes.push({ label: '关卡流程', oldText: oldOr(revRows(snap?.stageRows)), newText: revRows(payload.stageRows) });
+      }
+    }
+    for (const row of Array.isArray(payload.itemEdits) ? payload.itemEdits : []) {
+      if (!row || typeof row !== 'object') continue;
+      const old = (Array.isArray(snap?.items) ? snap.items : []).find(
+        (item: any) => itemKeyOf(item?.name) === itemKeyOf(row.name)
+      );
+      const action = ITEM_ACTION_LABELS[String(row.action)] ?? '修改';
+      changes.push({
+        label: `神器 · ${String(row.name ?? '（未命名）')}`,
+        oldText: old ? revItem(old) : snap ? '（表里没有这件）' : missing,
+        newText: row.action === 'remove' ? `（${action}这件）` : `${action}：\n${revItem(row)}`,
+      });
+    }
+    if (Array.isArray(payload.itemOrder)) {
+      changes.push({
+        label: '神器顺序',
+        oldText: oldOr((snap?.items ?? []).map((item: any) => String(item?.name ?? '')).join('、')),
+        newText: payload.itemOrder.join('、') || '（空）',
+      });
+    }
+    if (Array.isArray(payload.videos)) {
+      changes.push({ label: '视频', oldText: oldOr(revVideos(snap?.videos)), newText: revVideos(payload.videos) });
+    }
+    if (!changes.length) changes.push({ label: '改动', oldText: '—', newText: '本次提交没有携带任何改动' });
+    return changes;
+  }
+
+  function paintRevisionDiff(box: HTMLElement, payload: Record<string, any>, snap: Record<string, any> | null): void {
+    box.replaceChildren();
+    for (const change of revisionChanges(payload, snap)) {
+      const wrap = el('div', 'page-revision-change');
+      wrap.append(el('p', 'page-revision-label', change.label));
       const diff = el('div', 'admin-diff');
-      const curBox = el('div', 'admin-current');
-      curBox.dataset.current = String(item.id);
-      diff.append(curBox, textBlock('本次提交', fmt(item.value), 'is-new'));
-      main.append(diff);
-      if (item.reviseOf) {
-        /*
-         * 正文类字段的修订稿：通过后**替换**目标那一条的正文，不是新增。
-         * 现值（上面那栏）取的就是目标那条的原文，所以照常对比；
-         * 但要写清「这会改掉别人已经上线的一段」——审核时下手会不一样。
-         */
-        main.append(
-          el(
-            'p',
-            'admin-note is-warn',
-            `✏️ 修订稿：通过后替换社区投稿 #${item.reviseOf} 那一条的正文（署名保持原作者，页面另标是谁修订的）`
-          )
-        );
-      }
-    }
-
-    if (item.note) main.append(el('p', 'admin-note', `理由：${item.note}`));
-
-    const who = [
-      item.submitter ? `投稿人：${item.submitter}` : '投稿人：匿名',
-      item.contact ? `联系：${item.contact}` : '',
-    ]
-      .filter(Boolean)
-      .join('　');
-    main.append(el('p', 'admin-note is-quiet', who));
-
-    if (item.error) main.append(el('p', 'admin-error', `上次写回失败：${item.error}`));
-    if (item.commit_sha) main.append(el('p', 'admin-note is-quiet', `提交：${item.commit_sha.slice(0, 8)}`));
-    if (item.reject_note) main.append(el('p', 'admin-note', `驳回理由：${item.reject_note}`));
-    /* 批量投稿（2026-10-13）：同一次整理交上来的几条要一起判，别只通过一半 */
-    if (item.batchCount && item.batchCount > 1) {
-      main.append(
-        el('p', 'admin-note', `同一批提交：这一批共 ${item.batchCount} 项（${item.batch}）—— 一次整理的几项，建议一起处理`)
+      diff.append(
+        change.oldDoc !== undefined
+          ? richBlock('现在的值', change.oldDoc, 'is-old', change.oldText)
+          : textBlock('现在的值', change.oldText, 'is-old')
       );
-    }
-    box.append(main);
-
-    /* ---------- 操作区 ---------- */
-    const actions = el('div', 'admin-actions');
-
-    /* 待审的给个勾选框：勾几条 → 顶部「批量通过」一次攒进去 */
-    if (item.status === 'pending') {
-      const pick = el('label', 'admin-pick');
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = picked.has(item.id);
-      cb.onchange = () => {
-        if (cb.checked) picked.add(item.id);
-        else picked.delete(item.id);
-        renderSelbar();
-      };
-      pick.append(cb, document.createTextNode('选中'));
-      actions.append(pick);
-    }
-
-    if (item.status === 'pending') {
-      const ok = el('button', 'btn btn-primary', '通过（攒着）') as HTMLButtonElement;
-      ok.type = 'button';
-      ok.onclick = () => review([item.id], 'approve');
-      actions.append(ok);
-    }
-
-    if (item.status === 'approved') {
-      const undo = el('button', 'btn', '撤回（退回待审）') as HTMLButtonElement;
-      undo.type = 'button';
-      undo.onclick = () => unstage(item.id);
-      actions.append(undo);
-    }
-
-    /*
-     * 整篇草稿（2026-10-13）：只有**已写回**的草稿才谈得上采纳 ——
-     * 那时页面上正显示着「社区整理版（未采纳）」，点这个按钮就按小节合并进原稿
-     * （同名替换、新节追加、没提到的不动，见 shared/draft-merge.mjs 与 docs/admin-guide.md）。
-     * 采纳是单独一次提交（不进攒批），所以不依赖「写回仓库」那一键。
-     */
-    if (item.field === 'draft' && item.status === 'applied' && item.adopted_at) {
-      /* 已采纳：不再摆「采纳为原稿」（再点只会撞 409）。只留一句话说明它已经进正文了 */
-      actions.append(
-        el(
-          'span',
-          'admin-chip is-adopted',
-          `已采纳${item.adopted_at ? `　${new Date(Number(item.adopted_at)).toLocaleString('zh-CN', { hour12: false })}` : ''}`
-        )
+      diff.append(
+        change.newDoc !== undefined
+          ? richBlock('本次提交', change.newDoc, 'is-new', change.newText)
+          : textBlock('本次提交', change.newText, 'is-new')
       );
-      const again = el('button', 'btn btn-ghost', '再合并一次') as HTMLButtonElement;
-      again.type = 'button';
-      /* 真要再合一遍（例如采纳后又手工改回原稿了）也留个口子，但得先确认 */
-      again.onclick = async () => {
-        const yes = await ask({
-          title: '这篇草稿已经采纳过了',
-          desc: '再合并一遍会用它覆盖原稿里同名的小节（没写到的小节保留）。多半不需要 —— 确认原稿确实要按这份草稿重来，再点。',
-          confirmText: '仍然再合并一次',
-          danger: true,
-        });
-        if (yes) await adoptDraft(item.map_slug, { force: true });
-      };
-      actions.append(again);
-    } else if (item.field === 'draft' && item.status === 'applied') {
-      const adopt = el('button', 'btn btn-primary', '采纳为原稿') as HTMLButtonElement;
-      adopt.type = 'button';
-      adopt.onclick = async () => {
-        /*
-         * 采纳前先把「把标题行当小节名」的草稿挑出来（见 looksLikeBannerTitle）：
-         * 这类标题一旦采纳就会变成页面上一个小节标题（内容还常和「基本信息」重复），
-         * 所以在这儿给一个改写框，默认填「基本信息」，改完带着 retitle 一起提交。
-         * 留空 = 不改写，服务端会以 placeholder-title 拒掉并说明原因（不会写坏页面）。
-         */
-        const draftText = String(item.value ?? '');
-        const banner = draftSectionTitles(draftText).filter((t) => looksLikeBannerTitle(t, item.map_slug));
-        const fields = banner.slice(0, 4).map((t) => ({
-          key: `retitle:${t}`,
-          label: `标题「${t}」改成（留空=按原样新增这个标题）`,
-          value: '基本信息',
-        }));
-        const r = await ask({
-          title: '采纳为原稿',
-          desc:
-            `把《${mapTitle(item.map_slug) || item.map_slug}》的整篇草稿按小节合并进人工原稿：` +
-            '同名小节替换、新小节追加、没写到的小节原样保留。会立刻提交一次（不进攒批）。' +
-            (banner.length
-              ? `\n\n⚠️ 这个草稿里有 ${banner.length} 个标题看着是**标题行**而不是小节名` +
-                `（${banner.map((t) => `「${t}」`).join('、')}）——` +
-                '原稿里没有同名小节，不改写就会在页面上多出这么一个标题。下面默认改写成「基本信息」，' +
-                '你可以改成别的（例如「关卡流程」）；留空则按原样新增。'
-              : ''),
-          fields,
-          confirmText: '采纳并提交',
-        });
-        if (!r) return;
-        const retitle: Record<string, string> = {};
-        for (const [k, v] of Object.entries(r)) {
-          if (!k.startsWith('retitle:')) continue;
-          const to = String(v ?? '').trim();
-          if (to) retitle[k.slice('retitle:'.length)] = to;
-        }
-        adoptDraft(item.map_slug, { retitle });
-      };
-      actions.append(adopt);
-    }
-
-    if (item.status === 'pending' || item.status === 'approved') {
-      const no = el('button', 'btn', '驳回') as HTMLButtonElement;
-      no.type = 'button';
-      no.onclick = () => rejectMany([item.id]);
-      actions.append(no);
-    }
-
-    if (item.status !== 'applied') {
-      const ban = el('button', 'btn btn-ghost', '封禁此来源') as HTMLButtonElement;
-      ban.type = 'button';
-      ban.onclick = async () => {
-        const r = await ask({
-          title: '封禁来源',
-          desc: '封禁后该来源不能再投稿 / 注册，它的待审投稿会一并驳回。理由只作内部记录。',
-          fields: [{ key: 'reason', label: '封禁理由', value: '垃圾投稿', multiline: true }],
-          chips: ['垃圾投稿', '广告', '恶意刷投稿', '冒名或辱骂'],
-          confirmText: '封禁',
-          danger: true,
-        });
-        if (r?.reason) banSource(item.id, r.reason);
-      };
-      actions.append(ban);
-    }
-
-    const copy = el('button', 'btn btn-ghost', '复制编号') as HTMLButtonElement;
-    copy.type = 'button';
-    copy.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(String(item.id));
-        setStatus(`已复制编号 #${item.id}`);
-      } catch {
-        setStatus(`编号 #${item.id}（复制没成功，手动记一下）`, true);
-      }
-    };
-    actions.append(copy);
-
-    const view = el('a', 'btn btn-ghost', '打开条目 ↗') as HTMLAnchorElement;
-    view.href = `/maps/${item.map_slug}/`;
-    view.target = '_blank';
-    view.rel = 'noopener';
-    actions.append(view);
-
-    box.append(actions);
-    void appendOverrideHint(box, item);
-    return box;
-  }
-
-  /* ===== 现值：按 id 分批取（2026-10-13 改版加）=====
-     队列列表不再为每张图读一次 GitHub —— 那会撞上「一次调用 50 个子请求」的额度，
-     队列一多整个审核台就打不开（线上真的报过 500 Too many subrequests）。
-     现在列表只回投稿本身，现值按需分批取（服务端也限一次最多 10 条）。 */
-  async function loadCurrents(rows: QueueItem[]): Promise<void> {
-    const need = rows
-      .filter((r) => r.currentPending && !r.currentLoaded)
-      .filter((r) => rules[r.field]?.kind !== 'cover' && rules[r.field]?.kind !== 'gallery')
-      .map((r) => r.id);
-    if (!need.length) return;
-
-    for (let i = 0; i < need.length; i += 6) {
-      const chunk = need.slice(i, i + 6);
-      const { status, data } = await api(`/api/admin/current?ids=${chunk.join(',')}`);
-      for (const id of chunk) {
-        const item = rows.find((r) => r.id === id);
-        if (item) item.currentLoaded = true;
-        const box = listEl.querySelector<HTMLElement>(`.admin-current[data-current="${id}"]`);
-        if (!box) continue;
-        box.replaceChildren();
-        if (status !== 200) {
-          box.append(el('p', 'admin-note is-quiet', '现值没取到（不影响审核，刷新再试）'));
-          continue;
-        }
-        const current = data?.current?.[String(id)] ?? null;
-        const kind = rules[item?.field ?? '']?.kind;
-        if (kind === 'itemlist') {
-          const arr = Array.isArray(current) ? (current as Array<Record<string, unknown>>) : [];
-          box.append(el('p', 'admin-note', `社区文档里已有的行 ${arr.length} 条`));
-          box.append(itemsTable(arr, '（社区文档里还没有神器 / 道具行）'));
-        } else if (kind === 'tags') {
-          /* 标签的对比由 tagsBlock 负责：把现值补进 item 后重画那一块 */
-          if (item) {
-            item.current = current;
-            const holder = listEl.querySelector<HTMLElement>(
-              `.admin-item[data-id="${id}"] .tag-block-holder`
-            );
-            if (holder) holder.replaceChildren(tagsBlock(item));
-          }
-        } else if (kind === 'doc') {
-          /*
-           * 整篇草稿：服务端回的是个小对象（页面上挂着的那篇 + 有没有采纳过），不是一段文本。
-           * 以前这里按字符串处理，未采纳的草稿会显示成「还没有草稿」，看着像没写回来 —— 2026-10-15 修。
-           */
-          const info = (current && typeof current === 'object' ? current : null) as
-            | { draftChars?: number; draftBy?: string | null; adopted?: string | null; adoptedAt?: string | null; adoptedBy?: string | null }
-            | null;
-          if (info?.adopted) {
-            box.append(
-              el(
-                'p',
-                'admin-note is-warn',
-                `✅ 这篇已经采纳过了：${info.adopted}` +
-                  `${info.adoptedAt ? `（${String(info.adoptedAt).slice(0, 10)}）` : ''}` +
-                  '—— 想再合并一遍，得点「再合并一次」（或「采纳为原稿」）再确认一次才会真的重合并'
-              )
-            );
-            /* 卡片头上挂个「已采纳」小标，扫一眼列表就知道哪几条不用再动 */
-            listEl
-              .querySelector<HTMLElement>(`.admin-item[data-id="${id}"] .admin-item-head`)
-              ?.append(el('span', 'admin-chip is-adopted', '已采纳'));
-          } else if (info?.draftChars) {
-            box.append(
-              el(
-                'p',
-                'admin-note',
-                `页面上正挂着这篇草稿（${info.draftChars} 字${info.draftBy ? `，${info.draftBy} 整理` : ''}）` +
-                  '—— 还没采纳；点「采纳为原稿」会按小节合并进正文'
-              )
-            );
-          } else {
-            box.append(el('p', 'admin-note is-quiet', '社区文档里没有待采纳的草稿（可能已经采纳过，或还没写回）'));
-          }
-        } else {
-          box.append(textBlock('现在的值', fmt(current), 'is-old'));
-        }
-      }
+      wrap.append(diff);
+      box.append(wrap);
     }
   }
 
-  /** 批量选择条：勾了才出现，并同步计数 */
-  function renderSelbar(): void {
-    const bar = $<HTMLElement>('a-selbar');
-    const n = picked.size;
-    bar.hidden = n === 0 || currentStatus !== 'pending';
-    $<HTMLElement>('a-sel-n').textContent = String(n);
-    for (const cb of listEl.querySelectorAll<HTMLInputElement>('.admin-pick input')) {
-      const row = cb.closest<HTMLElement>('.admin-item');
-      const id = Number(row?.dataset.id ?? 0);
-      cb.checked = picked.has(id);
-    }
+
+
+  function payloadSummary(payload: Record<string, any>): string[] {
+    const out: string[] = [];
+    if (payload.title !== undefined) out.push(`标题：${String(payload.title || '（空）')}`);
+    if (payload.difficulty !== undefined) out.push(`难度：${String(payload.difficulty)}`);
+    if (Array.isArray(payload.tags)) out.push(`标签：${payload.tags.join('、') || '（空）'}`);
+    if (payload.heroImage !== undefined) out.push('封面变更');
+    if (Array.isArray(payload.blocks)) out.push(`正文块：${payload.blocks.length} 个`);
+    if (payload.guideCleared) out.push('攻略整节清空');
+    if (Array.isArray(payload.stageRows)) out.push(`关卡：${Math.max(0, payload.stageRows.length - 1)} 关`);
+    if (Array.isArray(payload.itemEdits)) out.push(`神器：${payload.itemEdits.length} 行`);
+    if (Array.isArray(payload.videos)) out.push(`视频：${payload.videos.length} 个`);
+    if (payload.media?.cover) out.push('新媒体：封面 1 张');
+    if (Array.isArray(payload.media?.gallery) && payload.media.gallery.length) out.push(`新媒体：图片 ${payload.media.gallery.length} 张`);
+    if (payload.infobox && typeof payload.infobox === 'object') out.push(`基本信息：${Object.keys(payload.infobox).join('、')}`);
+    return out.length ? out : ['（没有可展示的字段，展开下方对比查看详情）'];
   }
 
-  /** 批量驳回：一次填一个理由，逐条带同一个理由驳回 */
-  async function rejectMany(ids: number[]): Promise<void> {
-    if (!ids.length) return;
-    const r = await ask({
-      title: ids.length > 1 ? `驳回 ${ids.length} 条投稿` : `驳回投稿 #${ids[0]}`,
-      desc: '理由会展示给投稿人（他在「查审核状态」里能看到），写清楚他才好改。',
-      fields: [{ key: 'reason', label: '驳回理由', multiline: true, placeholder: '例如：难度不对，本站现在标的是困难' }],
-      chips: ['资料不准确', '没有来源', '写法或格式需要调整', '与本站已有内容重复', '与地图无关 / 广告'],
-      confirmText: '确认驳回',
-      danger: true,
-    });
-    if (!r?.reason) {
-      if (r && !r.reason) setStatus('驳回要写理由 —— 投稿人看不到原因就没法改', true);
-      return;
-    }
-    await review(ids, 'reject', r.reason);
-  }
 
-  async function load(): Promise<void> {
-    listEl.replaceChildren(el('p', 'admin-note is-quiet', '加载中…'));
-    /* 账号标签走另一套接口：它跟投稿队列没关系，别去拉队列 */
-    if (currentStatus === 'accounts') return loadAccounts();
-    /* 先拿全站标签词表（审核标签投稿时要标出「全站首次出现的新词」）与地图中文名。
-       两个都是本地静态 JSON、失败也不影响审核；和队列请求**并行**发出，
-       顺序 await 会让首屏白等一个来回。 */
-    await loadTagVocabulary();
-    await refreshCounts();
-
-    const params = new URLSearchParams({
-      status: draftsOnly ? draftStatus : currentStatus,
-      limit: String(PAGE_SIZE),
-      offset: String(items.length),
-    });
-    /* 整篇草稿那一档只看 field=draft（服务端过滤，不跟其它字段混在一起） */
-    if (draftsOnly) {
-      params.set('field', 'draft');
-      if (adoptedView) params.set('adopted', '1');
-    }
-    if (keyword.trim()) {
-      /* 中文名命中唯一一张图 → 转成 map 过滤（库里只有 slug，中文名搜不到） */
-      const byTitle = mapOnly || resolveMapFromKeyword(keyword);
-      if (byTitle) params.set('map', byTitle);
-      else params.set('q', keyword.trim());
-    } else if (mapOnly) {
-      params.set('map', mapOnly);
-    }
-
-    const [, { status, data }] = await Promise.all([
-      loadMapsIndex(),
-      api(`/api/admin/queue?${params.toString()}`),
-    ]);
-    if (status !== 200) {
-      listEl.replaceChildren();
-      setStatus(data?.error ?? `加载失败（HTTP ${status}）`, true);
-      if (status === 401) {
-        panel.hidden = true;
-        loginCard.hidden = false;
-      }
-      return;
-    }
-    panel.hidden = false;
-    loginCard.hidden = true;
-    /* 没配 token 的话必须一直挂着；否则只在提示已经凉了的时候才清（刚做完操作的提示别擦） */
-    if (!data.gitReady) setStatus('⚠️ 服务端还没配 GITHUB_TOKEN，写回会失败');
-    else if (Date.now() - statusAt > STATUS_KEEP_MS) setStatus('');
-    /* 草稿档的小标签计数（待采纳 / 待审 / 待写回 / 已驳回） */
-    if (draftsOnly && data.fieldCounts) {
-      paintDraftCounts(data.fieldCounts as Record<string, number>, Number(data.adoptedCount ?? 0));
-    }
-
-    const page: QueueItem[] = data.items ?? [];
-    items = items.concat(page);
-    total = Number(data.total ?? items.length);
-
-    listEl.replaceChildren();
-    /* 上一轮的 objectURL 先回收，别翻几页就攒一堆 */
-    for (const url of thumbs) URL.revokeObjectURL(url);
-    thumbs = [];
-
-    if (items.length === 0) {
-      listEl.append(el('p', 'admin-note is-quiet', emptyText()));
-      renderSelbar();
-      updateMore();
-      return;
-    }
-    for (const item of items) listEl.append(renderItem(item));
-    renderSelbar();
-    updateMore();
-    void loadCurrents(page);
-  }
-
-  /** 清空当前列表重新拉（换标签 / 换筛选 / 刷新） */
-  async function reload(): Promise<void> {
-    items = [];
-    picked.clear();
-    await load();
-  }
-
-  function emptyText(): string {
-    if (keyword.trim() || mapOnly) return '没有匹配的投稿 —— 换个关键词，或清空搜索框';
-    if (draftsOnly) {
-      if (adoptedView) {
-        if (draftStatus === 'applied') return '还没有采纳过任何整篇草稿 —— 采纳过的会出现在这里';
-        return '这一档里没有已采纳的草稿（已采纳的都是「已上线」状态）';
-      }
-      if (draftStatus === 'applied') {
-        return adoptedCount
-          ? `没有等着采纳的整篇草稿了 🎉（已采纳 ${adoptedCount} 篇，点右边「翻看已采纳的」能看到）`
-          : '没有等着采纳的整篇草稿 —— 写完回并写回后，这里会出现「采纳为原稿」';
-      }
-      if (draftStatus === 'pending') return '没有待审的整篇草稿';
-      if (draftStatus === 'approved') return '没有待写回的整篇草稿（写回后才会出现在「待采纳」里）';
-      return '没有已驳回的整篇草稿';
-    }
-    if (currentStatus === 'pending') return '没有待审投稿 🎉';
-    if (currentStatus === 'approved') return '没有待写回的投稿';
-    return '暂无记录';
-  }
-
-  /** 草稿档那几个小标签上的计数（服务端 fieldCounts） */
-  function paintDraftCounts(fieldCounts: Record<string, number>, adopted?: number): void {
-    draftCounts = fieldCounts;
-    for (const btn of document.querySelectorAll<HTMLButtonElement>('#a-drafts-tabs [data-draft-status]')) {
-      const n = fieldCounts[btn.dataset.draftStatus ?? ''] ?? 0;
-      const badge = btn.querySelector<HTMLElement>('.tab-n');
-      if (badge) badge.textContent = String(n);
-      btn.classList.toggle('is-on', btn.dataset.draftStatus === draftStatus);
-    }
-    const tabBadge = document.getElementById('a-drafts-n');
-    if (tabBadge) tabBadge.textContent = String(fieldCounts.applied ?? 0);
-    /* 「已采纳 N 篇」：采纳过的不在「待采纳 N」里，得说一句不然像丢了 */
-    if (adopted !== undefined) adoptedCount = adopted;
-    const adoptedEl = document.getElementById('a-drafts-adopted');
-    if (adoptedEl) adoptedEl.textContent = `已采纳 ${adoptedCount} 篇`;
-    const btn = document.getElementById('a-drafts-adopted-btn');
-    if (btn) {
-      btn.textContent = adoptedView ? '← 回到待采纳' : '翻看已采纳的';
-      btn.classList.toggle('is-on', adoptedView);
-      btn.hidden = !draftsOnly || (!adoptedCount && !adoptedView);
-    }
-    const bar = document.getElementById('a-drafts-bar');
-    if (bar) bar.hidden = !draftsOnly;
-  }
-
-  function updateMore(): void {
-    const more = $<HTMLElement>('a-more');
-    const hint = $<HTMLElement>('a-more-hint');
-    more.hidden = items.length >= total;
-    hint.textContent = `已显示 ${items.length} / ${total} 条`;
-  }
-
-  /** 标签页上的计数（顺带把「待写回」标出来 —— 那是要记得写回的存货） */
-  async function refreshCounts(): Promise<void> {
-    /* 顺手带上 field=draft：服务端就会多给一份 fieldCounts，
-       「整篇草稿」标签上的待采纳数才能一进审核台就显示（不用先切进去）。 */
-    const { status, data } = await api('/api/admin/queue?status=pending&field=draft&limit=1');
-    if (status !== 200) return;
-    if (data.fieldCounts) paintDraftCounts(data.fieldCounts as Record<string, number>, Number(data.adoptedCount ?? 0));
-    const c = data.counts ?? {};
-    for (const tab of document.querySelectorAll<HTMLElement>('.admin-tab[data-status]')) {
-      const key = tab.dataset.status ?? '';
-      const badge = tab.querySelector<HTMLElement>('.tab-n');
-      if (!badge) continue;
-      badge.textContent = String(c[key] ?? 0);
-      badge.classList.toggle('is-zero', Number(c[key] ?? 0) === 0);
-    }
-    const staged = Number(c.approved ?? 0);
-    countsEl.textContent =
-      `待审 ${c.pending ?? 0} · 待写回 ${staged} · 已上线 ${c.applied ?? 0} · 已驳回 ${c.rejected ?? 0}` +
-      (keyword.trim() || mapOnly ? `　（当前筛选：${mapOnly || keyword.trim()}）` : '');
-    $<HTMLElement>('a-staged-count').textContent = staged ? `已攒 ${staged} 条待写回` : '当前没有待写回的投稿';
-    $<HTMLElement>('a-flush').hidden = staged === 0;
-  }
-
-  /* ===== 账号标签 ===== */
-
-  interface AccountItem {
-    id: number;
-    name: string;
-    contact: string | null;
-    created_at: number;
-    last_login: number | null;
-    banned: number;
-    approved: number;
-    rejected: number;
-    fail_count: number | null;
-    locked: boolean;
-  }
-
-  const fmtTime = (ts: number | null) => (ts ? new Date(ts).toLocaleString('zh-CN', { hour12: false }) : '—');
-
-  async function loadAccounts() {
-    /* 账号标签跟投稿队列没关系：把队列专用那几块收起来 */
-    $<HTMLElement>('a-flush').hidden = true;
-    $<HTMLElement>('a-selbar').hidden = true;
-    $<HTMLElement>('a-more').hidden = true;
-    const { status, data } = await api('/api/admin/accounts?limit=200');
-    if (status !== 200) {
-      listEl.replaceChildren();
-      setStatus(data?.error ?? `加载失败（HTTP ${status}）`, true);
-      if (status === 401) {
-        panel.hidden = true;
-        loginCard.hidden = false;
-      }
-      return;
-    }
-    panel.hidden = false;
-    loginCard.hidden = true;
-    setStatus('');
-
-    const t = data.totals ?? {};
-    const lim = data.limits ?? {};
-    countsEl.textContent =
-      `账号 ${t.all ?? 0} 个 · 最近 24 小时新增 ${t.last24h ?? 0} / ${lim.newAccountsPerDay ?? '—'}` +
-      ` · 已停用 ${t.banned ?? 0} · 锁定中 ${t.locked ?? 0}` +
-      `　（限流：单 IP ${lim.registerPerHour ?? '—'}/小时、${lim.registerPerDay ?? '—'}/天）`;
-
-    listEl.replaceChildren();
-    const accounts: AccountItem[] = data.items ?? [];
-    if (!accounts.length) {
-      listEl.append(el('p', 'admin-note is-quiet', '还没有人注册。'));
-      return;
-    }
-    for (const acc of accounts) listEl.append(renderAccount(acc));
-  }
-
-  function renderAccount(acc: AccountItem) {
-    const box = el('div', `admin-item is-account${acc.banned ? ' is-banned' : ''}`);
-    box.dataset.account = String(acc.id);
-
-    const head = el('div', 'admin-item-head');
-    head.append(el('strong', undefined, acc.name));
-    head.append(el('span', 'admin-item-id', `#${acc.id}`));
-    if (acc.banned) head.append(el('span', 'admin-chip is-status is-rejected', '已停用'));
-    if (acc.locked) head.append(el('span', 'admin-chip is-status is-pending', '锁定中'));
+  function card(row: any): HTMLElement {
+    const box = el('article', 'audit-card');
+    let payload: Record<string, any> = {};
+    try { payload = JSON.parse(String(row.payload ?? '{}')); } catch {}
+    const head = el('div', 'audit-card-head');
+    head.append(el('strong', '', `${row.map_slug} · ${row.mode === 'single' ? '单项' : '整页'}修订 #${row.id}`));
+    head.append(badge(String(row.submitter ?? '匿名')));
     box.append(head);
-
-    const main = el('div', 'admin-item-main');
-    main.append(
-      el(
-        'p',
-        'admin-note',
-        `注册：${fmtTime(acc.created_at)}　最近登录：${fmtTime(acc.last_login)}　` +
-          `通过 ${acc.approved} · 驳回 ${acc.rejected}` +
-          (Number(acc.fail_count ?? 0) ? `　连续输错 ${acc.fail_count} 次` : '')
-      )
-    );
-    if (acc.contact) main.append(el('p', 'admin-note', `联系方式：${acc.contact}`));
-    box.append(main);
-
-    const actions = el('div', 'admin-actions');
-    if (acc.banned) {
-      const un = el('button', 'btn', '恢复账号') as HTMLButtonElement;
-      un.type = 'button';
-      un.onclick = () => accountAction(acc.id, 'unban');
-      actions.append(un);
+    box.append(el('p', 'audit-meta', `${new Date(Number(row.created_at)).toLocaleString()} · ${row.status}`));
+    const rows = el('div', 'audit-summary');
+    for (const line of payloadSummary(payload)) rows.append(el('p', '', line));
+    box.append(rows);
+    const diff = el('div', 'page-revision-diff');
+    diff.append(el('p', 'audit-current', '正在读取现在的值…'));
+    box.append(diff);
+    void revisionSnapshot(row.map_slug).then((snap) => paintRevisionDiff(diff, payload, snap));
+    const acts = el('div', 'audit-card-actions');
+    if (row.status === 'pending') {
+      const ok = el('button', 'audit-btn is-primary', '通过，攒着');
+      const no = el('button', 'audit-btn', '驳回');
+      ok.addEventListener('click', () => void review(row.id, 'approve'));
+      no.addEventListener('click', () => {
+        const reason = window.prompt('驳回理由（会展示给投稿人）', '');
+        if (reason !== null) void review(row.id, 'reject', reason);
+      });
+      acts.append(ok, no);
     } else {
-      const ban = el('button', 'btn', '停用账号') as HTMLButtonElement;
-      ban.type = 'button';
-      ban.onclick = async () => {
-        const r = await ask({
-          title: '停用账号',
-          desc: `停用「${acc.name}」后，他手上的登录会立刻失效，之后也登不进来。`,
-          confirmText: '停用',
-          danger: true,
-        });
-        if (r) accountAction(acc.id, 'ban');
-      };
-      actions.append(ban);
+      const undo = el('button', 'audit-btn', '撤回待审');
+      undo.addEventListener('click', () => void review(row.id, 'unstage'));
+      acts.append(undo);
     }
-    if (acc.locked) {
-      const un = el('button', 'btn', '解除锁定') as HTMLButtonElement;
-      un.type = 'button';
-      un.onclick = () => accountAction(acc.id, 'unlock');
-      actions.append(un);
-    }
-    /* 忘了口令只能人工找回（本站不收邮箱）——给个一键重置，临时口令显示在状态行里 */
-    const reset = el('button', 'btn', '重置口令') as HTMLButtonElement;
-    reset.type = 'button';
-    reset.onclick = async () => {
-      const r = await ask({
-        title: '重置口令',
-        desc: `给「${acc.name}」换一个 10 位临时口令：他手上的登录会立刻失效，临时口令只在下面显示一次，请转告他本人登录后自己改掉。`,
-        confirmText: '重置',
-        danger: true,
-      });
-      if (r) accountAction(acc.id, 'reset');
-    };
-    actions.append(reset);
-    /* 昵称违规时改名：新名字照样过昵称规则；还没写回的投稿署名会一起改 */
-    const rename = el('button', 'btn', '改昵称') as HTMLButtonElement;
-    rename.type = 'button';
-    rename.onclick = async () => {
-      const r = await ask({
-        title: '改昵称',
-        desc: '新昵称同样要过昵称规则（长度、敏感词、广告与联系方式都不收）；还没写回的投稿署名会一起改。',
-        fields: [{ key: 'name', label: '新昵称', value: `用户#${acc.id}` }],
-        confirmText: '改名',
-      });
-      if (r?.name) accountAction(acc.id, 'rename', { name: r.name });
-    };
-    actions.append(rename);
-    /*
-     * 授权 UP 主称号（2026-10-13）：站内昵称和 B 站昵称经常不一样
-     * （站上账号「雨宫鹿奈」↔ 视频署名「雨宫鹿奈_shikaNiko」），自动认不出来，所以留个人工入口。
-     * 名字必须与视频署名**完全一致**，否则服务端会拒（它拿 R2 的同意名单核对）。
-     */
-    const up = el('button', 'btn', '挂授权UP') as HTMLButtonElement;
-    up.type = 'button';
-    up.onclick = async () => {
-      const told = await ask({
-        title: '挂「授权 UP 主」称号',
-        desc:
-          '填 B 站昵称，要和站上视频署名**完全一致**（服务端会拿同意收录的名单核对，对不上会被拒）。' +
-          '这个称号只人工发放 —— 昵称撞名不会自动给。',
-        fields: [{ key: 'name', label: 'B 站昵称' }],
-        confirmText: '挂称号',
-      });
-      if (told?.name) accountAction(acc.id, 'linkup', { name: told.name });
-    };
-    actions.append(up);
-    const unlink = el('button', 'btn', '摘称号') as HTMLButtonElement;
-    unlink.type = 'button';
-    unlink.onclick = () => accountAction(acc.id, 'unlinkup');
-    actions.append(unlink);
-    /*
-     * 仓库贡献者称号（2026-10-13）：填 GitHub 用户名（多个用逗号隔开）。
-     * 服务端拿仓库贡献者名单核对，一个都对不上会拒绝 —— 一个人有两个号是常事
-     * （SiKi = trrrr-ai + MiKU，白叶 = xianoom + BaiYe），所以支持一次填多个。
-     */
-    const gh = el('button', 'btn', '挂 GitHub 贡献者') as HTMLButtonElement;
-    gh.type = 'button';
-    gh.onclick = async () => {
-      const r = await ask({
-        title: '挂「仓库贡献者」称号',
-        desc: '填 GitHub 用户名（多个用逗号隔开）。服务端会拿仓库贡献者名单核对，一个都对不上会被拒。',
-        fields: [{ key: 'name', label: 'GitHub 用户名', placeholder: '例如：trrrr-ai, MiKU' }],
-        confirmText: '挂称号',
-      });
-      if (r?.name) accountAction(acc.id, 'linkgh', { name: r.name });
-    };
-    actions.append(gh);
-    const ungh = el('button', 'btn', '摘 GitHub 称号') as HTMLButtonElement;
-    ungh.type = 'button';
-    ungh.onclick = () => accountAction(acc.id, 'unlinkgh');
-    actions.append(ungh);
-    box.append(actions);
+    box.append(acts);
     return box;
   }
 
-  async function accountAction(
-    id: number,
-    action: 'ban' | 'unban' | 'unlock' | 'reset' | 'rename' | 'linkup' | 'unlinkup' | 'linkgh' | 'unlinkgh',
-    extra: Record<string, unknown> = {}
-  ) {
-    setStatus('处理中…');
-    const { status, data } = await api('/api/admin/accounts', { method: 'POST', body: { id, action, ...extra } });
-    if (status !== 200) {
-      setStatus(`${data?.error ?? '操作失败'}（HTTP ${status}）`, true);
-      return;
-    }
-    /* 临时口令要让站长看得见、抄得走 —— 状态行是纯文本，不会被当成 HTML */
-    setStatus(
-      data.tempPassword
-        ? `${data.message}　临时口令：${data.tempPassword}（请他登录后自己在账号页改掉）`
-        : String(data.message ?? '已完成')
-    );
-    await loadAccounts();
+  function render(items: any[]) {
+    list.replaceChildren();
+    if (!items.length) { list.append(el('p', 'audit-empty', status === 'pending' ? '没有待审内容。' : '没有待写回内容。')); return; }
+    for (const row of items) list.append(card(row));
   }
 
-  /** 审核：approve = 攒进待写回（不写仓库），reject = 驳回。ids 支持批量。 */
-  async function review(ids: number[], action: 'approve' | 'reject', rejectNote?: string) {
-    setStatus(action === 'approve' ? `正在攒下 ${ids.length} 条…` : '处理中…');
-    const { status, data } = await api('/api/admin/review', {
+  async function load() {
+    const { status: code, data } = await api(`/api/admin/page-revisions?status=${status}`);
+    if (code !== 200) { setStatus(data?.error ?? '读取失败', true); return; }
+    counts = data.counts ?? {};
+    $('count-pending')!.textContent = String(counts.pending ?? 0);
+    $('count-approved')!.textContent = String(counts.approved ?? 0);
+    $('flush')!.hidden = !(counts.approved > 0);
+    render(Array.isArray(data.items) ? data.items : []);
+    setStatus(`已连接 · 待审 ${counts.pending ?? 0} · 待写回 ${counts.approved ?? 0}`);
+  }
+
+  async function review(id: number, action: 'approve' | 'reject' | 'unstage', rejectNote = '') {
+    const { status: code, data } = await api('/api/admin/page-revisions', {
       method: 'POST',
-      body: { ids, action, rejectNote, reviewer },
+      body: JSON.stringify({ id, action, rejectNote, reviewer: reviewerEl.value.trim() || '审核员' }),
     });
-    if (status !== 200 && status !== 207) {
-      setStatus(`${data?.error ?? '操作失败'}（HTTP ${status}）`, true);
-      await reload();
-      return;
-    }
-    const failed = (data.results ?? []).filter((r: { ok: boolean }) => !r.ok);
-    const okCount = (data.results ?? []).length - failed.length;
-    if (action === 'approve') {
-      setStatus(
-        `已攒下 ${okCount} 条（待写回共 ${data.staged ?? okCount} 条）—— 记得点「写回仓库」` +
-          (failed.length ? `；${failed.length} 条没成功：${failed[0].error}` : '')
-      );
-    } else {
-      setStatus(`已驳回 ${okCount} 条${failed.length ? `；${failed.length} 条没成功` : ''}`);
-    }
-    picked.clear();
-    await reload();
-  }
-
-  /**
-   * 把待写回的投稿写回仓库。
-   *
-   * 服务端**每批最多写 6 张图**（一次 Worker 调用只有 50 个子请求额度，
-   * 十几条投稿一起写会撞上限，线上真的报过 500 Too many subrequests）。
-   * 所以这里循环：一批成功后如果还有剩下的，自动再发一次 —— 每批一个 commit，
-   * 页面上把每批的结果累积显示出来。
-   */
-  /**
-   * 采纳整篇草稿（2026-10-13）：把某张图的「社区整理版」按小节合并进人工原稿。
-   * 单独一次提交（不走攒批），服务端会回替换/新增/保留了几节、改写没改写标题，照着念给审核员听。
-   *
-   * @param opts.retitle 采纳前改写的小节标题（`{ 原标题: 新标题 }`），见按钮那段的说明
-   * @param opts.force 同一条草稿已经采纳过时，确认要再合并一遍（服务端默认拦）
-   */
-  async function adoptDraft(slug: string, opts: { retitle?: Record<string, string>; force?: boolean } = {}) {
-    const { retitle, force = false } = opts;
-    const body: Record<string, unknown> = { slug };
-    if (force) body.force = true;
-    if (retitle && Object.keys(retitle).length) body.retitle = retitle;
-    setStatus(force ? '强制再合并中…' : '采纳中…');
-    const { status, data } = await api('/api/admin/adopt', { method: 'POST', body });
-    /*
-     * 409 already-adopted：这条草稿此前已经采纳过、页面上也没有待采纳的草稿了。
-     * 服务端拒绝是为了不把「采纳后又手工修过的原稿」用同一份旧草稿盖回去（真事故：
-     * ze_tenkinoko_welkin_z）。这里再问一次，确认才带 force 重发 —— 别让它变成静默失败。
-     */
-    if (status === 409 && data?.code === 'already-adopted' && !force) {
-      const again = await ask({
-        title: '这条草稿已经采纳过了',
-        desc:
-          `${data.error}\n\n` +
-          `投稿号 #${data.submission}${data.adoptedBy ? ` · 整理者 ${data.adoptedBy}` : ''}` +
-          `${data.adoptedAt ? ` · 采纳于 ${String(data.adoptedAt).slice(0, 10)}` : ''}` +
-          '\n\n（多半是重复点了一下 —— 想取消直接点「取消」；确实要再合并一遍才点右边那个。）',
-        confirmText: '仍然再合并一次',
-        danger: true,
-      });
-      if (again) await adoptDraft(slug, { ...opts, force: true });
-      else setStatus('已取消：没有重复采纳');
-      return;
-    }
-    if (status !== 200) {
-      setStatus(`${data?.error ?? '采纳失败'}（HTTP ${status}）`, true);
-      return;
-    }
-    setStatus(String(data.message ?? '已采纳'));
-    await reload();
-  }
-
-  /**
-   * 写回仓库前的二次确认（2026-10-13 加）：
-   * 这一下会产生真实 commit 并触发一次重建，不该是「手一滑就发生」的事。
-   * 先把待写回的清单拉出来，照条数 / 图数 / 都改了哪些字段念一遍再让人点。
-   */
-  async function confirmFlush(): Promise<boolean> {
-    const { status, data } = await api('/api/admin/queue?status=approved&limit=200');
-    if (status !== 200) {
-      setStatus(`${data?.error ?? '读取待写回清单失败'}（HTTP ${status}）`, true);
-      return false;
-    }
-    const rows: QueueItem[] = data.items ?? [];
-    const maps = [...new Set(rows.map((r) => r.map_slug))];
-    const fields = [...new Set(rows.map((r) => rules[r.field]?.label ?? r.field))];
-    const covers = rows.filter((r) => r.field === 'cover').length;
-    const galleries = rows.filter((r) => r.field === 'gallery').length;
-
-    const box = el('div', 'admin-confirm-list');
-    box.append(
-      el(
-        'p',
-        'admin-note',
-        `共 ${rows.length} 条投稿 → ${maps.length} 张图 · 涉及字段：${fields.join('、') || '（无）'}`
-      )
-    );
-    const ul = el('ul', 'admin-confirm-maps');
-    for (const slug of maps.slice(0, 40)) {
-      const n = rows.filter((r) => r.map_slug === slug).length;
-      ul.append(el('li', undefined, `${mapTitle(slug) || slug}（${slug}）× ${n}`));
-    }
-    if (maps.length > 40) ul.append(el('li', undefined, `…还有 ${maps.length - 40} 张`));
-    box.append(ul);
-    if (covers || galleries) {
-      box.append(
-        el('p', 'admin-note', `其中封面 ${covers} 张、图片集 ${galleries} 张 —— 图片会随同一个提交一起进仓库 / R2。`)
-      );
-    }
-    box.append(
-      el(
-        'p',
-        'admin-note is-warn',
-        '点「写回仓库」后会立刻提交到 GitHub（一个 commit）并触发一次自动重建，通常 1~2 分钟后上线。'
-      )
-    );
-
-    /* 用对话框把清单摆出来（不是纯 confirm 文案），条数多的时候能滚动看完 */
-    return await new Promise<boolean>((resolve) => {
-      const dlg = $<HTMLDialogElement>('a-dialog');
-      $<HTMLElement>('a-dialog-title').textContent = '确认写回仓库';
-      const desc = $<HTMLElement>('a-dialog-desc');
-      desc.textContent = '这一步会产生真实的 git 提交。';
-      desc.hidden = false;
-      $<HTMLElement>('a-dialog-chips').hidden = true;
-      $<HTMLElement>('a-dialog-chips').replaceChildren();
-      const body = $<HTMLElement>('a-dialog-body');
-      body.replaceChildren(box);
-      const ok = $<HTMLButtonElement>('a-dialog-ok');
-      const cancel = $<HTMLButtonElement>('a-dialog-cancel');
-      ok.textContent = '写回仓库';
-      ok.classList.add('btn-danger');
-      cancel.textContent = '再等等';
-      const done = (v: boolean) => {
-        ok.onclick = null;
-        cancel.onclick = null;
-        dlg.oncancel = null;
-        dlg.onclick = null;
-        ok.classList.remove('btn-danger');
-        if (dlg.open) dlg.close();
-        resolve(v);
-      };
-      ok.onclick = () => done(true);
-      cancel.onclick = () => done(false);
-      dlg.oncancel = () => done(false);
-      dlg.onclick = (e) => {
-        if (e.target === dlg) done(false);
-      };
-      if (!dlg.open) dlg.showModal();
-      cancel.focus();
-    });
+    if (code !== 200) { setStatus(data?.error ?? '操作失败', true); return; }
+    await load();
   }
 
   async function flush() {
-    const rows = await api('/api/admin/queue?status=approved&limit=1');
-    if (Number(rows.data?.counts?.approved ?? 0) === 0) {
-      setStatus('没有待写回的投稿');
-      return;
-    }
-    if (!(await confirmFlush())) return;
-
-    const btn = $<HTMLButtonElement>('a-flush-go');
-    const out = $<HTMLElement>('a-flush-out');
-    btn.disabled = true;
-    const old = btn.textContent;
-    out.textContent = '';
-    let done = 0, maps = 0, files = 0;
-    const skippedAll: Array<{ id: number; reason: string }> = [];
-    const commits: string[] = [];
-    try {
-      for (let round = 1; round <= 20; round++) {
-        btn.textContent = round === 1 ? '正在写回…' : `正在写回…（第 ${round} 批）`;
-        const { status, data } = await api('/api/admin/flush', { method: 'POST', body: { reviewer } });
-        if (status !== 200) {
-          out.textContent =
-            (commits.length ? `已写回 ${done} 条（${commits.length} 个提交）后中断：` : '') +
-            `${data?.error ?? '写回失败'}（HTTP ${status}）—— 剩下的仍留在「待写回」，修好后重试即可`;
-          setStatus('写回失败', true);
-          return;
-        }
-        done += Number(data.committed ?? 0);
-        maps += Number(data.maps ?? 0);
-        files += Number(data.files ?? 0);
-        skippedAll.push(...((data.skipped ?? []) as Array<{ id: number; reason: string }>));
-        if (data.commit) commits.push(String(data.commit).slice(0, 8));
-        out.textContent =
-          `✅ 已写回 ${done} 条 / ${maps} 张图 · ${files} 个文件 · 提交 ${commits.join('、')}` +
-          (skippedAll.length
-            ? `　⚠️ 跳过 ${skippedAll.length} 条：${skippedAll.map((s) => `#${s.id} ${s.reason}`).join('；')}`
-            : '') +
-          (data.remaining ? `　还有 ${data.remaining} 条，继续…` : '　（Cloudflare 1~2 分钟后重建上线）');
-        if (!data.remaining) break;
-      }
-      setStatus('写回完成');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = old;
-      await reload();
-    }
-  }
-
-  /** 把「待写回」的投稿退回待审（改主意时用） */
-  async function unstage(id: number) {
-    const { status, data } = await api('/api/admin/unstage', { method: 'POST', body: { id } });
-    if (status !== 200) return setStatus(`${data?.error ?? '撤回失败'}（HTTP ${status}）`, true);
-    setStatus('已退回待审');
-    await reload();
-  }
-
-  async function banSource(id: number, reason: string) {
-    setStatus('正在封禁…');
-    const { status, data } = await api('/api/admin/ban', { method: 'POST', body: { id, reason } });
-    if (status !== 200) {
-      setStatus(`${data?.error ?? '封禁失败'}（HTTP ${status}）`, true);
-      return;
-    }
-    setStatus('已封禁，该来源的待审投稿也一并驳回了');
-    await reload();
-  }
-
-  /* ===== 接线 ===== */
-
-  $<HTMLButtonElement>('a-connect').onclick = async () => {
-    token = tokenEl.value.trim();
-    reviewer = reviewerEl.value.trim() || '站长';
-    localStorage.setItem('ze-admin-token', token);
-    localStorage.setItem('ze-admin-reviewer', reviewer);
-    setStatus('连接中…');
-    items = [];
+    if (!window.confirm('把全部已通过的修订写回 data/content？会产生一个 commit，并触发一次重建。')) return;
+    const { status: code, data } = await api('/api/admin/page-revisions/flush', { method: 'POST', body: '{}' });
+    if (code !== 200) { setStatus(data?.error ?? '写回失败', true); return; }
     await load();
-  };
-
-  /* 清除本机保存的密钥：公用电脑上审完就走，别把密钥留在浏览器里 */
-  $<HTMLButtonElement>('a-forget').onclick = async () => {
-    const r = await ask({
-      title: '清除本机密钥',
-      desc: '会从这台浏览器里删掉 ADMIN_TOKEN 与署名（Worker 侧的密钥不受影响，下次要用重新粘贴）。',
-      confirmText: '清除',
-      danger: true,
-    });
-    if (!r) return;
-    localStorage.removeItem('ze-admin-token');
-    localStorage.removeItem('ze-admin-reviewer');
-    token = '';
-    tokenEl.value = '';
-    items = [];
-    picked.clear();
-    panel.hidden = true;
-    loginCard.hidden = false;
-    setStatus('已清除本机密钥');
-  };
-
-  $<HTMLButtonElement>('a-reload').onclick = () => reload();
-  $<HTMLButtonElement>('a-flush-go').onclick = () => flush();
-  $<HTMLButtonElement>('a-more-go').onclick = () => load();
-
-  /**
-   * 发公告（2026-10-14）：写进**所有账号**的收件箱（页头铃铛）。
-   * 先拉一次最近发过的（GET），摆在对话框里再让人写 —— 公告是「一条发出去就收不回」的东西，
-   * 与其发完才发现重复，不如发之前先看一眼。链接限定站内路径或 https（服务端也会再校验一次）。
-   */
-  $<HTMLButtonElement>('a-announce').onclick = async () => {
-    const recent = await api('/api/admin/announce?limit=5');
-    const box = el('div', 'admin-confirm-list');
-    if (recent.status === 200) {
-      const list: Array<{ id: number; title: string; createdAt: number }> = recent.data?.items ?? [];
-      box.append(
-        el(
-          'p',
-          'admin-note',
-          `会发给 ${recent.data?.recipients ?? 0} 个账号（登录后打开任意页面就能在收件箱看到）。` +
-            '未登录的访客看不到收件箱，重要事情请同时发在群里。'
-        )
-      );
-      if (list.length) {
-        const ul = el('ul', 'admin-confirm-maps');
-        for (const x of list) ul.append(el('li', undefined, `${new Date(x.createdAt).toLocaleDateString('zh-CN')} · ${x.title}`));
-        box.append(el('p', 'admin-note', '最近发过的公告：'), ul);
-      }
-    }
-    const r = await ask({
-      title: '发公告到所有人的收件箱',
-      desc: '',
-      body: box,
-      fields: [
-        { key: 'title', label: '标题（最多 60 字）', value: '' },
-        { key: 'body', label: '正文（最多 800 字，可空）', value: '', multiline: true },
-        { key: 'link', label: '附一个链接（可空，站内 /about/ 或 https://…）', value: '' },
-      ],
-      confirmText: '发出去',
-      danger: true,
-    });
-    if (!r) return;
-    const title = String(r.title ?? '').trim();
-    if (!title) return setStatus('公告得有标题', true);
-    const res = await api('/api/admin/announce', {
-      method: 'POST',
-      body: { title, body: String(r.body ?? '').trim(), link: String(r.link ?? '').trim() },
-    });
-    if (res.status !== 200) {
-      setStatus(`${res.data?.error ?? '公告没发出去'}（HTTP ${res.status}）`, true);
-      return;
-    }
-    setStatus(String(res.data?.message ?? '公告已发出'));
-  };
-
-  for (const btn of document.querySelectorAll<HTMLButtonElement>('.admin-tab[data-status]')) {
-    btn.onclick = () => {
-      currentStatus = btn.dataset.status as string;
-      draftsOnly = false;
-      adoptedView = false;
-      for (const other of document.querySelectorAll('.admin-tab')) other.classList.toggle('is-on', other === btn);
-      const bar = document.getElementById('a-drafts-bar');
-      if (bar) bar.hidden = true;
-      keyword = '';
-      mapOnly = '';
-      $<HTMLInputElement>('a-q').value = '';
-      items = [];
-      picked.clear();
-      void load();
-    };
+    setStatus(data.count ? `已写回 ${data.count} 条修订` : '没有待写回内容');
   }
 
-  /*
-   * 「整篇草稿」标签（2026-10-15）：只拉 field=draft，默认落在「待采纳」。
-   * 站长原来的痛点：草稿跟难度 / 标签混在「已上线」里，一次写回十几条之后根本找不着，
-   * 想点「采纳为原稿」得一条条翻。
-   */
-  $<HTMLButtonElement>('a-tab-drafts').onclick = () => {
-    draftsOnly = true;
-    adoptedView = false;
-    draftStatus = 'applied';
-    currentStatus = 'applied';
-    for (const other of document.querySelectorAll('.admin-tab')) {
-      other.classList.toggle('is-on', other.id === 'a-tab-drafts');
-    }
-    const bar = document.getElementById('a-drafts-bar');
-    if (bar) bar.hidden = false;
-    paintDraftCounts(draftCounts);
-    keyword = '';
-    mapOnly = '';
-    $<HTMLInputElement>('a-q').value = '';
-    items = [];
-    picked.clear();
+  $('connect')!.addEventListener('click', () => {
+    token = tokenEl.value.trim();
+    reviewer = reviewerEl.value.trim();
+    localStorage.setItem('ze-audit-token', token);
+    localStorage.setItem('ze-audit-reviewer', reviewer);
+    panel.hidden = false;
     void load();
-  };
-
-  for (const btn of document.querySelectorAll<HTMLButtonElement>('#a-drafts-tabs [data-draft-status]')) {
-    btn.onclick = () => {
-      draftStatus = btn.dataset.draftStatus ?? 'applied';
-      currentStatus = draftStatus;
-      /* 已采纳的草稿状态都是「已上线」：点别的档就顺手回到「待采纳」视图，免得不明白为什么空的 */
-      if (adoptedView && draftStatus !== 'applied') adoptedView = false;
-      items = [];
-      picked.clear();
-      paintDraftCounts(draftCounts);
-      void load();
-    };
-  }
-
-  /* 「翻看已采纳的」/「← 回到待采纳」：在「还没采纳」和「已采纳」两份列表之间切 */
-  $<HTMLButtonElement>('a-drafts-adopted-btn').onclick = () => {
-    adoptedView = !adoptedView;
-    draftStatus = 'applied';
-    currentStatus = 'applied';
-    items = [];
-    picked.clear();
-    paintDraftCounts(draftCounts);
-    void load();
-  };
-
-  /* 搜索：防抖 300ms，回车立即搜；点了地图 slug 说明要只看这张图，输入框里会带上 slug */
-  let searchTimer: number | undefined;
-  const searchEl = $<HTMLInputElement>('a-q');
-  searchEl.oninput = () => {
-    window.clearTimeout(searchTimer);
-    searchTimer = window.setTimeout(() => {
-      keyword = searchEl.value;
-      mapOnly = '';
-      items = [];
-      picked.clear();
-      void load();
-    }, 300);
-  };
-  searchEl.onkeydown = (e) => {
-    if (e.key === 'Enter') {
-      window.clearTimeout(searchTimer);
-      keyword = searchEl.value;
-      mapOnly = '';
-      items = [];
-      void load();
-    } else if (e.key === 'Escape') {
-      searchEl.value = '';
-      keyword = '';
-      mapOnly = '';
-      items = [];
-      void load();
-    }
-  };
-
-  /* 批量选择 */
-  $<HTMLButtonElement>('a-sel-all').onclick = () => {
-    for (const item of items) if (item.status === 'pending') picked.add(item.id);
-    renderSelbar();
-  };
-  $<HTMLButtonElement>('a-sel-none').onclick = () => {
-    picked.clear();
-    renderSelbar();
-  };
-  $<HTMLButtonElement>('a-batch').onclick = () => {
-    const ids = [...picked];
-    if (!ids.length) return setStatus('先勾选要通过的投稿', true);
-    void review(ids, 'approve');
-  };
-  $<HTMLButtonElement>('a-batch-reject').onclick = () => void rejectMany([...picked]);
-
-  /* 自动刷新：只在「没勾选、没开对话框、搜索框没聚焦」时静默刷新，免得更到一半把选择冲掉 */
-  let autoTimer: number | undefined;
-  $<HTMLInputElement>('a-auto').onchange = (e) => {
-    const on = (e.target as HTMLInputElement).checked;
-    window.clearInterval(autoTimer);
-    if (!on) return;
-    autoTimer = window.setInterval(() => {
-      if (picked.size || dialogEl.open || document.activeElement === searchEl) return;
-      if (currentStatus === 'accounts') void loadAccounts();
-      else void reload();
-    }, 30_000);
-  };
-
-  /* 键盘：`/` 聚焦搜索（审核时手不离键盘），Esc 退出搜索框 */
-  document.addEventListener('keydown', (e) => {
-    if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-      e.preventDefault();
-      searchEl.focus();
-    }
   });
-
-  /* 已经有密钥就自动连一次 */
-  if (token) {
-    for (const tab of document.querySelectorAll('.admin-tab')) {
-      tab.classList.toggle('is-on', (tab as HTMLElement).dataset.status === currentStatus);
-    }
+  $('refresh')!.addEventListener('click', () => void load());
+  $('flush')!.addEventListener('click', () => void flush());
+  $('forget')!.addEventListener('click', () => { token = ''; localStorage.removeItem('ze-audit-token'); panel.hidden = true; });
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('.audit-tabs button')) btn.addEventListener('click', () => {
+    status = btn.dataset.status === 'approved' ? 'approved' : 'pending';
+    for (const other of document.querySelectorAll('.audit-tabs button')) other.classList.toggle('is-on', other === btn);
     void load();
-  } else {
-    for (const tab of document.querySelectorAll('.admin-tab')) {
-      tab.classList.toggle('is-on', (tab as HTMLElement).dataset.status === currentStatus);
-    }
-  }
+  });
+  if (token) { panel.hidden = false; void load(); }
 </script>
+
+<style is:global>
+  .audit-page { max-width: 1080px; margin: 0 auto; padding: 96px 20px 80px; }
+  .audit-head { display:flex; justify-content:space-between; gap:24px; align-items:flex-end; margin-bottom:24px; }
+  .audit-head h1 { margin:0; font-size:clamp(30px,4vw,46px); }
+  .audit-head p { margin:8px 0 0; color:var(--muted); line-height:1.7; }
+  .audit-kicker { font-size:11px; letter-spacing:.16em; font-weight:800; color:var(--accent); }
+  .audit-link { color:var(--accent); text-decoration:none; font-size:13px; }
+  .audit-login, .audit-card, .audit-bar { border:1px solid var(--border); border-radius:12px; background:var(--card); }
+  .audit-login { display:flex; flex-wrap:wrap; gap:12px; align-items:end; padding:16px; }
+  .audit-login label { display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--muted); }
+  .audit-login input { width:240px; padding:9px 10px; border:1px solid var(--border); border-radius:7px; background:var(--input); color:var(--text); }
+  .audit-login button, .audit-btn, .audit-actions button { border:1px solid var(--border); border-radius:7px; padding:8px 12px; background:var(--card); color:var(--text); cursor:pointer; }
+  .audit-login button, .audit-btn.is-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .audit-login p, .audit-status { flex-basis:100%; margin:0; color:var(--muted); font-size:13px; }
+  .audit-status.is-bad { color:#e5484d; }
+  .audit-bar { position:sticky; top:12px; z-index:2; display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; padding:12px; margin:16px 0; }
+  .audit-tabs, .audit-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .audit-tabs button { border:1px solid var(--border); border-radius:999px; padding:7px 12px; background:transparent; color:var(--muted); cursor:pointer; }
+  .audit-tabs button.is-on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .audit-card { padding:16px; margin:12px 0; }
+  .audit-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .audit-badge { padding:2px 8px; border:1px solid var(--border); border-radius:999px; color:var(--muted); font-size:11px; }
+  .audit-meta, .audit-current { color:var(--muted); font-size:12px; margin:6px 0; }
+  .audit-summary { font-size:13px; line-height:1.8; }
+  .audit-summary p { margin:0; }
+  .audit-card-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .audit-empty { padding:36px 0; text-align:center; color:var(--muted); }
+  @media (max-width:640px) { .audit-head { flex-direction:column; align-items:flex-start; } .audit-login input { width:100%; } }
+</style>

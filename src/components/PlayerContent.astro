@@ -1,0 +1,34 @@
+---
+interface Props {
+  content: { blocks?: Array<{ id: string; type: string; title?: string; doc: unknown }> } | null;
+}
+const { content } = Astro.props;
+const labels: Record<string, string> = { story: '背景故事', intro: '简介', gameplay: '玩法与关卡', guideItem: '攻略技巧' };
+const blocks = content?.blocks ?? [];
+
+function docText(node: unknown): string {
+  if (!node || typeof node !== 'object') return '';
+  const value = node as { text?: string; type?: string; content?: unknown[] };
+  if (typeof value.text === 'string') return value.text;
+  const text = Array.isArray(value.content) ? value.content.map(docText).join(value.type === 'doc' ? '\n\n' : '') : '';
+  return text;
+}
+---
+
+{blocks.length > 0 && (
+  <section class="player-content" aria-label="玩家整理内容">
+    {blocks.map((block) => (
+      <section id={`player-${block.id}`} class="player-block">
+        <h2>{block.type === 'guideItem' ? block.title : labels[block.type] ?? block.type}</h2>
+        <p class="player-copy">{docText(block.doc)}</p>
+      </section>
+    ))}
+  </section>
+)}
+
+<style>
+  .player-content { margin:24px 0; }
+  .player-block { margin:28px 0; }
+  .player-block h2 { margin:0 0 12px; padding-bottom:8px; border-bottom:1px solid var(--border); font-size:23px; }
+  .player-copy { white-space:pre-wrap; line-height:1.85; color:var(--text); }
+</style>

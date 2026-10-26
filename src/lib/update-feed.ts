@@ -3,7 +3,7 @@
  *
  * 两层合并，一层一层说清楚：
  *
- *   ① 社区投稿（data/community/<slug>.json 的 log[]）
+ *   ① 玩家内容（data/content/<slug>.json 的 history[]）
  *      构建期直接读文件就有：哪个字段、从什么变成什么、谁投的、投稿编号。
  *      所以它**永远是最新的** —— Worker 写回仓库 → Cloudflare 重建 → 这里就能看到，
  *      不依赖 git，也没有浅克隆问题。封面这类批量改动聚合成一天一条。
@@ -18,11 +18,10 @@
  * 免得同一份数据里存两套名字（改标题时只改一处）。
  */
 import changes from '../../data/research-changes.json';
-import { normalizeDoc } from '../../shared/community-doc.mjs';
 import { FIELD_RULES } from '../../shared/submission-fields.mjs';
 import { getMaps } from './maps';
 
-const communityModules = import.meta.glob('../../data/community/*.json', { eager: true }) as Record<
+const contentModules = import.meta.glob('../../data/content/*.json', { eager: true }) as Record<
   string,
   { default?: unknown }
 >;
@@ -90,6 +89,7 @@ function communityWhat(field: string, from: unknown, to: unknown, revised: boole
 }
 
 interface RawLog {
+  source?: string;
   field?: string;
   from?: unknown;
   to?: unknown;
@@ -98,21 +98,27 @@ interface RawLog {
   submission?: number | null;
   reviseOf?: string;
   note?: string;
+  title?: string;
+  action?: string;
+  revision?: number;
+  appliedAt?: number | string;
+  reviewer?: string;
+  submitter?: string;
 }
 
-/** 社区那一层（读文件，永远最新） */
-function communityItems(): FeedItem[] {
+/** content 的 history（迁移时保留了旧 community 的 log / 字段 / 作者 / 时间） */
+function contentItems(): FeedItem[] {
   const out: FeedItem[] = [];
-  /** 封面按天聚合：一天导一批封面不该刷 95 行 */
   const covers = new Map<string, { at: string; slugs: Set<string>; by: Set<string> }>();
 
-  for (const [path, mod] of Object.entries(communityModules)) {
+  for (const [path, mod] of Object.entries(contentModules)) {
     const slug = path.slice(path.lastIndexOf('/') + 1, -'.json'.length);
-    const raw = (mod?.default ?? mod) as { log?: RawLog[] } | undefined;
-    const doc = normalizeDoc(slug, raw);
-    for (const log of doc.log as RawLog[]) {
-      if (!log || typeof log.field !== 'string') continue;
-      const at = typeof log.at === 'string' && log.at ? log.at : doc.updatedAt;
+    const raw = (mod?.default ?? mod) as { history?: RawLog[] } | undefined;
+    const history = Array.isArray(raw?.history) ? raw.history : [];
+    const logs = history.filter((item) => item?.source === 'data/community.log' && typeof item.field === 'string');
+    const fallback = history.filter((item) => item?.source === 'data/community' && typeof item.field === 'string');
+    for (const log of logs.length ? logs : fallback) {
+      const at = typeof log.at === 'string' && log.at ? log.at : null;
       if (!at) continue;
       const day = at.slice(0, 10);
       if (log.field === 'cover') {
@@ -131,6 +137,23 @@ function communityItems(): FeedItem[] {
         slug,
         what,
         by: typeof log.by === 'string' && log.by ? log.by : null,
+        src: '社区投稿',
+      });
+    }
+
+    /* 新的 page_revisions 写回只追加 {revision, submitter, reviewer, appliedAt}；
+       旧 community log 没有 revision 字段，所以这里不会重复。 */
+    for (const item of history) {
+      if (typeof item.field === 'string' || !Number.isInteger(item.revision)) continue;
+      const ts = typeof item.appliedAt === 'number' ? item.appliedAt : Date.parse(String(item.appliedAt ?? ''));
+      if (!Number.isFinite(ts)) continue;
+      const at = new Date(ts).toISOString();
+      out.push({
+        at,
+        day: at.slice(0, 10),
+        slug,
+        what: `内容修订 #${item.revision} 已上线`,
+        by: typeof item.submitter === 'string' && item.submitter.trim() ? item.submitter.trim() : null,
         src: '社区投稿',
       });
     }
@@ -183,10 +206,10 @@ function researchItems(): FeedItem[] {
  * 「最近改动」和「最新更新」两块的口径其实差一层，这里补上对齐用的数据（2026-10-15）。
  *
  * 背景（站长 2026-10-15 的疑问）：「最近更新」和「最近改动」怎么地图不一样？
- *   · 「最近改动」= 逐条流水（community log + research-changes）→ **构建期直接读文件，永远最新**；
+ *   · 「最近改动」= 逐条流水（迁移前 community log + research-changes + content history）→ **构建期直接读文件，永远最新**；
  *   · 「最新更新」= 一图一行，日期来自 `data/map-dates.json` —— 那份清单只能由**有完整 git 历史**
  *     的本地构建重算（脚本遇到浅克隆重会主动跳过，线上 CI 就是浅克隆），
- *     而社区写回只提交 `data/community/<slug>.json`……
+ *     而玩家修订写回只提交 `data/content/<slug>.json`……
  *     于是「刚被社区改过的图」会先出现在「最近改动」里，「最新更新」还停在上一份清单位置。
  *
  * 这个函数把两层 feed 里每张图**最新的改动日期**算出来（不带 400 条上限），
@@ -202,7 +225,7 @@ export function latestChangeByMap(): Map<string, string> {
     const prev = out.get(slug);
     if (!prev || day > prev) out.set(slug, day);
   };
-  for (const it of communityItems()) {
+  for (const it of contentItems()) {
     put(it.slug, it.at);
     /* 封面那种聚合条目的明细里也带着 slug（一次更新几十张图） */
     for (const e of it.extra ?? []) put(e.slug, it.at);
@@ -224,7 +247,7 @@ export async function getUpdateFeed(limit = FEED_LIMIT): Promise<FeedItem[]> {
   const maps = await getMaps();
   const titles = new Map(maps.map((m) => [m.id, m.data.title]));
 
-  const items = [...communityItems(), ...researchItems()]
+  const items = [...contentItems(), ...researchItems()]
     .filter((it) => (it.slug ? titles.has(it.slug) : true))
     .map((it) => ({
       ...it,

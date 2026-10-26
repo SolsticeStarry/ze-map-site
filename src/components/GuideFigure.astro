@@ -4,7 +4,7 @@
  *
  * 作者不写这个组件 —— 写的是纯文本约定 `:::figure 2 right`：
  *   · 原稿 guides[] 里 → 生成器（shared/guide-blocks.mjs）转成这个组件；
- *   · 社区投稿正文 → GuideNote 组件解析后渲染这个组件。
+ *   · 玩家修订正文由生成器解析后渲染这个组件。
  * 图来源是这张图的**图片集**（data/gallery/<slug>.json，图片在 R2），序号从 1 开始。
  *
  * 序号越界（作者写错、图还没传）时**不报错**：只渲染文字 + 一句提示，
@@ -45,7 +45,7 @@ const cls = `guide-figure${side === 'right' ? ' is-right' : ''}`;
       <slot />
       <p class="gf-warn">
         ⚠ 教程里引用了图片集第 <b>{n}</b> 张图，但这张图还没有（当前共 {images.length} 张）。
-        到 <a href={`/submit/?map=${slug}`}>投稿页</a>传图后，序号按图片集里的顺序从 1 数。
+        到 <a href={`/submit/edit/?map=${slug}`}>投稿页</a>传图后，序号按图片集里的顺序从 1 数。
       </p>
     </div>
   )

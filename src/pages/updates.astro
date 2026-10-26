@@ -11,7 +11,7 @@ import { getUpdateFeed } from '../lib/update-feed';
  * 最新更新 = 本站资料最近被改过的图，日期来自 git 历史（data/map-dates.json）。
  *
  * 口径（在 scripts/content/build-map-dates.mjs 里实现）：
- *   · data/research/<slug>.json、data/community/<slug>.json 的改动 —— 算
+ *   · data/research/<slug>.json、data/content/<slug>.json 的 history —— 算
  *     （包括新建：那是有人给这张图补了资料）
  *   · src/content/maps/<slug>.mdx 的改动 —— 只有非「新建」才算
  *     （新建只是数据导入生成的文件，不代表有人写了内容）
@@ -62,7 +62,7 @@ const countTpl = `最近 ${WINDOW_DAYS} 天共 {n} 张资料有变动`;
       <h3>这里的「更新」指什么</h3>
       <ul class="sidebar-hint" style="list-style: none; padding: 0">
         <li>· 有人给某张图补了简介、难度、来源、通关视频（<code>data/research/</code>）</li>
-        <li>· 有人提交了社区补充（<code>data/community/</code>）</li>
+        <li>· 有人提交了内容修订（<code>data/content/</code>）</li>
         <li>· 不算：工坊作者自己更新了地图（那属于工坊，见「新增地图」页）</li>
         <li>· 不算：整批导入 / 生成器改版那种一次动几百个文件的提交</li>
       </ul>

@@ -4,7 +4,7 @@ import { DIFFICULTIES, DIFFICULTY_DEFAULT } from '../shared/difficulty.mjs';
 
 /*
  * ⚠️ 读地图数据请用 src/lib/maps.ts 的 getMaps()，不要直接 getCollection('maps')。
- * 社区投稿（data/community/<slug>.json）对难度/标签等字段的覆盖是在那一层合并的，
+ * 玩家覆盖（data/content/<slug>.json）对难度/标签等字段的覆盖是在那一层合并的，
  * 直接 getCollection 会拿到未合并的原始数据，造成页面之间自相矛盾。
  */
 
@@ -19,7 +19,7 @@ const maps = defineCollection({
     /** 作者署名的补充说明（多作者 / 原作与移植的区分），侧栏只显示简短 author */
     authorNote: z.string().optional(),
     version: z.string().optional(),
-    /* 难度枚举取自 shared/difficulty.mjs —— 与投票 Worker 共用一份定义。
+    /* 难度枚举取自 shared/difficulty.mjs —— 页面、编辑器和 Worker 共用一份定义。
        类型断言只是因为 z.enum 需要「非空元组」字面量类型，运行时校验完全按 DIFFICULTIES 走。
        2026-09-24 的线上构建失败就是有人写了枚举外的「普通」，这份共享定义就是为了不再重演。 */
     difficulty: z.enum(DIFFICULTIES as [string, ...string[]]).default(DIFFICULTY_DEFAULT),
@@ -68,52 +68,12 @@ const maps = defineCollection({
      * 本站是否已经有人工整理的简介（正文开头那段导语）。
      * 由生成器在**有简介时**才写这一行（没简介的图连字段都不出现）。
      * 用途：社区投稿的「地图简介」只在这张图为 false 时渲染到开头 ——
-     * 有本站简介的图不接受社区覆盖（见 docs/community-editing-plan.md）。
+     * 有本站简介的图不接受玩家简介覆盖（见 docs/content-model.md）。
      */
     hasSummary: z.boolean().default(false),
     /** 资料出处链接 */
     sources: z.array(z.string()).optional(),
 
-    /*
-     * ===== 社区补充 =====
-     * 下面三项由 src/lib/maps.ts 的 mergeEntry() 在读取时注入，
-     * 不要手写进 MDX（写了也会被合并结果覆盖）。这里声明是为了让类型与
-     * 默认值稳定，页面可以直接解构不用担心 undefined。
-     */
-    /** 已被社区覆盖的字段名，用于在页面上标注来源 */
-    communityFields: z.array(z.string()).default([]),
-    /** 社区补充正文（审核通过、站长「写回仓库」后写入 data/community/<slug>.json） */
-    communityNotes: z
-      .array(
-        z.object({
-          text: z.string(),
-          by: z.string(),
-          at: z.string().nullable().default(null),
-          /** 原本投的是哪个字段（story / body / section …）；null = 老数据，按「社区补充」显示 */
-          field: z.string().nullable().default(null),
-          /**
-           * 「社区整理」（field = section）才有：投稿人自己起的小节标题。
-           * 页面把它当二级标题渲染，并在旁边挂一个「社区整理」小标。
-           */
-          title: z.string().nullable().default(null),
-          /**
-           * 被修订过才有（谁最后改的、什么时候、改过几次）。
-           * by 始终是原作者 —— 别人帮忙改个错别字不该把署名换掉。
-           */
-          revisedBy: z.string().nullable().default(null),
-          revisedAt: z.string().nullable().default(null),
-          revision: z.number().default(0),
-        })
-      )
-      .default([]),
-    /** 贡献者昵称（去重） */
-    communityPeople: z.array(z.string()).default([]),
-    /**
-     * 社区**单独**补充的来源链接。
-     * 与 sources 分开：sources 是合并后的完整清单，这个只是社区那一份，
-     * 侧栏标注「社区补充的来源」时用，避免和研究来源混在一起显示。
-     */
-    communitySources: z.array(z.string()).default([]),
   }),
 });
 

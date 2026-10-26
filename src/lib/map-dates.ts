@@ -70,7 +70,7 @@ export async function getNewMaps(windowDays = WINDOW_DAYS): Promise<DatedMap[]> 
  *   ① `data/map-dates.json` —— 由本地构建从 git 历史算好、随提交入库的清单；
  *   ② 「最近改动」那份 feed 里每张图的最新一条改动日期。
  * 为什么必须合：清单只能由**有完整 git 历史**的本地构建重算（脚本遇到浅克隆重会跳过，
- * 线上 CI 正是浅克隆），而社区写回只提交 `data/community/<slug>.json` ——
+ * 线上 CI 正是浅克隆），而玩家写回只提交 `data/content/<slug>.json` ——
  * 只认清单的话，「刚被社区改过的图」会先出现在「最近改动」里，这一栏却还停在上一份清单，
  * 两块的地图对不上（站长 2026-10-15 提的疑问）。feed 是构建期直接读文件的，永远最新。
  */

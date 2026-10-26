@@ -2254,84 +2254,6 @@ main [id],
 [data-theme="light"] .stat-row .chip b { color: var(--text); }
 [data-theme="light"] .entity-cta .ec-t { color: var(--text); }
 
-/* ===== 难度投票（社区收录，P1） =====
-   卡片默认 hidden，接口通了才由脚本取消隐藏；
-   接口没启用 / 挂了 / 断网时脚本直接 remove()，页面上什么都不会留下。 */
-.vote-card[hidden] { display: none !important; }
-.vote-card .sidebar-hint { margin-bottom: 10px; }
-
-.vote-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
-  gap: 6px;
-}
-
-.vote-btn {
-  position: relative;
-  overflow: hidden;
-  padding: 7px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border-2);
-  background: var(--panel-2);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.4;
-  cursor: pointer;
-  transition: border-color 0.15s, transform 0.15s;
-}
-
-/* 得票占比条：宽度由脚本写入 --pct */
-.vote-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: var(--pct, 0%);
-  background: currentColor;
-  opacity: 0.14;
-  transition: width 0.3s ease;
-  pointer-events: none;
-}
-
-.vote-btn .vote-label,
-.vote-btn .vote-count { position: relative; }
-
-.vote-btn .vote-count {
-  margin-left: 3px;
-  font-size: 11px;
-  opacity: 0.7;
-  font-variant-numeric: tabular-nums;
-}
-
-.vote-btn:hover:not(:disabled) { transform: translateY(-1px); }
-.vote-btn:disabled { cursor: default; opacity: 0.65; }
-.vote-btn.is-mine { border-color: currentColor; }
-.vote-btn.is-mine .vote-label { font-weight: 700; }
-
-/* 难度配色：与详情页徽章同一套色 */
-.vote-btn.diff-easy { color: #4ade80; border-color: rgba(74, 222, 128, 0.35); }
-.vote-btn.diff-intro { color: #67e8f9; border-color: rgba(103, 232, 249, 0.4); }
-.vote-btn.diff-medium { color: #60a5fa; border-color: rgba(96, 165, 250, 0.35); }
-.vote-btn.diff-hard { color: #fb923c; border-color: rgba(251, 146, 60, 0.35); }
-.vote-btn.diff-extreme { color: #f87171; border-color: rgba(248, 113, 113, 0.35); }
-.vote-btn.diff-hell { color: #c084fc; border-color: rgba(192, 132, 252, 0.4); }
-.vote-btn.diff-unknown { color: var(--muted); }
-
-.vote-status {
-  margin: 10px 0 0;
-  min-height: 18px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* 亮色主题：上面那套浅色在白底上对比度不够，换深一档 */
-[data-theme="light"] .vote-btn.diff-easy { color: #15803d; border-color: rgba(21, 128, 61, 0.3); }
-[data-theme="light"] .vote-btn.diff-intro { color: #0e7490; border-color: rgba(14, 116, 144, 0.3); }
-[data-theme="light"] .vote-btn.diff-medium { color: #1d4ed8; border-color: rgba(29, 78, 216, 0.3); }
-[data-theme="light"] .vote-btn.diff-hard { color: #c2410c; border-color: rgba(194, 65, 12, 0.3); }
-[data-theme="light"] .vote-btn.diff-extreme { color: #b91c1c; border-color: rgba(185, 28, 28, 0.3); }
-[data-theme="light"] .vote-btn.diff-hell { color: #7e22ce; border-color: rgba(126, 34, 206, 0.35); }
-
 /* ===== 顶部视频区（2026-09-30 信息层级重排）=====
    视频提到正文最前面（玩家最想先看"别人怎么打"），但视频多的图（最多 9 个）
    全铺开会把「关卡 / 神器」又挤下去，所以默认只露前两个，其余折进 details。 */
@@ -2581,77 +2503,6 @@ main [id],
   font-variant-numeric: tabular-nums;
 }
 
-/* ===== 社区补充（P2）=====
-   内容来自 data/community/<slug>.json（审核通过后写回仓库），
-   与自动生成的条目正文分开显示，避免读者分不清哪句是机器统计、哪句是人写的。 */
-.community-note {
-  margin: 14px 0 0;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent-2);
-  background: var(--panel-2);
-}
-
-.community-note-text {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: var(--text);
-}
-
-.community-note-by {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/*
- * 「社区整理」（2026-10-15）：投稿人自己起标题的一节 —— 结构上就是条目的一个二级小节，
- * 但必须一眼看出它不是本站正文：标题旁边挂一个小标，块内留一条左侧竖线。
- */
-.community-block.is-section {
-  margin-top: 26px;
-  padding-left: 14px;
-  border-left: 3px solid var(--border-2);
-}
-.community-badge {
-  margin-left: 10px;
-  padding: 2px 8px;
-  border: 1px solid var(--border-2);
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-/*
- * 「简介（社区投稿）」这一块：它是**正文开头那段导语**的位置（本站还没写简介的图上），
- * 所以别让它看起来像页尾的补充说明 —— 去掉外框、字号贴近正文，只留一条细的标记线。
- */
-.community-block.is-lead {
-  margin-bottom: 22px;
-}
-.community-block.is-lead h2 {
-  margin-bottom: 6px;
-  font-size: 15px;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-.community-block.is-lead .community-note {
-  margin-top: 0;
-  padding: 2px 0 2px 14px;
-  border: 0;
-  border-left: 2px solid var(--accent-2);
-  border-radius: 0;
-  background: none;
-  font-size: 15.5px;
-  line-height: 1.85;
-}
-
 /* 难度来源标注（详情页侧栏「难度 困难 · 源于 FYS」）—— 已获 FYS 社区同意标注 */
 .diff-src {
   margin-left: 8px;
@@ -2696,15 +2547,6 @@ main [id],
 /* ===== 教程 / 攻略的图文块（左图右文） =====
    作者写的是纯文本约定 `:::figure 2 right`（见 shared/guide-blocks.mjs），
    渲染成这里的 .guide-figure。窄屏自动堆成上下，避免图被压成一条。 */
-.guide-para {
-  margin: 0 0 10px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  line-height: 1.8;
-  color: var(--text);
-}
-.guide-para:last-child { margin-bottom: 0; }
-
 .guide-figure {
   display: grid;
   grid-template-columns: minmax(0, 46%) minmax(0, 1fr);
@@ -2786,8 +2628,6 @@ main [id],
   border: 1px solid color-mix(in srgb, var(--accent-2) 45%, transparent);
 }
 
-[data-theme="light"] .community-note { background: var(--panel-2); }
-[data-theme="light"] .community-note-text { color: var(--text); }
 
 /* ===== 投稿表单 / 审核台（P2）===== */
 .form-card {
@@ -2863,6 +2703,23 @@ main [id],
 .queue-note { font-size: 13px; color: var(--muted); margin: 0 0 10px; white-space: pre-wrap; }
 .queue-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .queue-counts { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+
+/* 整页修订：独立队列，但「待审」栏里也摆一份，免得审核员以为没收到 */
+.page-revision-inline {
+  margin: 0 0 22px;
+  padding: 12px;
+  border: 1px dashed var(--border-2, var(--border));
+  border-radius: 14px;
+  background: rgba(34, 211, 238, 0.04);
+}
+.page-revision-diff {
+  margin: 0 0 10px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(34, 211, 238, 0.35);
+}
+.page-revision-change { margin: 0 0 14px; }
+.page-revision-change:last-child { margin-bottom: 0; }
+.page-revision-label { margin: 0 0 6px; color: var(--text); font-size: 12.5px; font-weight: 700; }
 
 /* ===== 文档型页面（投稿指南这类长文）=====
    侧栏卡片的 h3 是「小标签」风格（13px + letter-spacing），拿来做章节标题会很怪，
@@ -2977,7 +2834,7 @@ main [id],
     animation: none !important;
   }
 }
-/* ===== 投稿页（/submit/）=====
+/* ===== 单项编辑页（/submit/edit）=====
    2026-10-08 站长反馈「原来的有点简陋」。原来整页就是几张 .form-card 叠着、
    控件全是浏览器默认长相。这里不改任何提交逻辑（页面脚本靠 id / data-* 取元素，
    结构随便排），只做观感与信息层级：
@@ -4362,6 +4219,20 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 .admin-pane-label { color: var(--muted); font-size: 11.5px; }
 .admin-pane-text { color: #dde2ee; font-size: 13px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
 .admin-pane-text.is-clamped { max-height: 168px; overflow: hidden; }
+/* 整页修订 / 富文本预览：docToHtml 输出的段落、列表、字号、颜色 */
+.admin-pane-rich { color: #dde2ee; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.admin-pane-rich.is-clamped { max-height: 168px; overflow: hidden; }
+.admin-pane-rich p { margin: 0 0 9px; }
+.admin-pane-rich h3 { margin: 12px 0 6px; font-size: 16px; }
+.admin-pane-rich h4 { margin: 10px 0 5px; font-size: 14px; }
+.admin-pane-rich ul, .admin-pane-rich ol { margin: 0 0 9px; padding-left: 22px; }
+.admin-pane-rich blockquote { margin: 0 0 9px; padding-left: 12px; border-left: 3px solid var(--accent-2); color: var(--muted); }
+.admin-pane-rich a { color: var(--accent-2); }
+.admin-pane-rich pre { margin: 0 0 9px; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.25); overflow: auto; }
+.admin-pane-rich .doc-color-red{color:#ff7b72}.admin-pane-rich .doc-color-orange{color:#ffa657}.admin-pane-rich .doc-color-amber{color:#e3b341}.admin-pane-rich .doc-color-green{color:#7ee787}.admin-pane-rich .doc-color-teal{color:#56d4b5}.admin-pane-rich .doc-color-cyan{color:#76e3ea}.admin-pane-rich .doc-color-blue{color:#79c0ff}.admin-pane-rich .doc-color-indigo{color:#a5b4fc}.admin-pane-rich .doc-color-purple{color:#d2a8ff}.admin-pane-rich .doc-color-pink{color:#ff9bce}.admin-pane-rich .doc-color-gray{color:#b1bac4}.admin-pane-rich .doc-color-brown{color:#d4a373}
+.admin-pane-rich .doc-size-12{font-size:12px}.admin-pane-rich .doc-size-13{font-size:13px}.admin-pane-rich .doc-size-14{font-size:14px}.admin-pane-rich .doc-size-15{font-size:15px}.admin-pane-rich .doc-size-16{font-size:16px}.admin-pane-rich .doc-size-17{font-size:17px}.admin-pane-rich .doc-size-18{font-size:18px}.admin-pane-rich .doc-size-19{font-size:19px}.admin-pane-rich .doc-size-20{font-size:20px}.admin-pane-rich .doc-size-21{font-size:21px}.admin-pane-rich .doc-size-22{font-size:22px}.admin-pane-rich .doc-size-23{font-size:23px}.admin-pane-rich .doc-size-24{font-size:24px}.admin-pane-rich .doc-size-25{font-size:25px}.admin-pane-rich .doc-size-26{font-size:26px}.admin-pane-rich .doc-size-27{font-size:27px}.admin-pane-rich .doc-size-28{font-size:28px}.admin-pane-rich .doc-size-29{font-size:29px}.admin-pane-rich .doc-size-30{font-size:30px}.admin-pane-rich .doc-size-31{font-size:31px}.admin-pane-rich .doc-size-32{font-size:32px}
+.admin-pane-rich .doc-align-left{text-align:left}.admin-pane-rich .doc-align-center{text-align:center}.admin-pane-rich .doc-align-right{text-align:right}
+
 .admin-pane-more {
   justify-self: start;
   padding: 2px 8px;
@@ -4447,7 +4318,7 @@ a.uf-map:hover { color: var(--accent-2); text-decoration: underline; }
 
 [data-theme="light"] .admin-item-head { background: rgba(0, 0, 0, 0.02); }
 [data-theme="light"] .admin-note,
-[data-theme="light"] .admin-pane-text { color: var(--text); }
+[data-theme="light"] .admin-pane-text, [data-theme="light"] .admin-pane-rich { color: var(--text); }
 [data-theme="light"] .admin-actions { background: rgba(0, 0, 0, 0.03); }
 [data-theme="light"] .admin-chip.is-status.is-pending { color: #b45309; }
 [data-theme="light"] .admin-chip.is-status.is-approved { color: #0e7490; }

@@ -1,9 +1,9 @@
 ---
 /**
- * 账号页 —— 注册 / 登录 / 我的投稿记录 / 等级。
+ * 账号页 —— 注册 / 登录 / 我的修订记录 / 等级。
  *
  * 三条设计原则（和 worker/auth.ts 对应）：
- *   1. **登录是可选的**：不登录照样在 /submit/ 投稿，这一页只是「想留名、想攒等级」的人才来；
+ *   1. **登录是可选的**：不登录照样在 /submit/edit 做单项补充，这一页只是「想留名、想攒等级」的人才来；
  *   2. **页面保持静态**：这里是纯静态 HTML + 一段脚本向 /api/me 拿状态，
  *      所以站点速度、缓存、最坏情况（接口挂了）都与以前一致；
  *   3. **不存邮箱**：找回口令走 QQ 群找站长（页面里写明）；口令只存 PBKDF2 派生值。
@@ -26,7 +26,7 @@ import QqGroup from '../components/QqGroup.astro';
       <span class="acc-hero-badge">Community · 可选</span>
       <h1 class="acc-hero-title">我的<span class="gradient-text">账号</span></h1>
       <p class="acc-hero-sub">
-        账号只做三件事：让投稿「稳定署名」、记住你投过什么、按贡献给等级与免审资格。
+        账号只做三件事：让投稿「稳定署名」、记住你投过什么、按贡献累计等级与记录。
         <b>不注册也能投稿</b> —— 这一页是可选的。
       </p>
     </div>
@@ -114,7 +114,7 @@ import QqGroup from '../components/QqGroup.astro';
 
           <div class="acc-auth-foot">
             <span>不想注册？</span>
-            <a href="/submit/">直接去投稿 →</a>
+            <a href="/submit/edit/">直接去投稿 →</a>
             <span class="acc-auth-foot-note">署名用你当时填的昵称</span>
           </div>
         </section>
@@ -132,8 +132,8 @@ import QqGroup from '../components/QqGroup.astro';
           </li>
           <li class="acc-perk">
             <span class="acc-perk-icon">🏅</span>
-            <b>等级与免审</b>
-            <span class="acc-perk-text">按已写回的条数升级；到 10 条且驳回不多，投稿直接随下一批写回。</span>
+            <b>等级与记录</b>
+            <span class="acc-perk-text">按已写回的记录升级；所有内容修订都从待审开始。</span>
           </li>
         </ul>
       </div>
@@ -198,7 +198,7 @@ import QqGroup from '../components/QqGroup.astro';
         <p class="acc-trust" id="me-trusted"></p>
 
         <div class="acc-actions">
-          <a class="acc-btn acc-btn-primary" href="/submit/">去投稿</a>
+          <a class="acc-btn acc-btn-primary" href="/submit/edit/">去投稿</a>
           <button class="acc-btn" type="button" id="me-logout">退出登录</button>
         </div>
       </section>
@@ -455,10 +455,9 @@ import QqGroup from '../components/QqGroup.astro';
       $('st-approved-wait')!.textContent = String(counts.approved ?? 0);
       $('st-pending')!.textContent = String(counts.pending ?? 0);
       $('st-rejected')!.textContent = String(me.rejected);
-      $('me-trusted')!.textContent = me.trusted
-        ? '✅ 你已获得免审资格：以后投稿直接随下一批写回，不用等人工点通过。'
-        : '免审资格：通过 ≥10 条、且驳回不多（≤ 通过的五分之一）后自动获得。';
-      $('me-trusted')!.classList.toggle('is-on', me.trusted);
+      $('me-trusted')!.textContent =
+        '等级按已写回的地图 + 模式去重计算；所有内容修订都从待审开始。';
+      $('me-trusted')!.classList.remove('is-on');
 
       ($('set-name') as HTMLInputElement).value = me.name;
       ($('set-contact') as HTMLInputElement).value = me.contact ?? '';
@@ -471,7 +470,7 @@ import QqGroup from '../components/QqGroup.astro';
         const li = el('li', 'acc-empty');
         const cta = document.createElement('a');
         cta.className = 'acc-btn acc-btn-primary';
-        cta.href = '/submit/';
+        cta.href = '/submit/edit/';
         cta.textContent = '去投稿';
         li.append(
           el('span', 'acc-empty-emoji', '🌱'),

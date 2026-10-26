@@ -1,7 +1,7 @@
 /**
  * /submit/maps.json —— 投稿表单用的地图索引（构建期生成）。
  *
- * 为什么不在 /submit/?map=x 上做动态路由：
+ * 为什么不在 /submit/edit/?map=x 上做动态路由：
  * 那会给 547 张图各生成一个近乎重复的投稿页，白白撑大构建产物和 sitemap。
  * 这里输出一份小索引，表单取一次就能拿到任意地图的当前值用于预填。
  *
@@ -10,7 +10,6 @@
  */
 import { getMaps } from '../../lib/maps';
 import { galleryFor } from '../../lib/gallery';
-import { normalizeDoc, notePublicId } from '../../../shared/community-doc.mjs';
 import { cdText, docItemRows, itemKey, mergeItems, usesText } from '../../../shared/items.mjs';
 import type { APIRoute } from 'astro';
 
@@ -23,7 +22,7 @@ const gflModules = import.meta.glob('../../../data/gfl-parsed/*.json', { eager: 
   string,
   { default?: unknown }
 >;
-const communityModules = import.meta.glob('../../../data/community/*.json', { eager: true }) as Record<
+const contentModules = import.meta.glob('../../../data/content/*.json', { eager: true }) as Record<
   string,
   { default?: unknown }
 >;
@@ -47,8 +46,8 @@ for (const [p, mod] of Object.entries(gflModules)) {
 }
 
 /** 按 slug 索引的社区文档（里面可能有已审核通过的神器更正） */
-const communityBySlug = new Map<string, any>();
-for (const [p, mod] of Object.entries(communityModules)) communityBySlug.set(baseName(p), unwrap(mod));
+const contentBySlug = new Map<string, any>();
+for (const [p, mod] of Object.entries(contentModules)) contentBySlug.set(baseName(p), unwrap(mod));
 
 /** 按 slug 索引的手写资料（document 里可能带一张神器表） */
 const researchBySlug = new Map<string, any>();
@@ -84,6 +83,7 @@ export const GET: APIRoute = async () => {
     if (galleryImages.length) row.galleryCount = galleryImages.length;
     const galleryUser = galleryImages.filter((i) => i.kind === 'user').length;
     if (galleryUser) row.galleryUser = galleryUser;
+    if (d.contentRev) row.contentRev = d.contentRev;
 
     /* 神器 / 道具现状：手写表 + 服务器配置打底 + 社区已通过的更正。
        字段用短键 —— 1700 多行，键名能省下十几 KB。
@@ -91,8 +91,8 @@ export const GET: APIRoute = async () => {
        l 只有手写表那种「中文名 + 英文名」两列时才有。 */
     const mapName = String(d.titleEn ?? '');
     const gfl = gflByName.get(aliases[mapName] ?? mapName) ?? null;
-    const community = communityBySlug.has(m.id) ? normalizeDoc(m.id, communityBySlug.get(m.id)) : null;
-    const merged = mergeItems(gfl?.items ?? [], community?.items ?? []);
+    const content = contentBySlug.has(m.id) ? contentBySlug.get(m.id) : null;
+    const merged = mergeItems(gfl?.items ?? [], content?.itemEdits ?? []);
     /*
      * 手写正文里的神器表：早期是 `document`（一整篇 HTML），2026-10-08 起改成 `sections[]`
      * （结构化小节，魔晄炉 / 米纳斯 / 黑珍珠号那三张）。两种都要认 ——
@@ -106,72 +106,6 @@ export const GET: APIRoute = async () => {
       : '';
     const docRows = docItemRows(legacyDoc || sectionsDoc);
 
-    /*
-     * 本站正文（背景故事等）：投稿人要能看见「现在写的是什么」才谈得上修改，
-     * 否则只能盲着追加一条社区投稿（2026-10-10 的反馈）。
-     * 两个来源都带上：
-     *   story   = 人工整理稿 sections 里的「背景故事」整节（目前 3 张富内容图）
-     *   summary = 条目的简介段落（107 张）
-     */
-    const storySection = Array.isArray(research?.sections)
-      ? research.sections.find((s: { title?: string }) => /背景|剧情|故事/.test(String(s?.title ?? '')))
-      : null;
-    const siteStory = String(storySection?.body ?? '').trim();
-    if (siteStory) row.story = siteStory;
-    const siteSummary = String(research?.summary ?? '').trim();
-    if (siteSummary) row.summary = siteSummary;
-    /*
-     * 已有的整篇草稿（2026-10-13）：带进投稿表单，让人在别人写的基础上继续改，
-     * 而不是各写一篇、站长无从比较（页面只显示最新一篇，见 shared/community-doc.mjs 的 draft 分支）。
-     */
-    if (community?.draft?.text) {
-      row.draft = String(community.draft.text);
-      row.draftBy = String(community.draft.by ?? '');
-    }
-    /* 现有正文小节（用于草稿编辑时对照）：手写稿 sections[] 的标题 + 各自字数 */
-    if (Array.isArray(research?.sections) && research.sections.length) {
-      row.sections = research.sections
-        .filter((s: { title?: string; body?: string }) => s && typeof s.title === 'string' && s.title.trim())
-        .map((s: { title: string; body?: string }) => ({
-          title: String(s.title).trim(),
-          len: String(s.body ?? '').length,
-          body: String(s.body ?? ''),
-        }));
-    }
-    /*
-     * 已通过的社区投稿（data/community/<slug>.json 的 notes）：
-     * 带 id / 字段 / 作者，投稿表单据此提供「修订这一条」——
-     * 以前只能追加，改不了已经发出去的内容。
-     */
-    const docNotes = (community?.notes ?? [])
-      .map(
-        (
-          n: {
-            text?: string;
-            by?: string;
-            at?: string | null;
-            field?: string | null;
-            submission?: number | null;
-            revisedBy?: string | null;
-            title?: string | null;
-            part?: number | null;
-          },
-          i: number
-        ) => ({
-          id: notePublicId(n, i),
-          field: String(n?.field ?? 'body'),
-          text: String(n?.text ?? ''),
-          by: String(n?.by ?? ''),
-          at: n?.at ? String(n.at) : '',
-          /* 「社区整理」的小节标题：右侧那条的说明要写成「社区整理「彩蛋与机关」· 某人」，
-             点「修订这条」也要把标题带回编辑器（2026-10-15 补上，以前只显示了字段名） */
-          ...(n?.title ? { title: String(n.title) } : {}),
-          ...(n?.revisedBy ? { revisedBy: String(n.revisedBy) } : {}),
-        })
-      )
-      .filter((n: { text: string }) => n.text);
-    if (docNotes.length) row.notes = docNotes;
-
     const byKey = new Map<string, Record<string, unknown>>();
     /* 说明（神器表那一列）：原稿 relicIntros 打底，社区投稿的 intro 盖上 —— 与生成器的规则一致 */
     const researchIntros = new Map<string, string>();
@@ -182,12 +116,7 @@ export const GET: APIRoute = async () => {
         if (text) researchIntros.set(itemKey(k), text);
       }
     }
-    const communityIntros = new Map<string, string>();
-    for (const r of community?.items ?? []) {
-      const text = String(r?.intro ?? '').trim();
-      if (r?.name && text) communityIntros.set(itemKey(r.name), text);
-    }
-    const introOf = (name: unknown) => communityIntros.get(itemKey(name)) ?? researchIntros.get(itemKey(name)) ?? '';
+    const introOf = (name: unknown) => researchIntros.get(itemKey(name)) ?? '';
 
     for (const r of docRows) {
       const intro = introOf(r.name);

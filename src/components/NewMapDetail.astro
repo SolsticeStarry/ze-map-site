@@ -1,0 +1,345 @@
+---
+import { galleryFor } from '../lib/gallery';
+import VideoEmbed from './VideoEmbed.astro';
+import StageAccordion from './StageAccordion.astro';
+import { getMaps } from '../lib/maps';
+import { docToHtml, textToDoc } from '../../shared/doc-render.mjs';
+import { parseResearchBody } from '../../shared/research-body.mjs';
+import { VIDEO_CATEGORIES, videoKindOf, videoCategoryLabel } from '../../shared/videos.mjs';
+
+interface Props {
+  entry: { id: string; body?: string; data: Record<string, any> };
+}
+
+const { entry } = Astro.props;
+const d = entry.data;
+const shortUrl = (url: string) => String(url).replace(/^https?:\/\/(www\.)?/, '').replace(/\/+$/, '');
+const gallery = galleryFor(entry.id);
+const videos = Array.isArray(d.videoUrls) ? d.videoUrls : [];
+const hero = d.cover ?? gallery[0]?.localSrc ?? gallery[0]?.src ?? null;
+const galleryImages = gallery.filter((image) => (image.localSrc ?? image.src) !== hero);
+const research = parseResearchBody(entry.body);
+const story = research.story;
+const intro = research.intro || research.summary || String(d.research?.summary ?? '').trim();
+const guideSections = research.guides;
+const stageRows = research.stageRows;
+
+const allMaps = await getMaps();
+const related = allMaps.filter((map) => map.id !== entry.id && map.data.tags?.some((tag: string) => (d.tags ?? []).includes(tag))).slice(0, 3);
+const stages = Number(d.stages ?? 0);
+const playerBlocks = Array.isArray(d.playerContent?.blocks) ? d.playerContent.blocks : [];
+const guideCleared = d.playerContent?.guideCleared === true;
+const playerGuideBlocks = playerBlocks.filter((block: any) => block.type === 'guideItem');
+const guideLinks = guideCleared
+  ? []
+  : playerGuideBlocks.length
+    ? playerGuideBlocks.map((block: any, index: number) => ({ id: `guide-${index}`, title: String(block.title ?? '') }))
+    : guideSections.map((section: any, index: number) => ({ id: `guide-${index}`, title: String(section.title ?? '') }));
+const blockOf = (type: string) => playerBlocks.find((block: any) => block.type === type);
+const renderedBlock = (type: string, fallback: string) => {
+  const block = blockOf(type);
+  return block ? docToHtml(block.doc, gallery) : docToHtml(textToDoc(fallback), gallery);
+};
+const playerStages = Array.isArray(d.playerContent?.stageRows) ? d.playerContent.stageRows : null;
+const playerStageDocs = Array.isArray(d.playerContent?.stageDocs) ? d.playerContent.stageDocs : null;
+const displayStageRows = playerStages ?? stageRows;
+/* 关卡内容：新数据是 [关卡, 名称, 自由文本]；旧六列数据在这里合并成一段，避免历史内容丢失 */
+const stageBodyOf = (row: string[]): string => {
+  if (!Array.isArray(row)) return '';
+  if (row.length <= 3) return row[2] ?? '';
+  const labels = ['目标', '关键路线', '神器 / 道具', '团灭点 / 备注'];
+  return row.slice(2).map((value, index) => {
+    const text = String(value ?? '').trim();
+    return text ? `${labels[index] ?? '内容'}：${text}` : '';
+  }).filter(Boolean).join('\n\n');
+};
+const stageEntries = displayStageRows.length > 1
+  ? displayStageRows.slice(1).map((row: string[], index: number) => ({
+      num: row[0] ?? '',
+      name: row[1] ?? '',
+      body: stageBodyOf(row),
+      doc: playerStages && playerStageDocs ? playerStageDocs[index + 1] : null,
+    })).filter((stage) => stage.num || stage.name || stage.body || stage.doc)
+  : [];
+const itemRows = Array.isArray(d.items) ? d.items.filter((item: any) => item.kind !== 'removed') : [];
+const removedItems = Array.isArray(d.items) ? d.items.filter((item: any) => item.kind === 'removed') : [];
+const playerVideos = Array.isArray(d.playerContent?.videos) ? d.playerContent.videos : null;
+const displayVideos = playerVideos ?? videos.map((url: string) => ({ url, kind: videoKindOf(url, d.videoKinds) }));
+const displayVideoGroups = Object.keys(VIDEO_CATEGORIES).map((kind) => ({ label: videoCategoryLabel(kind), items: displayVideos.filter((item: any) => item.kind === kind) })).filter((group) => group.items.length);
+const tocItems: Array<{ id: string; label: string; count?: number; sub?: boolean }> = [];
+if (galleryImages.length > 0) tocItems.push({ id: 'gallery', label: '图片集', count: galleryImages.length });
+tocItems.push({ id: 'story', label: '背景故事' });
+tocItems.push({ id: 'overview', label: '地图概览' });
+if (stageEntries.length > 0) tocItems.push({ id: 'stages', label: '关卡流程', count: stageEntries.length });
+if (itemRows.length > 0) tocItems.push({ id: 'items', label: '神器 / 道具', count: itemRows.length });
+tocItems.push({ id: 'guide', label: '攻略技巧' });
+for (const guide of guideLinks) tocItems.push({ id: guide.id, label: guide.title, sub: true });
+if (displayVideos.length > 0) tocItems.push({ id: 'videos', label: '视频', count: displayVideos.length });
+if (related.length > 0) tocItems.push({ id: 'related', label: '同类地图', count: related.length });
+---
+
+<div class="new-map-detail">
+  <section class="new-title-block">
+    {hero && <div class="new-title-wash" style={`background-image:url('${hero}')`} aria-hidden="true"></div>}
+    <div class="new-container new-title-inner">
+      <div class="new-kicker">MAP DETAIL · 玩家可编辑内容</div>
+      <h1>{d.title}</h1>
+      <p class="new-en">{d.titleEn}</p>
+      <div class="new-badges">
+        <span class="new-badge new-difficulty">{d.difficulty}</span>
+        <span class="new-badge">{d.game}</span>
+        {(d.tags ?? []).slice(0, 8).map((tag: string) => <span class="new-badge">{tag}</span>)}
+      </div>
+      <div class="new-stats">
+        {stages > 0 && <span><b>{stages}</b> 关卡</span>}
+        {d.players && <span><b>{d.players}</b> 人数</span>}
+        {d.duration && <span><b>{d.duration}</b> 时长</span>}
+        {d.entityCount && <span><b>{Number(d.entityCount).toLocaleString('en-US')}</b> 实体</span>}
+      </div>
+    </div>
+  </section>
+
+  <div class="new-container new-layout">
+    <main class="new-main">
+      {hero && <figure class="new-cover"><img src={hero} alt={`${d.title} 封面`} /><figcaption>封面 · 当前资料图</figcaption></figure>}
+
+      {galleryImages.length > 0 && <section class="new-section" id="gallery"><div class="new-section-title"><span>01</span><h2>图片集</h2><small>{galleryImages.length} 张</small></div><div class="new-gallery">{galleryImages.map((image) => <figure><img src={image.localSrc} alt={image.caption || `${d.title} 图片`} /><figcaption>{image.caption}</figcaption></figure>)}</div></section>}
+
+      <section class="new-section" id="story"><div class="new-section-title"><span>02</span><h2>背景故事</h2><small>research / 玩家覆盖</small></div><div class="new-prose" set:html={renderedBlock('story', story || '暂无背景故事。')}></div></section>
+
+      <section class="new-section" id="overview"><div class="new-section-title"><span>03</span><h2>地图概览</h2><small>简介</small></div><div class="new-prose" set:html={renderedBlock('intro', intro || '暂无地图简介。')}></div></section>
+
+      {(stageEntries.length > 0 || research.gameplay || playerBlocks.some((block: any) => block.type === 'gameplay')) && (<section class="new-section" id="stages"><div class="new-section-title"><span>04</span><h2>关卡流程</h2><small>{stageEntries.length ? `${stageEntries.length} 关` : '待补充'}</small></div>{(research.gameplay || playerBlocks.some((block: any) => block.type === 'gameplay')) && <div class="new-prose" set:html={renderedBlock('gameplay', research.gameplay)}></div>}{stageEntries.length ? <StageAccordion>{stageEntries.map((stage) => <details><summary><span class="stage-num">{stage.num}</span><span class="stage-name">{stage.name}</span></summary><div class="stage-body">{stage.doc ? <div class="stage-rich" set:html={docToHtml(stage.doc, gallery)}></div> : <div class="stage-text">{stage.body || '（暂无内容）'}</div>}</div></details>)}</StageAccordion> : <div class="new-empty">暂无关卡流程，去「编辑本页」补充。</div>}</section>)}
+
+      <section class="new-section" id="items"><div class="new-section-title"><span>05</span><h2>神器 / 道具</h2><small>{itemRows.length ? `${itemRows.length} 行` : '结构化字段'}</small></div>{itemRows.length ? (<><div class="new-table-wrap"><table class="new-table"><thead><tr><th>道具</th><th>冷却</th><th>使用次数</th><th>说明</th><th>备注</th></tr></thead><tbody>{itemRows.map((item: any) => <tr><td>{item.name}</td><td>{item.cd > 0 ? `${item.cd} 秒` : '—'}</td><td>{item.uses > 0 ? `${item.uses} 次` : '不限'}</td><td>{item.intro || '待补充'}</td><td>{item.note}</td></tr>)}</tbody></table></div>{removedItems.length > 0 && <p class="new-item-note">社区反馈本图没有 {removedItems.length} 件道具。</p>}</>) : <div class="new-empty">暂无神器表数据。</div>}</section>
+
+      <section class="new-section" id="guide"><div class="new-section-title"><span>06</span><h2>攻略技巧</h2><a href={`/edit/${entry.id}/`}>编辑本页</a></div>{guideCleared ? <div class="new-empty">暂无攻略内容。</div> : playerBlocks.some((block: any) => block.type === 'guideItem') ? playerBlocks.filter((block: any) => block.type === 'guideItem').map((block: any, index: number) => <div class="new-prose"><h3 id={`guide-${index}`}>{block.title}</h3><div set:html={docToHtml(block.doc, gallery)}></div></div>) : guideSections.length ? guideSections.map((section, index) => <div class="new-prose"><h3 id={`guide-${index}`}>{section.title}</h3><div set:html={docToHtml(textToDoc(section.text), gallery)}></div></div>) : <div class="new-empty">暂无攻略内容。</div>}</section>
+
+      {displayVideoGroups.length > 0 && <section class="new-section" id="videos"><div class="new-section-title"><span>07</span><h2>视频</h2><small>{displayVideos.length} 个</small></div>{displayVideoGroups.map((group) => <div class="new-video-group"><h3>{group.label}</h3><div class="new-videos">{group.items.slice(0, 6).map((item: any) => <VideoEmbed url={item.url} />)}</div></div>)}</section>}
+      {related.length > 0 && <section class="new-section" id="related"><div class="new-section-title"><span>08</span><h2>同类地图</h2><small>按共同标签</small></div><div class="new-related">{related.map((map) => <a href={`/maps/${map.id}/`}><strong>{map.data.title}</strong><span>{map.data.difficulty}</span></a>)}</div></section>}
+    </main>
+
+    <aside class="new-sidebar">
+      <nav class="new-card new-toc" data-new-toc aria-label="本页目录">
+        <button class="new-toc-title" type="button" id="new-toc-toggle" aria-expanded="true" aria-controls="new-toc-list">
+          <span class="new-toc-label">本页目录</span>
+          <span class="new-toc-count">{tocItems.length}</span>
+          <span class="new-toc-toggle-text">收起</span>
+          <span class="new-toc-caret" aria-hidden="true">▾</span>
+        </button>
+        <ol id="new-toc-list">
+          {tocItems.map((item) => (
+            <li class={item.sub ? 'is-sub' : undefined}>
+              <a href={`#${item.id}`} target="_self">
+                <span>{item.label}</span>
+                {item.count ? <b>{item.count}</b> : null}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+      
+
+      <section class="new-card new-side-edit">
+        <h3>补充 / 编辑</h3>
+        <p class="new-side-hint">发现错漏，或知道更多资料？单项编辑不用登录；整页编辑需要登录，审核通过后上线。</p>
+        <a class="new-side-btn" href={`/submit/edit/?map=${entry.id}`}>单项编辑（无需登录）</a>
+        <a class="new-side-btn" href={`/edit/${entry.id}/`}>整页编辑（需登录）</a>
+      </section>
+
+      {d.entitySlug && (
+        <a class="new-side-entity" href={`/preview/?map=${d.entitySlug}`} target="_blank" rel="noopener">
+          <strong>🧊 实体预览</strong>
+          <span>3D / 平面查看传送门、机关、危险区与关卡分层。</span>
+          <em>打开实体预览 ↗</em>
+        </a>
+      )}
+
+      <section class="new-card">
+        <h3>基本信息</h3>
+        <dl>
+          <dt>英文名</dt><dd>{d.titleEn}</dd>
+          {d.author ? <><dt>作者</dt><dd>{d.author}</dd></> : d.uploader ? <><dt>工坊上传者</dt><dd>{d.uploader}</dd></> : null}
+          {d.version && <><dt>版本</dt><dd>{d.version}</dd></>}
+          <dt>游戏</dt><dd>{d.game}</dd>
+          <dt>难度</dt><dd>{d.difficulty}<small class="new-side-src">{d.playerContent?.difficulty ? '玩家修订' : '源于 FYS'}</small></dd>
+          {d.players && <><dt>人数</dt><dd>{d.players}</dd></>}
+          {d.duration && <><dt>时长</dt><dd>{d.duration}</dd></>}
+          {Number(d.stages) > 0 && <><dt>关卡</dt><dd>{d.stages}</dd></>}
+          {d.size ? <><dt>体积</dt><dd>~{d.size} MB</dd></> : null}
+          {d.entityCount ? <><dt>实体数</dt><dd>{Number(d.entityCount).toLocaleString('en-US')}</dd></> : null}
+          {d.workshopSubs ? <><dt>工坊订阅</dt><dd>{Number(d.workshopSubs).toLocaleString('en-US')}</dd></> : null}
+          {d.workshopViews ? <><dt>工坊浏览</dt><dd>{Number(d.workshopViews).toLocaleString('en-US')}</dd></> : null}
+          {d.releaseDate && <><dt>发布日期</dt><dd>{d.releaseDate}</dd></>}
+          {d.lastUpdated && <><dt>最近更新</dt><dd>{d.lastUpdated}</dd></>}
+        </dl>
+        {Array.isArray(d.aliases) && d.aliases.length > 0 && <p class="new-side-hint">其他叫法：{d.aliases.join('、')}</p>}
+        {d.authorNote && <p class="new-side-hint">署名详情：{d.authorNote}</p>}
+        {d.workshopMissing && <p class="new-side-warn">该工坊条目在 Steam 上已下架或不可见。</p>}
+      </section>
+
+      {(d.workshopUrl || d.downloadUrl) && (
+        <section class="new-card">
+          <h3>下载 / 入口</h3>
+          <div class="new-side-links">
+            {d.workshopUrl && <a class="new-side-btn is-primary" href={d.workshopUrl} target="_blank" rel="noopener">Steam 创意工坊</a>}
+            {d.downloadUrl && <a class="new-side-btn" href={d.downloadUrl} target="_blank" rel="noopener">GameBanana</a>}
+          </div>
+        </section>
+      )}
+
+      {Array.isArray(d.tags) && d.tags.length > 0 && (
+        <section class="new-card">
+          <h3>标签</h3>
+          <div class="new-side-tags">{d.tags.map((tag: string) => <a href={`/tags/${tag}/`}>{tag}</a>)}</div>
+        </section>
+      )}
+
+      {Array.isArray(d.sources) && d.sources.length > 0 && (
+        <section class="new-card">
+          <h3>资料来源</h3>
+          <div class="new-side-sources">{d.sources.map((url: string) => <a href={url} target="_blank" rel="noopener">{shortUrl(url)}</a>)}</div>
+        </section>
+      )}
+
+      {d.entitySlug && (
+        <section class="new-card">
+          <h3>数据来源</h3>
+          <p class="new-side-hint">实体数据从 Steam 创意工坊地图包解析，模型碰撞壳用于还原部分实体范围。</p>
+        </section>
+      )}
+    </aside>
+
+
+  </div>
+</div>
+
+<style>
+  /* 贴近源站：黑底 + 红色主 accent + 青色链接 + 固定网格 / 光晕 */
+  .new-map-detail { --new-bg:transparent; --new-panel:var(--panel); --new-panel-2:var(--panel-2); --new-text:var(--text); --new-muted:var(--muted); --new-border:var(--border); --new-border-2:var(--border-2); --new-accent:var(--accent); --new-link:var(--accent-2); --doc-red:#ff7b72; --doc-orange:#ffa657; --doc-amber:#e3b341; --doc-green:#7ee787; --doc-teal:#56d4b5; --doc-cyan:#76e3ea; --doc-blue:#79c0ff; --doc-indigo:#a5b4fc; --doc-purple:#d2a8ff; --doc-pink:#ff9bce; --doc-gray:#b1bac4; --doc-brown:#d4a373; background:transparent; color:var(--new-text); position:relative; z-index:1; }
+  [data-theme="light"] .new-map-detail { --doc-red:#b42318; --doc-orange:#b54708; --doc-amber:#8a6100; --doc-green:#1a7f37; --doc-teal:#0f766e; --doc-cyan:#0e7490; --doc-blue:#1d4ed8; --doc-indigo:#4338ca; --doc-purple:#6b21a8; --doc-pink:#9d174d; --doc-gray:#4b5563; --doc-brown:#7c4a1e; }
+  .new-container { max-width:1240px; margin:0 auto; padding-left:24px; padding-right:24px; }
+  .new-title-block { position:relative; overflow:hidden; border-bottom:1px solid var(--new-border); }.new-title-block::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 30% 50%, rgba(255,77,77,.18), transparent 60%); pointer-events:none; }
+  .new-title-wash { position:absolute; inset:0; background-position:center 35%; background-size:cover; opacity:.22; filter:saturate(.8); mask-image:linear-gradient(#000,transparent); }
+  .new-title-inner { position:relative; padding-top:46px; padding-bottom:38px; }
+  .new-kicker { color:var(--new-muted); font-size:11px; font-weight:700; letter-spacing:.16em; }
+  .new-title-inner h1 { margin:8px 0 3px; font-size:clamp(32px,5vw,58px); line-height:1.15; font-weight:900; letter-spacing:-.02em; }
+  .new-en { margin:0 0 16px; color:var(--new-link); font:14px ui-monospace,monospace; }
+  .new-badges,.new-stats { display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
+  .new-badge { padding:3px 9px; border:1px solid var(--new-border-2); border-radius:999px; color:var(--new-muted); font-size:12px; background:color-mix(in srgb,var(--new-panel) 80%,transparent); }
+  .new-difficulty { border-color:var(--new-accent); color:var(--new-text); }
+  .new-stats { margin-top:18px; gap:18px; color:var(--new-muted); font-size:13px; }
+  .new-stats b { color:var(--new-text); margin-right:3px; }
+  .new-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:40px; padding-top:30px; padding-bottom:80px; }
+  .new-main { min-width:0; }
+  .new-cover { margin:0 0 32px; }
+  .new-cover img { width:100%; aspect-ratio:5/2; object-fit:cover; border:1px solid var(--new-border); border-radius:14px; box-shadow:0 16px 40px #0004; }
+  .new-cover figcaption { margin-top:7px; color:var(--new-muted); font-size:12px; }
+  .new-section { margin-top:34px; }
+  .new-section-title { display:flex; align-items:center; gap:10px; margin-bottom:15px; padding-bottom:9px; border-bottom:1px solid var(--new-border); }
+  .new-section-title > span { color:var(--new-accent); font:12px ui-monospace,monospace; }
+  .new-section-title h2 { position:relative; margin:0; padding-left:12px; font-size:23px; font-weight:800; }.new-section-title h2::before { content:''; position:absolute; left:0; top:4px; bottom:4px; width:4px; border-radius:4px; background:linear-gradient(180deg,var(--accent),var(--accent-3)); box-shadow:0 0 14px rgba(255,77,77,.5); }
+  .new-section-title small,.new-section-title a { margin-left:auto; color:var(--new-muted); font-size:12px; }
+  .new-section-title a { color:var(--new-link); }
+  .new-prose { max-width:78ch; white-space:pre-wrap; line-height:1.9; color:var(--new-text); }
+  .new-stage-placeholder,.new-empty { margin-top:16px; padding:16px; border:1px dashed var(--new-border-2); border-radius:9px; color:var(--new-muted); background:var(--new-panel-2); }
+  #stages { --panel: var(--new-panel-2); --border: var(--new-border); --accent: var(--new-accent); --accent-2: var(--new-link); }
+  .stage-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .stage-rich p { margin: 0 0 10px; line-height: 1.8; }
+  .stage-rich h3 { margin: 14px 0 8px; font-size: 16px; }
+  .stage-rich ul, .stage-rich ol { margin: 0 0 10px; padding-left: 24px; }
+  .stage-rich blockquote { margin: 0 0 10px; padding-left: 12px; border-left: 3px solid var(--new-accent); color: var(--new-muted); }
+  #stages .stage-body > p, #stages .stage-body > div { margin: 0 0 12px; line-height: 1.8; }
+  #stages .stage-body strong { color: var(--new-text); }
+  .new-gallery { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  .new-gallery figure { margin:0; overflow:hidden; border:1px solid var(--new-border); border-radius:9px; background:var(--new-panel); }
+  .new-gallery img { width:100%; aspect-ratio:16/10; object-fit:cover; }
+  .new-gallery figcaption { padding:6px 8px; color:var(--new-muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .new-videos { display:grid; gap:12px; }.new-video-group { margin:18px 0; }.new-video-group h3 { margin:0 0 8px; font-size:15px; color:var(--new-muted); }.new-related { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }.new-related a { padding:14px; border:1px solid var(--new-border); border-radius:8px; background:var(--new-panel); color:var(--new-text); }.new-related strong,.new-related span { display:block; }.new-related span { margin-top:5px; color:var(--new-muted); font-size:12px; }
+  .new-table-wrap { overflow:auto; border:1px solid var(--new-border); border-radius:8px; }.new-table { width:100%; table-layout:auto; border-collapse:collapse; background:var(--new-panel); font-size:13px; }.new-table th { padding:9px 10px; background:var(--new-panel-2); border-bottom:1px solid var(--new-border-2); text-align:left; white-space:nowrap; }.new-table td { padding:8px 10px; border-bottom:1px solid var(--new-border); vertical-align:top; white-space:normal; overflow-wrap:anywhere; }.new-table tr:last-child td { border-bottom:0; }.new-table tbody tr:nth-child(even) { background:color-mix(in srgb,var(--new-panel-2) 55%,transparent); }
+  .new-sidebar { position:static; align-self:start; display:grid; gap:14px; }
+  .new-card { padding:16px; border:1px solid var(--new-border); border-radius:10px; background:var(--new-panel); }
+  .new-card h3 { margin:0 0 11px; font-size:14px; }
+  .new-toc { max-height:560px; overflow-y:auto; display:block; }
+  .new-toc-title { display:flex; align-items:center; gap:8px; width:100%; padding:0; border:0; background:transparent; color:var(--new-text); cursor:pointer; text-align:left; font:inherit; }
+  .new-toc-label { font-size:14px; font-weight:700; }
+  .new-toc-count { padding:1px 7px; border-radius:999px; background:rgba(255,255,255,.07); color:var(--new-muted); font-size:11px; font-variant-numeric:tabular-nums; }
+  .new-toc-toggle-text { margin-left:auto; color:var(--new-muted); font-size:11.5px; }
+  .new-toc-caret { color:var(--new-muted); transition:transform .2s; }
+  .new-toc[data-collapsed="true"] .new-toc-caret { transform:rotate(-90deg); }
+  .new-toc[data-collapsed="true"] ol { display:none; }
+  .new-toc ol { display:grid; gap:3px; margin:10px 0 0; padding:0; list-style:none; }
+  .new-toc a { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px; color:var(--new-muted); font-size:13px; text-decoration:none; }
+  .new-toc a:hover { color:var(--new-link); background:rgba(255,255,255,.03); }
+  .new-toc a b { margin-left:auto; color:var(--new-muted); font-size:11px; font-weight:500; font-variant-numeric:tabular-nums; }
+  .new-toc li.is-sub a { padding-left:18px; font-size:12px; opacity:.85; }
+  .new-card dl { display:grid; grid-template-columns:auto 1fr; gap:5px 12px; margin:0 0 15px; font-size:12px; }
+  .new-card dt { color:var(--new-muted); }.new-card dd { margin:0; text-align:right; }
+  .new-side-hint { margin:8px 0 0; color:var(--new-muted); font-size:12px; line-height:1.7; }
+  .new-side-warn { margin:8px 0 0; color:#fca5a5; font-size:12px; line-height:1.7; }
+  .new-side-src { margin-left:6px; color:var(--new-muted); font-size:10.5px; }
+  .new-side-badge { margin-left:8px; padding:1px 7px; border:1px solid var(--new-border-2); border-radius:999px; color:var(--new-muted); font-size:10.5px; font-weight:500; }
+  .new-side-btn { display:inline-flex; justify-content:center; padding:9px 12px; border:1px solid var(--new-border-2); border-radius:8px; background:var(--new-panel-2); color:var(--new-text); font-size:12.5px; font-weight:600; text-decoration:none; }
+  .new-side-btn:hover { border-color:var(--new-link); color:var(--new-link); }
+  .new-side-btn.is-primary { border-color:var(--new-accent); background:var(--new-accent); color:#fff; }
+  .new-side-btn.is-primary:hover { color:#fff; filter:brightness(1.08); }
+  .new-side-edit .new-side-btn { width:100%; box-sizing:border-box; margin-top:10px; }
+  .new-side-entity { display:grid; gap:6px; padding:14px 16px; border:1px solid var(--new-border); border-radius:10px; background:var(--new-panel); color:var(--new-text); text-decoration:none; }
+  .new-side-entity:hover { border-color:var(--new-link); }
+  .new-side-entity strong { font-size:14px; }
+  .new-side-entity span { color:var(--new-muted); font-size:12px; line-height:1.7; }
+  .new-side-entity em { color:var(--new-link); font-size:12px; font-style:normal; }
+  .new-side-links { display:grid; gap:8px; }
+  .new-side-tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .new-side-tags a { padding:2px 8px; border:1px solid var(--new-border-2); border-radius:999px; color:var(--new-muted); font-size:11.5px; text-decoration:none; }
+  .new-side-tags a:hover { border-color:var(--new-link); color:var(--new-link); }
+  .new-side-sources { display:grid; gap:5px; }
+  .new-side-sources a { color:var(--new-link); font-size:12px; overflow-wrap:anywhere; }
+  @media (min-width:1600px) { .new-sidebar .new-toc { position:fixed; top:96px; right:12px; width:min(280px, calc((100vw - 1240px) / 2 - 24px)); max-height:calc(100vh - 120px); overflow-y:auto; z-index:60; } }
+  @media (max-width:850px) { .new-layout { grid-template-columns:1fr; }.new-sidebar { position:static; order:0; }.new-toc { max-height:none; overflow:visible; }.new-gallery,.new-related { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:520px) { .new-container { padding-left:16px; padding-right:16px; }.new-title-inner { padding-top:30px; }.new-gallery { grid-template-columns:1fr; }.new-cover img { aspect-ratio:2/1; } }
+</style>
+
+{/* set:html 生成的节点没有 Astro 作用域属性，正文样式必须全局写，否则颜色 / 字号 / 对齐全部失效。 */}
+<style is:global>
+  .new-map-detail .new-prose p { margin:0 0 14px; }
+  .new-map-detail .new-prose h3 { margin:0 0 10px; font-size:17px; }
+  .new-map-detail .new-prose ul,.new-map-detail .new-prose ol { margin:0 0 14px; padding-left:24px; }
+  .new-map-detail .new-prose blockquote { margin:0 0 14px; padding-left:14px; border-left:3px solid var(--new-accent); color:var(--new-muted); }
+  .new-map-detail .doc-color-red{color:var(--doc-red)}.new-map-detail .doc-color-orange{color:var(--doc-orange)}.new-map-detail .doc-color-amber{color:var(--doc-amber)}.new-map-detail .doc-color-green{color:var(--doc-green)}.new-map-detail .doc-color-teal{color:var(--doc-teal)}.new-map-detail .doc-color-cyan{color:var(--doc-cyan)}.new-map-detail .doc-color-blue{color:var(--doc-blue)}.new-map-detail .doc-color-indigo{color:var(--doc-indigo)}.new-map-detail .doc-color-purple{color:var(--doc-purple)}.new-map-detail .doc-color-pink{color:var(--doc-pink)}.new-map-detail .doc-color-gray{color:var(--doc-gray)}.new-map-detail .doc-color-brown{color:var(--doc-brown)}
+  .new-map-detail .doc-size-12{font-size:12px}.new-map-detail .doc-size-13{font-size:13px}.new-map-detail .doc-size-14{font-size:14px}.new-map-detail .doc-size-15{font-size:15px}.new-map-detail .doc-size-16{font-size:16px}.new-map-detail .doc-size-17{font-size:17px}.new-map-detail .doc-size-18{font-size:18px}.new-map-detail .doc-size-19{font-size:19px}.new-map-detail .doc-size-20{font-size:20px}.new-map-detail .doc-size-21{font-size:21px}.new-map-detail .doc-size-22{font-size:22px}.new-map-detail .doc-size-23{font-size:23px}.new-map-detail .doc-size-24{font-size:24px}.new-map-detail .doc-size-25{font-size:25px}.new-map-detail .doc-size-26{font-size:26px}.new-map-detail .doc-size-27{font-size:27px}.new-map-detail .doc-size-28{font-size:28px}.new-map-detail .doc-size-29{font-size:29px}.new-map-detail .doc-size-30{font-size:30px}.new-map-detail .doc-size-31{font-size:31px}.new-map-detail .doc-size-32{font-size:32px}
+  .new-map-detail .doc-align-left{text-align:left}.new-map-detail .doc-align-center{text-align:center}.new-map-detail .doc-align-right{text-align:right}
+  .new-map-detail .doc-figure { margin:14px 0; }.new-map-detail .doc-figure img { max-width:100%; border-radius:10px; }.new-map-detail .doc-figure-left { float:left; margin-right:16px; max-width:46%; }.new-map-detail .doc-figure-right { float:right; margin-left:16px; max-width:46%; }
+</style>
+
+<script>
+  function initNewToc() {
+    const toc = document.querySelector('[data-new-toc]');
+    const toggle = document.getElementById('new-toc-toggle');
+    if (!toc || !toggle) return;
+    const label = toggle.querySelector('.new-toc-toggle-text');
+    const apply = (collapsed) => {
+      toc.dataset.collapsed = collapsed ? 'true' : 'false';
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+      if (label) label.textContent = collapsed ? '展开' : '收起';
+    };
+    let collapsed = false;
+    try {
+      collapsed = localStorage.getItem('ze-new-toc-collapsed') === '1';
+    } catch {
+      /* 隐私模式 / 禁用 localStorage：默认展开即可 */
+    }
+    apply(collapsed);
+    toggle.addEventListener('click', () => {
+      collapsed = !collapsed;
+      apply(collapsed);
+      try {
+        localStorage.setItem('ze-new-toc-collapsed', collapsed ? '1' : '0');
+      } catch {
+        /* 存不了就只在本次页面生效 */
+      }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initNewToc);
+  else initNewToc();
+</script>

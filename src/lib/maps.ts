@@ -1,158 +1,96 @@
 /**
- * 地图数据的**统一读取入口**。
- *
- * ⚠️ 页面里请一律用 getMaps()，不要直接 getCollection('maps')。
- *
- * 为什么需要这一层：
- * 站点有近十处读地图数据（地图库卡片、首页、标签索引、标签详情、同类推荐、
- * 投稿表单索引、404、关于页、搜索页）。社区投稿可以覆盖难度/标签/作者等字段
- * （data/community/<slug>.json），如果只在详情页合并，就会出现
- * 「详情页显示困难、地图库里还是中等」这种自相矛盾。合并放在这里一次，
- * 所有调用方自动一致。
- *
- * 曾经试过的方案（记录一下，别再走一遍）：
- * 包一层 content loader、在 load() 里 context.store.set() 回写合并结果 ——
- * **不行**。实测：glob 命中、store 能读能写、预演也显示「会合并 1 条」，
- * 但合并后回读仍是原值，渲染出来的页面也没变。Astro 的 content store
- * 不认这种「包一层再回写」的用法，所以改成在读取层合并。
+ * 地图数据的统一读取入口：research（基线）+ data/content（玩家覆盖）+ 自动生成。
+ * 页面、列表、搜索、标签、推荐、编辑页全部走这里。
  */
 import { getCollection } from 'astro:content';
-import { contributors, fieldValue, hasContent, isNoteField, normalizeDoc } from '../../shared/community-doc.mjs';
-import { FIELD_RULES } from '../../shared/submission-fields.mjs';
+import { normalizePageContent, contentRevision, researchRevision } from '../../shared/page-schema.mjs';
+import { mergeItems, docItemDetails } from '../../shared/items.mjs';
 
-/*
- * 社区文件由打包器解析路径 —— 绝不要改成 fs.readFile + 相对路径，
- * 那正是 2026-09-23「/bundle」构建失败的根因（构建期 cwd 会变）。
- */
-const communityModules = import.meta.glob('../../data/community/*.json', { eager: true });
+const contentModules = import.meta.glob('../../data/content/*.json', { eager: true });
+const researchModules = import.meta.glob('../../data/research/*.json', { eager: true });
+const gflModules = import.meta.glob('../../data/gfl-parsed/*.json', { eager: true });
 
-/**
- * 社区可以覆盖的字段 —— **直接从投稿表单的字段规则派生**。
- *
- * 以前这里是手写一份列表，两边一旦不同步就会出现「表单能投、但页面不渲染」
- * 这种静默失效 —— `videoUrls`（页面压根没渲染）和 `sources`（烤进正文里、
- * 覆盖了也不显示）都栽在这上面。派生出来就不会再漂移：
- * 在 shared/submission-fields.mjs 加一个字段，它自动成为可覆盖字段。
- *
- * 正文类字段（kind=longtext：body、story…）排除在外：它们进的是 communityNotes
- * （地图页按字段分块显示：story → 「背景故事（社区投稿）」，body → 「社区补充」），
- * 不是条目字段。判断走 community-doc.mjs 的 isNoteField()，
- * 别再写死 "body" —— 否则以后再加一个长文本字段就会踩同一个坑。
- */
-const OVERRIDABLE: string[] = Object.keys(FIELD_RULES).filter((k) => !isNoteField(k));
+const contentCache = new Map<string, ReturnType<typeof normalizePageContent> | null>();
+const researchCache = new Map<string, Record<string, any> | null>();
+const itemCache = new Map<string, any[]>();
+const researchRevCache = new Map<string, string>();
+const contentRevCache = new Map<string, string | null>();
 
-/** 按「追加 + 去重」而不是替换合并的字段 —— 标记在字段规则的 `append` 上 */
-const APPEND_FIELDS = new Set(
-  Object.entries(FIELD_RULES)
-    .filter(([, rule]) => (rule as { append?: boolean }).append)
-    .map(([k]) => k)
-);
-
-const docCache = new Map<string, ReturnType<typeof normalizeDoc> | null>();
-function communityFor(slug: string) {
-  if (docCache.has(slug)) return docCache.get(slug) ?? null;
-  const raw = communityModules[`../../data/community/${slug}.json`] as
-    | { default?: unknown }
-    | undefined;
-  const doc = raw ? normalizeDoc(slug, raw.default ?? raw) : null;
-  docCache.set(slug, doc);
-  return doc;
+function contentFor(slug: string) {
+  if (contentCache.has(slug)) return contentCache.get(slug) ?? null;
+  const raw = contentModules[`../../data/content/${slug}.json`] as { default?: unknown } | undefined;
+  const content = raw ? normalizePageContent(slug, raw.default ?? raw) : null;
+  contentCache.set(slug, content);
+  return content;
 }
 
-/** 把社区覆盖合并进一个条目（返回新对象，不改原条目） */
-export function mergeEntry<T extends { id: string; data: Record<string, any> }>(entry: T): T {
-  const doc = communityFor(entry.id);
+function researchFor(slug: string) {
+  if (researchCache.has(slug)) return researchCache.get(slug) ?? null;
+  const raw = researchModules[`../../data/research/${slug}.json`] as { default?: Record<string, any> } | undefined;
+  const value = raw?.default ?? raw ?? null;
+  researchCache.set(slug, value);
+  return value;
+}
+
+function gflFor(slug: string) {
+  const exact = gflModules[`../../data/gfl-parsed/${slug}.json`] as { default?: Record<string, any> } | undefined;
+  if (exact) return exact.default ?? exact;
+  const key = Object.keys(gflModules).find((path) => path.toLowerCase().endsWith(`/${slug.toLowerCase()}.json`));
+  const raw = key ? (gflModules[key] as { default?: Record<string, any> }) : undefined;
+  return raw?.default ?? raw ?? null;
+}
+
+function itemsFor(slug: string, body: string) {
+  if (itemCache.has(slug)) return itemCache.get(slug)!;
+  const base = gflFor(slug)?.items ?? [];
+  const rows = mergeItems(base, docItemDetails(body)).rows;
+  itemCache.set(slug, rows);
+  return rows;
+}
+
+/** 合并 research 与 content；content 是覆盖层，缺省字段继续读 research。 */
+export function mergeEntry<T extends { id: string; data: Record<string, any> }>(entry: T, options: { items?: boolean } = {}): T {
+  const withItems = options.items !== false;
   const data: Record<string, any> = { ...entry.data };
+  const player = contentFor(entry.id);
+  const research = researchFor(entry.id);
+  data.playerContent = player;
+  data.research = research;
+  if (!researchRevCache.has(entry.id)) researchRevCache.set(entry.id, researchRevision(research));
+  if (!contentRevCache.has(entry.id)) contentRevCache.set(entry.id, player ? contentRevision(player) : null);
+  data.researchRev = researchRevCache.get(entry.id) ?? null;
+  data.contentRev = contentRevCache.get(entry.id) ?? null;
 
-  if (!doc || !hasContent(doc)) {
-    data.communityFields = [];
-    data.communityNotes = [];
-    data.communityPeople = [];
-    data.communitySources = [];
-    return { ...entry, data } as T;
-  }
-
-  const applied: string[] = [];
-  for (const field of OVERRIDABLE) {
-    const v = fieldValue(doc, field);
-    if (v === undefined || v === null) continue;
-
-    /*
-     * sources / videoUrls 的语义是**追加**，不是替换。
-     *
-     * 投稿人是在补充清单（「我找到一个视频」），不是在重写整份。用替换会静默
-     * 丢掉原有条目 —— 例如研究里已经整理好 3 个视频，社区补第 4 个时把前 3 个顶掉，
-     * 页面上只剩 1 个，而且没有任何提示。去重后合并才符合意图。
-     * 想删条目仍然可以改 data/research/ 下的原稿，走的不是这条路径。
-     */
-    if (APPEND_FIELDS.has(field) && Array.isArray(v)) {
-      const base: unknown[] = Array.isArray(data[field]) ? data[field] : [];
-      data[field] = [...base, ...v.filter((x: unknown) => !base.includes(x))];
-    } else {
-      data[field] = v;
-    }
-    applied.push(field);
-  }
-
-  /* 有社区补充正文就不再算「资料待补充」 */
-  if (doc.notes.length > 0) data.stub = false;
-
-  /*
-   * 视频按分栏投稿（2026-10-19）：表单上是「通关视频 / 老司机经验 / 触发攻略 /
-   * 彩蛋触发 / 音乐 / 相关视频」六个词条，写回后落在社区文件的 fields.videoXxx。
-   * 这里把它们并进统一的 videoUrls，并把类别写进 videoKinds —— 地图页的分栏
-   * （src/pages/maps/[...slug].astro）只认 videoKinds，这样新投的视频直接进对应分栏，
-   * 不会再因为「没有类别」被兜底到「相关视频」。
-   */
-  const VIDEO_KIND_FIELDS: Record<string, string> = {
-    videoRun: '通关视频',
-    videoVeteran: '老司机经验',
-    videoTrigger: '触发攻略',
-    videoEaster: '彩蛋触发',
-    videoMusic: '音乐',
-    videoOther: '相关视频',
-  };
-  const allVideoUrls: string[] = Array.isArray(data.videoUrls) ? [...(data.videoUrls as string[])] : [];
-  const allVideoKinds: Record<string, string> = {
-    ...((data.videoKinds as Record<string, string> | undefined) ?? {}),
-  };
-  for (const [field, kind] of Object.entries(VIDEO_KIND_FIELDS)) {
-    const v = fieldValue(doc, field);
-    if (!Array.isArray(v)) continue;
-    for (const url of v) {
-      if (typeof url !== 'string' || !url) continue;
-      if (!allVideoUrls.includes(url)) allVideoUrls.push(url);
-      const bv = /BV[0-9A-Za-z]{10}/.exec(url)?.[0];
-      if (bv) allVideoKinds[bv] = kind;
+  if (withItems) {
+    data.items = itemsFor(entry.id, String(entry.body ?? ''));
+    const edits = Array.isArray(player?.itemEdits) ? player.itemEdits : [];
+    if (edits.length) data.items = mergeItems(data.items, edits).rows;
+    const order = Array.isArray(player?.itemOrder) ? player.itemOrder : [];
+    if (order.length) {
+      const index = new Map(order.map((name: string, position: number) => [String(name).toLowerCase(), position]));
+      data.items = [...data.items].sort((left: any, right: any) =>
+        (index.get(String(left.name).toLowerCase()) ?? Number.MAX_SAFE_INTEGER) -
+        (index.get(String(right.name).toLowerCase()) ?? Number.MAX_SAFE_INTEGER));
     }
   }
-  if (allVideoUrls.length) data.videoUrls = allVideoUrls;
-  if (Object.keys(allVideoKinds).length) data.videoKinds = allVideoKinds;
 
-  data.communityFields = applied;
-  data.communityNotes = doc.notes;
-  data.communityPeople = contributors(doc);
-  /*
-   * 整篇草稿（2026-10-13 加）：页面据此渲染「社区整理版（未采纳）」那一块。
-   * 它不是覆盖字段 —— 草稿只作展示，**要站长在审核台点「采纳为原稿」**才会真正改进条目正文
-   * （见 worker/submissions.ts 的采纳分支与 docs/admin-guide.md）。
-   */
-  data.communityDraft = doc.draft ?? null;
-  /* 社区那一份来源单独留一份：侧栏要标注「社区补充」，不能和研究来源混在一起显示 */
-  const onlySources = fieldValue(doc, 'sources');
-  data.communitySources = Array.isArray(onlySources) ? onlySources : [];
+  if (typeof player?.title === 'string' && player.title.trim()) data.title = player.title;
+  if (player?.heroImage) data.cover = player.heroImage;
+  if (player?.infobox && typeof player.infobox === 'object') Object.assign(data, player.infobox);
+  if (Array.isArray(player?.tags)) data.tags = [...player.tags];
+  if (typeof player?.difficulty === 'string' && player.difficulty) data.difficulty = player.difficulty;
+  if (typeof data.aliases === 'string') data.aliases = data.aliases.split(/\n+/).map((item) => item.trim()).filter(Boolean);
+  if (data.stages !== undefined && data.stages !== null && String(data.stages).trim() && !Number.isNaN(Number(data.stages))) data.stages = Number(data.stages);
+  if (player?.blocks?.length || player?.itemEdits?.length || player?.tags?.length || player?.difficulty) data.stub = false;
 
   return { ...entry, data } as T;
 }
 
-/** 所有地图（已合并社区覆盖） */
-export async function getMaps() {
-  const maps = await getCollection('maps');
-  // 生成条目已统一标签写法；社区追加的标签也要归到同一个大小写，
-  // 否则 Windows 构建时 /tags/BOSS战 与 /tags/boss战 会互相覆盖。
+/** 同一标签的大小写变体归到出现最多的写法；Windows 下大小写不敏感，不归并会导致标签页互相覆盖。 */
+function canonicalTagMap(entries: Array<{ data: Record<string, any> }>) {
   const variants = new Map<string, Map<string, number>>();
-  for (const m of maps) for (const tag of m.data.tags) {
-    const key = tag.toLowerCase();
+  for (const entry of entries) for (const tag of entry.data.tags ?? []) {
+    const key = String(tag).toLowerCase();
     if (!variants.has(key)) variants.set(key, new Map());
     const counts = variants.get(key)!;
     counts.set(tag, (counts.get(tag) || 0) + 1);
@@ -161,8 +99,30 @@ export async function getMaps() {
   for (const [key, counts] of variants) {
     canonical.set(key, [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hans-CN'))[0][0]);
   }
-  return maps.map((m) => {
-    const entry = mergeEntry(m as any);
-    return { ...entry, data: { ...entry.data, tags: [...new Set(entry.data.tags.map((tag: string) => canonical.get(tag.toLowerCase()) || tag))] } };
-  });
+  return canonical;
+}
+
+function withCanonicalTags<T extends { data: Record<string, any> }>(entry: T, canonical: Map<string, string>): T {
+  return {
+    ...entry,
+    data: {
+      ...entry.data,
+      tags: [...new Set((entry.data.tags ?? []).map((tag: string) => canonical.get(String(tag).toLowerCase()) || tag))],
+    },
+  };
+}
+
+/** 所有地图（已合并 content 覆盖） */
+export async function getMaps() {
+  const merged = (await getCollection('maps')).map((m) => mergeEntry(m as any, { items: false }));
+  const canonical = canonicalTagMap(merged);
+  return merged.map((entry) => withCanonicalTags(entry, canonical));
+}
+
+/** 单张地图：详情页与编辑页需要神器表时用这个。 */
+export async function getMap(slug: string) {
+  const maps = await getCollection('maps');
+  const canonical = canonicalTagMap(maps.map((m) => mergeEntry(m as any, { items: false })));
+  const entry = maps.find((item) => item.id === slug);
+  return entry ? withCanonicalTags(mergeEntry(entry as any, { items: true }), canonical) : null;
 }

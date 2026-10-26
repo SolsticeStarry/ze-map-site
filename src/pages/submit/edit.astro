@@ -5,18 +5,19 @@
  * 按 SolsticeStarry 的投稿页思路重做：先看现状，再改；只提交改动过的项。
  *   单项补充：不需要登录，改一项交一项（含封面 / 图片集上传）；
  *   整页编辑：需要登录，所有字段按现状预填，只把改动项按 items[] 一次提交。
- * 数据和线上同一套：/submit/maps.json（现状）、/api/submit（批量）、
- * /api/submit-cover、/api/submit-gallery。
+ * 数据和线上同一套：/submit/maps.json（现状）、/api/page-revision（单项）、
+ * /api/content-cover、/api/content-gallery。
  *
- * ⚠️ 目前只在本机验证，没有替换线上 /submit/。
+ * 旧 /submit 已删除并 301 到这里；本页是唯一的单项编辑入口。
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { FIELD_RULES } from '../../../shared/submission-fields.mjs';
 
 const rules = FIELD_RULES as Record<string, any>;
 const SKIP = new Set(['cover', 'gallery', 'items']);
+const CONTENT_FIELDS = new Set(['difficulty', 'title', 'aliases', 'tags', 'author', 'authorNote', 'version', 'players', 'duration', 'stages', 'videoRun', 'videoVeteran', 'videoTrigger', 'videoEaster', 'videoMusic', 'videoOther']);
 const fields = Object.entries(rules)
-  .filter(([k, r]) => !r.hidden && !SKIP.has(k) && k !== 'body')
+  .filter(([k, r]) => CONTENT_FIELDS.has(k) && !r.hidden && !SKIP.has(k))
   .map(([key, r]) => ({
     key,
     label: r.label ?? key,
@@ -183,6 +184,7 @@ const fields = Object.entries(rules)
     type ItemRow = { name: string; cd: string; uses: string; intro: string; note: string; removed: boolean };
     let itemRows: ItemRow[] = [];
     let itemBase: ItemRow[] = [];
+    const pendingMedia: { cover?: any; gallery: any[] } = { gallery: [] };
 
     const defOf = (k: string) => defs.find((d) => d.key === k);
     const kindOf = (k: string) => defOf(k)?.kind ?? 'text';
@@ -600,8 +602,12 @@ const fields = Object.entries(rules)
     }
 
     function setMode(next: 'single' | 'full') {
-      if (next === 'full' && !logged) {
-        els.mapNote.textContent = '整页编辑需要登录：先登录，再回来选这项。';
+      if (next === 'full') {
+        if (!current) {
+          els.mapNote.textContent = '先选一张图，再去整页编辑。';
+          return;
+        }
+        location.href = `/edit/${current.slug}/`;
         return;
       }
       mode = next;
@@ -688,6 +694,50 @@ const fields = Object.entries(rules)
       return items;
     }
 
+    const INFOBOX_FIELDS = new Set(['author', 'authorNote', 'version', 'players', 'duration', 'stages', 'aliases']);
+    const VIDEO_FIELDS: Record<string, string> = { videoUrls: 'run', videoRun: 'run', videoVeteran: 'guide', videoTrigger: 'guide', videoEaster: 'guide', videoMusic: 'music', videoOther: 'guide' };
+    const numberOf = (value: unknown) => {
+      if (value === '' || value === null || value === undefined) return null;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : null;
+    };
+    function contentPatch(items: Array<Record<string, unknown>>) {
+      const patch: Record<string, unknown> = { slug: current!.slug, mode: 'single' };
+      if (current?.contentRev) patch.baseRev = String(current.contentRev);
+      const infobox: Record<string, string> = {};
+      const videos: Array<{ url: string; kind: string }> = [];
+      const seenVideos = new Set<string>();
+      for (const item of items) {
+        const field = String(item.field ?? '');
+        const value = item.value;
+        if (field === 'title') patch.title = String(value ?? '').trim();
+        else if (field === 'difficulty') patch.difficulty = String(value ?? '');
+        else if (field === 'tags') patch.tags = String(value ?? '').split(/[、,，\s]+/).map((tag) => tag.trim()).filter(Boolean);
+        else if (field === 'items') {
+          patch.itemEdits = (Array.isArray(value) ? value : []).map((row: any) => ({
+            ...row,
+            cd: numberOf(row?.cd),
+            uses: numberOf(row?.uses),
+          }));
+        } else if (VIDEO_FIELDS[field]) {
+          const kind = VIDEO_FIELDS[field];
+          for (const url of Array.isArray(value) ? value : [value]) {
+            const text = String(url ?? '').trim();
+            if (!text || seenVideos.has(text)) continue;
+            seenVideos.add(text);
+            videos.push({ url: text, kind });
+          }
+        } else if (INFOBOX_FIELDS.has(field)) {
+          const text = Array.isArray(value) ? value.join('\n') : String(value ?? '');
+          infobox[field] = text.slice(0, 200);
+        }
+      }
+      if (Object.keys(infobox).length) patch.infobox = infobox;
+      if (videos.length) patch.videos = videos;
+      if (pendingMedia.cover || pendingMedia.gallery.length) patch.media = { ...(pendingMedia.cover ? { cover: pendingMedia.cover } : {}), gallery: pendingMedia.gallery };
+      return patch;
+    }
+
     async function sendText() {
       if (!current) return;
       const items = payload();
@@ -699,14 +749,22 @@ const fields = Object.entries(rules)
       els.result.hidden = false;
       els.result.textContent = '提交中…';
       try {
-        const res = await fetch('/api/submit', {
+        const patch = contentPatch(items);
+        const changed = Object.keys(patch).filter((key) => !['slug', 'mode', 'baseRev'].includes(key));
+        if (!changed.length) {
+          els.result.textContent = '没有可提交到内容层的字段。';
+          return;
+        }
+        const res = await fetch('/api/page-revision', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ map: current.slug, items, note: '编辑条目' }),
+          body: JSON.stringify(patch),
         });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
-        const okText = `已提交 ${items.length} 项，编号 #${data.id ?? data.ids?.[0] ?? '?'}。审核通过后会写进条目。`;
+        const okText = `已提交，编号 #${data.id ?? '?'}。审核通过后会写进条目。`;
+        pendingMedia.cover = undefined;
+        pendingMedia.gallery.length = 0;
         /* 先重载（把改动清零），再把成功提示放回去 —— 顺序反了提示会被 loadCurrent 清掉 */
         loadCurrent(current);
         els.result.hidden = false;
@@ -722,15 +780,17 @@ const fields = Object.entries(rules)
       if (!file || !current) return;
       const fd = new FormData();
       fd.append('map', current.slug);
-      fd.append('note', kind === 'cover' ? '编辑条目 · 换封面' : '编辑条目 · 图片集');
-      fd.append(kind, file);
+      fd.append(kind === 'cover' ? 'cover' : 'image', file);
+      if (kind === 'gallery') fd.append('caption', file.name.replace(/\.[^.]+$/, ''));
       els.result.hidden = false;
       els.result.textContent = '上传中…';
       try {
-        const res = await fetch(kind === 'cover' ? '/api/submit-cover' : '/api/submit-gallery', { method: 'POST', body: fd });
+        const res = await fetch(kind === 'cover' ? '/api/content-cover' : '/api/content-gallery', { method: 'POST', body: fd });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
-        els.result.textContent = kind === 'cover' ? '封面已提交，等审核。' : '图片已提交，等审核。';
+        if (kind === 'cover') pendingMedia.cover = data.media;
+        else pendingMedia.gallery.push(data.media);
+        els.result.textContent = '图片已暂存；填完这一项后点提交，进入审核。';
         fileInput.value = '';
       } catch (e) {
         els.result.textContent = '上传失败：' + (e instanceof Error ? e.message : String(e));
