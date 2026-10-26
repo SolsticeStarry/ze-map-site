@@ -487,9 +487,13 @@ const fields = Object.entries(rules)
         if (it.removed) tr.classList.add('is-removed');
         const nameTd = document.createElement('td');
         if (i < itemBase.length) {
-          const name = document.createElement('b');
-          name.textContent = it.name;
-          nameTd.append(name);
+          /* 改名：名字也做成输入框，提交时按「删旧 + 加新」处理（2026-10-27） */
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.value = it.name;
+          inp.style.width = '110px';
+          inp.addEventListener('input', () => { itemRows[i].name = inp.value; renderCount(); });
+          nameTd.append(inp);
         } else {
           /* 新增行要能填名字 */
           const inp = document.createElement('input');
@@ -545,6 +549,12 @@ const fields = Object.entries(rules)
         const b = itemBase[i];
         if (!b) {
           if (it.name.trim()) out.push({ action: 'add', name: it.name, cd: it.cd, uses: it.uses, intro: it.intro, note: it.note });
+          continue;
+        }
+        /* 改名：旧名删掉、新名加上，字段沿用这一行（避免审核台看起来像误删） */
+        if (!it.removed && !b.removed && it.name.trim() && it.name.trim() !== b.name) {
+          out.push({ action: 'remove', name: b.name, intro: '改名：' + b.name + ' → ' + it.name, note: '改名' });
+          out.push({ action: 'add', name: it.name, cd: it.cd, uses: it.uses, intro: it.intro, note: it.note });
           continue;
         }
         if (it.removed && !b.removed) {

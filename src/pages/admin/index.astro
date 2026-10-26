@@ -20,6 +20,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         <div class="audit-tabs" role="tablist">
           <button class="is-on" data-status="pending" type="button">待审 <b id="count-pending">0</b></button>
           <button data-status="approved" type="button">待写回 <b id="count-approved">0</b></button>
+        <button data-status="applied" type="button">已写回</button>
+        <button data-status="rejected" type="button">已驳回</button>
+        <button data-status="conflict" type="button">冲突</button>
         </div>
         <div class="audit-actions">
           <button id="refresh" type="button">刷新</button>
@@ -44,7 +47,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   const statusEl = $('status')!;
   let token = localStorage.getItem('ze-audit-token') ?? '';
   let reviewer = localStorage.getItem('ze-audit-reviewer') ?? '';
-  let status: 'pending' | 'approved' = 'pending';
+  let status = 'pending';
   let counts: Record<string, number> = {};
   tokenEl.value = token;
   reviewerEl.value = reviewer;
@@ -360,7 +363,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
   function render(items: any[]) {
     list.replaceChildren();
-    if (!items.length) { list.append(el('p', 'audit-empty', status === 'pending' ? '没有待审内容。' : '没有待写回内容。')); return; }
+    if (!items.length) {
+    const msg = status === 'pending' ? '没有待审内容。' : status === 'approved' ? '没有待写回内容。' : '这一类暂时没有记录。';
+    list.append(el('p', 'audit-empty', msg));
+    return;
+  }
     for (const row of items) list.append(card(row));
   }
 
@@ -404,7 +411,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   $('flush')!.addEventListener('click', () => void flush());
   $('forget')!.addEventListener('click', () => { token = ''; localStorage.removeItem('ze-audit-token'); panel.hidden = true; });
   for (const btn of document.querySelectorAll<HTMLButtonElement>('.audit-tabs button')) btn.addEventListener('click', () => {
-    status = btn.dataset.status === 'approved' ? 'approved' : 'pending';
+    status = btn.dataset.status || 'pending';
     for (const other of document.querySelectorAll('.audit-tabs button')) other.classList.toggle('is-on', other === btn);
     void load();
   });
