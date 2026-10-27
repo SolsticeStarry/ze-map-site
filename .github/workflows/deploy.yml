@@ -1,0 +1,56 @@
+name: Deploy to Cloudflare
+
+# 推送 main 后由 GitHub Actions 构建并部署，替代 Workers Builds 的 Git 集成。
+# 需要的仓库 secret：
+#   CLOUDFLARE_API_TOKEN  —— 权限：Workers Scripts:Edit、Workers KV:Edit、D1:Edit、R2:Edit
+#   CLOUDFLARE_ACCOUNT_ID —— 15eae06c306850ce8f1157d86f21e95f
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          test -f dist/index.html
+          test -d dist/maps
+          echo "pages: $(find dist -name 'index.html' | wc -l)"
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+
+      - name: Smoke test
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://ze-map.cn/ || true)
+            [ "$code" = "200" ] && break
+            sleep 10
+          done
+          test "$code" = "200" || { echo "站点返回 $code"; exit 1; }
+          curl -s https://ze-map.cn/maps/ze_lotr_minas_tirith/ | grep -q "魔戒" || { echo "地图页内容异常"; exit 1; }
+          echo "smoke ok"
