@@ -1,9 +1,7 @@
 name: Deploy to Cloudflare
 
-# 推送 main 后由 GitHub Actions 构建并部署，替代 Workers Builds 的 Git 集成。
-# 需要的仓库 secret：
-#   CLOUDFLARE_API_TOKEN  —— 权限：Workers Scripts:Edit、Workers KV:Edit、D1:Edit、R2:Edit
-#   CLOUDFLARE_ACCOUNT_ID —— 15eae06c306850ce8f1157d86f21e95f
+# 推送 main 后由 GitHub Actions 构建并部署（替代 Workers Builds 的 Git 集成）。
+# 需要的仓库 secret：CLOUDFLARE_API_TOKEN、CLOUDFLARE_ACCOUNT_ID
 on:
   push:
     branches: [main]
@@ -38,15 +36,15 @@ jobs:
           echo "pages: $(find dist -name 'index.html' | wc -l)"
 
       - name: Deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
 
       - name: Smoke test
         run: |
-          for i in 1 2 3 4 5; do
+          code=000
+          for i in 1 2 3 4 5 6; do
             code=$(curl -s -o /dev/null -w '%{http_code}' https://ze-map.cn/ || true)
             [ "$code" = "200" ] && break
             sleep 10
