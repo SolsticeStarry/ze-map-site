@@ -116,7 +116,14 @@ if (related.length > 0) tocItems.push({ id: 'related', label: '同类地图', co
       <section class="new-section" id="guide"><div class="new-section-title"><span>06</span><h2>攻略技巧</h2><a href={`/edit/${entry.id}/`}>编辑本页</a></div>{guideCleared ? <div class="new-empty">暂无攻略内容。</div> : playerBlocks.some((block: any) => block.type === 'guideItem') ? playerBlocks.filter((block: any) => block.type === 'guideItem').map((block: any, index: number) => <div class="new-prose"><h3 id={`guide-${index}`}>{block.title}</h3><div set:html={docToHtml(block.doc, gallery)}></div></div>) : guideSections.length ? guideSections.map((section, index) => <div class="new-prose"><h3 id={`guide-${index}`}>{section.title}</h3><div set:html={docToHtml(textToDoc(section.text), gallery)}></div></div>) : <div class="new-empty">暂无攻略内容。</div>}</section>
 
       {displayVideoGroups.length > 0 && <section class="new-section" id="videos"><div class="new-section-title"><span>07</span><h2>视频</h2><small>{displayVideos.length} 个</small></div>{displayVideoGroups.map((group) => <div class="new-video-group"><h3>{group.label}</h3><div class="new-videos">{group.items.slice(0, 6).map((item: any) => <VideoEmbed url={item.url} />)}</div></div>)}</section>}
-      {related.length > 0 && <section class="new-section" id="related"><div class="new-section-title"><span>08</span><h2>同类地图</h2><small>按共同标签</small></div><div class="new-related">{related.map((map) => <a href={`/maps/${map.id}/`}><strong>{map.data.title}</strong><span>{map.data.difficulty}</span></a>)}</div></section>}
+      {related.length > 0 && <section class="new-section" id="related"><div class="new-section-title"><span>08</span><h2>同类地图</h2><small>按共同标签</small></div><div class="new-related">{related.map((map) => (
+  <a class="new-related-card" href={`/maps/${map.id}/`}>
+    {map.data.cover
+      ? <img class="new-related-cover" src={String(map.data.cover)} alt="" loading="lazy" />
+      : <span class="new-related-cover is-empty" aria-hidden="true">{String(map.data.title ?? '').slice(0, 1)}</span>}
+    <span class="new-related-text"><strong>{map.data.title}</strong><span>{map.data.difficulty}</span></span>
+  </a>
+))}</div></section>}
     </main>
 
     <aside class="new-sidebar">
@@ -255,7 +262,14 @@ if (related.length > 0) tocItems.push({ id: 'related', label: '同类地图', co
   .new-gallery figure { margin:0; overflow:hidden; border:1px solid var(--new-border); border-radius:9px; background:var(--new-panel); }
   .new-gallery img { width:100%; aspect-ratio:16/10; object-fit:cover; }
   .new-gallery figcaption { padding:6px 8px; color:var(--new-muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .new-videos { display:grid; gap:12px; }.new-video-group { margin:18px 0; }.new-video-group h3 { margin:0 0 8px; font-size:15px; color:var(--new-muted); }.new-related { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }.new-related a { padding:14px; border:1px solid var(--new-border); border-radius:8px; background:var(--new-panel); color:var(--new-text); }.new-related strong,.new-related span { display:block; }.new-related span { margin-top:5px; color:var(--new-muted); font-size:12px; }
+  .new-videos { display:grid; gap:12px; }.new-video-group { margin:18px 0; }.new-video-group h3 { margin:0 0 8px; font-size:15px; color:var(--new-muted); }.new-related { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.new-related-card { overflow:hidden; border:1px solid var(--new-border); border-radius:8px; background:var(--new-panel); color:var(--new-text); display:flex; flex-direction:column; text-decoration:none; }
+.new-related-cover { display:block; width:100%; aspect-ratio:16/9; object-fit:cover; background:var(--new-border); }
+.new-related-cover.is-empty { display:grid; place-items:center; font-size:28px; color:var(--new-muted); background:linear-gradient(135deg,var(--new-panel),var(--new-border)); }
+.new-related-text { display:block; padding:10px 12px 12px; }
+.new-related-text strong { display:block; font-size:14px; }
+.new-related-text span { display:block; margin-top:4px; color:var(--new-muted); font-size:12px; }
+.new-related-card:hover .new-related-text strong { color:var(--new-accent, #e5484d); }
   .new-table-wrap { overflow:auto; border:1px solid var(--new-border); border-radius:8px; }.new-table { width:100%; table-layout:auto; border-collapse:collapse; background:var(--new-panel); font-size:13px; }.new-table th { padding:9px 10px; background:var(--new-panel-2); border-bottom:1px solid var(--new-border-2); text-align:left; white-space:nowrap; }.new-table td { padding:8px 10px; border-bottom:1px solid var(--new-border); vertical-align:top; white-space:normal; overflow-wrap:anywhere; }.new-table tr:last-child td { border-bottom:0; }.new-table tbody tr:nth-child(even) { background:color-mix(in srgb,var(--new-panel-2) 55%,transparent); }
   .new-sidebar { position:static; align-self:start; display:grid; gap:14px; }
   .new-card { padding:16px; border:1px solid var(--new-border); border-radius:10px; background:var(--new-panel); }
