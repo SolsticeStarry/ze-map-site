@@ -1,7 +1,7 @@
 {
   "v": 1,
   "slug": "ze_backrooms_insomnia",
-  "baseRev": "fnv1a:eefe9611",
+  "baseRev": "fnv1a:95e63ba4",
   "researchRev": "fnv1a:1b75b002",
   "heroImage": null,
   "tags": null,
@@ -74,8 +74,8 @@
       "name": "火盐包",
       "cd": 60,
       "uses": null,
-      "intro": "在神器模型前方释放一片火盐区域，需要攻击火盐区域来点燃(枪或刀)，点燃后的火盐区对僵尸强减速，第一个撞到的僵尸会清空速度。",
-      "note": "打爆瞬间有光照效果。"
+      "note": "打爆瞬间有光照效果；可放在窃皮/肢团必经路上盯防。",
+      "intro": "按 E 投出火盐烟雾，攻击烟雾会爆炸并留下火盐区；火盐区对僵尸强减速，第一个撞到的僵尸会清空速度。60 秒冷却，可重复使用。"
     },
     {
       "action": "remove",
@@ -86,12 +86,8 @@
       "note": ""
     },
     {
-      "action": "update",
-      "name": "Almond Water",
-      "cd": 0,
-      "uses": null,
-      "intro": "",
-      "note": ""
+      "action": "remove",
+      "name": "Almond Water"
     },
     {
       "action": "remove",
@@ -110,12 +106,204 @@
       "note": ""
     },
     {
-      "action": "add",
+      "action": "update",
       "name": "散装火盐",
       "cd": null,
       "uses": 1,
-      "intro": "在神器模型前方释放一片火盐区域，需要攻击火盐区域来点燃(枪或刀)，点燃后的火盐区对僵尸强减速，第一个撞到的僵尸会清空速度。",
-      "note": "打爆瞬间有光照效果。"
+      "note": "打爆瞬间有光照效果；和火盐包相比，它更适合应急封一次路。",
+      "intro": "按 E 投出火盐烟雾，攻击烟雾会爆炸并留下火盐区；火盐区对僵尸强减速，第一个撞到的僵尸会清空速度。只有一次，通常留给关键路口。"
+    },
+    {
+      "action": "add",
+      "name": "杏仁水",
+      "cd": null,
+      "uses": 1,
+      "note": "会把水枪切换成杏仁水模式；现网曾被改成不限，按源码恢复 1 次。",
+      "intro": "使用后回复到 150 生命，并获得 6 秒 1.2 倍速度；团队理智 +30，同时清除窃皮者/液态痛苦效果。它只够自己用，适合掉血或中状态后立刻喝。"
+    },
+    {
+      "action": "remove",
+      "name": "Bucket of Almond Water"
+    },
+    {
+      "action": "add",
+      "name": "桶装杏仁水",
+      "cd": 60,
+      "uses": null,
+      "note": "会把水枪切换成杏仁水模式；用之前确认队友都在范围内。",
+      "intro": "6 秒内持续为范围内队友回血至 150，并短暂获得 1.2 倍速度；分 3 次共回复 60 点团队理智，同时清除细菌雾。60 秒冷却，适合守点后统一回复。"
+    },
+    {
+      "action": "remove",
+      "name": "Broken Flashlight"
+    },
+    {
+      "action": "add",
+      "name": "损坏的手电筒",
+      "cd": null,
+      "uses": null,
+      "note": "适合当备用光源；Level 0 的窃皮路通常要两把手电接力。",
+      "intro": "打开后照亮前方，并持续对笑魇和可破坏物造成 400 伤害；电量比战术手电更少、更容易耗尽。关闭时自动充电，耗尽后要充满才能再用。"
+    },
+    {
+      "action": "remove",
+      "name": "Tactical Flashlight"
+    },
+    {
+      "action": "add",
+      "name": "战术手电筒",
+      "cd": null,
+      "uses": null,
+      "note": "和损坏手电相比电量更耐用；建议两把轮换，避免同时没电。",
+      "intro": "打开后照亮前方，并持续对笑魇和可破坏物造成 400 伤害；关闭时自动充电，耗尽后要充满才能再用。它是 Level 0 窃皮路的主力光源。"
+    },
+    {
+      "action": "remove",
+      "name": "Glow Stick"
+    },
+    {
+      "action": "add",
+      "name": "荧光棒",
+      "cd": null,
+      "uses": 1,
+      "note": "只提供照明，不造成伤害；建议提前丢在队伍要经过的位置。",
+      "intro": "投掷后生成一根荧光棒，提供与手电同强度的照明；一次性使用，适合在黑暗路段或拐角做临时光源。"
+    },
+    {
+      "action": "remove",
+      "name": "Bundle of Glow Sticks"
+    },
+    {
+      "action": "add",
+      "name": "一捆荧光棒",
+      "cd": 10,
+      "uses": 5,
+      "note": "一共 5 次，扔完就消失；别一次扔完，留几根给回程或分岔口。",
+      "intro": "一捆可以扔 5 次，每次投掷后 10 秒才能再扔；每根都提供与手电同强度的照明，适合连续铺完整条黑暗路段。"
+    },
+    {
+      "action": "remove",
+      "name": "Lightning in a Bottle"
+    },
+    {
+      "action": "add",
+      "name": "瓶装闪电",
+      "cd": null,
+      "uses": 1,
+      "note": "不攻击瓶子就不会触发；丢出去后记得补枪。",
+      "intro": "投掷瓶子后，需要攻击瓶子才会引发连锁闪电区域；一次性使用。适合在僵尸堆到门口时清场或缓解守点压力。"
+    },
+    {
+      "action": "remove",
+      "name": "Light Burster"
+    },
+    {
+      "action": "add",
+      "name": "爆闪相机",
+      "cd": 60,
+      "uses": null,
+      "note": "用之前先确认队友不在爆闪范围；它主要用来控场，不是照明。",
+      "intro": "使用后充能约 2 秒再爆闪，范围内僵尸会被眩晕并大幅减速（约 7 秒），怕光实体也会受影响；但范围内人类同样会被眩晕。60 秒冷却。"
+    },
+    {
+      "action": "remove",
+      "name": "Spirit Detector"
+    },
+    {
+      "action": "add",
+      "name": "灵体定位仪",
+      "cd": 30,
+      "uses": null,
+      "note": "它不显示其他实体；探测到后记得把箭头方向报给队友。",
+      "intro": "使用后在第 3、7、11 秒各探测一次笑魇位置；白色箭头指向 NPC 笑魇，红色箭头指向幻影笑魇。30 秒冷却，只对笑魇生效。"
+    },
+    {
+      "action": "remove",
+      "name": "Water Gun"
+    },
+    {
+      "action": "add",
+      "name": "水枪",
+      "cd": 80,
+      "uses": null,
+      "note": "喝杏仁水/火盐/液态痛苦会切换水枪模式；水枪不能自己选液体。",
+      "intro": "喷射当前装载的液体：杏仁水治疗并回理智，火盐对僵尸造成 2000 伤害并强减速，液态痛苦伤害并减速；80 秒冷却。"
+    },
+    {
+      "action": "remove",
+      "name": "Royal Rations"
+    },
+    {
+      "action": "add",
+      "name": "皇家口粮",
+      "cd": null,
+      "uses": 1,
+      "note": "要在队友围着你时按 E；用之前先确认断后的人也在范围内。",
+      "intro": "使用后团队理智 +100，并让周围队友获得 20 秒强力增益：9999 生命、1.5 倍速度、免疫僵尸伤害、金色高亮；结束后恢复 200 血和 1.1 倍速度。一次性。"
+    },
+    {
+      "action": "remove",
+      "name": "Zombie Bacteria"
+    },
+    {
+      "action": "add",
+      "name": "僵尸细菌",
+      "cd": 60,
+      "uses": null,
+      "note": "人类可以用桶装杏仁水清除细菌雾；释放时自己会定身 2 秒。",
+      "intro": "左键攻击造成 999 伤害并扣 7 点理智；右键释放细菌雾，2 秒后定身自己、生成全局迷雾并扣 20 点理智，同时让附近僵尸短暂加速。60 秒冷却。"
+    },
+    {
+      "action": "remove",
+      "name": "Zombie Skin-Stealer"
+    },
+    {
+      "action": "add",
+      "name": "僵尸窃皮者",
+      "cd": 60,
+      "uses": null,
+      "note": "没有换皮/伪装逻辑；冲刺经过的僵尸也会短暂加速。",
+      "intro": "左键攻击造成 170 伤害并给人类挂感染；右键冲刺 6 秒，速度提升到 2.3 倍，60 秒冷却。拾取后持有者会隐身并变成高血量。"
+    },
+    {
+      "action": "remove",
+      "name": "Zombie Smiler"
+    },
+    {
+      "action": "add",
+      "name": "僵尸笑魇",
+      "cd": 40,
+      "uses": null,
+      "note": "隐身只剩 10 秒；现形后优先找落单人类，别在强光下硬冲。",
+      "intro": "右键进入 10 秒隐身，期间无敌、移动变慢；现形后左键近战可造成 5000 伤害并扣 3 点理智。手电/爆闪等强光会伤害它，40 秒冷却。"
+    },
+    {
+      "action": "remove",
+      "name": "Zombie Clump"
+    },
+    {
+      "action": "add",
+      "name": "僵尸肢团",
+      "cd": 50,
+      "uses": null,
+      "note": "冲刺可以把人类挤下平台；自己也会隐身和高血量。",
+      "intro": "左键攻击造成 999 伤害并扣 3 点理智，同时把附近僵尸抬升、把人类推开；右键冲刺 7 秒，速度 1.7 倍并持续推开人类。50 秒冷却。"
+    },
+    {
+      "action": "remove",
+      "name": "Zombie Partygoers"
+    },
+    {
+      "action": "add",
+      "name": "僵尸派对客",
+      "cd": 40,
+      "uses": null,
+      "note": "变气球时不能移动；找好落点再按右键。40 秒冷却。",
+      "intro": "右键变成气球并隐身/无敌 10 秒；10 秒内人类没打爆气球，就能在原地开始猎杀，随后获得 7 秒 2 倍速度。左键近战造成 999 伤害并扣 3 点理智。"
+    },
+    {
+      "action": "remove",
+      "name": "Shop Entry Eban"
     }
   ],
   "itemOrder": [],
@@ -214,6 +402,12 @@
       "submitter": "SolsticeStarry",
       "reviewer": "123",
       "appliedAt": 1793029462031
+    },
+    {
+      "revision": 2,
+      "submitter": "SolsticeStarry",
+      "reviewer": "123",
+      "appliedAt": 1793068588817
     }
   ]
 }
